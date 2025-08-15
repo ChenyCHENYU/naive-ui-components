@@ -44,10 +44,10 @@
     "url": "https://github.com/ChenyCHENYU/naive-ui-components/issues"
   },
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
-    "test:dev": "cd dev && vite",
-    "playground": "cd dev && vite",
+    "dev": "node scripts/watch-global-scss.js & tsdown --watch",
+    "build": "node scripts/gen-global-scss.js && tsdown",
+    "test:dev": "node scripts/gen-global-scss.js && cd dev && vite",
+    "playground": "node scripts/gen-global-scss.js && cd dev && vite",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "bun run build",
     "release:patch": "npm version patch && bun run build && npm publish",
