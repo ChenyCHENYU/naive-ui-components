@@ -384,6 +384,3 @@ defineExpose({
 });
 </script>
 
-<style scoped lang="scss">
-@use "./index.scss" as *;
-</style>

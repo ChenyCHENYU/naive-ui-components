@@ -1,0 +1,10 @@
+/* src/styles/global.scss */
+
+/* 全局变量、mixins */
+@forward 'variables'; // 假设有 src/styles/_variables.scss）
+
+/* 将组件样式统一 forward */
+@forward '../components/C_Code/index.scss';
+@forward '../components/C_Icon/index.scss';
+
+/* 你有更多组件样式，这里继续加 */

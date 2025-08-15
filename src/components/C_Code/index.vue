@@ -363,7 +363,6 @@ defineExpose({
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss" as *;
 .mr-2 {
   margin-right: 0.5rem;
 }

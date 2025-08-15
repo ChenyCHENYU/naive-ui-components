@@ -12,13 +12,17 @@ export default defineConfig({
       style: {
         preprocessOptions: {
           scss: {
-            // 全局 SCSS 变量或导入
+            additionalData: `
+              @use "@/styles/global.scss" as *;
+            `,
+            // 如果你的 @ 符号没配过，要在 tsconfig.json / vite alias 里加:
+            // "paths": { "@/*": ["src/*"] }
           },
         },
       },
     }),
     scssPlugin({
-      // 只处理独立的 SCSS 文件，不处理 Vue 组件内的样式
+      // 只处理独立 SCSS 文件，Vue 中的交给 unplugin-vue 处理
       include: ["**/*.scss", "!**/*.vue"],
       output: "dist/style.css",
       sourceMap: true,
