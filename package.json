@@ -1,0 +1,76 @@
+{
+  "name": "@agile-team/naive-ui-components",
+  "version": "0.1.0",
+  "description": "基于 Naive UI 的 Vue 3 组件库",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./style": {
+      "import": "./dist/style.css",
+      "require": "./dist/style.css"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "vue",
+    "vue3",
+    "components",
+    "naive-ui",
+    "typescript",
+    "ui-library"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/ChenyCHENYU/naive-ui-components#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChenyCHENYU/naive-ui-components.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ChenyCHENYU/naive-ui-components/issues"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test:dev": "cd dev && vite",
+    "playground": "cd dev && vite",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "bun run build",
+    "release:patch": "bun version patch && bun run build && npm publish",
+    "release:minor": "npm version minor && bun run build && npm publish",
+    "release:major": "npm version major && bun run build && npm publish"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.0",
+    "naive-ui": "^2.35.0"
+  },
+  "dependencies": {
+    "@iconify/vue": "^5.0.0",
+    "@vueuse/core": "^13.6.0",
+    "highlight.js": "^11.11.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.1",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/compiler-sfc": "^3.5.18",
+    "naive-ui": "^2.42.0",
+    "rollup-plugin-scss": "^4.0.1",
+    "sass": "^1.90.0",
+    "tsdown": "^0.14.1",
+    "typescript": "^5.9.2",
+    "unplugin-vue": "^7.0.1",
+    "vite": "^7.1.2",
+    "vue": "^3.5.18"
+  }
+}
