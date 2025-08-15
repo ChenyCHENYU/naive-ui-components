@@ -47,7 +47,7 @@
     "playground": "cd dev && vite",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "bun run build",
-    "release:patch": "bun version patch && bun run build && npm publish",
+    "release:patch": "npm version patch && bun run build && npm publish",
     "release:minor": "npm version minor && bun run build && npm publish",
     "release:major": "npm version major && bun run build && npm publish"
   },
