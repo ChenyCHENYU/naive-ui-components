@@ -1,6 +1,6 @@
 {
   "name": "@agile-team/naive-ui-components",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
