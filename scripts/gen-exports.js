@@ -35,7 +35,6 @@ const exports = {
 // 每个组件的 subpath export
 for (const name of componentNames) {
   const hasEsmDts = fs.existsSync(path.join(distDir, `${name}.d.ts`));
-  const hasCjsDts = fs.existsSync(path.join(distDir, `${name}.d.cts`));
   const hasCjs = fs.existsSync(path.join(distDir, `${name}.cjs`));
 
   const entry = {};

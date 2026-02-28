@@ -244,7 +244,11 @@
     "prepublishOnly": "bun run build",
     "release:patch": "npm version patch && bun run build && bun publish",
     "release:minor": "npm version minor && bun run build && bun publish",
-    "release:major": "npm version major && bun run build && bun publish"
+    "release:major": "npm version major && bun run build && bun publish",
+    "prepare": "husky",
+    "cz": "git-cz",
+    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
+    "format": "prettier --write src/"
   },
   "peerDependencies": {
     "vue": "^3.5.0",
@@ -287,16 +291,51 @@
     "spark-md5": "^3.0.2"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "@robot-admin/git-standards": "1.0.3",
     "@types/node": "^24.2.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/compiler-sfc": "^3.5.18",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/language-core": "^3.2.5",
+    "commitizen": "^4.3.1",
+    "cz-customizable": "^7.5.1",
+    "eslint": "^10.0.2",
+    "eslint-plugin-jsdoc": "^62.7.1",
+    "eslint-plugin-oxlint": "^1.50.0",
+    "eslint-plugin-vue": "^10.8.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "naive-ui": "^2.42.0",
+    "oxlint": "^1.50.0",
+    "prettier": "^3.8.1",
     "sass": "^1.90.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.2",
     "unplugin-vue": "^7.0.1",
     "vite": "^7.1.2",
     "vue": "^3.5.18"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-customizable"
+    },
+    "cz-customizable": {
+      "config": ".cz-config.cjs"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx,vue}": [
+      "oxlint --max-warnings 0 --deny-warnings",
+      "eslint --fix --no-cache",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }
