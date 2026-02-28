@@ -1,0 +1,139 @@
+/* VariablePanel 组件样式 */
+
+.variable-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-card);
+  overflow: hidden;
+  height: 100%;
+
+  &__tabs {
+    display: flex;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  &__tab {
+    flex: 1;
+    padding: 8px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--c-text-2);
+    cursor: pointer;
+    transition: all var(--c-transition, 0.2s ease);
+    user-select: none;
+
+    &:hover {
+      color: var(--c-primary);
+    }
+
+    &--active {
+      color: var(--c-primary);
+      border-bottom: 2px solid var(--c-primary);
+    }
+  }
+
+  &__search {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  &__list {
+    flex: 1;
+    max-height: 360px;
+    padding: 4px 0;
+  }
+
+  &__group-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--c-text-2);
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      color: var(--c-text-1);
+    }
+  }
+
+  &__items {
+    padding: 0 4px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px 6px 26px;
+    font-size: 13px;
+    color: var(--c-text-1);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+
+    &:hover {
+      background: var(--hover-color);
+    }
+
+    &-icon {
+      font-size: 15px;
+      color: var(--c-primary);
+      flex-shrink: 0;
+    }
+  }
+
+  &__func {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 2px 4px;
+    transition: background 0.15s;
+
+    &:hover {
+      background: var(--hover-color);
+    }
+
+    &-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--c-text-1);
+    }
+
+    &-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+      color: var(--c-primary);
+      font-size: 12px;
+      font-weight: 700;
+      font-style: italic;
+    }
+
+    &-desc {
+      padding-left: 24px;
+      font-size: 12px;
+      color: var(--c-text-4);
+      margin-top: 2px;
+    }
+
+    &-sig {
+      padding-left: 24px;
+      font-size: 11px;
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--c-text-4);
+      margin-top: 2px;
+      opacity: 0.7;
+    }
+  }
+}

@@ -1,0 +1,190 @@
+/* 分割面板组件样式 */
+
+.c-split-pane {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+
+  /* ─── 方向 ────────────────────────────────── */
+  &--horizontal {
+    flex-direction: row;
+  }
+
+  &--vertical {
+    flex-direction: column;
+  }
+
+  /* ─── 拖拽中 ──────────────────────────────── */
+  &--dragging {
+    .split-panel__content {
+      pointer-events: none;
+      user-select: none;
+    }
+  }
+
+  /* ─── 禁用 ────────────────────────────────── */
+  &--disabled {
+    .split-gutter {
+      cursor: default !important;
+      opacity: 0.5;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+  }
+
+  /* ─── 折叠过渡 ────────────────────────────── */
+  &--collapsed-first,
+  &--collapsed-second {
+    .split-panel {
+      transition: width 0.3s ease, height 0.3s ease;
+    }
+  }
+}
+
+/* ─── 面板 ──────────────────────────────────── */
+.split-panel {
+  overflow: hidden;
+  position: relative;
+
+  &__content {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+}
+
+/* ─── 分割线手柄 ────────────────────────────── */
+.split-gutter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+  background: var(--c-border, #e1e4e8);
+  transition: background-color 0.2s ease;
+  outline: none;
+
+  /* 水平方向 */
+  .c-split-pane--horizontal & {
+    cursor: col-resize;
+    min-width: 4px;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--c-primary, #409eff);
+    }
+  }
+
+  /* 垂直方向 */
+  .c-split-pane--vertical & {
+    cursor: row-resize;
+    min-height: 4px;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--c-primary, #409eff);
+    }
+  }
+
+  /* focus 轮廓 */
+  &:focus-visible {
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.3);
+  }
+
+  /* ─── 视觉指示条 ──────────────────────────── */
+  &__visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__dots {
+    display: flex;
+    gap: 2px;
+
+    .c-split-pane--horizontal & {
+      flex-direction: column;
+    }
+
+    .c-split-pane--vertical & {
+      flex-direction: row;
+    }
+  }
+
+  &__dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--c-text-4, #ccc);
+    transition: background-color 0.2s ease;
+
+    .split-gutter:hover & {
+      background: #fff;
+    }
+  }
+
+  /* ─── 折叠按钮 ────────────────────────────── */
+  &__collapse-btn {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 1px solid var(--c-border, #e1e4e8);
+    border-radius: 50%;
+    background: var(--c-bg-card, #fff);
+    color: var(--c-text-3, #999);
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity 0.2s ease,
+      color 0.2s ease,
+      background-color 0.2s ease;
+    z-index: 2;
+
+    .split-gutter:hover & {
+      opacity: 1;
+    }
+
+    &:hover {
+      color: var(--c-primary, #409eff);
+      background: var(--c-bg, #fff);
+    }
+
+    /* 水平方向的定位 */
+    .c-split-pane--horizontal & {
+      left: 50%;
+      transform: translateX(-50%);
+
+      &--first {
+        top: 8px;
+      }
+
+      &--second {
+        bottom: 8px;
+      }
+    }
+
+    /* 垂直方向的定位 */
+    .c-split-pane--vertical & {
+      top: 50%;
+      transform: translateY(-50%);
+
+      &--first {
+        left: 8px;
+      }
+
+      &--second {
+        right: 8px;
+      }
+    }
+  }
+}

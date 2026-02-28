@@ -1,0 +1,24 @@
+/* 时间选择器组件样式 */
+.c-time-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-range-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-single-container {
+  display: flex;
+  align-items: center;
+}
+
+.range-separator {
+  color: var(--c-text-3, #666);
+  font-size: 14px;
+  white-space: nowrap;
+  user-select: none;
+}

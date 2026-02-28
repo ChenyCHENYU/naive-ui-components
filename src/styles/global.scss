@@ -1,10 +1,29 @@
-/* src/styles/global.scss */
-
-/* 全局变量、mixins */
-@forward 'variables'; // 假设有 src/styles/_variables.scss）
-
-/* 将组件样式统一 forward */
+@forward './variables';
+@forward '../components/C_ActionBar/index.scss';
+@forward '../components/C_AntV/index.scss';
+@forward '../components/C_Barcode/index.scss';
+@forward '../components/C_Captcha/index.scss';
+@forward '../components/C_City/index.scss';
 @forward '../components/C_Code/index.scss';
+@forward '../components/C_CollapsePanel/index.scss';
+@forward '../components/C_Cron/index.scss';
+@forward '../components/C_Draggable/index.scss';
+@forward '../components/C_FilePreview/index.scss';
+@forward '../components/C_FormSearch/index.scss';
+@forward '../components/C_FormulaEditor/index.scss';
 @forward '../components/C_Icon/index.scss';
-
-/* 你有更多组件样式，这里继续加 */
+@forward '../components/C_ImageCropper/index.scss';
+@forward '../components/C_Map/index.scss';
+@forward '../components/C_Markdown/index.scss';
+@forward '../components/C_NotificationCenter/index.scss';
+@forward '../components/C_QRCode/index.scss';
+@forward '../components/C_Signature/index.scss';
+@forward '../components/C_SplitPane/index.scss';
+@forward '../components/C_Steps/index.scss';
+@forward '../components/C_Table/index.scss';
+@forward '../components/C_Time/index.scss';
+@forward '../components/C_Tree/index.scss';
+@forward '../components/C_Upload/index.scss';
+@forward '../components/C_VideoPlayer/index.scss';
+@forward '../components/C_VtableGantt/index.scss';
+@forward '../components/C_WorkFlow/index.scss';

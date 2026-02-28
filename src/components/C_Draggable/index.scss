@@ -1,0 +1,279 @@
+/* ===== 容器布局样式 ===== */
+.c-draggable-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.c-draggable-list {
+  min-height: 50px;
+  width: 100%;
+  display: flex;
+  gap: var(--gap, 8px);
+
+  /* 默认垂直布局 */
+  &.layout-vertical {
+    flex-direction: column;
+  }
+
+  /* 水平布局 */
+  &.layout-horizontal {
+    flex-direction: row;
+    align-items: var(--align-items, stretch);
+    justify-content: var(--justify-content, flex-start);
+
+    &.flex-wrap {
+      flex-wrap: wrap;
+    }
+  }
+
+  /* 弹性换行布局 */
+  &.layout-flex-wrap {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: var(--align-items, stretch);
+    justify-content: var(--justify-content, flex-start);
+  }
+
+  /* 网格布局 */
+  &.layout-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
+    grid-template-rows: var(--grid-rows, auto);
+    align-items: var(--align-items, stretch);
+    justify-content: var(--justify-content, stretch);
+
+    >.c-draggable-item {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+}
+
+/* ===== 拖拽项目基础样式 ===== */
+.c-draggable-item {
+  position: relative;
+
+  &.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+
+    * {
+      cursor: not-allowed !important;
+    }
+  }
+}
+
+/* ===== 默认项目样式 ===== */
+.default-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: var(--n-card-color);
+  border: 1px solid var(--n-border-color);
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+
+  &:hover {
+    border-color: var(--n-primary-color);
+    box-shadow: 0 2px 8px var(--n-box-shadow-color);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-right: 12px;
+    color: var(--n-text-color-disabled);
+    cursor: grab;
+    border-radius: 4px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+
+    &:hover {
+      background: var(--n-action-color);
+      color: var(--n-primary-color);
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    div {
+      font-size: 18px;
+    }
+  }
+
+  .item-content {
+    flex: 1;
+    min-width: 0;
+
+    .item-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--n-text-color);
+      line-height: 1.5;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .item-description {
+      font-size: 14px;
+      color: var(--n-text-color-disabled);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+  }
+}
+
+/* ===== 空状态样式 ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  border: 2px dashed var(--n-border-color);
+  border-radius: 8px;
+
+  .default-empty {
+    .empty-icon {
+      font-size: 48px;
+      color: var(--n-text-color-disabled);
+      margin-bottom: 16px;
+    }
+
+    .empty-text {
+      color: var(--n-text-color-disabled);
+      font-size: 16px;
+      margin: 0;
+    }
+  }
+}
+
+/* ===== 拖拽状态样式 ===== */
+:global(.sortable-ghost) {
+  opacity: 0.5 !important;
+  background: var(--n-primary-color-suppl) !important;
+  border: 2px dashed var(--n-primary-color) !important;
+  transform: scale(0.98) !important;
+}
+
+:global(.sortable-chosen) {
+  outline: 2px solid var(--n-primary-color) !important;
+  outline-offset: 2px !important;
+  transform: scale(1.02) !important;
+  z-index: 999 !important;
+}
+
+:global(.sortable-drag) {
+  opacity: 0.9 !important;
+  transform: rotate(2deg) scale(1.05) !important;
+  z-index: 1000 !important;
+  box-shadow: 0 8px 25px var(--n-box-shadow-color) !important;
+}
+
+/* ===== 网格布局特殊优化 ===== */
+.c-draggable-list.layout-grid {
+  .c-draggable-item {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .default-item {
+      flex: 1;
+      height: 100%;
+      min-height: 80px;
+    }
+  }
+
+  +.empty-state {
+    grid-column: 1 / -1;
+    padding: 40px 20px;
+
+    .default-empty .empty-icon {
+      font-size: 36px;
+    }
+  }
+}
+
+/* ===== 弹性布局特殊优化 ===== */
+.c-draggable-list.layout-horizontal,
+.c-draggable-list.layout-flex-wrap {
+  .c-draggable-item {
+    flex-shrink: 0;
+
+    &:not(:last-child) {
+      margin-right: 0;
+    }
+  }
+
+  .default-item {
+    min-width: 200px;
+    width: 100%;
+  }
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+  .c-draggable-list.layout-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .c-draggable-list.layout-horizontal {
+    flex-wrap: wrap;
+  }
+
+  .default-item {
+    padding: 12px;
+    min-width: 150px !important;
+
+    .drag-handle {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+
+      div {
+        font-size: 16px;
+      }
+    }
+
+    .item-content {
+      .item-title {
+        font-size: 15px;
+      }
+
+      .item-description {
+        font-size: 13px;
+      }
+    }
+  }
+
+  .empty-state {
+    padding: 40px 16px;
+
+    .default-empty .empty-icon {
+      font-size: 36px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .c-draggable-list.layout-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .default-item {
+    min-width: 100% !important;
+    padding: 10px;
+  }
+}

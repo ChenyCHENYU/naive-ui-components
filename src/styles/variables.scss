@@ -1,0 +1,51 @@
+/**
+ * 组件库 CSS 变量系统
+ *
+ * 三层方案：
+ *   1. --n-* （Naive UI 内部变量，由 NConfigProvider 注入）
+ *   2. --c-* （组件库默认值，回退到 Naive UI 变量）
+ *   3. 消费者自定义覆盖
+ *
+ * 组件内部统一使用 --c-* 变量，消费端可通过覆盖 --c-* 来定制主题。
+ * 大部分 --c-* 变量的默认值直接映射 Naive UI 注入的 --n-* 或 DOM 上的同名变量。
+ */
+
+:root {
+  /* ─── 主色 ─────────────────────────────── */
+  --c-primary: var(--primary-color, #2080f0);
+  --c-primary-hover: var(--primary-color-hover, #4098fc);
+  --c-primary-pressed: var(--primary-color-pressed, #1060c9);
+
+  /* ─── 功能色 ───────────────────────────── */
+  --c-success: var(--success-color, #18a058);
+  --c-warning: var(--warning-color, #f0a020);
+  --c-error: var(--error-color, #d03050);
+  --c-info: var(--info-color, #2080f0);
+
+  /* ─── 背景 ─────────────────────────────── */
+  --c-bg-body: var(--body-color, #ffffff);
+  --c-bg-card: var(--card-color, #ffffff);
+  --c-bg-surface: var(--popover-color, #ffffff);
+
+  /* ─── 文本 ─────────────────────────────── */
+  --c-text-1: var(--text-color-1, #262626);
+  --c-text-2: var(--text-color-2, #525252);
+  --c-text-3: var(--text-color-3, #a3a3a3);
+  --c-text-4: var(--text-color-4, #c0c0c0);
+
+  /* ─── 边框 ─────────────────────────────── */
+  --c-border: var(--border-color, #e5e7eb);
+
+  /* ─── 圆角 ─────────────────────────────── */
+  --c-radius-sm: var(--border-radius-small, 4px);
+  --c-radius: var(--border-radius, 6px);
+
+  /* ─── 过渡 ─────────────────────────────── */
+  --c-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --c-transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ─── 阴影 ─────────────────────────────── */
+  --c-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --c-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --c-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}

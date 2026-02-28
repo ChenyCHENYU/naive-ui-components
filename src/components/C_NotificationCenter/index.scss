@@ -1,0 +1,10 @@
+/*
+ * NPopover 的 content-class 样式需要在组件外部生效，
+ * 因为 NPopover 将内容渲染到 teleport 容器中，scoped 样式无法覆盖。
+ */
+.c-notification-center__popover {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: var(--c-shadow, 0 12px 32px rgba(0, 0, 0, 0.1)) !important;
+}

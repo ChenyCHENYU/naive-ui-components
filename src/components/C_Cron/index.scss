@@ -1,0 +1,231 @@
+/* Cron 表达式编辑器 - 组件级全局样式 */
+.c-cron {
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+
+  /* ═══════ 顶部 ═══════ */
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 16px;
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  /* ─── 分段式字段选择器 ──────────────────── */
+
+  &__segments {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--c-bg);
+  }
+
+  &__segment {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 6px 5px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all var(--c-transition, 0.2s ease);
+    user-select: none;
+    min-width: 0;
+
+    &:not(&--active):hover {
+      background: color-mix(in srgb, var(--c-bg-card) 60%, transparent);
+    }
+
+    &--active {
+      background: var(--c-bg-card);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+      .c-cron__segment-value {
+        color: var(--c-primary);
+      }
+    }
+
+    &--wildcard:not(&--active) {
+      .c-cron__segment-value {
+        opacity: 0.35;
+      }
+    }
+  }
+
+  &__segment-value {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  &__segment-label {
+    font-size: 11px;
+    color: var(--c-text-4);
+    margin-top: 2px;
+  }
+
+  /* ─── 表达式行 ─────────────────────────── */
+
+  &__expr-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__expr-input {
+    width: 240px;
+    flex-shrink: 0;
+  }
+
+  &__expr-desc {
+    flex: 1;
+    font-size: 13px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__description {
+    color: var(--c-text-2);
+  }
+
+  &__error {
+    color: var(--error-color);
+  }
+
+  /* ═══════ 主内容 ═══════ */
+
+  &__body {
+    display: flex;
+    gap: 24px;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ─── 右侧控制面板 ────────────────────── */
+
+  &__panel {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__config {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__config-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--c-text-2);
+    flex-wrap: wrap;
+  }
+
+  &__config-num {
+    width: 68px;
+  }
+
+  &__quick {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+
+    a {
+      color: var(--c-primary);
+      cursor: pointer;
+      user-select: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  &__quick-sep {
+    color: var(--c-text-4);
+  }
+
+  &__quick-count {
+    margin-left: 4px;
+    font-size: 12px;
+    color: var(--c-text-4);
+  }
+
+  &__panel-line {
+    height: 1px;
+    background: var(--c-border);
+  }
+
+  /* ═══════ 底部模板 ═══════ */
+
+  &__footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--c-border);
+  }
+}
+
+/* ─── 响应式 ────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .c-cron__body {
+    flex-direction: column;
+  }
+
+  .c-cron__panel {
+    width: 100%;
+  }
+
+  .c-cron__segments {
+    flex-wrap: wrap;
+  }
+
+  .c-cron__segment {
+    min-width: calc(33% - 4px);
+  }
+
+  .c-cron__expr-row {
+    flex-wrap: wrap;
+  }
+
+  .c-cron__expr-input {
+    width: 100%;
+  }
+}

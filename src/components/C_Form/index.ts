@@ -1,0 +1,47 @@
+export { default as C_Form } from "./index.vue";
+
+/* 导出类型定义 */
+export type {
+  FormOption,
+  FormModel,
+  FormInstance,
+  LayoutType,
+  LayoutConfig,
+  ComponentType,
+  SubmitEventPayload,
+  GridLayoutConfig,
+  TabsLayoutConfig,
+  StepsLayoutConfig,
+  DynamicFormConfig,
+  DynamicFormState,
+  CardLayoutConfig,
+  InlineLayoutConfig,
+  CustomLayoutConfig,
+} from "./types";
+
+/* 导出 Composables */
+export {
+  resolveFormConfig,
+  shouldShowActions,
+  FORM_DEFAULTS,
+  LAYOUTS_WITH_OWN_CONTROLS,
+} from "./composables/useFormConfig";
+export type {
+  FormConfig,
+  ResolvedFormConfig,
+  LayoutCallbacks,
+} from "./composables/useFormConfig";
+
+export { useFormState } from "./composables/useFormState";
+export {
+  useFormRenderer,
+  registerRenderer,
+} from "./composables/useFormRenderer";
+export type { ComponentMap, FormRenderer } from "./composables/useFormRenderer";
+
+export {
+  useDynamicFormState,
+  DYNAMIC_FORM_STATE_KEY,
+  FIELD_TYPE_OPTIONS,
+} from "./composables/useDynamicFormState";
+export type { DynamicFormStateType } from "./composables/useDynamicFormState";

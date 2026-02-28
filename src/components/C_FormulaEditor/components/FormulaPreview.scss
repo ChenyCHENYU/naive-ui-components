@@ -1,0 +1,84 @@
+/* FormulaPreview 组件样式 */
+
+.formula-preview {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--c-border);
+  background: color-mix(in srgb, var(--c-text-2) 2%, var(--c-bg-card));
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: var(--c-text-2);
+  }
+
+  &__empty {
+    font-size: 12px;
+    color: var(--c-text-4);
+    padding: 8px 0;
+  }
+
+  &__vars-title {
+    font-size: 11px;
+    color: var(--c-text-4);
+    margin-bottom: 4px;
+  }
+
+  &__var-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    font-size: 12px;
+  }
+
+  &__var-name {
+    color: var(--c-primary);
+    font-weight: 500;
+  }
+
+  &__var-eq {
+    color: var(--c-text-4);
+  }
+
+  &__var-value {
+    font-family: 'Courier New', Courier, monospace;
+    color: var(--c-text-1);
+    font-weight: 500;
+  }
+
+  &__result {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__result-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-text-2);
+  }
+
+  &__result-value {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: 'Courier New', Courier, monospace;
+    color: var(--c-primary);
+  }
+
+  &__result-error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--error-color);
+  }
+
+  &__result-empty {
+    font-size: 14px;
+    color: var(--c-text-4);
+  }
+}

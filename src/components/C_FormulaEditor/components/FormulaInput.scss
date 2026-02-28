@@ -1,0 +1,155 @@
+/* FormulaInput 组件样式 */
+
+.formula-input {
+  background: var(--c-bg-card);
+  transition: background var(--c-transition, 0.2s ease);
+  border-bottom: 1px solid var(--c-border);
+
+  &--error {
+    background: color-mix(in srgb, var(--error-color) 3%, var(--c-bg-card));
+  }
+
+  &--disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px 0;
+  }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-text-2);
+  }
+
+  &__clear {
+    font-size: 12px;
+    color: var(--c-primary);
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  &__editor {
+    min-height: 72px;
+    max-height: 180px;
+    padding: 8px 16px 12px;
+    font-size: 14px;
+    line-height: 2;
+    color: var(--c-text-1);
+    outline: none;
+    overflow-y: auto;
+    word-break: break-all;
+    white-space: pre-wrap;
+
+    &:empty::before {
+      content: attr(data-placeholder);
+      color: var(--c-text-4);
+      pointer-events: none;
+    }
+
+    /* 变量 chip */
+    :deep(.formula-chip) {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 8px;
+      margin: 0 2px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+      color: var(--c-primary);
+      font-weight: 500;
+      font-size: 13px;
+      line-height: 22px;
+      vertical-align: baseline;
+      user-select: none;
+      cursor: default;
+    }
+
+    /* 函数名 */
+    :deep(.formula-func) {
+      color: color-mix(in srgb, var(--c-primary) 80%, #8b5cf6);
+      font-weight: 600;
+    }
+
+    /* 运算符 */
+    :deep(.formula-op) {
+      color: var(--warning-color, #f0a020);
+      font-weight: 600;
+    }
+
+    /* 数字 */
+    :deep(.formula-num) {
+      color: color-mix(
+        in srgb,
+        var(--success-color, #18a058) 90%,
+        transparent
+      );
+    }
+
+    /* 括号 */
+    :deep(.formula-paren) {
+      color: var(--c-text-2);
+      font-weight: 600;
+    }
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 16px 8px;
+    font-size: 12px;
+    color: var(--error-color);
+  }
+
+  /* ─── 校验信息区 ────────────── */
+
+  &__validation {
+    padding: 10px 16px 12px;
+    border-top: 1px solid var(--c-border);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    &-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-text-2);
+      flex-shrink: 0;
+      min-width: 28px;
+    }
+
+    &-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--c-text-4);
+    }
+
+    &-success {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--success-color, #18a058);
+    }
+
+    &-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--error-color);
+    }
+  }
+}
