@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.1.4",
+  "version": "0.3.0",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
@@ -15,11 +15,201 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./style": {
-      "import": "./dist/style.css",
-      "require": "./dist/style.css"
+    "./style.css": "./dist/style.css",
+    "./C_ActionBar": {
+      "types": "./dist/C_ActionBar.d.ts",
+      "import": "./dist/C_ActionBar.js",
+      "require": "./dist/C_ActionBar.cjs"
+    },
+    "./C_AntV": {
+      "types": "./dist/C_AntV.d.ts",
+      "import": "./dist/C_AntV.js",
+      "require": "./dist/C_AntV.cjs"
+    },
+    "./C_Barcode": {
+      "types": "./dist/C_Barcode.d.ts",
+      "import": "./dist/C_Barcode.js",
+      "require": "./dist/C_Barcode.cjs"
+    },
+    "./C_Captcha": {
+      "types": "./dist/C_Captcha.d.ts",
+      "import": "./dist/C_Captcha.js",
+      "require": "./dist/C_Captcha.cjs"
+    },
+    "./C_Cascade": {
+      "types": "./dist/C_Cascade.d.ts",
+      "import": "./dist/C_Cascade.js",
+      "require": "./dist/C_Cascade.cjs"
+    },
+    "./C_City": {
+      "types": "./dist/C_City.d.ts",
+      "import": "./dist/C_City.js",
+      "require": "./dist/C_City.cjs"
+    },
+    "./C_Code": {
+      "types": "./dist/C_Code.d.ts",
+      "import": "./dist/C_Code.js",
+      "require": "./dist/C_Code.cjs"
+    },
+    "./C_CollapsePanel": {
+      "types": "./dist/C_CollapsePanel.d.ts",
+      "import": "./dist/C_CollapsePanel.js",
+      "require": "./dist/C_CollapsePanel.cjs"
+    },
+    "./C_Cron": {
+      "types": "./dist/C_Cron.d.ts",
+      "import": "./dist/C_Cron.js",
+      "require": "./dist/C_Cron.cjs"
+    },
+    "./C_Date": {
+      "types": "./dist/C_Date.d.ts",
+      "import": "./dist/C_Date.js",
+      "require": "./dist/C_Date.cjs"
+    },
+    "./C_Draggable": {
+      "types": "./dist/C_Draggable.d.ts",
+      "import": "./dist/C_Draggable.js",
+      "require": "./dist/C_Draggable.cjs"
+    },
+    "./C_Editor": {
+      "types": "./dist/C_Editor.d.ts",
+      "import": "./dist/C_Editor.js",
+      "require": "./dist/C_Editor.cjs"
+    },
+    "./C_FilePreview": {
+      "types": "./dist/C_FilePreview.d.ts",
+      "import": "./dist/C_FilePreview.js",
+      "require": "./dist/C_FilePreview.cjs"
+    },
+    "./C_Form": {
+      "types": "./dist/C_Form.d.ts",
+      "import": "./dist/C_Form.js",
+      "require": "./dist/C_Form.cjs"
+    },
+    "./C_FormSearch": {
+      "types": "./dist/C_FormSearch.d.ts",
+      "import": "./dist/C_FormSearch.js",
+      "require": "./dist/C_FormSearch.cjs"
+    },
+    "./C_FormulaEditor": {
+      "types": "./dist/C_FormulaEditor.d.ts",
+      "import": "./dist/C_FormulaEditor.js",
+      "require": "./dist/C_FormulaEditor.cjs"
+    },
+    "./C_FullCalendar": {
+      "types": "./dist/C_FullCalendar.d.ts",
+      "import": "./dist/C_FullCalendar.js",
+      "require": "./dist/C_FullCalendar.cjs"
+    },
+    "./C_Guide": {
+      "types": "./dist/C_Guide.d.ts",
+      "import": "./dist/C_Guide.js",
+      "require": "./dist/C_Guide.cjs"
+    },
+    "./C_Icon": {
+      "types": "./dist/C_Icon.d.ts",
+      "import": "./dist/C_Icon.js",
+      "require": "./dist/C_Icon.cjs"
+    },
+    "./C_ImageCropper": {
+      "types": "./dist/C_ImageCropper.d.ts",
+      "import": "./dist/C_ImageCropper.js",
+      "require": "./dist/C_ImageCropper.cjs"
+    },
+    "./C_Language": {
+      "types": "./dist/C_Language.d.ts",
+      "import": "./dist/C_Language.js",
+      "require": "./dist/C_Language.cjs"
+    },
+    "./C_Map": {
+      "types": "./dist/C_Map.d.ts",
+      "import": "./dist/C_Map.js",
+      "require": "./dist/C_Map.cjs"
+    },
+    "./C_Markdown": {
+      "types": "./dist/C_Markdown.d.ts",
+      "import": "./dist/C_Markdown.js",
+      "require": "./dist/C_Markdown.cjs"
+    },
+    "./C_NotificationCenter": {
+      "types": "./dist/C_NotificationCenter.d.ts",
+      "import": "./dist/C_NotificationCenter.js",
+      "require": "./dist/C_NotificationCenter.cjs"
+    },
+    "./C_Progress": {
+      "types": "./dist/C_Progress.d.ts",
+      "import": "./dist/C_Progress.js",
+      "require": "./dist/C_Progress.cjs"
+    },
+    "./C_QRCode": {
+      "types": "./dist/C_QRCode.d.ts",
+      "import": "./dist/C_QRCode.js",
+      "require": "./dist/C_QRCode.cjs"
+    },
+    "./C_Signature": {
+      "types": "./dist/C_Signature.d.ts",
+      "import": "./dist/C_Signature.js",
+      "require": "./dist/C_Signature.cjs"
+    },
+    "./C_SplitPane": {
+      "types": "./dist/C_SplitPane.d.ts",
+      "import": "./dist/C_SplitPane.js",
+      "require": "./dist/C_SplitPane.cjs"
+    },
+    "./C_Steps": {
+      "types": "./dist/C_Steps.d.ts",
+      "import": "./dist/C_Steps.js",
+      "require": "./dist/C_Steps.cjs"
+    },
+    "./C_Table": {
+      "types": "./dist/C_Table.d.ts",
+      "import": "./dist/C_Table.js",
+      "require": "./dist/C_Table.cjs"
+    },
+    "./C_Theme": {
+      "types": "./dist/C_Theme.d.ts",
+      "import": "./dist/C_Theme.js",
+      "require": "./dist/C_Theme.cjs"
+    },
+    "./C_Time": {
+      "types": "./dist/C_Time.d.ts",
+      "import": "./dist/C_Time.js",
+      "require": "./dist/C_Time.cjs"
+    },
+    "./C_Tree": {
+      "types": "./dist/C_Tree.d.ts",
+      "import": "./dist/C_Tree.js",
+      "require": "./dist/C_Tree.cjs"
+    },
+    "./C_Upload": {
+      "types": "./dist/C_Upload.d.ts",
+      "import": "./dist/C_Upload.js",
+      "require": "./dist/C_Upload.cjs"
+    },
+    "./C_VideoPlayer": {
+      "types": "./dist/C_VideoPlayer.d.ts",
+      "import": "./dist/C_VideoPlayer.js",
+      "require": "./dist/C_VideoPlayer.cjs"
+    },
+    "./C_VtableGantt": {
+      "types": "./dist/C_VtableGantt.d.ts",
+      "import": "./dist/C_VtableGantt.js",
+      "require": "./dist/C_VtableGantt.cjs"
+    },
+    "./C_WaterFall": {
+      "types": "./dist/C_WaterFall.d.ts",
+      "import": "./dist/C_WaterFall.js",
+      "require": "./dist/C_WaterFall.cjs"
+    },
+    "./C_WorkFlow": {
+      "types": "./dist/C_WorkFlow.d.ts",
+      "import": "./dist/C_WorkFlow.js",
+      "require": "./dist/C_WorkFlow.cjs"
     }
   },
+  "sideEffects": [
+    "dist/style.css"
+  ],
   "files": [
     "dist",
     "README.md",
@@ -45,32 +235,65 @@
   },
   "scripts": {
     "dev": "node scripts/watch-global-scss.js & tsdown --watch",
-    "build": "node scripts/gen-global-scss.js && tsdown",
-    "test:dev": "node scripts/gen-global-scss.js && cd dev && vite",
-    "playground": "node scripts/gen-global-scss.js && cd dev && vite",
+    "build:scss": "node scripts/gen-global-scss.js && sass src/styles/global.scss dist/global-scss.css --style=compressed --no-source-map --load-path=src --silence-deprecation=legacy-js-api",
+    "build:css": "node scripts/merge-css.js",
+    "build:exports": "node scripts/gen-exports.js",
+    "build": "tsdown && bun run build:scss && bun run build:css && bun run build:exports",
     "type-check": "tsc --noEmit",
+    "check:exports": "node scripts/check-export-conflicts.js",
     "prepublishOnly": "bun run build",
-    "release:patch": "npm version patch && bun run build && npm publish",
-    "release:minor": "npm version minor && bun run build && npm publish",
-    "release:major": "npm version major && bun run build && npm publish"
+    "release:patch": "npm version patch && bun run build && bun publish",
+    "release:minor": "npm version minor && bun run build && bun publish",
+    "release:major": "npm version major && bun run build && bun publish"
   },
   "peerDependencies": {
-    "vue": "^3.3.0",
+    "vue": "^3.5.0",
     "naive-ui": "^2.35.0"
+  },
+  "optionalDependencies": {
+    "@chenfengyuan/vue-barcode": "^2.0.0",
+    "vue3-puzzle-vcode": "^1.1.0",
+    "driver.js": "^1.3.0",
+    "@wangeditor/editor": "^5.1.0",
+    "@wangeditor/editor-for-vue": "^5.1.0",
+    "@kangc/v-md-editor": "^2.3.0",
+    "leaflet": "^1.9.0",
+    "@visactor/vtable-gantt": "^1.0.0",
+    "@visactor/vtable": "^1.0.0",
+    "qrcode": "^1.5.0",
+    "vue-cropper": "^1.1.0",
+    "vue-draggable-plus": "^0.6.0",
+    "@fullcalendar/vue3": "^6.1.0",
+    "@fullcalendar/core": "^6.1.0",
+    "@fullcalendar/daygrid": "^6.1.0",
+    "@fullcalendar/interaction": "^6.1.0",
+    "@fullcalendar/list": "^6.1.0",
+    "xgplayer": "^3.0.23",
+    "xgplayer-hls": "^3.0.23",
+    "@antv/x6": "^2.18.0",
+    "@vue-flow/core": "^1.45.0",
+    "xlsx": "^0.18.5",
+    "mammoth": "^1.9.0",
+    "@tato30/vue-pdf": "^1.11.0",
+    "expr-eval": "^2.0.0",
+    "@robot-admin/form-validate": "latest",
+    "print-js": "^1.6.0",
+    "html2canvas": "^1.4.0"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
     "@vueuse/core": "^13.6.0",
-    "highlight.js": "^11.11.1"
+    "highlight.js": "^11.11.1",
+    "spark-md5": "^3.0.2"
   },
   "devDependencies": {
     "@types/node": "^24.2.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/compiler-sfc": "^3.5.18",
+    "@vue/language-core": "^3.2.5",
     "naive-ui": "^2.42.0",
-    "rollup-plugin-scss": "^4.0.1",
     "sass": "^1.90.0",
-    "tsdown": "^0.14.1",
+    "tsdown": "^0.20.3",
     "typescript": "^5.9.2",
     "unplugin-vue": "^7.0.1",
     "vite": "^7.1.2",
