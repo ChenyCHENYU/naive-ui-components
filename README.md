@@ -1,247 +1,257 @@
 # @agile-team/naive-ui-components
 
+基于 **Naive UI** 的 Vue 3 企业级组件库，从 Robot Admin 中提炼的 38 个高质量业务组件。
 
-基于 Naive UI 的 Vue 3 组件库，提供高质量的业务组件。
+支持 **全量注册**、**按需导入（Tree-Shaking）** 和 **子路径独立导入**，配合多入口构建输出 ESM / CJS / DTS，满足不同集成场景。
 
 ## 📦 安装
 
 ```bash
-npm install @agile-team/naive-ui-components
+bun add @agile-team/naive-ui-components
 ```
 
 必需的对等依赖：
+
 ```bash
-npm install vue@^3.3.0 naive-ui@^2.35.0
+bun add vue@^3.5.0 naive-ui@^2.35.0
 ```
 
 ## 🚀 快速开始
 
-### 全局注册（推荐）
+### 全局注册
 
 ```typescript
-// main.ts
-import { createApp } from 'vue'
-import NaiveUIComponents from '@agile-team/naive-ui-components'
-import '@agile-team/naive-ui-components/style'
+import { createApp } from "vue";
+import NaiveUIComponents from "@agile-team/naive-ui-components";
+import "@agile-team/naive-ui-components/style.css";
 
-const app = createApp(App)
-app.use(NaiveUIComponents)
-app.mount('#app')
+const app = createApp(App);
+app.use(NaiveUIComponents);
+app.mount("#app");
 ```
 
-### 按需导入
+### 按需导入（主入口 Tree-Shaking）
 
 ```vue
 <script setup lang="ts">
-import { C_Icon, C_Code } from '@agile-team/naive-ui-components'
-import '@agile-team/naive-ui-components/style'
+import { C_Icon, C_Table, C_Form } from "@agile-team/naive-ui-components";
+import "@agile-team/naive-ui-components/style.css";
 </script>
-
-<template>
-  <C_Icon name="mdi:home" size="24" />
-  <C_Code language="javascript" :code="'console.log(\"Hello World\")'" />
-</template>
 ```
 
-### 使用示例
+### 子路径独立导入（推荐，最小打包体积）
+
+每个组件都提供独立的子路径入口，仅加载目标组件的代码和类型：
 
 ```vue
-<template>
-  <div class="demo">
-    <!-- 图标组件 -->
-    <C_Icon name="mdi:heart" size="32" color="red" clickable @click="handleClick" />
-    
-    <!-- 代码高亮组件 -->
-    <C_Code 
-      language="javascript" 
-      :code="jsCode" 
-      :line-numbers="true"
-      theme="github-dark"
-    />
-  </div>
-</template>
-
 <script setup lang="ts">
-const jsCode = `
-function fibonacci(n) {
-  if (n <= 1) return n;
-  return fibonacci(n - 1) + fibonacci(n - 2);
-}
-`
-
-const handleClick = () => {
-  console.log('图标被点击了!')
-}
+import { C_Form } from "@agile-team/naive-ui-components/C_Form";
+import { C_Table } from "@agile-team/naive-ui-components/C_Table";
+import { C_Icon } from "@agile-team/naive-ui-components/C_Icon";
+import "@agile-team/naive-ui-components/style.css";
 </script>
 ```
 
-## 📚 文档
+> 子路径导入提供完整的 TypeScript 类型支持（`.d.ts`），IDE 可自动补全 props / emits / slots。
 
-完整的组件文档和使用指南请访问：
+### Composables 单独使用
 
-**🔗 [组件库文档](https://www.tzagileteam.com/robot/components/preface)**
+```typescript
+import {
+  useTableManager,
+  useFormState,
+  usePlayerCore,
+} from "@agile-team/naive-ui-components";
+```
 
-文档包含：
-- 所有组件的详细使用方法
-- API 参考和属性说明
-- 交互式示例和代码演示
-- 最佳实践和设计指南
+## 📋 组件清单（38 个）
 
-## 🛠️ 开发和维护
+### 基础组件
+
+| 组件          | 说明             | 外部依赖                    |
+| ------------- | ---------------- | --------------------------- |
+| `C_Icon`      | Iconify 图标封装 | `@iconify/vue`              |
+| `C_Code`      | 代码高亮显示     | `highlight.js`              |
+| `C_Barcode`   | 条形码生成器     | `@chenfengyuan/vue-barcode` |
+| `C_Captcha`   | 拼图验证码       | `vue3-puzzle-vcode`         |
+| `C_Cascade`   | 级联面板选择器   | -                           |
+| `C_Guide`     | 新手引导         | `driver.js`                 |
+| `C_Progress`  | 增强进度条       | -                           |
+| `C_Steps`     | 步骤条           | -                           |
+| `C_ActionBar` | 操作按钮栏       | -                           |
+| `C_Theme`     | 主题切换器       | -                           |
+| `C_Language`  | 语言切换器       | -                           |
+| `C_Date`      | 日期选择器增强   | -                           |
+| `C_City`      | 省市区三级联动   | -                           |
+
+### 内容 & 编辑组件
+
+| 组件              | 说明                 | 外部依赖             |
+| ----------------- | -------------------- | -------------------- |
+| `C_Editor`        | 富文本编辑器         | `@wangeditor/editor` |
+| `C_Markdown`      | Markdown 编辑器/预览 | `@kangc/v-md-editor` |
+| `C_FormulaEditor` | 公式编辑器           | `expr-eval`          |
+| `C_Signature`     | 电子签名             | -                    |
+| `C_QRCode`        | 二维码生成器         | `qrcode`             |
+| `C_ImageCropper`  | 图片裁剪器           | `vue-cropper`        |
+
+### 数据展示组件
+
+| 组件             | 说明                                      | 外部依赖                             |
+| ---------------- | ----------------------------------------- | ------------------------------------ |
+| `C_Table`        | 高级数据表格（CRUD/行列编辑/动态行/打印） | `print-js`、`html2canvas`            |
+| `C_Map`          | 地图组件（OSM/高德）                      | `leaflet`                            |
+| `C_VtableGantt`  | 甘特图                                    | `@visactor/vtable-gantt`             |
+| `C_AntV`         | 图编辑器（ER/BPMN/UML）                   | `@antv/x6`、`html2canvas`            |
+| `C_WaterFall`    | 瀑布流布局                                | -                                    |
+| `C_FullCalendar` | 日历事件                                  | `@fullcalendar/*`                    |
+| `C_VideoPlayer`  | 视频播放器（HLS/字幕/书签/章节）          | `xgplayer`、`xgplayer-hls`           |
+| `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`、`@tato30/vue-pdf` |
+
+### 表单 & 布局组件
+
+| 组件              | 说明                                              | 外部依赖                     |
+| ----------------- | ------------------------------------------------- | ---------------------------- |
+| `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | `@robot-admin/form-validate` |
+| `C_FormSearch`    | 搜索表单                                          | -                            |
+| `C_CollapsePanel` | 折叠面板                                          | -                            |
+| `C_SplitPane`     | 分割面板                                          | -                            |
+| `C_Draggable`     | 拖拽排序                                          | `vue-draggable-plus`         |
+| `C_Tree`          | 高级树形控件                                      | -                            |
+| `C_Time`          | 时间选择器增强                                    | -                            |
+| `C_Cron`          | Cron 表达式编辑器                                 | -                            |
+
+### 流程 & 通知组件
+
+| 组件                   | 说明                                 | 外部依赖         |
+| ---------------------- | ------------------------------------ | ---------------- |
+| `C_WorkFlow`           | 工作流编辑器（审批/抄送/条件节点）   | `@vue-flow/core` |
+| `C_NotificationCenter` | 通知中心（WebSocket/轮询）           | -                |
+| `C_Upload`             | 大文件上传（分片/断点续传/哈希校验） | `spark-md5`      |
+
+## 🔌 可选依赖
+
+包含外部依赖的组件以 `optionalDependencies` 声明。**按需安装**：
+
+```bash
+# 视频播放器
+bun add xgplayer xgplayer-hls
+
+# 图编辑器
+bun add @antv/x6
+
+# 工作流
+bun add @vue-flow/core
+
+# 文件预览
+bun add xlsx mammoth @tato30/vue-pdf
+
+# 表格打印
+bun add print-js html2canvas
+
+# 公式编辑器
+bun add expr-eval
+```
+
+## 🏗️ 构建架构
+
+### 四阶段构建流水线
+
+```
+bun run build
+  ├── 1. tsdown          → 多入口打包（38 组件 ESM/CJS/DTS）
+  ├── 2. sass CLI        → 编译 global.scss → global-scss.css
+  ├── 3. merge-css.js    → 合并 SFC CSS + global SCSS → style.css
+  └── 4. gen-exports.js  → 自动生成 package.json exports 映射
+```
+
+### 技术要点
+
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），38 个独立入口并行编译
+- **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 编译全局样式
+- **CSS 合并**：构建后将分散的 per-chunk CSS 与 `global-scss.css` 合并为单一 `style.css`
+- **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
+- **子路径导出**：`gen-exports.js` 自动扫描 `dist/` 并写入 `package.json` 的 `exports` 字段
+- **导出冲突检测**：`check-export-conflicts.js` 确保组件间无命名冲突
+
+### 输出产物
+
+```
+dist/
+├── index.js / index.cjs / index.d.ts     # 主入口
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（38 组件）
+├── style.css                              # 合并后的全量样式
+└── [chunk].js                             # 共享代码块
+```
+
+## 🔧 开发
+
+```bash
+bun install              # 安装依赖
+bun run dev              # 开发模式（SCSS watch + tsdown watch）
+bun run build            # 完整构建
+bun run build:scss       # 仅编译全局 SCSS
+bun run build:css        # 仅合并 CSS
+bun run build:exports    # 仅生成 exports 映射
+bun run check:exports    # 检测导出命名冲突
+bun run type-check       # TypeScript 类型检查
+```
 
 ### 项目结构
 
 ```
-src/
-├── components/           # 组件目录
-│   ├── C_Icon/          # 图标组件
-│   │   ├── index.vue    # 组件主文件
-│   │   ├── index.ts     # 导出文件
-│   │   └── index.scss   # 样式文件
-│   └── C_Code/          # 代码高亮组件
-├── hooks/               # 公共 hooks
-├── plugins/             # 插件
-└── index.ts            # 入口文件
-```
-
-### 本地开发
-
-```bash
-# 克隆仓库
-git clone https://github.com/your-username/naive-ui-components.git
-cd naive-ui-components
-
-# 安装依赖
-npm install
-
-# 开发模式（监听文件变化）
-npm run dev
-
-# 本地测试
-npm run playground
-
-# 构建
-npm run build
+naive-ui-components/
+├── src/
+│   ├── index.ts                     # 库入口（全量注册 + export * barrel）
+│   ├── styles/
+│   │   ├── variables.scss           # CSS 变量 (--c-*)
+│   │   └── global.scss              # 自动生成的全局样式聚合（@forward barrel）
+│   ├── components/
+│   │   └── C_[Name]/
+│   │       ├── index.vue            # 组件主文件
+│   │       ├── index.ts             # Barrel 导出
+│   │       ├── index.scss           # 组件样式
+│   │       ├── types.ts             # 类型定义
+│   │       ├── constants.ts         # 常量
+│   │       ├── data.ts              # 静态数据
+│   │       ├── composables/         # 组合式函数
+│   │       ├── components/          # 子组件
+│   │       └── layouts/             # 布局变体（C_Form/C_AntV）
+│   ├── plugins/                     # highlight.js 等插件
+│   └── utils/                       # 工具函数
+├── scripts/
+│   ├── gen-global-scss.js           # 生成 global.scss（@forward barrel）
+│   ├── watch-global-scss.js         # 开发模式 SCSS 监听
+│   ├── merge-css.js                 # 合并 CSS 产物
+│   ├── gen-exports.js               # 自动生成 package.json exports
+│   └── check-export-conflicts.js    # 导出命名冲突检测
+├── types/
+│   └── env.d.ts                     # .vue / .scss 模块声明
+├── tsdown.config.ts                 # 构建配置（多入口 + SCSS 插件 + Vue 插件）
+└── tsconfig.json
 ```
 
 ### 添加新组件
 
-1. **创建组件目录**
-   ```bash
-   src/components/C_YourComponent/
-   ├── index.vue        # 组件主文件
-   ├── index.ts         # 导出文件
-   └── index.scss       # 样式文件（可选）
-   ```
+1. 创建 `src/components/C_NewComponent/` 目录
+2. 编写 `index.vue`、`index.ts`（barrel）、`types.ts`
+3. 在 `src/index.ts` 中添加 `export * from './components/C_NewComponent'`
+4. 运行 `bun run build`—构建脚本会自动生成子路径入口和 exports 映射
 
-2. **组件模板**
-   ```vue
-   <!-- index.vue -->
-   <template>
-     <div class="c-your-component">
-       <!-- 组件内容 -->
-     </div>
-   </template>
-
-   <script lang="ts" setup>
-   export interface YourComponentProps {
-     /** 属性描述 */
-     someProp?: string
-   }
-
-   const props = withDefaults(defineProps<YourComponentProps>(), {
-     someProp: 'default'
-   })
-
-   const emit = defineEmits<{
-     change: [value: string]
-   }>()
-   </script>
-   ```
-
-3. **导出文件**
-   ```typescript
-   // index.ts
-   import C_YourComponent from "./index.vue";
-
-   export default C_YourComponent;
-   export { C_YourComponent };
-   export type { YourComponentProps } from "./index.vue";
-   ```
-
-4. **注册组件**
-   在 `src/index.ts` 中添加：
-   ```typescript
-   import C_YourComponent from "./components/C_YourComponent/index.vue";
-
-   const components: Component[] = [C_Code, C_Icon, C_YourComponent];
-
-   export { C_Code, C_Icon, C_YourComponent };
-   export type { YourComponentProps } from "./components/C_YourComponent/index.vue";
-   ```
-
-### 开发规范
-
-- **命名规范**：组件使用 `C_` 前缀，采用 PascalCase
-- **类型安全**：为所有 props 定义 TypeScript 接口
-- **样式规范**：使用 SCSS，遵循 BEM 命名约定
-- **文档要求**：为新组件编写使用文档和示例
-
-### 提交和发布
+### 发布
 
 ```bash
-# 提交代码
-git add .
-git commit -m "feat: add C_YourComponent"
-
-# 更新版本
-npm version patch  # 0.1.0 -> 0.1.1
-npm version minor  # 0.1.0 -> 0.2.0
-
-# 构建并发布
-npm run build
-npm publish
+bun run release:patch   # 0.3.0 → 0.3.1
+bun run release:minor   # 0.3.0 → 0.4.0
+bun run release:major   # 0.3.0 → 1.0.0
 ```
-
-## 🤝 参与贡献
-
-我们欢迎社区贡献！如果您想参与组件库的开发：
-
-### 贡献方式
-
-1. **报告问题**：在 GitHub Issues 中报告 bug 或提出功能建议
-2. **提交 PR**：修复 bug 或添加新功能
-3. **完善文档**：改进文档或添加使用示例
-4. **分享组件**：贡献新的通用组件
-
-### 贡献流程
-
-1. Fork 仓库到您的 GitHub 账户
-2. 创建功能分支：`git checkout -b feature/new-component`
-3. 开发和测试您的更改
-4. 提交代码：`git commit -m "feat: add new component"`
-5. 推送分支：`git push origin feature/new-component`
-6. 创建 Pull Request
-
-### 贡献指南
-
-- 遵循现有的代码风格和命名规范
-- 为新功能添加测试用例
-- 更新相关文档
-- 确保所有测试通过
-- 详细描述您的更改
 
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE](./LICENSE) 文件
+MIT License
 
 ## 🔗 相关链接
 
-- [组件库文档](https://www.tzagileteam.com/robot/components/preface)
-- [GitHub 仓库](https://github.com/your-username/naive-ui-components)
-- [NPM 包](https://www.npmjs.com/package/@agile-team/naive-ui-components)
-- [问题反馈](https://github.com/your-username/naive-ui-components/issues)
-
----
-
-如果您在使用过程中遇到问题，请查看[文档](https://www.tzagileteam.com/robot/components/preface)或在 GitHub 上提交 issue。
+- [Robot Admin 文档](https://www.tzagileteam.com/robot/components/preface)
+- [GitHub](https://github.com/ChenyCHENYU/naive-ui-components)
+- [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
