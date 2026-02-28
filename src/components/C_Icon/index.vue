@@ -1,3 +1,10 @@
+<!--
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2025-05-14
+ * @Description: 支持多种图标使用方式，默认使用Iconify图标，统一错误处理
+ * @Migration: naive-ui-components 组件库迁移版本
+ * Copyright (c) 2025 by CHENY, All Rights Reserved.
+-->
 <template>
   <div
     ref="iconRef"
@@ -306,7 +313,7 @@ const validationRules = {
   iconify: (): string | null => {
     if (!props.name.includes(":")) {
       console.warn(
-        '[C_Icon] Iconify图标名称格式应为 "prefix:name"，如 "mdi:home"'
+        '[C_Icon] Iconify图标名称格式应为 "prefix:name"，如 "mdi:home"',
       );
     }
     return null;
@@ -359,7 +366,7 @@ watch(
   () => {
     nextTick(validateProps);
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // 组件挂载后验证
@@ -383,4 +390,3 @@ defineExpose({
   el: iconRef,
 });
 </script>
-

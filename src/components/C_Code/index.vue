@@ -1,3 +1,10 @@
+<!--
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2025-06-19
+ * @Description: 全局代码高亮组件
+ * @Migration: naive-ui-components 组件库迁移版本
+ * Copyright (c) 2025 by CHENY, All Rights Reserved.
+-->
 <template>
   <div class="c-code-wrapper">
     <!-- 代码标题栏 -->
@@ -198,7 +205,7 @@ const emit = defineEmits<{
 // 尝试获取 highlight 实例（如果用户安装了插件）
 const highlightManager = inject<HighlightManager | null>(
   "highlightManager",
-  null
+  null,
 );
 
 const copying = ref(false);
@@ -278,7 +285,7 @@ watch(
       languageLoading.value = false;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 /**
