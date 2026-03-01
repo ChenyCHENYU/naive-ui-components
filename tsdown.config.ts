@@ -2,14 +2,17 @@ import { defineConfig } from "tsdown";
 import fs from "fs";
 import path from "path";
 import Vue from "unplugin-vue/rolldown";
+import Components from 'unplugin-vue-components/rolldown'
+import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import * as sass from "sass";
 
-// ====== 动态生成多入口：主入口 + 每个组件独立入口 ======
+// ====== 动态生成多入口：主入口 + resolver + 每个组件独立入口 ======
 function buildEntryMap(): Record<string, string> {
   const componentsDir = path.resolve(__dirname, "src/components");
   const entries: Record<string, string> = {
-    index: "src/index.ts",
-  };
+    index: 'src/index.ts',
+    resolver: 'src/resolver.ts',
+  }
   for (const dir of fs.readdirSync(componentsDir)) {
     const fullDir = path.join(componentsDir, dir);
     if (!fs.statSync(fullDir).isDirectory()) continue;
@@ -48,20 +51,25 @@ function scssTransformPlugin() {
 
 export default defineConfig({
   entry: buildEntryMap(),
-  format: ["esm", "cjs"],
-  platform: "neutral",
+  format: ['esm', 'cjs'],
+  platform: 'neutral',
   outputOptions: {
-    chunkFileNames: "[name].js",
+    chunkFileNames: '[name].js',
   },
   plugins: [
     scssTransformPlugin(),
+    Components({
+      resolvers: [NaiveUiResolver()],
+      // 库构建模式：不生成 dts / 不写入 components.d.ts
+      dts: false,
+    }),
     Vue({
       isProduction: true,
       style: {
         preprocessOptions: {
           scss: {
-            loadPaths: [path.resolve(__dirname, "src")],
-            silenceDeprecations: ["legacy-js-api"],
+            loadPaths: [path.resolve(__dirname, 'src')],
+            silenceDeprecations: ['legacy-js-api'],
           },
         },
       },
@@ -71,5 +79,7 @@ export default defineConfig({
   // v0.20+ 自动外部化所有 node_modules 依赖（含 CSS 深层导入），
   // 无需手动维护 external 列表，新增依赖也自动生效
   skipNodeModulesBundle: true,
+  minify: true,
+  sourcemap: true,
   clean: true,
-});
+})
