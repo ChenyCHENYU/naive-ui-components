@@ -76,6 +76,12 @@ export interface RobotNaiveUiResolverOptions {
    * - true: `import { C_Form } from '@robot-admin/naive-ui-components/C_Form'`
    */
   importOnDemand?: boolean
+  /**
+   * 按需导入组件样式（仅在 importOnDemand 为 true 时生效）
+   * - false (默认): 需手动导入 style.css 全量样式
+   * - true: 自动导入对应组件的独立样式 `@robot-admin/naive-ui-components/C_Form/style.css`
+   */
+  importStyle?: boolean
 }
 
 /**
@@ -87,15 +93,21 @@ export interface RobotNaiveUiResolverOptions {
 export function RobotNaiveUiResolver(
   options: RobotNaiveUiResolverOptions = {}
 ) {
-  const { importOnDemand = false } = options
+  const { importOnDemand = false, importStyle = false } = options
 
   return {
     type: 'component' as const,
     resolve: (name: string) => {
       if (componentSet.has(name)) {
+        const from = importOnDemand ? `${PKG_NAME}/${name}` : PKG_NAME
+        const sideEffects =
+          importOnDemand && importStyle
+            ? `${PKG_NAME}/${name}/style.css`
+            : undefined
         return {
           name,
-          from: importOnDemand ? `${PKG_NAME}/${name}` : PKG_NAME,
+          from,
+          sideEffects,
         }
       }
     },
