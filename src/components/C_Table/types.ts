@@ -181,8 +181,11 @@ export interface EditProps {
  */
 interface BaseTableColumn<T extends DataRecord = DataRecord> extends Omit<
   DataTableColumns<T>[number],
-  'key' | 'title' | 'render'
+  'key' | 'title' | 'render' | 'type'
 > {
+  key?: any
+  title?: string
+  visible?: boolean
   editable?: boolean
   required?: boolean
   editType?: EditType
@@ -416,8 +419,8 @@ export interface TablePaginationMethods {
 
 export interface TableInstance<T extends DataRecord = DataRecord>
   extends
-    TableEditMethods<T>,
-    TableExpandMethods<T>,
+    TableEditMethods,
+    TableExpandMethods,
     TableSelectionMethods<T>,
     TableDynamicRowsMethods<T>,
     TablePaginationMethods {}

@@ -235,7 +235,8 @@
     if (!props.crud) return props.config || {}
     const fromCrud: Partial<TableConfig> = {}
     if (props.crud.actions) fromCrud.actions = props.crud.actions.value
-    if (props.crud.pagination) fromCrud.pagination = props.crud.pagination.value
+    if (props.crud.pagination)
+      fromCrud.pagination = props.crud.pagination.value ?? undefined
     return { ...fromCrud, ...props.config }
   })
 

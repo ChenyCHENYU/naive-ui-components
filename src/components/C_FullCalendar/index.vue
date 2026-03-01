@@ -7,7 +7,10 @@
 -->
 <template>
   <div class="c-full-calendar">
-    <FullCalendar ref="calendarRef" :options="calendarOptions" />
+    <FullCalendar
+      ref="calendarRef"
+      :options="calendarOptions"
+    />
 
     <NModal
       v-if="showActionDialog"
@@ -25,7 +28,13 @@
         >
           编辑
         </NButton>
-        <NButton type="error" @click="deleteEvent" size="small"> 删除 </NButton>
+        <NButton
+          type="error"
+          @click="deleteEvent"
+          size="small"
+        >
+          删除
+        </NButton>
       </div>
     </NModal>
 
@@ -42,7 +51,10 @@
           <label style="display: block; margin-bottom: 8px; font-weight: 500"
             >事件标题</label
           >
-          <NInput v-model:value="editForm.title" placeholder="请输入事件标题" />
+          <NInput
+            v-model:value="editForm.title"
+            placeholder="请输入事件标题"
+          />
         </div>
 
         <div style="margin-bottom: 16px">
@@ -64,7 +76,6 @@
             >
             <NInput
               v-model:value="editForm.startTime"
-              type="time"
               placeholder="09:00"
             />
           </div>
@@ -74,7 +85,6 @@
             >
             <NInput
               v-model:value="editForm.endTime"
-              type="time"
               placeholder="10:00"
             />
           </div>
@@ -109,43 +119,43 @@
 </template>
 
 <script setup lang="ts">
-import { NModal, NButton, NInput, NDatePicker } from "naive-ui";
-import FullCalendar from "@fullcalendar/vue3";
-import { useCalendarEvents } from "./composables/useCalendarEvents";
-import type { CalendarProps, CalendarEmits, CalendarExpose } from "./types";
+  import { NModal, NButton, NInput, NDatePicker } from 'naive-ui'
+  import FullCalendar from '@fullcalendar/vue3'
+  import { useCalendarEvents } from './composables/useCalendarEvents'
+  import type { CalendarProps, CalendarEmits, CalendarExpose } from './types'
 
-defineOptions({ name: "C_FullCalendar" });
+  defineOptions({ name: 'C_FullCalendar' })
 
-const props = withDefaults(defineProps<CalendarProps>(), {
-  events: () => [],
-  initialView: "dayGridMonth",
-  editable: true,
-  showAddDialog: true,
-  showEditDialog: true,
-});
+  const props = withDefaults(defineProps<CalendarProps>(), {
+    events: () => [],
+    initialView: 'dayGridMonth',
+    editable: true,
+    showAddDialog: true,
+    showEditDialog: true,
+  })
 
-const emit = defineEmits<CalendarEmits>();
+  const emit = defineEmits<CalendarEmits>()
 
-const {
-  calendarRef,
-  calendarOptions,
-  showActionDialog,
-  showEditModal,
-  isEditing,
-  selectedEvent,
-  editForm,
-  eventColors,
-  openEditModal,
-  saveEvent,
-  deleteEvent,
-  expose,
-} = useCalendarEvents(props, emit);
+  const {
+    calendarRef,
+    calendarOptions,
+    showActionDialog,
+    showEditModal,
+    isEditing,
+    selectedEvent,
+    editForm,
+    eventColors,
+    openEditModal,
+    saveEvent,
+    deleteEvent,
+    expose,
+  } = useCalendarEvents(props, emit)
 
-defineExpose<CalendarExpose>(expose);
+  defineExpose<CalendarExpose>(expose)
 </script>
 
 <style scoped>
-.c-full-calendar {
-  width: 100%;
-}
+  .c-full-calendar {
+    width: 100%;
+  }
 </style>

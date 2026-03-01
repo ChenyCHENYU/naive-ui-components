@@ -10,15 +10,28 @@
   <div class="approval-workflow-container">
     <!-- 浮动工具栏 -->
     <div class="floating-toolbar">
-      <NButton size="small" type="primary" @click="saveWorkflow">
+      <NButton
+        size="small"
+        type="primary"
+        @click="saveWorkflow"
+      >
         <template #icon>
-          <C_Icon name="mdi:content-save" :size="16" />
+          <C_Icon
+            name="mdi:content-save"
+            :size="16"
+          />
         </template>
         保存
       </NButton>
-      <NButton size="small" @click="previewWorkflow">
+      <NButton
+        size="small"
+        @click="previewWorkflow"
+      >
         <template #icon>
-          <C_Icon name="mdi:eye" :size="16" />
+          <C_Icon
+            name="mdi:eye"
+            :size="16"
+          />
         </template>
         预览
       </NButton>
@@ -28,14 +41,24 @@
         title="检查工作流配置是否正确"
       >
         <template #icon>
-          <C_Icon name="mdi:check-circle" :size="16" />
+          <C_Icon
+            name="mdi:check-circle"
+            :size="16"
+          />
         </template>
         验证流程
       </NButton>
       <div class="toolbar-divider"></div>
-      <NButton size="small" @click="fitView" title="适应窗口">
+      <NButton
+        size="small"
+        @click="fitView"
+        title="适应窗口"
+      >
         <template #icon>
-          <C_Icon name="mdi:fit-to-screen" :size="16" />
+          <C_Icon
+            name="mdi:fit-to-screen"
+            :size="16"
+          />
         </template>
       </NButton>
       <NButton
@@ -45,7 +68,10 @@
         title="清空画布"
       >
         <template #icon>
-          <C_Icon name="mdi:delete-sweep" :size="16" />
+          <C_Icon
+            name="mdi:delete-sweep"
+            :size="16"
+          />
         </template>
       </NButton>
     </div>
@@ -63,7 +89,7 @@
       :fit-view-on-init="true"
       :nodes-draggable="true"
       :elements-selectable="true"
-      @node-click="onNodeClick"
+      @node-click="onNodeClick as any"
       @pane-click="closeAddMenu"
     />
 
@@ -81,8 +107,14 @@
             class="add-menu-item"
             @click="addNode(nodeType.type)"
           >
-            <div class="menu-icon" :class="nodeType.iconClass">
-              <C_Icon :name="nodeType.icon" :size="16" />
+            <div
+              class="menu-icon"
+              :class="nodeType.iconClass"
+            >
+              <C_Icon
+                :name="nodeType.icon"
+                :size="16"
+              />
             </div>
             <span class="menu-text">{{ nodeType.label }}</span>
           </div>
@@ -101,20 +133,41 @@
     />
 
     <!-- 验证错误日志抽屉 -->
-    <NDrawer v-model:show="showValidationErrors" :width="450" placement="right">
-      <NDrawerContent title="流程验证结果" closable>
-        <div v-if="validationErrors.length === 0" class="validation-success">
+    <NDrawer
+      v-model:show="showValidationErrors"
+      :width="450"
+      placement="right"
+    >
+      <NDrawerContent
+        title="流程验证结果"
+        closable
+      >
+        <div
+          v-if="validationErrors.length === 0"
+          class="validation-success"
+        >
           <div class="success-icon">
-            <C_Icon name="mdi:check-circle" :size="32" color="#52c41a" />
+            <C_Icon
+              name="mdi:check-circle"
+              :size="32"
+              color="#52c41a"
+            />
           </div>
           <h3>验证通过</h3>
           <p>工作流配置正确，所有节点都已正确设置！</p>
         </div>
 
-        <div v-else class="validation-errors">
+        <div
+          v-else
+          class="validation-errors"
+        >
           <div class="error-summary">
             <div class="error-icon">
-              <C_Icon name="mdi:alert-circle" :size="24" color="#ff4d4f" />
+              <C_Icon
+                name="mdi:alert-circle"
+                :size="24"
+                color="#ff4d4f"
+              />
             </div>
             <h3>发现 {{ validationErrors.length }} 个问题</h3>
             <p>请修复以下问题后重新验证：</p>
@@ -134,7 +187,10 @@
                     getFieldDisplayName(error.field)
                   }}</span>
                 </div>
-                <div class="error-type" :class="error.type">
+                <div
+                  class="error-type"
+                  :class="error.type"
+                >
                   {{ getErrorTypeText(error.type) }}
                 </div>
               </div>
@@ -146,7 +202,10 @@
                   @click="jumpToErrorNode(error.nodeId)"
                 >
                   <template #icon>
-                    <C_Icon name="mdi:target" :size="16" />
+                    <C_Icon
+                      name="mdi:target"
+                      :size="16"
+                    />
                   </template>
                   定位节点
                 </NButton>
@@ -175,9 +234,15 @@
         <template #footer>
           <div class="validation-footer">
             <NButton @click="showValidationErrors = false">关闭</NButton>
-            <NButton type="primary" @click="validateCurrentWorkflow">
+            <NButton
+              type="primary"
+              @click="validateCurrentWorkflow"
+            >
               <template #icon>
-                <C_Icon name="mdi:refresh" :size="16" />
+                <C_Icon
+                  name="mdi:refresh"
+                  :size="16"
+                />
               </template>
               重新验证
             </NButton>
@@ -187,8 +252,15 @@
     </NDrawer>
 
     <!-- 流程预览抽屉 -->
-    <NDrawer v-model:show="showPreview" :width="520" placement="right">
-      <NDrawerContent title="流程预览" closable>
+    <NDrawer
+      v-model:show="showPreview"
+      :width="520"
+      placement="right"
+    >
+      <NDrawerContent
+        title="流程预览"
+        closable
+      >
         <!-- 统计概览 -->
         <div class="preview-stats">
           <div class="stat-item">
@@ -224,7 +296,10 @@
             <!-- 时间线连接线 -->
             <div class="step-connector">
               <div class="step-dot">
-                <C_Icon :name="step.icon" :size="16" />
+                <C_Icon
+                  :name="step.icon"
+                  :size="16"
+                />
               </div>
               <div
                 v-if="index < previewSteps.length - 1"
@@ -239,7 +314,10 @@
                 <span class="step-type-badge">{{ step.nodeTypeLabel }}</span>
               </div>
               <div class="step-title">{{ step.node.data.title }}</div>
-              <div v-if="step.details.length > 0" class="step-details">
+              <div
+                v-if="step.details.length > 0"
+                class="step-details"
+              >
                 <div
                   v-for="(detail, dIdx) in step.details"
                   :key="dIdx"
@@ -268,7 +346,10 @@
                       class="user-tag"
                     >
                       <template #icon>
-                        <C_Icon name="mdi:account" :size="12" />
+                        <C_Icon
+                          name="mdi:account"
+                          :size="12"
+                        />
                       </template>
                       {{ user.name }}
                     </NTag>
@@ -291,17 +372,30 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="previewSteps.length === 0" class="preview-empty">
-          <C_Icon name="mdi:file-document-outline" :size="48" color="#d1d5db" />
+        <div
+          v-if="previewSteps.length === 0"
+          class="preview-empty"
+        >
+          <C_Icon
+            name="mdi:file-document-outline"
+            :size="48"
+            color="#d1d5db"
+          />
           <p>暂无流程节点</p>
         </div>
 
         <template #footer>
           <div class="preview-footer">
             <NButton @click="closePreview">关闭</NButton>
-            <NButton type="primary" @click="confirmAndSave">
+            <NButton
+              type="primary"
+              @click="confirmAndSave"
+            >
               <template #icon>
-                <C_Icon name="mdi:content-save" :size="16" />
+                <C_Icon
+                  name="mdi:content-save"
+                  :size="16"
+                />
               </template>
               确认并保存
             </NButton>
@@ -313,112 +407,112 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { VueFlow } from "@vue-flow/core";
-import { NButton, NDrawer, NDrawerContent, NTag, useMessage } from "naive-ui";
-import { C_Icon } from "../C_Icon";
-import type { WorkflowProps, WorkflowEmits } from "./types";
-import { NODE_TYPE_OPTIONS } from "./data";
-import NodeConfigModal from "./NodeConfigModal.vue";
-import { useWorkflowNodes } from "./composables/useWorkflowNodes";
-import { useWorkflowValidation } from "./composables/useWorkflowValidation";
-import { useWorkflowPreview } from "./composables/useWorkflowPreview";
+  import { ref } from 'vue'
+  import { VueFlow } from '@vue-flow/core'
+  import { NButton, NDrawer, NDrawerContent, NTag, useMessage } from 'naive-ui'
+  import { C_Icon } from '../C_Icon'
+  import type { WorkflowProps, WorkflowEmits } from './types'
+  import { NODE_TYPE_OPTIONS } from './data'
+  import NodeConfigModal from './NodeConfigModal.vue'
+  import { useWorkflowNodes } from './composables/useWorkflowNodes'
+  import { useWorkflowValidation } from './composables/useWorkflowValidation'
+  import { useWorkflowPreview } from './composables/useWorkflowPreview'
 
-defineOptions({ name: "C_WorkFlow" });
+  defineOptions({ name: 'C_WorkFlow' })
 
-/* Props & Emits */
-const props = withDefaults(defineProps<WorkflowProps>(), {
-  users: () => [],
-  roles: () => [],
-  departments: () => [],
-  readonly: false,
-  theme: "light",
-});
+  /* Props & Emits */
+  const props = withDefaults(defineProps<WorkflowProps>(), {
+    users: () => [],
+    roles: () => [],
+    departments: () => [],
+    readonly: false,
+    theme: 'light',
+  })
 
-const emit = defineEmits<WorkflowEmits>();
-const message = useMessage();
-const vueFlowRef = ref();
+  const emit = defineEmits<WorkflowEmits>()
+  const message = useMessage()
+  const vueFlowRef = ref()
 
-/* ─── 节点管理 ──────────────────────────────────────────── */
-const {
-  nodes,
-  edges,
-  showAddMenu,
-  menuPosition,
-  showNodeConfig,
-  currentNode,
-  nodeTypes,
-  workflowStats,
-  addNode,
-  onNodeClick,
-  closeAddMenu,
-  handleConfigSave,
-  resetNodes,
-  getCurrentWorkflowData,
-  fitView,
-  deleteNode,
-} = useWorkflowNodes(props, emit, vueFlowRef);
+  /* ─── 节点管理 ──────────────────────────────────────────── */
+  const {
+    nodes,
+    edges,
+    showAddMenu,
+    menuPosition,
+    showNodeConfig,
+    currentNode,
+    nodeTypes,
+    workflowStats,
+    addNode,
+    onNodeClick,
+    closeAddMenu,
+    handleConfigSave,
+    resetNodes,
+    getCurrentWorkflowData,
+    fitView,
+    deleteNode,
+  } = useWorkflowNodes(props, emit as any, vueFlowRef)
 
-/* ─── 流程验证 ──────────────────────────────────────────── */
-const {
-  validationErrors,
-  showValidationErrors,
-  validateWorkflow,
-  validateCurrentWorkflow,
-  jumpToErrorNode,
-  getFieldDisplayName,
-  getErrorTypeText,
-  resetValidation,
-} = useWorkflowValidation(nodes, edges, vueFlowRef, {
-  onShowNodeConfig: (node) => {
-    currentNode.value = node;
-    showNodeConfig.value = true;
-  },
-  onValidateError: (errors) => emit("validate-error", errors),
-});
+  /* ─── 流程验证 ──────────────────────────────────────────── */
+  const {
+    validationErrors,
+    showValidationErrors,
+    validateWorkflow,
+    validateCurrentWorkflow,
+    jumpToErrorNode,
+    getFieldDisplayName,
+    getErrorTypeText,
+    resetValidation,
+  } = useWorkflowValidation(nodes, edges, vueFlowRef, {
+    onShowNodeConfig: node => {
+      currentNode.value = node
+      showNodeConfig.value = true
+    },
+    onValidateError: errors => emit('validate-error', errors),
+  })
 
-/* ─── 流程预览 ──────────────────────────────────────────── */
-const { showPreview, previewSteps, previewStats, openPreview, closePreview } =
-  useWorkflowPreview(nodes, edges);
+  /* ─── 流程预览 ──────────────────────────────────────────── */
+  const { showPreview, previewSteps, previewStats, openPreview, closePreview } =
+    useWorkflowPreview(nodes, edges)
 
-/* ─── 编排方法（跨 composable 协作） ────────────────────── */
-const saveWorkflow = (): void => {
-  const errors = validateWorkflow();
-  if (errors.length > 0) {
-    message.error(`工作流验证失败: ${errors[0].message}`);
-    showValidationErrors.value = true;
-    return;
+  /* ─── 编排方法（跨 composable 协作） ────────────────────── */
+  const saveWorkflow = (): void => {
+    const errors = validateWorkflow()
+    if (errors.length > 0) {
+      message.error(`工作流验证失败: ${errors[0].message}`)
+      showValidationErrors.value = true
+      return
+    }
+    const data = getCurrentWorkflowData()
+    emit('save', data)
+    message.success('工作流保存成功')
   }
-  const data = getCurrentWorkflowData();
-  emit("save", data);
-  message.success("工作流保存成功");
-};
 
-const previewWorkflow = (): void => {
-  openPreview();
-};
+  const previewWorkflow = (): void => {
+    openPreview()
+  }
 
-const confirmAndSave = (): void => {
-  closePreview();
-  saveWorkflow();
-};
+  const confirmAndSave = (): void => {
+    closePreview()
+    saveWorkflow()
+  }
 
-const clearWorkflow = (): void => {
-  resetNodes();
-  resetValidation();
-};
+  const clearWorkflow = (): void => {
+    resetNodes()
+    resetValidation()
+  }
 
-/* ─── 暴露方法 ──────────────────────────────────────────── */
-defineExpose({
-  validateWorkflow,
-  getCurrentWorkflowData,
-  saveWorkflow,
-  previewWorkflow,
-  deleteNode,
-  stats: workflowStats,
-});
+  /* ─── 暴露方法 ──────────────────────────────────────────── */
+  defineExpose({
+    validateWorkflow,
+    getCurrentWorkflowData,
+    saveWorkflow,
+    previewWorkflow,
+    deleteNode,
+    stats: workflowStats,
+  })
 </script>
 
 <style scoped lang="scss">
-@use "./index.scss";
+  @use './index.scss';
 </style>

@@ -6,8 +6,16 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <NCard class="form-search-card custom-card" :bordered="bordered">
-    <NForm class="form-search" :model="formParams" ref="formRef" :size="size">
+  <NCard
+    class="form-search-card custom-card"
+    :bordered="bordered"
+  >
+    <NForm
+      class="form-search"
+      :model="formParams"
+      ref="formRef"
+      :size="size"
+    >
       <div
         class="form-search-item-box"
         v-for="(item, index) of visibleFields"
@@ -29,7 +37,11 @@
             @blur="history.closeAllPanels"
           />
 
-          <div class="input-history" v-if="item.isFocus" @mousedown.prevent>
+          <div
+            class="input-history"
+            v-if="item.isFocus"
+            @mousedown.prevent
+          >
             <div
               class="history-item"
               @click="history.selectHistoryItem(hisValue, item.prop)"
@@ -63,7 +75,7 @@
             v-model:value="formParams[item.prop]"
             :placeholder="item.placeholder || '请选择'"
             clearable
-            :options="normalizeOptions(item.list)"
+            :options="normalizeOptions(item.list) as any"
           />
 
           <NDatePicker
@@ -85,7 +97,11 @@
           <NSpace>
             <NTooltip trigger="hover">
               <template #trigger>
-                <NButton type="primary" @click="searchFn" :loading="searching">
+                <NButton
+                  type="primary"
+                  @click="searchFn"
+                  :loading="searching"
+                >
                   <template #icon>
                     <div class="i-mdi:search w-4 h-4" />
                   </template>
@@ -105,7 +121,10 @@
               重置
             </NTooltip>
 
-            <NTooltip v-if="hasExpandButton" trigger="hover">
+            <NTooltip
+              v-if="hasExpandButton"
+              trigger="hover"
+            >
               <template #trigger>
                 <NButton @click="toggleFold">
                   <template #icon>
@@ -119,7 +138,7 @@
                   </template>
                 </NButton>
               </template>
-              {{ expanded ? "收起" : "展开" }}
+              {{ expanded ? '收起' : '展开' }}
             </NTooltip>
           </NSpace>
         </div>
@@ -129,93 +148,94 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from "vue";
-import {
-  NCard,
-  NForm,
-  NFormItem,
-  NInput,
-  NSelect,
-  NDatePicker,
-  NSpace,
-  NButton,
-  NTooltip,
-  NIcon,
-} from "naive-ui";
-import { useSearchState } from "./composables/useSearchState";
-import type {
-  SearchFormItem,
-  SearchFormParams,
-  SearchOptionItem,
-  SearchConfig,
-} from "./types";
+  import { watch } from 'vue'
+  import {
+    NCard,
+    NForm,
+    NFormItem,
+    NInput,
+    NSelect,
+    NDatePicker,
+    NSpace,
+    NButton,
+    NTooltip,
+    NIcon,
+  } from 'naive-ui'
+  import { useSearchState } from './composables/useSearchState'
+  import type {
+    SearchFormItem,
+    SearchFormParams,
+    SearchOptionItem,
+    SearchConfig,
+  } from './types'
 
-defineOptions({ name: "C_FormSearch" });
+  defineOptions({ name: 'C_FormSearch' })
 
-interface Props {
-  bordered?: boolean;
-  formItemList: SearchFormItem[];
-  formParams: SearchFormParams;
-  formSearchInputHistoryString?: string;
-  size?: "small" | "medium" | "large";
-  config?: SearchConfig;
-}
+  interface Props {
+    bordered?: boolean
+    formItemList: SearchFormItem[]
+    formParams: SearchFormParams
+    formSearchInputHistoryString?: string
+    size?: 'small' | 'medium' | 'large'
+    config?: SearchConfig
+  }
 
-const props = withDefaults(defineProps<Props>(), {
-  bordered: true,
-  formItemList: () => [],
-  size: "medium",
-});
+  const props = withDefaults(defineProps<Props>(), {
+    bordered: true,
+    formItemList: () => [],
+    size: 'medium',
+  })
 
-const emits = defineEmits<{
-  search: [params: SearchFormParams];
-  reset: [];
-  "change-params": [params: SearchFormParams];
-}>();
+  const emits = defineEmits<{
+    search: [params: SearchFormParams]
+    reset: []
+    'change-params': [params: SearchFormParams]
+  }>()
 
-const {
-  formRef,
-  formParams,
-  expanded,
-  searching,
-  visibleFields,
-  hasExpandButton,
-  history,
-  searchFn,
-  resetFn,
-  toggleFold,
-  syncFromProps,
-} = useSearchState(emits, {
-  formItemList: props.formItemList,
-  formParams: props.formParams,
-  config: props.config,
-  historyOptions: {
-    storageKey: props.formSearchInputHistoryString,
-    maxItems: props.config?.historyMaxItems,
-  },
-});
+  const {
+    formRef,
+    formParams,
+    expanded,
+    searching,
+    visibleFields,
+    hasExpandButton,
+    history,
+    searchFn,
+    resetFn,
+    toggleFold,
+    syncFromProps,
+  } = useSearchState(emits, {
+    formItemList: props.formItemList,
+    formParams: props.formParams,
+    config: props.config,
+    historyOptions: {
+      storageKey: props.formSearchInputHistoryString,
+      maxItems: props.config?.historyMaxItems,
+    },
+  })
 
-const normalizeOptions = (list?: SearchOptionItem[]) =>
-  list?.map((opt) => ({
-    label: opt.label || opt.labelDefault || "",
-    value: opt.value !== undefined ? opt.value : opt.label || opt.labelDefault,
-  }));
+  const normalizeOptions = (list?: SearchOptionItem[]) =>
+    list?.map(opt => ({
+      label: opt.label || opt.labelDefault || '',
+      value:
+        opt.value !== undefined ? opt.value : opt.label || opt.labelDefault,
+    }))
 
-watch(
-  () => props.formItemList,
-  (newItems) => syncFromProps(newItems, props.formParams),
-  { deep: true },
-);
+  watch(
+    () => props.formItemList,
+    newItems => syncFromProps(newItems, props.formParams),
+    { deep: true }
+  )
 
-defineExpose({
-  formRef,
-  formParams,
-  searchFn,
-  cleanFn: resetFn,
-  changeFoldState: toggleFold,
-});
+  defineExpose({
+    formRef,
+    formParams,
+    searchFn,
+    cleanFn: resetFn,
+    changeFoldState: toggleFold,
+  })
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

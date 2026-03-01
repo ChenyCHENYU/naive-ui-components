@@ -23,7 +23,7 @@
             :min="1"
             :max="totalPages"
             style="width: 80px"
-            @update:value="changePage"
+            @update:value="changePage as any"
           />
           <span class="text-sm text-gray-600">/ {{ totalPages }}</span>
           <NButton
@@ -60,7 +60,10 @@
               <C_Icon name="ic:outline-zoom-in" />
             </template>
           </NButton>
-          <NButton size="small" @click="adjustZoom('reset')">
+          <NButton
+            size="small"
+            @click="adjustZoom('reset')"
+          >
             <template #icon>
               <C_Icon name="ic:outline-fit-screen" />
             </template>
@@ -84,33 +87,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { NButton, NInputNumber } from "naive-ui";
-import { createZoomHandler, ZOOM_CONFIGS } from "../../data";
+  import { ref } from 'vue'
+  import { NButton, NInputNumber } from 'naive-ui'
+  import { createZoomHandler, ZOOM_CONFIGS } from '../../data'
 
-const props = defineProps<{
-  pdfUrl: string;
-  totalPages: number;
-}>();
+  const props = defineProps<{
+    pdfUrl: string
+    totalPages: number
+  }>()
 
-const currentPage = ref(1);
-const scale = ref(1);
+  const currentPage = ref(1)
+  const scale = ref(1)
 
-const adjustZoom = createZoomHandler(scale, ZOOM_CONFIGS.pdf);
+  const adjustZoom = createZoomHandler(scale, ZOOM_CONFIGS.pdf)
 
-const changePage = (action: "prev" | "next" | number) => {
-  if (typeof action === "number") {
-    currentPage.value = Math.max(1, Math.min(action, props.totalPages));
-  } else {
-    const delta = action === "prev" ? -1 : 1;
-    currentPage.value = Math.max(
-      1,
-      Math.min(currentPage.value + delta, props.totalPages),
-    );
+  const changePage = (action: 'prev' | 'next' | number) => {
+    if (typeof action === 'number') {
+      currentPage.value = Math.max(1, Math.min(action, props.totalPages))
+    } else {
+      const delta = action === 'prev' ? -1 : 1
+      currentPage.value = Math.max(
+        1,
+        Math.min(currentPage.value + delta, props.totalPages)
+      )
+    }
   }
-};
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

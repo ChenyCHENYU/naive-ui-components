@@ -9,9 +9,18 @@
     placement="right"
     @update:show="$emit('update:show', $event)"
   >
-    <NDrawerContent :title="`编辑表: ${editingTable?.name || '新表'}`" closable>
-      <div class="table-editor" v-if="editingTable">
-        <NForm :model="editingTable" label-placement="top">
+    <NDrawerContent
+      :title="`编辑表: ${editingTable?.name || '新表'}`"
+      closable
+    >
+      <div
+        class="table-editor"
+        v-if="editingTable"
+      >
+        <NForm
+          :model="editingTable"
+          label-placement="top"
+        >
           <NFormItem label="表名">
             <NInput
               v-model:value="editingTable.name"
@@ -19,7 +28,10 @@
             />
           </NFormItem>
           <NFormItem label="表注释">
-            <NInput v-model:value="editingTable.comment" placeholder="表注释" />
+            <NInput
+              v-model:value="editingTable.comment"
+              placeholder="表注释"
+            />
           </NFormItem>
 
           <NDivider>字段列表</NDivider>
@@ -33,7 +45,7 @@
             >
               <template #header>
                 <div class="field-header">
-                  <span>#{{ index + 1 }} {{ field.name || "新字段" }}</span>
+                  <span>#{{ index + 1 }} {{ field.name || '新字段' }}</span>
                   <NButton
                     @click="removeField(index)"
                     size="tiny"
@@ -46,9 +58,15 @@
                 </div>
               </template>
 
-              <NGrid :cols="2" :x-gap="12">
+              <NGrid
+                :cols="2"
+                :x-gap="12"
+              >
                 <NGi>
-                  <NFormItem label="字段名" size="small">
+                  <NFormItem
+                    label="字段名"
+                    size="small"
+                  >
                     <NInput
                       v-model:value="field.name"
                       placeholder="字段名"
@@ -57,7 +75,10 @@
                   </NFormItem>
                 </NGi>
                 <NGi>
-                  <NFormItem label="类型" size="small">
+                  <NFormItem
+                    label="类型"
+                    size="small"
+                  >
                     <NSelect
                       v-model:value="field.type"
                       :options="fieldTypes"
@@ -80,7 +101,11 @@
                 <NCheckbox v-model:checked="field.isForeignKey">外键</NCheckbox>
               </NSpace>
 
-              <NFormItem label="注释" size="small" style="margin-top: 12px">
+              <NFormItem
+                label="注释"
+                size="small"
+                style="margin-top: 12px"
+              >
                 <NInput
                   v-model:value="field.comment"
                   placeholder="字段注释"
@@ -98,7 +123,10 @@
               style="margin-top: 16px"
             >
               <template #icon>
-                <C_Icon name="mdi:plus" :size="16" />
+                <C_Icon
+                  name="mdi:plus"
+                  :size="16"
+                />
               </template>
               添加字段
             </NButton>
@@ -109,7 +137,11 @@
       <template #footer>
         <NSpace justify="end">
           <NButton @click="$emit('update:show', false)">取消</NButton>
-          <NButton @click="$emit('save')" type="primary">保存</NButton>
+          <NButton
+            @click="$emit('save')"
+            type="primary"
+            >保存</NButton
+          >
         </NSpace>
       </template>
     </NDrawerContent>
@@ -117,43 +149,43 @@
 </template>
 
 <script setup lang="ts">
-import {
-  NDrawer,
-  NDrawerContent,
-  NForm,
-  NFormItem,
-  NInput,
-  NSelect,
-  NCard,
-  NGrid,
-  NGi,
-  NSpace,
-  NCheckbox,
-  NButton,
-  NDivider,
-} from "naive-ui";
-import type { ERTable, ERField } from "../../types";
-import { fieldTypes } from "../data";
-import C_Icon from "../../../../C_Icon/index.vue";
+  import {
+    NDrawer,
+    NDrawerContent,
+    NForm,
+    NFormItem,
+    NInput,
+    NSelect,
+    NCard,
+    NGrid,
+    NGi,
+    NSpace,
+    NCheckbox,
+    NButton,
+    NDivider,
+  } from 'naive-ui'
+  import type { ERTable, ERField } from '../../../types'
+  import { fieldTypes } from '../data'
+  import C_Icon from '../../../../C_Icon/index.vue'
 
-defineProps<{
-  show: boolean;
-}>();
+  defineProps<{
+    show: boolean
+  }>()
 
-const editingTable = defineModel<ERTable>("editingTable");
+  const editingTable = defineModel<ERTable>('editingTable')
 
-const emit = defineEmits<{
-  "update:show": [value: boolean];
-  save: [];
-  "add-field": [];
-  "remove-field": [index: number];
-  "handle-primary-key": [field: ERField, isPrimaryKey: boolean];
-}>();
+  const emit = defineEmits<{
+    'update:show': [value: boolean]
+    save: []
+    'add-field': []
+    'remove-field': [index: number]
+    'handle-primary-key': [field: ERField, isPrimaryKey: boolean]
+  }>()
 
-const handlePrimaryKey = (field: ERField, isPrimaryKey: boolean) =>
-  emit("handle-primary-key", field, isPrimaryKey);
+  const handlePrimaryKey = (field: ERField, isPrimaryKey: boolean) =>
+    emit('handle-primary-key', field, isPrimaryKey)
 
-const addField = () => emit("add-field");
+  const addField = () => emit('add-field')
 
-const removeField = (index: number) => emit("remove-field", index);
+  const removeField = (index: number) => emit('remove-field', index)
 </script>

@@ -5,10 +5,16 @@
     title="编辑类"
     @update:show="emit('update:show', $event)"
   >
-    <div v-if="editingClass" class="class-editor">
+    <div
+      v-if="editingClass"
+      class="class-editor"
+    >
       <NForm label-placement="top">
         <NFormItem label="类名">
-          <NInput v-model:value="editingClass.name" placeholder="请输入类名" />
+          <NInput
+            v-model:value="editingClass.name"
+            placeholder="请输入类名"
+          />
         </NFormItem>
 
         <NDivider style="margin: 20px 0">属性</NDivider>
@@ -18,11 +24,14 @@
             :key="index"
             class="item"
           >
-            <NCard size="small" style="margin-bottom: 12px">
+            <NCard
+              size="small"
+              style="margin-bottom: 12px"
+            >
               <template #header>
                 <div class="section-header">
                   <span style="font-size: 13px"
-                    >#{{ index + 1 }} {{ attr.name || "新属性" }}</span
+                    >#{{ index + 1 }} {{ attr.name || '新属性' }}</span
                   >
                   <NButton
                     @click="editingClass!.attributes.splice(index, 1)"
@@ -35,16 +44,25 @@
                   </NButton>
                 </div>
               </template>
-              <NSpace vertical size="small">
+              <NSpace
+                vertical
+                size="small"
+              >
                 <NSpace>
-                  <NFormItem label="属性名" style="margin: 0; flex: 1">
+                  <NFormItem
+                    label="属性名"
+                    style="margin: 0; flex: 1"
+                  >
                     <NInput
                       v-model:value="attr.name"
                       placeholder="属性名"
                       size="small"
                     />
                   </NFormItem>
-                  <NFormItem label="类型" style="margin: 0; flex: 1">
+                  <NFormItem
+                    label="类型"
+                    style="margin: 0; flex: 1"
+                  >
                     <NInput
                       v-model:value="attr.type"
                       placeholder="类型"
@@ -52,8 +70,14 @@
                     />
                   </NFormItem>
                 </NSpace>
-                <NFormItem label="可见性" style="margin: 0">
-                  <NRadioGroup v-model:value="attr.visibility" size="small">
+                <NFormItem
+                  label="可见性"
+                  style="margin: 0"
+                >
+                  <NRadioGroup
+                    v-model:value="attr.visibility"
+                    size="small"
+                  >
                     <NRadio value="public">+ public</NRadio>
                     <NRadio value="private">- private</NRadio>
                     <NRadio value="protected"># protected</NRadio>
@@ -77,7 +101,10 @@
             size="small"
           >
             <template #icon>
-              <C_Icon name="mdi:plus" :size="16" />
+              <C_Icon
+                name="mdi:plus"
+                :size="16"
+              />
             </template>
             添加属性
           </NButton>
@@ -90,11 +117,14 @@
             :key="index"
             class="item"
           >
-            <NCard size="small" style="margin-bottom: 12px">
+            <NCard
+              size="small"
+              style="margin-bottom: 12px"
+            >
               <template #header>
                 <div class="section-header">
                   <span style="font-size: 13px"
-                    >#{{ index + 1 }} {{ method.name || "新方法" }}</span
+                    >#{{ index + 1 }} {{ method.name || '新方法' }}</span
                   >
                   <NButton
                     @click="editingClass!.methods.splice(index, 1)"
@@ -107,16 +137,25 @@
                   </NButton>
                 </div>
               </template>
-              <NSpace vertical size="small">
+              <NSpace
+                vertical
+                size="small"
+              >
                 <NSpace>
-                  <NFormItem label="方法名" style="margin: 0; flex: 1">
+                  <NFormItem
+                    label="方法名"
+                    style="margin: 0; flex: 1"
+                  >
                     <NInput
                       v-model:value="method.name"
                       placeholder="方法名"
                       size="small"
                     />
                   </NFormItem>
-                  <NFormItem label="返回类型" style="margin: 0; flex: 1">
+                  <NFormItem
+                    label="返回类型"
+                    style="margin: 0; flex: 1"
+                  >
                     <NInput
                       v-model:value="method.returnType"
                       placeholder="返回类型"
@@ -124,8 +163,14 @@
                     />
                   </NFormItem>
                 </NSpace>
-                <NFormItem label="可见性" style="margin: 0">
-                  <NRadioGroup v-model:value="method.visibility" size="small">
+                <NFormItem
+                  label="可见性"
+                  style="margin: 0"
+                >
+                  <NRadioGroup
+                    v-model:value="method.visibility"
+                    size="small"
+                  >
                     <NRadio value="public">+ public</NRadio>
                     <NRadio value="private">- private</NRadio>
                     <NRadio value="protected"># protected</NRadio>
@@ -149,7 +194,10 @@
             size="small"
           >
             <template #icon>
-              <C_Icon name="mdi:plus" :size="16" />
+              <C_Icon
+                name="mdi:plus"
+                :size="16"
+              />
             </template>
             添加方法
           </NButton>
@@ -157,15 +205,27 @@
 
         <NDivider style="margin: 20px 0"></NDivider>
         <NSpace justify="space-between">
-          <NButton @click="emit('delete')" type="error" ghost>
+          <NButton
+            @click="emit('delete')"
+            type="error"
+            ghost
+          >
             <template #icon>
-              <C_Icon name="mdi:delete" :size="16" />
+              <C_Icon
+                name="mdi:delete"
+                :size="16"
+              />
             </template>
             删除类
           </NButton>
           <NSpace>
             <NButton @click="emit('update:show', false)">取消</NButton>
-            <NButton @click="emit('save')" type="primary"> 保存 </NButton>
+            <NButton
+              @click="emit('save')"
+              type="primary"
+            >
+              保存
+            </NButton>
           </NSpace>
         </NSpace>
       </NForm>
@@ -174,87 +234,87 @@
 </template>
 
 <script setup lang="ts">
-import {
-  NDrawer,
-  NForm,
-  NFormItem,
-  NInput,
-  NCard,
-  NSpace,
-  NButton,
-  NDivider,
-  NRadioGroup,
-  NRadio,
-} from "naive-ui";
-import type { UMLClass } from "../../types";
-import C_Icon from "../../../../C_Icon/index.vue";
+  import {
+    NDrawer,
+    NForm,
+    NFormItem,
+    NInput,
+    NCard,
+    NSpace,
+    NButton,
+    NDivider,
+    NRadioGroup,
+    NRadio,
+  } from 'naive-ui'
+  import type { UMLClass } from '../../../types'
+  import C_Icon from '../../../../C_Icon/index.vue'
 
-defineProps<{
-  show: boolean;
-}>();
+  defineProps<{
+    show: boolean
+  }>()
 
-const editingClass = defineModel<UMLClass>("editingClass");
+  const editingClass = defineModel<UMLClass>('editingClass')
 
-const emit = defineEmits<{
-  "update:show": [value: boolean];
-  save: [];
-  delete: [];
-}>();
+  const emit = defineEmits<{
+    'update:show': [value: boolean]
+    save: []
+    delete: []
+  }>()
 </script>
 
 <style lang="scss" scoped>
-.class-editor {
-  padding: 20px;
-  height: calc(100vh - 60px);
-  overflow-y: auto;
-}
-
-.section {
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 4px;
-
-  &::-webkit-scrollbar {
-    width: 6px;
+  .class-editor {
+    padding: 20px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
   }
 
-  &::-webkit-scrollbar-thumb {
-    background: #d4d4d4;
-    border-radius: 3px;
+  .section {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #d4d4d4;
+      border-radius: 3px;
+    }
   }
-}
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 
-.item {
-  margin-bottom: 8px;
-}
+  .item {
+    margin-bottom: 8px;
+  }
 
-.section .n-card {
-  border: 1px solid #e8e8e8;
-}
+  .section .n-card {
+    border: 1px solid #e8e8e8;
+  }
 
-.section .n-card-header {
-  padding: 8px 12px;
-  background: #fafafa;
-  border-bottom: 1px solid #e8e8e8;
-}
+  .section .n-card-header {
+    padding: 8px 12px;
+    background: #fafafa;
+    border-bottom: 1px solid #e8e8e8;
+  }
 
-.section .n-card__content {
-  padding: 12px;
-}
+  .section .n-card__content {
+    padding: 12px;
+  }
 
-.section .n-form-item {
-  margin-bottom: 0;
-}
+  .section .n-form-item {
+    margin-bottom: 0;
+  }
 
-.section .n-form-item-label {
-  font-size: 12px;
-  margin-bottom: 4px;
-  color: #666;
-}
+  .section .n-form-item-label {
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #666;
+  }
 </style>

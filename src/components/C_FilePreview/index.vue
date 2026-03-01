@@ -9,7 +9,10 @@
 <template>
   <div class="c-file-preview-wrapper">
     <!-- 文件信息卡片模式 -->
-    <div v-if="!autoPreview" class="file-info-card">
+    <div
+      v-if="!autoPreview"
+      class="file-info-card"
+    >
       <div class="file-info">
         <div class="file-icon">
           <C_Icon
@@ -24,7 +27,10 @@
             <NEllipsis style="max-width: 250px">{{
               displayFileName
             }}</NEllipsis>
-            <NTag :type="fileConfig.tagType" size="small">
+            <NTag
+              :type="fileConfig.tagType as any"
+              size="small"
+            >
               {{ fileType.toUpperCase() }}
             </NTag>
           </div>
@@ -35,14 +41,20 @@
         </div>
 
         <div class="file-actions">
-          <NButton type="primary" @click="openPreview">
+          <NButton
+            type="primary"
+            @click="openPreview"
+          >
             <template #icon>
               <C_Icon name="ic:outline-visibility" />
             </template>
             预览
           </NButton>
 
-          <NButton type="tertiary" @click="downloadFile">
+          <NButton
+            type="tertiary"
+            @click="downloadFile"
+          >
             <template #icon>
               <C_Icon name="ic:outline-download" />
             </template>
@@ -68,7 +80,10 @@
         min-height: 500px;
       "
     >
-      <div ref="modalContainer" class="modal-container">
+      <div
+        ref="modalContainer"
+        class="modal-container"
+      >
         <!-- 自定义头部 -->
         <div class="modal-header">
           <div class="modal-title">
@@ -80,13 +95,21 @@
             <span>{{ displayFileName }}</span>
           </div>
           <div class="modal-actions">
-            <NButton size="small" type="tertiary" @click="downloadFile">
+            <NButton
+              size="small"
+              type="tertiary"
+              @click="downloadFile"
+            >
               <template #icon>
                 <C_Icon name="ic:outline-download" />
               </template>
               下载
             </NButton>
-            <NButton size="small" type="tertiary" @click="showModal = false">
+            <NButton
+              size="small"
+              type="tertiary"
+              @click="showModal = false"
+            >
               <template #icon>
                 <C_Icon name="ic:outline-close" />
               </template>
@@ -100,7 +123,10 @@
           <div class="preview-header">
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-3">
-                <NTag :type="fileConfig.tagType" size="small">
+                <NTag
+                  :type="fileConfig.tagType as any"
+                  size="small"
+                >
                   <template #icon>
                     <C_Icon :name="fileConfig.icon" />
                   </template>
@@ -126,7 +152,11 @@
                   </template>
                   刷新
                 </NButton>
-                <NButton size="small" type="primary" @click="toggleFullscreen">
+                <NButton
+                  size="small"
+                  type="primary"
+                  @click="toggleFullscreen"
+                >
                   <template #icon>
                     <C_Icon
                       :name="
@@ -136,7 +166,7 @@
                       "
                     />
                   </template>
-                  {{ isFullscreen ? "退出全屏" : "全屏" }}
+                  {{ isFullscreen ? '退出全屏' : '全屏' }}
                 </NButton>
               </div>
             </div>
@@ -147,7 +177,10 @@
             <!-- 加载和错误状态 -->
             <template v-if="loading || error">
               <div class="status-container">
-                <NSpin v-if="loading" size="large">
+                <NSpin
+                  v-if="loading"
+                  size="large"
+                >
                   <template #description>
                     正在加载{{ fileType.toUpperCase() }}文件...
                   </template>
@@ -201,66 +234,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRefs, watch } from "vue";
-import { NButton, NEllipsis, NTag, NModal, NSpin, NResult } from "naive-ui";
-import { formatFileSize } from "./data";
-import PdfViewer from "./components/PdfViewer/index.vue";
-import WordViewer from "./components/WordViewer/index.vue";
-import ExcelViewer from "./components/ExcelViewer/index.vue";
-import { useFilePreview } from "./composables/useFilePreview";
-import { useFullscreen } from "./composables/useFullscreen";
+  import { ref, toRefs, watch } from 'vue'
+  import { NButton, NEllipsis, NTag, NModal, NSpin, NResult } from 'naive-ui'
+  import { formatFileSize } from './data'
+  import PdfViewer from './components/PdfViewer/index.vue'
+  import WordViewer from './components/WordViewer/index.vue'
+  import ExcelViewer from './components/ExcelViewer/index.vue'
+  import { useFilePreview } from './composables/useFilePreview'
+  import { useFullscreen } from './composables/useFullscreen'
 
-defineOptions({ name: "C_FilePreview" });
+  defineOptions({ name: 'C_FilePreview' })
 
-const props = withDefaults(
-  defineProps<{
-    file?: File;
-    url?: string;
-    fileName?: string;
-    autoPreview?: boolean;
-  }>(),
-  {
-    fileName: "未知文件",
-    autoPreview: false,
-  },
-);
+  const props = withDefaults(
+    defineProps<{
+      file?: File
+      url?: string
+      fileName?: string
+      autoPreview?: boolean
+    }>(),
+    {
+      fileName: '未知文件',
+      autoPreview: false,
+    }
+  )
 
-const { file, url, fileName: propFileName, autoPreview } = toRefs(props);
+  const { file, url, fileName: propFileName, autoPreview } = toRefs(props)
 
-const emit = defineEmits<{
-  preview: [file: File | string];
-  download: [file: File | string];
-}>();
+  const emit = defineEmits<{
+    preview: [file: File | string]
+    download: [file: File | string]
+  }>()
 
-/* ==================== Composables ==================== */
-const {
-  loading,
-  error,
-  fileSize,
-  showModal,
-  pdfUrl,
-  pdfTotalPages,
-  wordContent,
-  wordHeadings,
-  excelSheets,
-  displayFileName,
-  fileType,
-  fileConfig,
-  loadFile,
-  openPreview,
-  downloadFile,
-} = useFilePreview({ file, url, fileName: propFileName }, emit);
+  /* ==================== Composables ==================== */
+  const {
+    loading,
+    error,
+    fileSize,
+    showModal,
+    pdfUrl,
+    pdfTotalPages,
+    wordContent,
+    wordHeadings,
+    excelSheets,
+    displayFileName,
+    fileType,
+    fileConfig,
+    loadFile,
+    openPreview,
+    downloadFile,
+  } = useFilePreview({ file, url, fileName: propFileName }, emit)
 
-const modalContainer = ref<HTMLElement>();
-const { isFullscreen, toggleFullscreen, exitFullscreen } =
-  useFullscreen(modalContainer);
+  const modalContainer = ref<HTMLElement>()
+  const { isFullscreen, toggleFullscreen, exitFullscreen } =
+    useFullscreen(modalContainer)
 
-/* ==================== Modal 关闭时退出全屏 ==================== */
-watch(showModal, (isShow) => {
-  if (!isShow) exitFullscreen();
-});
+  /* ==================== Modal 关闭时退出全屏 ==================== */
+  watch(showModal, isShow => {
+    if (!isShow) exitFullscreen()
+  })
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

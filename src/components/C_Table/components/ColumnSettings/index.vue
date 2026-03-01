@@ -42,21 +42,42 @@
     <!-- 顶部操作栏：统计信息和快捷操作按钮 -->
     <div class="top-actions-bar">
       <div class="stats-info">
-        <NText depth="3" :style="{ fontSize: '13px' }">
+        <NText
+          depth="3"
+          :style="{ fontSize: '13px' }"
+        >
           已选 {{ visibleCount }} / 总共 {{ totalCount }} 列
         </NText>
       </div>
       <div class="quick-actions">
         <NSpace :size="6">
-          <NButton size="tiny" @click="selectAll"> 全选 </NButton>
-          <NButton size="tiny" @click="selectNone"> 全不选 </NButton>
-          <NButton size="tiny" @click="resetColumns"> 重置 </NButton>
+          <NButton
+            size="tiny"
+            @click="selectAll"
+          >
+            全选
+          </NButton>
+          <NButton
+            size="tiny"
+            @click="selectNone"
+          >
+            全不选
+          </NButton>
+          <NButton
+            size="tiny"
+            @click="resetColumns"
+          >
+            重置
+          </NButton>
         </NSpace>
       </div>
     </div>
 
     <!-- 列列表 -->
-    <div ref="listRef" class="column-list">
+    <div
+      ref="listRef"
+      class="column-list"
+    >
       <div
         v-for="(column, index) in filteredColumns"
         :key="column.key"
@@ -89,18 +110,35 @@
             />
           </div>
           <div class="column-details">
-            <NSpace align="center" :size="6">
-              <NText strong :style="{ fontSize: '13px' }">
+            <NSpace
+              align="center"
+              :size="6"
+            >
+              <NText
+                strong
+                :style="{ fontSize: '13px' }"
+              >
                 {{ column.title || column.key }}
               </NText>
-              <NTag v-if="column.fixed === 'left'" size="tiny" type="info">
+              <NTag
+                v-if="column.fixed === 'left'"
+                size="tiny"
+                type="info"
+              >
                 左固定
               </NTag>
-              <NTag v-if="column.fixed === 'right'" size="tiny" type="warning">
+              <NTag
+                v-if="column.fixed === 'right'"
+                size="tiny"
+                type="warning"
+              >
                 右固定
               </NTag>
             </NSpace>
-            <NText depth="3" :style="{ fontSize: '11px' }">
+            <NText
+              depth="3"
+              :style="{ fontSize: '11px' }"
+            >
               {{ column.key }}
             </NText>
           </div>
@@ -148,174 +186,174 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import {
-  NInput,
-  NText,
-  NSwitch,
-  NSpace,
-  NButton,
-  NCheckbox,
-  NTag,
-  NDropdown,
-} from "naive-ui/es";
-import C_Icon from "../../../C_Icon/index.vue";
-import type { TableColumn } from "../../types";
-import { getFixedOptions, isSpecialColumn } from "./data";
+  import { ref, computed, onMounted } from 'vue'
+  import {
+    NInput,
+    NText,
+    NSwitch,
+    NSpace,
+    NButton,
+    NCheckbox,
+    NTag,
+    NDropdown,
+  } from 'naive-ui/es'
+  import C_Icon from '../../../C_Icon/index.vue'
+  import type { TableColumn } from '../../types'
+  import { getFixedOptions, isSpecialColumn } from './data'
 
-defineOptions({ name: "ColumnSettings" });
+  defineOptions({ name: 'ColumnSettings' })
 
-/* ================= Props & Emits ================= */
+  /* ================= Props & Emits ================= */
 
-const props = defineProps<{ columns: TableColumn[] }>();
-const emit = defineEmits<{ (e: "change", columns: TableColumn[]): void }>();
+  const props = defineProps<{ columns: TableColumn[] }>()
+  const emit = defineEmits<{ (e: 'change', columns: TableColumn[]): void }>()
 
-/* ================= 响应式状态 ================= */
+  /* ================= 响应式状态 ================= */
 
-const localColumns = ref<TableColumn[]>([...props.columns]);
-const searchText = ref("");
-const listRef = ref<HTMLElement>();
-const draggedIndex = ref<number | null>(null);
-const dragOverIndex = ref<number | null>(null);
-const enableResizable = ref(false);
+  const localColumns = ref<TableColumn[]>([...props.columns])
+  const searchText = ref('')
+  const listRef = ref<HTMLElement>()
+  const draggedIndex = ref<number | null>(null)
+  const dragOverIndex = ref<number | null>(null)
+  const enableResizable = ref(false)
 
-onMounted(() => {
-  enableResizable.value = localColumns.value.some(
-    (col) => col.resizable === true,
-  );
-});
+  onMounted(() => {
+    enableResizable.value = localColumns.value.some(
+      col => col.resizable === true
+    )
+  })
 
-/* ================= 计算属性 ================= */
+  /* ================= 计算属性 ================= */
 
-const filteredColumns = computed(() => {
-  if (!searchText.value) return localColumns.value;
-  const search = searchText.value.toLowerCase();
-  return localColumns.value.filter(
-    (col) =>
-      col.title?.toLowerCase().includes(search) ||
-      col.key.toLowerCase().includes(search),
-  );
-});
+  const filteredColumns = computed(() => {
+    if (!searchText.value) return localColumns.value
+    const search = searchText.value.toLowerCase()
+    return localColumns.value.filter(
+      col =>
+        col.title?.toLowerCase().includes(search) ||
+        col.key?.toLowerCase().includes(search)
+    )
+  })
 
-const visibleCount = computed(
-  () => localColumns.value.filter((col) => col.visible !== false).length,
-);
-const totalCount = computed(() => localColumns.value.length);
+  const visibleCount = computed(
+    () => localColumns.value.filter(col => col.visible !== false).length
+  )
+  const totalCount = computed(() => localColumns.value.length)
 
-/* ================= 批量操作 ================= */
+  /* ================= 批量操作 ================= */
 
-const setAllColumnsVisible = (visible: boolean) => {
-  localColumns.value.forEach((col) => {
-    if (col.key !== "_actions") col.visible = visible;
-  });
-  applyChanges();
-};
-
-const selectAll = () => setAllColumnsVisible(true);
-const selectNone = () => setAllColumnsVisible(false);
-
-/* ================= 列属性更新 ================= */
-
-const findOriginalIndex = (filteredIndex: number): number => {
-  const column = filteredColumns.value[filteredIndex];
-  return localColumns.value.findIndex((col) => col.key === column.key);
-};
-
-const updateColumnProperty = (
-  index: number,
-  updater: (col: TableColumn) => void,
-) => {
-  const originalIndex = findOriginalIndex(index);
-  if (originalIndex !== -1) {
-    updater(localColumns.value[originalIndex]);
-    applyChanges();
+  const setAllColumnsVisible = (visible: boolean) => {
+    localColumns.value.forEach(col => {
+      if (col.key !== '_actions') col.visible = visible
+    })
+    applyChanges()
   }
-};
 
-const toggleColumnVisibility = (index: number, visible: boolean) => {
-  updateColumnProperty(index, (col) => {
-    col.visible = visible;
-  });
-};
+  const selectAll = () => setAllColumnsVisible(true)
+  const selectNone = () => setAllColumnsVisible(false)
 
-const handleFixedSelect = (index: number, value: string) => {
-  updateColumnProperty(index, (col) => {
-    col.fixed = value === "none" ? undefined : (value as "left" | "right");
-  });
-};
+  /* ================= 列属性更新 ================= */
 
-const applyChanges = () => emit("change", [...localColumns.value]);
+  const findOriginalIndex = (filteredIndex: number): number => {
+    const column = filteredColumns.value[filteredIndex]
+    return localColumns.value.findIndex(col => col.key === column.key)
+  }
 
-const resetColumns = () => {
-  localColumns.value = [...props.columns];
-  applyChanges();
-};
-
-/* ================= 列宽调整 ================= */
-
-const handleResizableChange = (value: boolean) => {
-  localColumns.value.forEach((col) => {
-    if (!isSpecialColumn(col)) {
-      col.resizable = value;
-      if (value) {
-        col.minWidth = col.minWidth || 80;
-        col.maxWidth = col.maxWidth || 500;
-      }
+  const updateColumnProperty = (
+    index: number,
+    updater: (col: TableColumn) => void
+  ) => {
+    const originalIndex = findOriginalIndex(index)
+    if (originalIndex !== -1) {
+      updater(localColumns.value[originalIndex])
+      applyChanges()
     }
-  });
-  applyChanges();
-};
-
-/* ================= 拖拽排序 ================= */
-
-const moveColumn = (fromIndex: number, toIndex: number) => {
-  const originalFromIndex = findOriginalIndex(fromIndex);
-  const originalToIndex = findOriginalIndex(toIndex);
-  if (originalFromIndex !== -1 && originalToIndex !== -1) {
-    const [movedColumn] = localColumns.value.splice(originalFromIndex, 1);
-    localColumns.value.splice(originalToIndex, 0, movedColumn);
-    applyChanges();
   }
-};
 
-const handleDragStart = (index: number, event: DragEvent) => {
-  const column = filteredColumns.value[index];
-  if (column.key === "_actions") {
-    event.preventDefault();
-    return;
+  const toggleColumnVisibility = (index: number, visible: boolean) => {
+    updateColumnProperty(index, col => {
+      col.visible = visible
+    })
   }
-  draggedIndex.value = index;
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-};
 
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault();
-  if (
-    draggedIndex.value === null ||
-    filteredColumns.value[index].key === "_actions"
-  )
-    return;
-  dragOverIndex.value = index;
-  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-};
+  const handleFixedSelect = (index: number, value: string) => {
+    updateColumnProperty(index, col => {
+      col.fixed = value === 'none' ? undefined : (value as 'left' | 'right')
+    })
+  }
 
-const handleDrop = (toIndex: number) => {
-  if (
-    draggedIndex.value === null ||
-    filteredColumns.value[toIndex].key === "_actions"
-  )
-    return;
-  moveColumn(draggedIndex.value, toIndex);
-  draggedIndex.value = null;
-  dragOverIndex.value = null;
-};
+  const applyChanges = () => emit('change', [...localColumns.value])
 
-const handleDragEnd = () => {
-  draggedIndex.value = null;
-  dragOverIndex.value = null;
-};
+  const resetColumns = () => {
+    localColumns.value = [...props.columns]
+    applyChanges()
+  }
+
+  /* ================= 列宽调整 ================= */
+
+  const handleResizableChange = (value: boolean) => {
+    localColumns.value.forEach(col => {
+      if (!isSpecialColumn(col)) {
+        col.resizable = value
+        if (value) {
+          col.minWidth = col.minWidth || 80
+          col.maxWidth = col.maxWidth || 500
+        }
+      }
+    })
+    applyChanges()
+  }
+
+  /* ================= 拖拽排序 ================= */
+
+  const moveColumn = (fromIndex: number, toIndex: number) => {
+    const originalFromIndex = findOriginalIndex(fromIndex)
+    const originalToIndex = findOriginalIndex(toIndex)
+    if (originalFromIndex !== -1 && originalToIndex !== -1) {
+      const [movedColumn] = localColumns.value.splice(originalFromIndex, 1)
+      localColumns.value.splice(originalToIndex, 0, movedColumn)
+      applyChanges()
+    }
+  }
+
+  const handleDragStart = (index: number, event: DragEvent) => {
+    const column = filteredColumns.value[index]
+    if (column.key === '_actions') {
+      event.preventDefault()
+      return
+    }
+    draggedIndex.value = index
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (index: number, event: DragEvent) => {
+    event.preventDefault()
+    if (
+      draggedIndex.value === null ||
+      filteredColumns.value[index].key === '_actions'
+    )
+      return
+    dragOverIndex.value = index
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (toIndex: number) => {
+    if (
+      draggedIndex.value === null ||
+      filteredColumns.value[toIndex].key === '_actions'
+    )
+      return
+    moveColumn(draggedIndex.value, toIndex)
+    draggedIndex.value = null
+    dragOverIndex.value = null
+  }
+
+  const handleDragEnd = () => {
+    draggedIndex.value = null
+    dragOverIndex.value = null
+  }
 </script>
 
 <style scoped lang="scss">
-@use "./index.scss";
+  @use './index.scss';
 </style>
