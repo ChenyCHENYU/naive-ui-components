@@ -48,7 +48,10 @@
     />
 
     <!-- 表单操作按钮区域（只在特定布局中显示） -->
-    <NFormItem v-if="showActions" style="margin-top: 20px">
+    <NFormItem
+      v-if="showActions"
+      style="margin-top: 20px"
+    >
       <slot
         name="action"
         :form="formRef"
@@ -61,7 +64,11 @@
         :clearValidation="clearValidation"
       >
         <NSpace>
-          <NButton type="primary" @click="handleSubmit">提交</NButton>
+          <NButton
+            type="primary"
+            @click="handleSubmit"
+            >提交</NButton
+          >
           <NButton @click="handleReset">重置</NButton>
         </NSpace>
       </slot>
@@ -70,246 +77,261 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  computed,
-  ref,
-  watch,
-  getCurrentInstance,
-  resolveComponent,
-} from "vue";
-import type { FormInst } from "naive-ui/es/form";
-import { NForm, NFormItem, NButton, NSpace } from "naive-ui";
-import type {
-  FormOption,
-  LayoutType,
-  LayoutConfig,
-  SubmitEventPayload,
-  FormModel,
-} from "./types";
-import {
-  type FormConfig,
-  resolveFormConfig,
-  shouldShowActions as calcShowActions,
-} from "./composables/useFormConfig";
-import { useFormState } from "./composables/useFormState";
-import {
-  useFormRenderer,
-  type ComponentMap,
-} from "./composables/useFormRenderer";
+  import { computed, ref, watch, getCurrentInstance } from 'vue'
+  import type { FormInst } from 'naive-ui/es/form'
+  import {
+    NForm,
+    NFormItem,
+    NButton,
+    NSpace,
+    NInput,
+    NInputNumber,
+    NSwitch,
+    NSlider,
+    NRate,
+    NDatePicker,
+    NTimePicker,
+    NCascader,
+    NColorPicker,
+    NSelect,
+    NCheckboxGroup,
+    NCheckbox,
+    NRadioGroup,
+    NRadio,
+    NUpload,
+  } from 'naive-ui'
+  import { C_Editor } from '../C_Editor'
+  import type {
+    FormOption,
+    LayoutType,
+    LayoutConfig,
+    SubmitEventPayload,
+    FormModel,
+  } from './types'
+  import {
+    type FormConfig,
+    resolveFormConfig,
+    shouldShowActions as calcShowActions,
+  } from './composables/useFormConfig'
+  import { useFormState } from './composables/useFormState'
+  import {
+    useFormRenderer,
+    type ComponentMap,
+  } from './composables/useFormRenderer'
 
-/* ===== 布局组件静态映射（取代 DynamicComponent） ===== */
-import DefaultLayout from "./layouts/Default/index.vue";
-import InlineLayout from "./layouts/Inline/index.vue";
-import GridLayout from "./layouts/Grid/index.vue";
-import CardLayout from "./layouts/Card/index.vue";
-import TabsLayout from "./layouts/Tabs/index.vue";
-import StepsLayout from "./layouts/Steps/index.vue";
-import DynamicLayout from "./layouts/Dynamic/index.vue";
-import CustomLayout from "./layouts/Custom/index.vue";
+  /* ===== 布局组件静态映射（取代 DynamicComponent） ===== */
+  import DefaultLayout from './layouts/Default/index.vue'
+  import InlineLayout from './layouts/Inline/index.vue'
+  import GridLayout from './layouts/Grid/index.vue'
+  import CardLayout from './layouts/Card/index.vue'
+  import TabsLayout from './layouts/Tabs/index.vue'
+  import StepsLayout from './layouts/Steps/index.vue'
+  import DynamicLayout from './layouts/Dynamic/index.vue'
+  import CustomLayout from './layouts/Custom/index.vue'
 
-defineOptions({ name: "C_Form" });
+  defineOptions({ name: 'C_Form' })
 
-const LAYOUT_MAP: Record<LayoutType, any> = {
-  default: DefaultLayout,
-  inline: InlineLayout,
-  grid: GridLayout,
-  card: CardLayout,
-  tabs: TabsLayout,
-  steps: StepsLayout,
-  dynamic: DynamicLayout,
-  custom: CustomLayout,
-} as const;
+  const LAYOUT_MAP: Record<LayoutType, any> = {
+    default: DefaultLayout,
+    inline: InlineLayout,
+    grid: GridLayout,
+    card: CardLayout,
+    tabs: TabsLayout,
+    steps: StepsLayout,
+    dynamic: DynamicLayout,
+    custom: CustomLayout,
+  } as const
 
-/* ===== Naive UI 组件解析映射 ===== */
-/*
- * 必须在 <script setup> 中调用 resolveComponent，
- * unplugin-vue-components 只在 .vue SFC 中转换这些调用
- */
-const COMPONENT_MAP: ComponentMap = {
-  NFormItem: resolveComponent("NFormItem"),
-  NInput: resolveComponent("NInput"),
-  NInputNumber: resolveComponent("NInputNumber"),
-  NSwitch: resolveComponent("NSwitch"),
-  NSlider: resolveComponent("NSlider"),
-  NRate: resolveComponent("NRate"),
-  NDatePicker: resolveComponent("NDatePicker"),
-  NTimePicker: resolveComponent("NTimePicker"),
-  NCascader: resolveComponent("NCascader"),
-  NColorPicker: resolveComponent("NColorPicker"),
-  NSelect: resolveComponent("NSelect"),
-  NCheckboxGroup: resolveComponent("NCheckboxGroup"),
-  NCheckbox: resolveComponent("NCheckbox"),
-  NRadioGroup: resolveComponent("NRadioGroup"),
-  NRadio: resolveComponent("NRadio"),
-  NUpload: resolveComponent("NUpload"),
-  NButton: resolveComponent("NButton"),
-  NSpace: resolveComponent("NSpace"),
-  C_Editor: resolveComponent("C_Editor"),
-} as ComponentMap;
+  /* ===== Naive UI 组件映射 ===== */
+  /*
+   * 库代码是预构建产物，resolveComponent 无法在运行时解析未全局注册的组件。
+   * 直接 import 即可。naive-ui 作为 peerDependency，与消费项目共享同一份实例。
+   */
+  const COMPONENT_MAP: ComponentMap = {
+    NFormItem,
+    NInput,
+    NInputNumber,
+    NSwitch,
+    NSlider,
+    NRate,
+    NDatePicker,
+    NTimePicker,
+    NCascader,
+    NColorPicker,
+    NSelect,
+    NCheckboxGroup,
+    NCheckbox,
+    NRadioGroup,
+    NRadio,
+    NUpload,
+    NButton,
+    NSpace,
+    C_Editor,
+  } as ComponentMap
 
-/* ================= 组件属性定义 ================= */
+  /* ================= 组件属性定义 ================= */
 
-interface CFormProps {
-  /** 字段配置数组 */
-  options: FormOption[];
-  /** 双向绑定表单数据 */
-  modelValue?: FormModel;
-  /** 统一配置对象（收拢原先 13 个分散 Props） */
-  config?: FormConfig;
-}
-
-const props = withDefaults(defineProps<CFormProps>(), {
-  config: () => ({}),
-});
-
-/* ================= 组件事件定义（从 16 个精简到 4 个） ================= */
-
-const emit = defineEmits<{
-  submit: [payload: SubmitEventPayload];
-  "update:modelValue": [model: FormModel];
-  "validate-success": [model: FormModel];
-  "validate-error": [errors: unknown];
-}>();
-
-/* ================= 配置解析 ================= */
-
-const resolved = computed(() => resolveFormConfig(props.config));
-
-/* ================= 响应式状态 ================= */
-
-const formRef = ref<FormInst | null>(null);
-const optionsRef = computed(() => props.options);
-
-/* ===== 状态引擎 ===== */
-const {
-  formModel,
-  formRules,
-  visibleOptions,
-  initialize,
-  handleFieldChange,
-  validate,
-  validateField,
-  validateStep,
-  validateTab,
-  validateDynamicFields,
-  validateCustomGroup,
-  clearValidation,
-  getModel,
-  setFields,
-  resetFields,
-  setFieldValue,
-  getFieldValue,
-  setFieldsValue,
-  handleSubmit,
-  handleReset,
-} = useFormState(optionsRef, resolved, formRef, emit);
-
-/* ===== 渲染引擎 ===== */
-const currentInstance = getCurrentInstance();
-const { formItems } = useFormRenderer(
-  formModel,
-  visibleOptions,
-  resolved,
-  handleFieldChange,
-  COMPONENT_MAP,
-  currentInstance?.slots,
-);
-
-/* ================= 计算属性 ================= */
-
-const layoutComponent = computed(
-  () => LAYOUT_MAP[resolved.value.layout] || LAYOUT_MAP.default,
-);
-
-const mergedLayoutConfig = computed<LayoutConfig>(() => ({
-  type: resolved.value.layout,
-  grid: resolved.value.grid,
-  inline: resolved.value.inline,
-  card: resolved.value.card,
-  tabs: resolved.value.tabs,
-  steps: resolved.value.steps,
-  dynamic: resolved.value.dynamic,
-  custom: resolved.value.custom,
-}));
-
-const showActions = computed(() => calcShowActions(resolved.value));
-
-/* ================= 布局事件 → config 回调桥接 ================= */
-
-/** 通用布局事件桥接 */
-const handleLayoutEvent = (callbackName: string, ...args: any[]) => {
-  const callback = (resolved.value as any)[callbackName];
-  callback?.(...args);
-};
-
-/** 字段变化事件（保留回调通道） */
-const handleFieldsChange = (fields: FormOption[]): void => {
-  resolved.value.onFieldsChange?.(fields);
-};
-
-/** Steps 布局事件 — 需要多参数特殊处理 */
-const handleStepChange = (stepIndex: number, stepKey: string): void => {
-  resolved.value.onStepChange?.(stepIndex, stepKey);
-};
-
-const handleStepBeforeChange = async (
-  currentStep: number,
-  targetStep: number,
-): Promise<boolean> => {
-  resolved.value.onStepBeforeChange?.(currentStep, targetStep);
-  return true;
-};
-
-const handleStepValidate = async (stepIndex: number): Promise<boolean> => {
-  try {
-    const currentStepKey = resolved.value.steps?.steps?.[stepIndex]?.key;
-    if (!currentStepKey) return true;
-
-    const stepFields = props.options
-      .filter((option) => option.layout?.step === currentStepKey)
-      .map((option) => option.prop);
-
-    if (stepFields.length === 0) return true;
-
-    await validateField(stepFields);
-    resolved.value.onStepValidate?.(stepIndex);
-    return true;
-  } catch (error) {
-    console.warn(`[C_Form] 步骤 ${stepIndex} 验证失败:`, error);
-    return false;
+  interface CFormProps {
+    /** 字段配置数组 */
+    options: FormOption[]
+    /** 双向绑定表单数据 */
+    modelValue?: FormModel
+    /** 统一配置对象（收拢原先 13 个分散 Props） */
+    config?: FormConfig
   }
-};
 
-/* ================= modelValue 双向同步 ================= */
+  const props = withDefaults(defineProps<CFormProps>(), {
+    config: () => ({}),
+  })
 
-watch(
-  () => props.modelValue,
-  (val) => {
-    if (val) Object.assign(formModel, val);
-  },
-  { immediate: true, deep: true },
-);
+  /* ================= 组件事件定义（从 16 个精简到 4 个） ================= */
 
-/* ================= 组件暴露 ================= */
+  const emit = defineEmits<{
+    submit: [payload: SubmitEventPayload]
+    'update:modelValue': [model: FormModel]
+    'validate-success': [model: FormModel]
+    'validate-error': [errors: unknown]
+  }>()
 
-defineExpose({
-  validate,
-  validateField,
-  validateStep,
-  validateTab,
-  validateDynamicFields,
-  validateCustomGroup,
-  clearValidation,
-  getModel,
-  setFields,
-  resetFields,
-  setFieldValue,
-  getFieldValue,
-  setFieldsValue,
-  formRef,
-  formModel,
-  initialize,
-  layoutType: computed(() => resolved.value.layout),
-  shouldShowDefaultActions: showActions,
-});
+  /* ================= 配置解析 ================= */
+
+  const resolved = computed(() => resolveFormConfig(props.config))
+
+  /* ================= 响应式状态 ================= */
+
+  const formRef = ref<FormInst | null>(null)
+  const optionsRef = computed(() => props.options)
+
+  /* ===== 状态引擎 ===== */
+  const {
+    formModel,
+    formRules,
+    visibleOptions,
+    initialize,
+    handleFieldChange,
+    validate,
+    validateField,
+    validateStep,
+    validateTab,
+    validateDynamicFields,
+    validateCustomGroup,
+    clearValidation,
+    getModel,
+    setFields,
+    resetFields,
+    setFieldValue,
+    getFieldValue,
+    setFieldsValue,
+    handleSubmit,
+    handleReset,
+  } = useFormState(optionsRef, resolved, formRef, emit)
+
+  /* ===== 渲染引擎 ===== */
+  const currentInstance = getCurrentInstance()
+  const { formItems } = useFormRenderer(
+    formModel,
+    visibleOptions,
+    resolved,
+    handleFieldChange,
+    COMPONENT_MAP,
+    currentInstance?.slots
+  )
+
+  /* ================= 计算属性 ================= */
+
+  const layoutComponent = computed(
+    () => LAYOUT_MAP[resolved.value.layout] || LAYOUT_MAP.default
+  )
+
+  const mergedLayoutConfig = computed<LayoutConfig>(() => ({
+    type: resolved.value.layout,
+    grid: resolved.value.grid,
+    inline: resolved.value.inline,
+    card: resolved.value.card,
+    tabs: resolved.value.tabs,
+    steps: resolved.value.steps,
+    dynamic: resolved.value.dynamic,
+    custom: resolved.value.custom,
+  }))
+
+  const showActions = computed(() => calcShowActions(resolved.value))
+
+  /* ================= 布局事件 → config 回调桥接 ================= */
+
+  /** 通用布局事件桥接 */
+  const handleLayoutEvent = (callbackName: string, ...args: any[]) => {
+    const callback = (resolved.value as any)[callbackName]
+    callback?.(...args)
+  }
+
+  /** 字段变化事件（保留回调通道） */
+  const handleFieldsChange = (fields: FormOption[]): void => {
+    resolved.value.onFieldsChange?.(fields)
+  }
+
+  /** Steps 布局事件 — 需要多参数特殊处理 */
+  const handleStepChange = (stepIndex: number, stepKey: string): void => {
+    resolved.value.onStepChange?.(stepIndex, stepKey)
+  }
+
+  const handleStepBeforeChange = async (
+    currentStep: number,
+    targetStep: number
+  ): Promise<boolean> => {
+    resolved.value.onStepBeforeChange?.(currentStep, targetStep)
+    return true
+  }
+
+  const handleStepValidate = async (stepIndex: number): Promise<boolean> => {
+    try {
+      const currentStepKey = resolved.value.steps?.steps?.[stepIndex]?.key
+      if (!currentStepKey) return true
+
+      const stepFields = props.options
+        .filter(option => option.layout?.step === currentStepKey)
+        .map(option => option.prop)
+
+      if (stepFields.length === 0) return true
+
+      await validateField(stepFields)
+      resolved.value.onStepValidate?.(stepIndex)
+      return true
+    } catch (error) {
+      console.warn(`[C_Form] 步骤 ${stepIndex} 验证失败:`, error)
+      return false
+    }
+  }
+
+  /* ================= modelValue 双向同步 ================= */
+
+  watch(
+    () => props.modelValue,
+    val => {
+      if (val) Object.assign(formModel, val)
+    },
+    { immediate: true, deep: true }
+  )
+
+  /* ================= 组件暴露 ================= */
+
+  defineExpose({
+    validate,
+    validateField,
+    validateStep,
+    validateTab,
+    validateDynamicFields,
+    validateCustomGroup,
+    clearValidation,
+    getModel,
+    setFields,
+    resetFields,
+    setFieldValue,
+    getFieldValue,
+    setFieldsValue,
+    formRef,
+    formModel,
+    initialize,
+    layoutType: computed(() => resolved.value.layout),
+    shouldShowDefaultActions: showActions,
+  })
 </script>

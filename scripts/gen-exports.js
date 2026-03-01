@@ -1,6 +1,7 @@
 /**
- * 根据 dist/ 产物自动更新 package.json 的 exports 映射
- * 在 build 的最后一步执行，确保 subpath exports 与产物同步
+ * 构建后自动更新 package.json 的 exports 映射
+ * 使用 Node.js subpath patterns（通配符 *）统一匹配所有 C_ 组件
+ * 无需逐个枚举 — 新增组件自动被覆盖
  */
 import fs from "fs";
 import path from "path";
@@ -13,44 +14,36 @@ const pkgPath = path.resolve(__dirname, "../package.json");
 
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
 
-// 收集所有组件入口（有 .js + .d.ts + .cjs + .d.cts 的完整 C_ 开头文件）
+// 统计组件数量（仅用于日志）
 const componentNames = fs
   .readdirSync(distDir)
   .filter((f) => /^C_[A-Za-z]+\.js$/.test(f))
   .map((f) => f.replace(".js", ""))
   .sort();
 
-// 构建 exports 映射
-const exports = {
-  // 主入口
-  ".": {
-    types: "./dist/index.d.ts",
-    import: "./dist/index.js",
-    require: "./dist/index.cjs",
+// 使用 subpath patterns —— 一条通配规则覆盖所有 C_* 组件
+pkg.exports = {
+  '.': {
+    types: './dist/index.d.ts',
+    import: './dist/index.js',
+    require: './dist/index.cjs',
   },
-  // 全局样式
-  "./style.css": "./dist/style.css",
-};
-
-// 每个组件的 subpath export
-for (const name of componentNames) {
-  const hasEsmDts = fs.existsSync(path.join(distDir, `${name}.d.ts`));
-  const hasCjs = fs.existsSync(path.join(distDir, `${name}.cjs`));
-
-  const entry = {};
-  if (hasEsmDts) entry.types = `./dist/${name}.d.ts`;
-  entry.import = `./dist/${name}.js`;
-  if (hasCjs) entry.require = `./dist/${name}.cjs`;
-
-  exports[`./${name}`] = entry;
+  './style.css': './dist/style.css',
+  './resolver': {
+    types: './dist/resolver.d.ts',
+    import: './dist/resolver.js',
+    require: './dist/resolver.cjs',
+  },
+  './C_*': {
+    types: './dist/C_*.d.ts',
+    import: './dist/C_*.js',
+    require: './dist/C_*.cjs',
+  },
 }
 
-pkg.exports = exports;
-
-// 更新 sideEffects（style.css 是唯一有副作用的文件）
 pkg.sideEffects = ["dist/style.css"];
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 console.log(
-  `✅ Updated package.json exports: ${componentNames.length} component subpaths + main entry + style.css`,
-);
+  `✅ Updated package.json exports: ${componentNames.length} components (wildcard pattern) + main entry + style.css`
+)

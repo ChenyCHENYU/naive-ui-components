@@ -1,9 +1,9 @@
 {
-  "name": "@agile-team/naive-ui-components",
+  "name": "@robot-admin/naive-ui-components",
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.3.0",
+  "version": "0.4.4",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
@@ -16,195 +16,15 @@
       "require": "./dist/index.cjs"
     },
     "./style.css": "./dist/style.css",
-    "./C_ActionBar": {
-      "types": "./dist/C_ActionBar.d.ts",
-      "import": "./dist/C_ActionBar.js",
-      "require": "./dist/C_ActionBar.cjs"
+    "./resolver": {
+      "types": "./dist/resolver.d.ts",
+      "import": "./dist/resolver.js",
+      "require": "./dist/resolver.cjs"
     },
-    "./C_AntV": {
-      "types": "./dist/C_AntV.d.ts",
-      "import": "./dist/C_AntV.js",
-      "require": "./dist/C_AntV.cjs"
-    },
-    "./C_Barcode": {
-      "types": "./dist/C_Barcode.d.ts",
-      "import": "./dist/C_Barcode.js",
-      "require": "./dist/C_Barcode.cjs"
-    },
-    "./C_Captcha": {
-      "types": "./dist/C_Captcha.d.ts",
-      "import": "./dist/C_Captcha.js",
-      "require": "./dist/C_Captcha.cjs"
-    },
-    "./C_Cascade": {
-      "types": "./dist/C_Cascade.d.ts",
-      "import": "./dist/C_Cascade.js",
-      "require": "./dist/C_Cascade.cjs"
-    },
-    "./C_City": {
-      "types": "./dist/C_City.d.ts",
-      "import": "./dist/C_City.js",
-      "require": "./dist/C_City.cjs"
-    },
-    "./C_Code": {
-      "types": "./dist/C_Code.d.ts",
-      "import": "./dist/C_Code.js",
-      "require": "./dist/C_Code.cjs"
-    },
-    "./C_CollapsePanel": {
-      "types": "./dist/C_CollapsePanel.d.ts",
-      "import": "./dist/C_CollapsePanel.js",
-      "require": "./dist/C_CollapsePanel.cjs"
-    },
-    "./C_Cron": {
-      "types": "./dist/C_Cron.d.ts",
-      "import": "./dist/C_Cron.js",
-      "require": "./dist/C_Cron.cjs"
-    },
-    "./C_Date": {
-      "types": "./dist/C_Date.d.ts",
-      "import": "./dist/C_Date.js",
-      "require": "./dist/C_Date.cjs"
-    },
-    "./C_Draggable": {
-      "types": "./dist/C_Draggable.d.ts",
-      "import": "./dist/C_Draggable.js",
-      "require": "./dist/C_Draggable.cjs"
-    },
-    "./C_Editor": {
-      "types": "./dist/C_Editor.d.ts",
-      "import": "./dist/C_Editor.js",
-      "require": "./dist/C_Editor.cjs"
-    },
-    "./C_FilePreview": {
-      "types": "./dist/C_FilePreview.d.ts",
-      "import": "./dist/C_FilePreview.js",
-      "require": "./dist/C_FilePreview.cjs"
-    },
-    "./C_Form": {
-      "types": "./dist/C_Form.d.ts",
-      "import": "./dist/C_Form.js",
-      "require": "./dist/C_Form.cjs"
-    },
-    "./C_FormSearch": {
-      "types": "./dist/C_FormSearch.d.ts",
-      "import": "./dist/C_FormSearch.js",
-      "require": "./dist/C_FormSearch.cjs"
-    },
-    "./C_FormulaEditor": {
-      "types": "./dist/C_FormulaEditor.d.ts",
-      "import": "./dist/C_FormulaEditor.js",
-      "require": "./dist/C_FormulaEditor.cjs"
-    },
-    "./C_FullCalendar": {
-      "types": "./dist/C_FullCalendar.d.ts",
-      "import": "./dist/C_FullCalendar.js",
-      "require": "./dist/C_FullCalendar.cjs"
-    },
-    "./C_Guide": {
-      "types": "./dist/C_Guide.d.ts",
-      "import": "./dist/C_Guide.js",
-      "require": "./dist/C_Guide.cjs"
-    },
-    "./C_Icon": {
-      "types": "./dist/C_Icon.d.ts",
-      "import": "./dist/C_Icon.js",
-      "require": "./dist/C_Icon.cjs"
-    },
-    "./C_ImageCropper": {
-      "types": "./dist/C_ImageCropper.d.ts",
-      "import": "./dist/C_ImageCropper.js",
-      "require": "./dist/C_ImageCropper.cjs"
-    },
-    "./C_Language": {
-      "types": "./dist/C_Language.d.ts",
-      "import": "./dist/C_Language.js",
-      "require": "./dist/C_Language.cjs"
-    },
-    "./C_Map": {
-      "types": "./dist/C_Map.d.ts",
-      "import": "./dist/C_Map.js",
-      "require": "./dist/C_Map.cjs"
-    },
-    "./C_Markdown": {
-      "types": "./dist/C_Markdown.d.ts",
-      "import": "./dist/C_Markdown.js",
-      "require": "./dist/C_Markdown.cjs"
-    },
-    "./C_NotificationCenter": {
-      "types": "./dist/C_NotificationCenter.d.ts",
-      "import": "./dist/C_NotificationCenter.js",
-      "require": "./dist/C_NotificationCenter.cjs"
-    },
-    "./C_Progress": {
-      "types": "./dist/C_Progress.d.ts",
-      "import": "./dist/C_Progress.js",
-      "require": "./dist/C_Progress.cjs"
-    },
-    "./C_QRCode": {
-      "types": "./dist/C_QRCode.d.ts",
-      "import": "./dist/C_QRCode.js",
-      "require": "./dist/C_QRCode.cjs"
-    },
-    "./C_Signature": {
-      "types": "./dist/C_Signature.d.ts",
-      "import": "./dist/C_Signature.js",
-      "require": "./dist/C_Signature.cjs"
-    },
-    "./C_SplitPane": {
-      "types": "./dist/C_SplitPane.d.ts",
-      "import": "./dist/C_SplitPane.js",
-      "require": "./dist/C_SplitPane.cjs"
-    },
-    "./C_Steps": {
-      "types": "./dist/C_Steps.d.ts",
-      "import": "./dist/C_Steps.js",
-      "require": "./dist/C_Steps.cjs"
-    },
-    "./C_Table": {
-      "types": "./dist/C_Table.d.ts",
-      "import": "./dist/C_Table.js",
-      "require": "./dist/C_Table.cjs"
-    },
-    "./C_Theme": {
-      "types": "./dist/C_Theme.d.ts",
-      "import": "./dist/C_Theme.js",
-      "require": "./dist/C_Theme.cjs"
-    },
-    "./C_Time": {
-      "types": "./dist/C_Time.d.ts",
-      "import": "./dist/C_Time.js",
-      "require": "./dist/C_Time.cjs"
-    },
-    "./C_Tree": {
-      "types": "./dist/C_Tree.d.ts",
-      "import": "./dist/C_Tree.js",
-      "require": "./dist/C_Tree.cjs"
-    },
-    "./C_Upload": {
-      "types": "./dist/C_Upload.d.ts",
-      "import": "./dist/C_Upload.js",
-      "require": "./dist/C_Upload.cjs"
-    },
-    "./C_VideoPlayer": {
-      "types": "./dist/C_VideoPlayer.d.ts",
-      "import": "./dist/C_VideoPlayer.js",
-      "require": "./dist/C_VideoPlayer.cjs"
-    },
-    "./C_VtableGantt": {
-      "types": "./dist/C_VtableGantt.d.ts",
-      "import": "./dist/C_VtableGantt.js",
-      "require": "./dist/C_VtableGantt.cjs"
-    },
-    "./C_WaterFall": {
-      "types": "./dist/C_WaterFall.d.ts",
-      "import": "./dist/C_WaterFall.js",
-      "require": "./dist/C_WaterFall.cjs"
-    },
-    "./C_WorkFlow": {
-      "types": "./dist/C_WorkFlow.d.ts",
-      "import": "./dist/C_WorkFlow.js",
-      "require": "./dist/C_WorkFlow.cjs"
+    "./C_*": {
+      "types": "./dist/C_*.d.ts",
+      "import": "./dist/C_*.js",
+      "require": "./dist/C_*.cjs"
     }
   },
   "sideEffects": [
@@ -286,7 +106,6 @@
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
-    "@vueuse/core": "^13.6.0",
     "highlight.js": "^11.11.1",
     "spark-md5": "^3.0.2"
   },
@@ -317,8 +136,10 @@
     "tsdown": "^0.20.3",
     "typescript": "^5.9.2",
     "unplugin-vue": "^7.0.1",
+    "unplugin-vue-components": "^31.0.0",
     "vite": "^7.1.2",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "vue-tsc": "^3.2.5"
   },
   "config": {
     "commitizen": {

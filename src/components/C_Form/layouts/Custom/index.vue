@@ -9,7 +9,10 @@
 <template>
   <div class="custom-layout">
     <!-- 顶部工具栏 -->
-    <NCard :bordered="false" class="toolbar-card">
+    <NCard
+      :bordered="false"
+      class="toolbar-card"
+    >
       <div class="toolbar-content">
         <!-- 模式切换 -->
         <div class="mode-section">
@@ -47,15 +50,27 @@
         <!-- 操作按钮 -->
         <div class="actions-section">
           <template v-if="isDesignMode">
-            <NButton secondary @click="handleSaveLayout" size="small">
+            <NButton
+              secondary
+              @click="handleSaveLayout"
+              size="small"
+            >
               💾 保存布局
             </NButton>
-            <NButton secondary @click="handleResetLayout" size="small">
+            <NButton
+              secondary
+              @click="handleResetLayout"
+              size="small"
+            >
               🔄 重置布局
             </NButton>
           </template>
           <template v-else>
-            <NButton secondary @click="handleExportData" size="small">
+            <NButton
+              secondary
+              @click="handleExportData"
+              size="small"
+            >
               📊 导出数据
             </NButton>
           </template>
@@ -64,26 +79,47 @@
     </NCard>
 
     <!-- 设计模式工具面板 -->
-    <NCard v-if="isDesignMode" class="design-panel" title="🎨 设计工具">
+    <NCard
+      v-if="isDesignMode"
+      class="design-panel"
+      title="🎨 设计工具"
+    >
       <div class="design-tools">
         <div class="tool-group">
           <span class="group-label">添加区域:</span>
-          <NButton @click="addArea('horizontal')" size="small">
+          <NButton
+            @click="addArea('horizontal')"
+            size="small"
+          >
             ➡️ 水平区域
           </NButton>
-          <NButton @click="addArea('vertical')" size="small">
+          <NButton
+            @click="addArea('vertical')"
+            size="small"
+          >
             ⬇️ 垂直区域
           </NButton>
-          <NButton @click="addArea('grid')" size="small"> ⚏ 网格区域 </NButton>
+          <NButton
+            @click="addArea('grid')"
+            size="small"
+          >
+            ⚏ 网格区域
+          </NButton>
         </div>
       </div>
     </NCard>
 
     <!-- 主画布区域 -->
-    <div class="layout-canvas" :class="{ 'design-mode': isDesignMode }">
+    <div
+      class="layout-canvas"
+      :class="{ 'design-mode': isDesignMode }"
+    >
       <!-- 设计模式 -->
       <template v-if="isDesignMode">
-        <div class="canvas-hint" v-if="customAreas.length === 0">
+        <div
+          class="canvas-hint"
+          v-if="customAreas.length === 0"
+        >
           <div class="hint-content">
             <h3>🎨 开始自定义你的布局</h3>
             <p>点击上方按钮添加区域</p>
@@ -91,7 +127,10 @@
         </div>
 
         <!-- 区域列表 -->
-        <div v-else class="areas-container">
+        <div
+          v-else
+          class="areas-container"
+        >
           <div
             v-for="area in customAreas"
             :key="area.id"
@@ -130,60 +169,102 @@
               </div>
             </div>
 
-            <!-- 字段容器 -->
-            <div class="area-fields">
+            <!-- 字段容器（可拖入） -->
+            <VueDraggable
+              v-model="area.fields"
+              class="area-fields"
+              :group="{ name: 'form-fields', pull: true, put: true }"
+              :animation="200"
+              ghost-class="field-ghost"
+              item-key="id"
+            >
               <div
                 v-for="field in area.fields"
                 :key="field.id"
                 class="field-item"
               >
                 <div class="field-preview">
+                  <span class="drag-handle">⠿</span>
                   <span class="field-label">{{
                     field.label || field.prop
                   }}</span>
                   <span class="field-type">{{
                     getFieldTypeName(field.type)
                   }}</span>
+                  <NButton
+                    text
+                    size="tiny"
+                    type="error"
+                    @click="removeFieldFromArea(area.id, field.id)"
+                    title="移出字段"
+                  >
+                    ✕
+                  </NButton>
                 </div>
               </div>
-            </div>
+            </VueDraggable>
 
-            <div class="area-drop-zone" v-if="area.fields.length === 0">
-              拖拽字段到这里
+            <div
+              class="area-drop-zone"
+              v-if="area.fields.length === 0"
+            >
+              从下方字段池拖拽字段到这里
             </div>
           </div>
         </div>
 
-        <!-- 字段池 -->
-        <NCard class="field-pool" title="📦 可用字段">
-          <div class="pool-fields-grid">
+        <!-- 字段池（可拖出） -->
+        <NCard
+          class="field-pool"
+          title="📦 可用字段"
+        >
+          <VueDraggable
+            v-model="availableFields"
+            class="pool-fields-grid"
+            :group="{ name: 'form-fields', pull: 'clone', put: true }"
+            :animation="200"
+            :sort="false"
+            ghost-class="field-ghost"
+            item-key="id"
+            :clone="cloneField"
+          >
             <div
               v-for="field in availableFields"
               :key="field.id"
               class="pool-field"
             >
+              <span class="drag-handle">⠿</span>
               <span class="field-name">{{ field.label || field.prop }}</span>
               <span class="field-type-tag">{{
                 getFieldTypeName(field.type)
               }}</span>
             </div>
-          </div>
+          </VueDraggable>
         </NCard>
       </template>
 
       <!-- 填写模式 -->
       <template v-else>
-        <div v-if="customAreas.length === 0" class="empty-layout">
+        <div
+          v-if="customAreas.length === 0"
+          class="empty-layout"
+        >
           <NEmpty description="尚未设计布局">
             <template #extra>
-              <NButton @click="isDesignMode = true" type="primary">
+              <NButton
+                @click="isDesignMode = true"
+                type="primary"
+              >
                 🎨 开始设计
               </NButton>
             </template>
           </NEmpty>
         </div>
 
-        <div v-else class="form-container">
+        <div
+          v-else
+          class="form-container"
+        >
           <div class="form-areas">
             <div
               v-for="area in customAreas"
@@ -191,8 +272,14 @@
               class="form-area"
               :class="`area-${area.type}`"
             >
-              <NCard v-if="area.fields.length > 0" :title="area.title">
-                <div class="area-form-items" :class="`layout-${area.type}`">
+              <NCard
+                v-if="area.fields.length > 0"
+                :title="area.title"
+              >
+                <div
+                  class="area-form-items"
+                  :class="`layout-${area.type}`"
+                >
                   <component
                     v-for="field in area.fields"
                     :key="field.prop"
@@ -200,9 +287,17 @@
                   />
                 </div>
               </NCard>
-              <NEmpty v-else description="此区域暂无字段" size="small">
+              <NEmpty
+                v-else
+                description="此区域暂无字段"
+                size="small"
+              >
                 <template #extra>
-                  <NButton @click="isDesignMode = true" size="small" secondary>
+                  <NButton
+                    @click="isDesignMode = true"
+                    size="small"
+                    secondary
+                  >
                     🎨 添加字段
                   </NButton>
                 </template>
@@ -216,169 +311,187 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from "vue";
-import type { VNode } from "vue";
-import type { FormOption } from "../../types";
+  import { ref, computed, watch, watchEffect, type VNode } from 'vue'
+  import { VueDraggable } from 'vue-draggable-plus'
+  import type { FormOption } from '../../types'
 
-/* 接口定义 */
-interface CustomArea {
-  id: string;
-  title: string;
-  type: "horizontal" | "vertical" | "grid";
-  fields: DraggableFormOption[];
-}
-
-interface DraggableFormOption extends FormOption {
-  id: string;
-}
-
-interface Props {
-  options?: FormOption[];
-  formItems?: VNode[];
-  formData?: Record<string, any>;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  options: () => [],
-  formItems: () => [],
-  formData: () => ({}),
-});
-
-const emit = defineEmits<{
-  "fields-change": [fields: FormOption[]];
-  "export-data": [data: any];
-}>();
-
-/* 响应式状态 */
-const isDesignMode = ref(true);
-const customAreas = ref<CustomArea[]>([]);
-const availableFields = ref<DraggableFormOption[]>([]);
-const editingTitleId = ref<string | number>("");
-
-/* 计算属性 */
-const allFormOptions = computed(() => {
-  if (props.options?.length > 0) {
-    return props.options;
+  /* 接口定义 */
+  interface CustomArea {
+    id: string
+    title: string
+    type: 'horizontal' | 'vertical' | 'grid'
+    fields: DraggableFormOption[]
   }
 
-  return (
-    props.formItems
-      ?.map((item: VNode) => {
-        const itemProps = item.props as any;
-        return {
-          prop: itemProps?.path || "",
-          label: itemProps?.label || itemProps?.path || "",
-          type: "input",
-          show: true,
-        } as FormOption;
-      })
-      .filter((option) => option.prop) || []
-  );
-});
-
-const totalFieldsCount = computed(() =>
-  customAreas.value.reduce((total, area) => total + area.fields.length, 0),
-);
-
-/* 工具函数 */
-const generateId = () =>
-  `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-
-const getFieldTypeName = (type: string) => {
-  const typeMap: Record<string, string> = {
-    input: "输入框",
-    select: "下拉框",
-    radio: "单选框",
-    checkbox: "复选框",
-    textarea: "文本域",
-    date: "日期",
-    number: "数字",
-  };
-  return typeMap[type] || type;
-};
-
-const getFormItemForField = (field: FormOption) => {
-  return (
-    props.formItems?.find((item: VNode) => {
-      const itemProps = item.props as any;
-      return itemProps?.path === field.prop;
-    }) || null
-  );
-};
-
-/* 布局操作 */
-const addArea = (type: "horizontal" | "vertical" | "grid") => {
-  const area: CustomArea = {
-    id: generateId(),
-    title: `${type === "horizontal" ? "水平" : type === "vertical" ? "垂直" : "网格"}区域`,
-    type,
-    fields: [],
-  };
-  customAreas.value.push(area);
-};
-
-const deleteArea = (areaId: string | number) => {
-  const index = customAreas.value.findIndex((area) => area.id === areaId);
-  if (index !== -1) {
-    customAreas.value.splice(index, 1);
+  interface DraggableFormOption extends FormOption {
+    id: string
   }
-};
 
-const handleSaveLayout = () => {
-  const config = JSON.stringify(customAreas.value, null, 2);
-  const blob = new Blob([config], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `layout-config-${Date.now()}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+  interface Props {
+    options?: FormOption[]
+    formItems?: VNode[]
+    formData?: Record<string, any>
+  }
 
-const handleResetLayout = () => {
-  customAreas.value = [];
-};
+  const props = withDefaults(defineProps<Props>(), {
+    options: () => [],
+    formItems: () => [],
+    formData: () => ({}),
+  })
 
-const handleExportData = () => {
-  const exportData = {
-    layout: customAreas.value,
-    formData: props.formData,
-    timestamp: new Date().toISOString(),
-  };
-  emit("export-data", exportData);
-};
+  const emit = defineEmits<{
+    'fields-change': [fields: FormOption[]]
+    'export-data': [data: any]
+  }>()
 
-/* 监听器 */
-watchEffect(() => {
-  const usedProps = new Set(
-    customAreas.value.flatMap((area) => area.fields.map((field) => field.prop)),
-  );
+  /* 响应式状态 */
+  const isDesignMode = ref(true)
+  const customAreas = ref<CustomArea[]>([])
+  const availableFields = ref<DraggableFormOption[]>([])
+  const editingTitleId = ref<string | number>('')
 
-  availableFields.value = allFormOptions.value
-    .filter((field) => !usedProps.has(field.prop))
-    .map((field) => ({
-      ...field,
-      id: field.prop,
-    }));
-});
+  /* 计算属性 */
+  const allFormOptions = computed(() => {
+    if (props.options?.length > 0) {
+      return props.options
+    }
 
-watch(
-  () => customAreas.value,
-  () => {
-    const allFields = customAreas.value.flatMap((area) =>
-      area.fields.map((field) => ({
+    return (
+      props.formItems
+        ?.map((item: VNode) => {
+          const itemProps = item.props as any
+          return {
+            prop: itemProps?.path || '',
+            label: itemProps?.label || itemProps?.path || '',
+            type: 'input',
+            show: true,
+          } as FormOption
+        })
+        .filter(option => option.prop) || []
+    )
+  })
+
+  const totalFieldsCount = computed(() =>
+    customAreas.value.reduce((total, area) => total + area.fields.length, 0)
+  )
+
+  /* 工具函数 */
+  const generateId = () =>
+    `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+
+  const getFieldTypeName = (type: string) => {
+    const typeMap: Record<string, string> = {
+      input: '输入框',
+      select: '下拉框',
+      radio: '单选框',
+      checkbox: '复选框',
+      textarea: '文本域',
+      date: '日期',
+      number: '数字',
+    }
+    return typeMap[type] || type
+  }
+
+  const getFormItemForField = (field: FormOption) => {
+    return (
+      props.formItems?.find((item: VNode) => {
+        const itemProps = item.props as any
+        return itemProps?.path === field.prop
+      }) || null
+    )
+  }
+
+  /* 布局操作 */
+  const addArea = (type: 'horizontal' | 'vertical' | 'grid') => {
+    const area: CustomArea = {
+      id: generateId(),
+      title: `${type === 'horizontal' ? '水平' : type === 'vertical' ? '垂直' : '网格'}区域`,
+      type,
+      fields: [],
+    }
+    customAreas.value.push(area)
+  }
+
+  const deleteArea = (areaId: string | number) => {
+    const index = customAreas.value.findIndex(area => area.id === areaId)
+    if (index !== -1) {
+      customAreas.value.splice(index, 1)
+    }
+  }
+
+  /** 克隆字段（从字段池拖出时使用副本，保证字段池不丢数据） */
+  const cloneField = (field: DraggableFormOption) => ({
+    ...field,
+    id: `${field.prop}-${generateId()}`,
+  })
+
+  /** 从指定区域移除字段 */
+  const removeFieldFromArea = (
+    areaId: string | number,
+    fieldId: string | number
+  ) => {
+    const area = customAreas.value.find(a => a.id === areaId)
+    if (area) {
+      const idx = area.fields.findIndex(f => f.id === fieldId)
+      if (idx !== -1) area.fields.splice(idx, 1)
+    }
+  }
+
+  const handleSaveLayout = () => {
+    const config = JSON.stringify(customAreas.value, null, 2)
+    const blob = new Blob([config], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `layout-config-${Date.now()}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleResetLayout = () => {
+    customAreas.value = []
+  }
+
+  const handleExportData = () => {
+    const exportData = {
+      layout: customAreas.value,
+      formData: props.formData,
+      timestamp: new Date().toISOString(),
+    }
+    emit('export-data', exportData)
+  }
+
+  /* 监听器 */
+  watchEffect(() => {
+    const usedProps = new Set(
+      customAreas.value.flatMap(area => area.fields.map(field => field.prop))
+    )
+
+    availableFields.value = allFormOptions.value
+      .filter(field => !usedProps.has(field.prop))
+      .map(field => ({
         ...field,
-        id: undefined,
-      })),
-    );
-    emit("fields-change", allFields);
-  },
-  { deep: true },
-);
+        id: field.prop,
+      }))
+  })
+
+  watch(
+    () => customAreas.value,
+    () => {
+      const allFields = customAreas.value.flatMap(area =>
+        area.fields.map(field => ({
+          ...field,
+          id: undefined,
+        }))
+      )
+      emit('fields-change', allFields)
+    },
+    { deep: true }
+  )
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

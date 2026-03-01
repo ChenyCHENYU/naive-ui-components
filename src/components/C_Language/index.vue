@@ -15,56 +15,62 @@
   >
     <NButton text>
       <div class="flex items-center">
-        <span class="i-mdi:language"></span>
+        <C_Icon
+          name="mdi:language"
+          :size="18"
+        />
       </div>
     </NButton>
   </NDropdown>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from "vue";
-import { NDropdown, NButton } from "naive-ui";
+  import { computed, h } from 'vue'
+  import { NDropdown, NButton } from 'naive-ui'
+  import C_Icon from '../C_Icon/index.vue'
 
-defineOptions({ name: "C_Language" });
+  defineOptions({ name: 'C_Language' })
 
-export interface LanguageOption {
-  key: string;
-  label: string;
-  iconClass?: string;
-}
+  export interface LanguageOption {
+    key: string
+    label: string
+    iconClass?: string
+  }
 
-const props = withDefaults(
-  defineProps<{
-    modelValue?: string;
-    options?: LanguageOption[];
-  }>(),
-  {
-    modelValue: "zh-cn",
-    options: () => [
-      { key: "zh-cn", label: "简体中文", iconClass: "i-mdi:alpha-c" },
-      { key: "en", label: "English", iconClass: "i-mdi:alpha-u" },
-      { key: "ja", label: "日本語", iconClass: "i-mdi:alpha-j" },
-      { key: "ko", label: "한국어", iconClass: "i-mdi:alpha-k" },
-    ],
-  },
-);
+  const props = withDefaults(
+    defineProps<{
+      modelValue?: string
+      options?: LanguageOption[]
+    }>(),
+    {
+      modelValue: 'zh-cn',
+      options: () => [
+        { key: 'zh-cn', label: '简体中文', iconClass: 'mdi:alpha-c' },
+        { key: 'en', label: 'English', iconClass: 'mdi:alpha-u' },
+        { key: 'ja', label: '日本語', iconClass: 'mdi:alpha-j' },
+        { key: 'ko', label: '한국어', iconClass: 'mdi:alpha-k' },
+      ],
+    }
+  )
 
-const emit = defineEmits<{
-  "update:modelValue": [key: string];
-  change: [key: string];
-}>();
+  const emit = defineEmits<{
+    'update:modelValue': [key: string]
+    change: [key: string]
+  }>()
 
-const finalOptions = computed(() =>
-  props.options.map((opt) => ({
-    key: opt.key,
-    label: opt.label,
-    icon: opt.iconClass ? () => h("span", { class: opt.iconClass }) : undefined,
-  })),
-);
+  const finalOptions = computed(() =>
+    props.options.map(opt => ({
+      key: opt.key,
+      label: opt.label,
+      icon: opt.iconClass
+        ? () => h(C_Icon, { name: opt.iconClass, size: 16 })
+        : undefined,
+    }))
+  )
 
-const handleLanguageChange = (key: string) => {
-  if (key === props.modelValue) return;
-  emit("update:modelValue", key);
-  emit("change", key);
-};
+  const handleLanguageChange = (key: string) => {
+    if (key === props.modelValue) return
+    emit('update:modelValue', key)
+    emit('change', key)
+  }
 </script>
