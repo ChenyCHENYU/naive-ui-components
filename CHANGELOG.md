@@ -1,5 +1,13 @@
 # @robot-admin/naive-ui-components
 
+## 0.6.2
+
+### Patch Changes
+
+- 修复菜单图标在生产环境下错位问题
+  - menuAdapter 的 defaultRenderIcon 中 `inline-flex items-center` 原子类改为内联 style
+  - 组件库不应依赖宿主项目的 UnoCSS/Tailwind 原子类，否则生产构建时可能丢失样式
+
 ## 0.6.1
 
 ### Patch Changes

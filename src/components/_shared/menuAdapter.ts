@@ -96,9 +96,14 @@ const defaultRenderIcon = (
   if (!icon) return undefined
   if (typeof icon === 'string') {
     return () =>
-      h('span', { class: 'inline-flex items-center n-icon' }, [
-        h(Icon, { icon }),
-      ])
+      h(
+        'span',
+        {
+          class: 'n-icon',
+          style: 'display: inline-flex; align-items: center;',
+        },
+        [h(Icon, { icon })]
+      )
   }
   if (typeof icon === 'function') return icon
   return undefined
