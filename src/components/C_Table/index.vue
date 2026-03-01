@@ -189,7 +189,6 @@
       crud?: CrudBinding
     }>(),
     {
-      loading: false,
       rowKey: (row: DataRecord) => row.id as DataTableRowKey,
       config: () => ({}),
     }

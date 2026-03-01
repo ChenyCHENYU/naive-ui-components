@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.5.0",
+  "version": "0.6.1",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
@@ -74,7 +74,8 @@
   },
   "peerDependencies": {
     "vue": "^3.5.0",
-    "naive-ui": "^2.35.0"
+    "naive-ui": "^2.35.0",
+    "vue-router": "^4.0.0"
   },
   "dependencies": {
     "@antv/x6": "^2.18.0",

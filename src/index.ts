@@ -42,6 +42,9 @@ import { C_WorkFlow } from './components/C_WorkFlow'
 import { C_Form } from './components/C_Form'
 import { C_Table } from './components/C_Table'
 import { C_GlobalSearch } from './components/C_GlobalSearch'
+import { C_Menu } from './components/C_Menu'
+import { C_Breadcrumb } from './components/C_Breadcrumb'
+import { C_TagsView } from './components/C_TagsView'
 
 // ====== 插件 ======
 import { setupHighlight, useHighlight } from './plugins/highlight'
@@ -92,6 +95,9 @@ const components: Component[] = [
   C_Form,
   C_Table,
   C_GlobalSearch,
+  C_Menu,
+  C_Breadcrumb,
+  C_TagsView,
 ]
 
 // ====== Barrel Re-exports：所有组件 + composables + types + constants ======
@@ -134,6 +140,12 @@ export * from './components/C_WorkFlow'
 export * from './components/C_Form'
 export * from './components/C_Table'
 export * from './components/C_GlobalSearch'
+export * from './components/C_Menu'
+export * from './components/C_Breadcrumb'
+export * from './components/C_TagsView'
+
+// ====== 共享类型 + 适配器 ======
+export * from './components/_shared'
 
 // ====== 工具函数（不属于任何组件的公共工具） ======
 export { setItem, getItem, removeItem, removeAllItem } from './utils/storage'
