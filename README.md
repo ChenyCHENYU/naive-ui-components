@@ -21,21 +21,21 @@ bun add vue@^3.5.0 naive-ui@^2.35.0
 ### 全局注册
 
 ```typescript
-import { createApp } from "vue";
-import NaiveUIComponents from "@agile-team/naive-ui-components";
-import "@agile-team/naive-ui-components/style.css";
+import { createApp } from 'vue'
+import NaiveUIComponents from '@agile-team/naive-ui-components'
+import '@agile-team/naive-ui-components/style.css'
 
-const app = createApp(App);
-app.use(NaiveUIComponents);
-app.mount("#app");
+const app = createApp(App)
+app.use(NaiveUIComponents)
+app.mount('#app')
 ```
 
 ### 按需导入（主入口 Tree-Shaking）
 
 ```vue
 <script setup lang="ts">
-import { C_Icon, C_Table, C_Form } from "@agile-team/naive-ui-components";
-import "@agile-team/naive-ui-components/style.css";
+  import { C_Icon, C_Table, C_Form } from '@agile-team/naive-ui-components'
+  import '@agile-team/naive-ui-components/style.css'
 </script>
 ```
 
@@ -45,10 +45,10 @@ import "@agile-team/naive-ui-components/style.css";
 
 ```vue
 <script setup lang="ts">
-import { C_Form } from "@agile-team/naive-ui-components/C_Form";
-import { C_Table } from "@agile-team/naive-ui-components/C_Table";
-import { C_Icon } from "@agile-team/naive-ui-components/C_Icon";
-import "@agile-team/naive-ui-components/style.css";
+  import { C_Form } from '@agile-team/naive-ui-components/C_Form'
+  import { C_Table } from '@agile-team/naive-ui-components/C_Table'
+  import { C_Icon } from '@agile-team/naive-ui-components/C_Icon'
+  import '@agile-team/naive-ui-components/style.css'
 </script>
 ```
 
@@ -61,10 +61,12 @@ import {
   useTableManager,
   useFormState,
   usePlayerCore,
-} from "@agile-team/naive-ui-components";
+} from '@agile-team/naive-ui-components'
 ```
 
 ## 📋 组件清单（38 个）
+
+> 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
 ### 基础组件
 
@@ -252,6 +254,8 @@ MIT License
 
 ## 🔗 相关链接
 
-- [Robot Admin 文档](https://www.tzagileteam.com/robot/components/preface)
+- [组件在线文档（含交互演示）](https://www.tzagileteam.com/robot/components/preface)
+- [Robot Admin 主项目](https://github.com/ChenyCHENYU/robot_admin)
+- [Robot Admin 在线体验](https://www.robotadmin.cn)
 - [GitHub](https://github.com/ChenyCHENYU/naive-ui-components)
 - [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
