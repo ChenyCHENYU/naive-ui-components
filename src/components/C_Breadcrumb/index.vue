@@ -24,7 +24,13 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-breadcrumb flex-1 min-w-0">
+  <div
+    class="c-breadcrumb flex-1 min-w-0"
+    :style="{
+      '--c-breadcrumb-icon-size': `${iconSize}px`,
+      '--c-breadcrumb-gap': `${Math.max(Math.round(iconSize / 4), 2)}px`,
+    }"
+  >
     <NBreadcrumb>
       <NBreadcrumbItem
         v-for="(item, index) in breadcrumbItems"
@@ -39,6 +45,7 @@
             <C_Icon
               v-if="showIcon"
               :name="item.icon"
+              :size="iconSize"
             />
             {{ item.label }}
           </div>
@@ -51,6 +58,7 @@
           <C_Icon
             v-if="showIcon"
             :name="item.icon"
+            :size="iconSize"
           />
           {{ item.label }}
         </span>
@@ -76,6 +84,8 @@
       items?: BreadcrumbItem[]
       /** 是否显示图标 */
       showIcon?: boolean
+      /** 图标大小 (px)，默认 16 */
+      iconSize?: number
       /**
        * 标签文本格式化函数（用于 i18n）
        * 仅在自动模式下生效
@@ -84,6 +94,7 @@
     }>(),
     {
       showIcon: true,
+      iconSize: 16,
     }
   )
 
@@ -131,11 +142,27 @@
 
 <style lang="scss">
   .c-breadcrumb {
+    // 暴露 CSS 变量，方便主项目覆盖
+    --c-breadcrumb-icon-size: 16px;
+    --c-breadcrumb-gap: 4px;
+    --c-breadcrumb-font-size: inherit;
+
+    display: flex;
+    align-items: center;
+    height: 100%;
+
     &__trigger,
     &__link {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--c-breadcrumb-gap);
+      font-size: var(--c-breadcrumb-font-size);
+      line-height: 1;
+    }
+
+    // 确保 C_Icon 在面包屑中尺寸一致
+    .c-icon {
+      flex-shrink: 0;
     }
   }
 </style>
