@@ -18,6 +18,7 @@
         <C_Icon
           name="mdi:language"
           :size="18"
+          :title="tooltipText"
         />
       </div>
     </NButton>
@@ -41,9 +42,12 @@
     defineProps<{
       modelValue?: string
       options?: LanguageOption[]
+      /** Tooltip 文案，默认 "语言切换" */
+      tooltip?: string
     }>(),
     {
       modelValue: 'zh-cn',
+      tooltip: '语言切换',
       options: () => [
         { key: 'zh-cn', label: '简体中文', iconClass: 'mdi:alpha-c' },
         { key: 'en', label: 'English', iconClass: 'mdi:alpha-u' },
@@ -57,6 +61,14 @@
     'update:modelValue': [key: string]
     change: [key: string]
   }>()
+
+  /** 当前语言显示名 */
+  const currentLabel = computed(() => {
+    const opt = props.options.find(o => o.key === props.modelValue)
+    return opt?.label ?? props.modelValue
+  })
+
+  const tooltipText = computed(() => `${props.tooltip} (${currentLabel.value})`)
 
   const finalOptions = computed(() =>
     props.options.map(opt => ({

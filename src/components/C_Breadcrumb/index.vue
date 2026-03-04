@@ -166,10 +166,18 @@
       flex-shrink: 0;
     }
 
-    // 修复分隔符垂直对齐偏移
-    .n-breadcrumb-item__separator {
-      display: inline-flex;
+    // 修复分隔符 "/" 与文本/图标垂直居中对齐
+    // 原因：Naive UI 分隔符默认 line-height (~1.4) 导致 "/" 基线偏低
+    .n-breadcrumb-item {
+      display: inline-flex !important;
       align-items: center;
+
+      .n-breadcrumb-item__separator {
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+        margin-top: -4px;
+      }
     }
   }
 </style>

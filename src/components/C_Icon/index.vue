@@ -18,7 +18,7 @@
       },
     ]"
     :style="rootStyle"
-    :title="title || iconDisplayName"
+    :title="title || undefined"
     :aria-label="ariaLabel || iconDisplayName"
     :role="clickable ? 'button' : 'img'"
     :tabindex="clickable ? 0 : -1"
@@ -187,7 +187,7 @@
   const rootStyle = computed(() => ({
     fontSize: typeof props.size === 'number' ? `${props.size}px` : props.size,
     color: props.color,
-    cursor: props.clickable ? 'pointer' : 'default',
+    cursor: props.clickable ? 'pointer' : 'inherit',
   }))
 
   // 计算图标样式
