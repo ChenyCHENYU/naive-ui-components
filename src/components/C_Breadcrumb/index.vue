@@ -35,24 +35,22 @@
           :options="item.children"
           @select="handleSelect"
         >
-          <div class="trigger">
+          <div class="c-breadcrumb__trigger">
             <C_Icon
               v-if="showIcon"
               :name="item.icon"
-              class="vertical-top"
             />
             {{ item.label }}
           </div>
         </NDropdown>
         <span
           v-else
-          class="c-breadcrumb-link"
+          class="c-breadcrumb__link"
           @click="handleSelect(item.key)"
         >
           <C_Icon
             v-if="showIcon"
             :name="item.icon"
-            class="vertical-top mr-1"
           />
           {{ item.label }}
         </span>
@@ -130,3 +128,14 @@
     emit('select', key)
   }
 </script>
+
+<style lang="scss">
+  .c-breadcrumb {
+    &__trigger,
+    &__link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+</style>
