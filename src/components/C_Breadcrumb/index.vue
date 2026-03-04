@@ -158,11 +158,18 @@
       gap: var(--c-breadcrumb-gap);
       font-size: var(--c-breadcrumb-font-size);
       line-height: 1;
+      cursor: pointer;
     }
 
     // 确保 C_Icon 在面包屑中尺寸一致
     .c-icon {
       flex-shrink: 0;
+    }
+
+    // 修复分隔符垂直对齐偏移
+    .n-breadcrumb-item__separator {
+      display: inline-flex;
+      align-items: center;
     }
   }
 </style>
