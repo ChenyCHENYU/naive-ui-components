@@ -1,6 +1,6 @@
 # @agile-team/naive-ui-components
 
-基于 **Naive UI** 的 Vue 3 企业级组件库，从 Robot Admin 中提炼的 38 个高质量业务组件。
+基于 **Naive UI** 的 Vue 3 企业级组件库，从 Robot Admin 中提炼的 49 个高质量业务组件。
 
 支持 **全量注册**、**按需导入（Tree-Shaking）** 和 **子路径独立导入**，配合多入口构建输出 ESM / CJS / DTS，满足不同集成场景。
 
@@ -64,27 +64,32 @@ import {
 } from '@agile-team/naive-ui-components'
 ```
 
-## 📋 组件清单（38 个）
+## 📋 组件清单（49 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
 ### 基础组件
 
-| 组件          | 说明             | 外部依赖                    |
-| ------------- | ---------------- | --------------------------- |
-| `C_Icon`      | Iconify 图标封装 | `@iconify/vue`              |
-| `C_Code`      | 代码高亮显示     | `highlight.js`              |
-| `C_Barcode`   | 条形码生成器     | `@chenfengyuan/vue-barcode` |
-| `C_Captcha`   | 拼图验证码       | `vue3-puzzle-vcode`         |
-| `C_Cascade`   | 级联面板选择器   | -                           |
-| `C_Guide`     | 新手引导         | `driver.js`                 |
-| `C_Progress`  | 增强进度条       | -                           |
-| `C_Steps`     | 步骤条           | -                           |
-| `C_ActionBar` | 操作按钮栏       | -                           |
-| `C_Theme`     | 主题切换器       | -                           |
-| `C_Language`  | 语言切换器       | -                           |
-| `C_Date`      | 日期选择器增强   | -                           |
-| `C_City`      | 省市区三级联动   | -                           |
+| 组件             | 说明             | 外部依赖                    |
+| ---------------- | ---------------- | --------------------------- |
+| `C_Icon`         | Iconify 图标封装 | `@iconify/vue`              |
+| `C_Code`         | 代码高亮显示     | `highlight.js`              |
+| `C_Barcode`      | 条形码生成器     | `@chenfengyuan/vue-barcode` |
+| `C_Captcha`      | 拼图验证码       | `vue3-puzzle-vcode`         |
+| `C_Cascade`      | 级联面板选择器   | -                           |
+| `C_Guide`        | 新手引导         | `driver.js`                 |
+| `C_Progress`     | 增强进度条       | -                           |
+| `C_Steps`        | 步骤条           | -                           |
+| `C_ActionBar`    | 操作按钮栏       | -                           |
+| `C_Theme`        | 主题切换器       | -                           |
+| `C_Language`     | 语言切换器       | -                           |
+| `C_Date`         | 日期选择器增强   | -                           |
+| `C_City`         | 省市区三级联动   | -                           |
+| `C_Breadcrumb`   | 面包屑导航       | -                           |
+| `C_Menu`         | 导航菜单         | -                           |
+| `C_TagsView`     | 标签页导航       | -                           |
+| `C_GlobalSearch` | 全局搜索面板     | -                           |
+| `C_AvatarGroup`  | 头像组合展示     | -                           |
 
 ### 内容 & 编辑组件
 
@@ -108,7 +113,9 @@ import {
 | `C_WaterFall`    | 瀑布流布局                                | -                                    |
 | `C_FullCalendar` | 日历事件                                  | `@fullcalendar/*`                    |
 | `C_VideoPlayer`  | 视频播放器（HLS/字幕/书签/章节）          | `xgplayer`、`xgplayer-hls`           |
+| `C_AudioPlayer`  | 音频播放器（波形/进度/播放列表）          | -                                    |
 | `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`、`@tato30/vue-pdf` |
+| `C_Timeline`     | 时间线（垂直/水平/可折叠）                | -                                    |
 
 ### 表单 & 布局组件
 
@@ -122,6 +129,15 @@ import {
 | `C_Tree`          | 高级树形控件                                      | -                            |
 | `C_Time`          | 时间选择器增强                                    | -                            |
 | `C_Cron`          | Cron 表达式编辑器                                 | -                            |
+| `C_Transfer`      | 穿梭框（搜索/全选/批量操作）                      | -                            |
+
+### 交互 & 业务组件
+
+| 组件            | 说明                                   | 外部依赖 |
+| --------------- | -------------------------------------- | -------- |
+| `C_Chat`        | 聊天组件（联系人/消息气泡/输入框）     | -        |
+| `C_ContextMenu` | 右键菜单（嵌套子菜单/快捷键/危险操作） | -        |
+| `C_Login`       | 登录组件（5种模式/验证码/记住密码）    | -        |
 
 ### 流程 & 通知组件
 
@@ -161,7 +177,7 @@ bun add expr-eval
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（38 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（49 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译 global.scss → global-scss.css
   ├── 3. merge-css.js    → 合并 SFC CSS + global SCSS → style.css
   └── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -169,7 +185,7 @@ bun run build
 
 ### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），38 个独立入口并行编译
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），49 个独立入口并行编译
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 编译全局样式
 - **CSS 合并**：构建后将分散的 per-chunk CSS 与 `global-scss.css` 合并为单一 `style.css`
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
@@ -181,7 +197,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（38 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（49 组件）
 ├── style.css                              # 合并后的全量样式
 └── [chunk].js                             # 共享代码块
 ```

@@ -45,6 +45,13 @@ import { C_GlobalSearch } from './components/C_GlobalSearch'
 import { C_Menu } from './components/C_Menu'
 import { C_Breadcrumb } from './components/C_Breadcrumb'
 import { C_TagsView } from './components/C_TagsView'
+import { C_AudioPlayer } from './components/C_AudioPlayer'
+import { C_AvatarGroup } from './components/C_AvatarGroup'
+import { C_Chat } from './components/C_Chat'
+import { C_ContextMenu } from './components/C_ContextMenu'
+import { C_Login } from './components/C_Login'
+import { C_Timeline } from './components/C_Timeline'
+import { C_Transfer } from './components/C_Transfer'
 
 // ====== 插件 ======
 import { setupHighlight, useHighlight } from './plugins/highlight'
@@ -98,6 +105,13 @@ const components: Component[] = [
   C_Menu,
   C_Breadcrumb,
   C_TagsView,
+  C_AudioPlayer,
+  C_AvatarGroup,
+  C_Chat,
+  C_ContextMenu,
+  C_Login,
+  C_Timeline,
+  C_Transfer,
 ]
 
 // ====== Barrel Re-exports：所有组件 + composables + types + constants ======
@@ -143,6 +157,13 @@ export * from './components/C_GlobalSearch'
 export * from './components/C_Menu'
 export * from './components/C_Breadcrumb'
 export * from './components/C_TagsView'
+export * from './components/C_AudioPlayer'
+export * from './components/C_AvatarGroup'
+export * from './components/C_Chat'
+export * from './components/C_ContextMenu'
+export * from './components/C_Login'
+export * from './components/C_Timeline'
+export * from './components/C_Transfer'
 
 // ====== 共享类型 + 适配器 ======
 export * from './components/_shared'
