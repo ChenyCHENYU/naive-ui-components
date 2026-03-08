@@ -9,7 +9,7 @@
   <div class="inline-block">
     <NDatePicker
       v-if="mode === 'date'"
-      v-model:value="singleDate"
+      v-model:value="singleDateModel"
       type="date"
       :placeholder="placeholder || '请选择日期'"
       :disabled="disabled"
@@ -17,12 +17,11 @@
       :value-format="valueFormat"
       clearable
       v-bind="$attrs"
-      @update:value="handleSingleDateChange"
     />
 
     <NDatePicker
       v-else-if="mode === 'datetime'"
-      v-model:value="singleDateTime"
+      v-model:value="singleDateTimeModel"
       type="datetime"
       :placeholder="placeholder || '请选择日期时间'"
       :disabled="disabled"
@@ -30,12 +29,11 @@
       :value-format="valueFormat"
       clearable
       v-bind="$attrs"
-      @update:value="handleSingleDateTimeChange"
     />
 
     <NDatePicker
       v-else-if="mode === 'daterange'"
-      v-model:value="dateRange"
+      v-model:value="dateRangeModel"
       type="daterange"
       :start-placeholder="startPlaceholder || '开始日期'"
       :end-placeholder="endPlaceholder || '结束日期'"
@@ -44,12 +42,11 @@
       :value-format="valueFormat"
       clearable
       v-bind="$attrs"
-      @update:value="handleDateRangeChange"
     />
 
     <NDatePicker
       v-else-if="mode === 'datetimerange'"
-      v-model:value="dateTimeRange"
+      v-model:value="dateTimeRangeModel"
       type="datetimerange"
       :start-placeholder="startPlaceholder || '开始日期时间'"
       :end-placeholder="endPlaceholder || '结束日期时间'"
@@ -58,10 +55,12 @@
       :value-format="valueFormat"
       clearable
       v-bind="$attrs"
-      @update:value="handleDateTimeRangeChange"
     />
 
-    <div v-else-if="mode === 'smart-range'" class="inline-block">
+    <div
+      v-else-if="mode === 'smart-range'"
+      class="inline-block"
+    >
       <div class="flex gap-2.5 items-center">
         <NDatePicker
           class="flex-1"
@@ -90,140 +89,173 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
-import { NDatePicker } from "naive-ui";
+  import { ref, watch, computed } from 'vue'
+  import { NDatePicker } from 'naive-ui'
 
-defineOptions({ name: "C_Date" });
+  defineOptions({ name: 'C_Date' })
 
-type DatePickerMode =
-  | "date"
-  | "datetime"
-  | "daterange"
-  | "datetimerange"
-  | "smart-range";
+  type DatePickerMode =
+    | 'date'
+    | 'datetime'
+    | 'daterange'
+    | 'datetimerange'
+    | 'smart-range'
 
-type DateValue = number | null;
-type DateRangeValue = [number, number] | null;
+  // 当设置 valueFormat 时，NDatePicker 以格式化字符串通信；未设置时使用时间戳
+  type DateValue = number | string | null
+  type DateRangeValue = [number | string, number | string] | null
 
-interface Props {
-  mode?: DatePickerMode;
-  placeholder?: string;
-  startPlaceholder?: string;
-  endPlaceholder?: string;
-  disabled?: boolean;
-  disabledBeforeToday?: boolean;
-  disabledAfterToday?: boolean;
-  valueFormat?: string;
-  startDateProps?: Record<string, any>;
-  endDateProps?: Record<string, any>;
-}
+  interface Props {
+    mode?: DatePickerMode
+    placeholder?: string
+    startPlaceholder?: string
+    endPlaceholder?: string
+    disabled?: boolean
+    disabledBeforeToday?: boolean
+    disabledAfterToday?: boolean
+    valueFormat?: string
+    startDateProps?: Record<string, any>
+    endDateProps?: Record<string, any>
+    // v-model 值 props，支持受控模式（外部设置初始值 / 双向绑定）
+    singleDate?: DateValue
+    singleDateTime?: DateValue
+    dateRange?: DateRangeValue
+    dateTimeRange?: DateRangeValue
+    smartRange?: DateRangeValue
+  }
 
-interface Emits {
-  (e: "update:singleDate", value: DateValue): void;
-  (e: "update:singleDateTime", value: DateValue): void;
-  (e: "update:dateRange", value: DateRangeValue): void;
-  (e: "update:dateTimeRange", value: DateRangeValue): void;
-  (e: "update:smartRange", value: DateRangeValue): void;
-  (e: "change", value: DateValue | DateRangeValue): void;
-}
+  interface Emits {
+    (e: 'update:singleDate', value: DateValue): void
+    (e: 'update:singleDateTime', value: DateValue): void
+    (e: 'update:dateRange', value: DateRangeValue): void
+    (e: 'update:dateTimeRange', value: DateRangeValue): void
+    (e: 'update:smartRange', value: DateRangeValue): void
+    (e: 'change', value: DateValue | DateRangeValue): void
+  }
 
-const props = withDefaults(defineProps<Props>(), {
-  mode: "date",
-  placeholder: "",
-  startPlaceholder: "",
-  endPlaceholder: "",
-  disabled: false,
-  disabledBeforeToday: false,
-  disabledAfterToday: false,
-  valueFormat: "yyyy-MM-dd",
-  startDateProps: () => ({}),
-  endDateProps: () => ({}),
-});
+  const props = withDefaults(defineProps<Props>(), {
+    mode: 'date',
+    placeholder: '',
+    startPlaceholder: '',
+    endPlaceholder: '',
+    disabled: false,
+    disabledBeforeToday: false,
+    disabledAfterToday: false,
+    valueFormat: 'yyyy-MM-dd',
+    startDateProps: () => ({}),
+    endDateProps: () => ({}),
+    singleDate: null,
+    singleDateTime: null,
+    dateRange: null,
+    dateTimeRange: null,
+    smartRange: null,
+  })
 
-const emits = defineEmits<Emits>();
+  const emits = defineEmits<Emits>()
 
-const singleDate = ref<DateValue>(null);
-const singleDateTime = ref<DateValue>(null);
-const dateRange = ref<DateRangeValue>(null);
-const dateTimeRange = ref<DateRangeValue>(null);
-const startDate = ref<DateValue>(null);
-const endDate = ref<DateValue>(null);
-const endDateDisabled = ref(true);
+  // 今日零点时间戳 —— 模块级缓存，isDateDisabled 为高频回调，避免重复 new Date()
+  const _todayStart = (() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d.getTime()
+  })()
 
-const getTodayTimestamp = (): number => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today.getTime();
-};
+  // —— 四种基础模式：computed getter/setter 实现受控绑定 ——
+  // 后缀 Model 避免与同名 prop 产生 vue/no-dupe-keys 冲突
+  const singleDateModel = computed<DateValue>({
+    get: () => props.singleDate ?? null,
+    set: val => {
+      emits('update:singleDate', val)
+      emits('change', val)
+    },
+  })
 
-const singleDisabledDate = (timestamp: number): boolean => {
-  const todayTimestamp = getTodayTimestamp();
-  if (props.disabledBeforeToday && timestamp < todayTimestamp) return true;
-  if (props.disabledAfterToday && timestamp > todayTimestamp) return true;
-  return false;
-};
+  const singleDateTimeModel = computed<DateValue>({
+    get: () => props.singleDateTime ?? null,
+    set: val => {
+      emits('update:singleDateTime', val)
+      emits('change', val)
+    },
+  })
 
-const endDisabledDate = (timestamp: number): boolean => {
-  if (!startDate.value) return true;
-  if (timestamp < startDate.value) return true;
-  return singleDisabledDate(timestamp);
-};
+  const dateRangeModel = computed<DateRangeValue>({
+    get: () => props.dateRange ?? null,
+    set: val => {
+      emits('update:dateRange', val)
+      emits('change', val)
+    },
+  })
 
-const handleSingleDateChange = (value: DateValue): void => {
-  emits("update:singleDate", value);
-  emits("change", value);
-};
+  const dateTimeRangeModel = computed<DateRangeValue>({
+    get: () => props.dateTimeRange ?? null,
+    set: val => {
+      emits('update:dateTimeRange', val)
+      emits('change', val)
+    },
+  })
 
-const handleSingleDateTimeChange = (value: DateValue): void => {
-  emits("update:singleDateTime", value);
-  emits("change", value);
-};
+  // —— smart-range：两个独立 ref（prop 名为 smartRange，start/endDate 无命名冲突）——
+  const startDate = ref<DateValue>(null)
+  const endDate = ref<DateValue>(null)
+  const endDateDisabled = computed(() => !startDate.value)
 
-const handleDateRangeChange = (value: DateRangeValue): void => {
-  emits("update:dateRange", value);
-  emits("change", value);
-};
+  // 将外部 smartRange prop 同步到内部 startDate/endDate
+  watch(
+    () => props.smartRange,
+    val => {
+      const newStart = val?.[0] ?? null
+      const newEnd = val?.[1] ?? null
+      if (newStart === startDate.value && newEnd === endDate.value) return
+      startDate.value = newStart
+      endDate.value = newEnd
+    },
+    { immediate: true, deep: true }
+  )
 
-const handleDateTimeRangeChange = (value: DateRangeValue): void => {
-  emits("update:dateTimeRange", value);
-  emits("change", value);
-};
+  // 用户选择后：两者均有值时 emit；清空开始日期时级联清空结束日期
+  watch(
+    () => [startDate.value, endDate.value] as const,
+    ([startVal, endVal]) => {
+      if (!startVal) {
+        endDate.value = null
+        return
+      }
+      if (endVal) {
+        emits('update:smartRange', [startVal, endVal])
+        emits('change', [startVal, endVal])
+      }
+    },
+    { deep: true }
+  )
 
-watch(
-  () => [startDate.value, endDate.value],
-  ([startVal, endVal]) => {
-    if (!startVal) {
-      endDate.value = null;
-      endDateDisabled.value = true;
-      return;
-    }
-    if (startVal) {
-      endDateDisabled.value = false;
-    }
-    if (startVal && endVal) {
-      const rangeValue: DateRangeValue = [startVal, endVal];
-      emits("update:smartRange", rangeValue);
-      emits("change", rangeValue);
-    }
-  },
-  { deep: true },
-);
+  // —— 日期禁用逻辑 ——
+  const singleDisabledDate = (timestamp: number): boolean => {
+    if (props.disabledBeforeToday && timestamp < _todayStart) return true
+    if (props.disabledAfterToday && timestamp > _todayStart) return true
+    return false
+  }
 
-defineExpose({
-  singleDate,
-  singleDateTime,
-  dateRange,
-  dateTimeRange,
-  startDate,
-  endDate,
-  clearAll: () => {
-    singleDate.value = null;
-    singleDateTime.value = null;
-    dateRange.value = null;
-    dateTimeRange.value = null;
-    startDate.value = null;
-    endDate.value = null;
-    endDateDisabled.value = true;
-  },
-});
+  const endDisabledDate = (timestamp: number): boolean => {
+    if (!startDate.value) return true
+    // valueFormat 开启时 startDate 为字符串，需转为时间戳再比较
+    const startTs =
+      typeof startDate.value === 'string'
+        ? new Date(startDate.value).getTime()
+        : (startDate.value as number)
+    if (timestamp < startTs) return true
+    return singleDisabledDate(timestamp)
+  }
+
+  // clearAll：emit 驱动父组件清空同名绑定，同时重置 smart-range 内部 ref
+  defineExpose({
+    clearAll: () => {
+      emits('update:singleDate', null)
+      emits('update:singleDateTime', null)
+      emits('update:dateRange', null)
+      emits('update:dateTimeRange', null)
+      emits('update:smartRange', null)
+      startDate.value = null
+      endDate.value = null
+    },
+  })
 </script>
