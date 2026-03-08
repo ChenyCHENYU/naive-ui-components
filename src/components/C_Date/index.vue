@@ -9,7 +9,7 @@
   <div class="inline-block">
     <NDatePicker
       v-if="mode === 'date'"
-      v-model:value="singleDateModel"
+      v-model:formatted-value="singleDateModel"
       type="date"
       :placeholder="placeholder || '请选择日期'"
       :disabled="disabled"
@@ -21,7 +21,7 @@
 
     <NDatePicker
       v-else-if="mode === 'datetime'"
-      v-model:value="singleDateTimeModel"
+      v-model:formatted-value="singleDateTimeModel"
       type="datetime"
       :placeholder="placeholder || '请选择日期时间'"
       :disabled="disabled"
@@ -33,7 +33,7 @@
 
     <NDatePicker
       v-else-if="mode === 'daterange'"
-      v-model:value="dateRangeModel"
+      v-model:formatted-value="dateRangeModel"
       type="daterange"
       :start-placeholder="startPlaceholder || '开始日期'"
       :end-placeholder="endPlaceholder || '结束日期'"
@@ -46,7 +46,7 @@
 
     <NDatePicker
       v-else-if="mode === 'datetimerange'"
-      v-model:value="dateTimeRangeModel"
+      v-model:formatted-value="dateTimeRangeModel"
       type="datetimerange"
       :start-placeholder="startPlaceholder || '开始日期时间'"
       :end-placeholder="endPlaceholder || '结束日期时间'"
@@ -64,7 +64,7 @@
       <div class="flex gap-2.5 items-center">
         <NDatePicker
           class="flex-1"
-          v-model:value="startDate"
+          v-model:formatted-value="startDate"
           type="date"
           :placeholder="startPlaceholder || '请选择开始日期'"
           :is-date-disabled="singleDisabledDate"
@@ -74,7 +74,7 @@
         />
         <NDatePicker
           class="flex-1"
-          v-model:value="endDate"
+          v-model:formatted-value="endDate"
           type="date"
           :placeholder="endPlaceholder || '请选择结束日期'"
           :disabled="endDateDisabled"
@@ -101,9 +101,9 @@
     | 'datetimerange'
     | 'smart-range'
 
-  // 当设置 valueFormat 时，NDatePicker 以格式化字符串通信；未设置时使用时间戳
-  type DateValue = number | string | null
-  type DateRangeValue = [number | string, number | string] | null
+  // 使用 formatted-value 绑定，值始终为格式化字符串
+  type DateValue = string | null
+  type DateRangeValue = [string, string] | null
 
   interface Props {
     mode?: DatePickerMode
@@ -237,12 +237,7 @@
 
   const endDisabledDate = (timestamp: number): boolean => {
     if (!startDate.value) return true
-    // valueFormat 开启时 startDate 为字符串，需转为时间戳再比较
-    const startTs =
-      typeof startDate.value === 'string'
-        ? new Date(startDate.value).getTime()
-        : (startDate.value as number)
-    if (timestamp < startTs) return true
+    if (timestamp < new Date(startDate.value).getTime()) return true
     return singleDisabledDate(timestamp)
   }
 
