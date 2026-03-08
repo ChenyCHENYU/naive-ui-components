@@ -67,7 +67,7 @@
     "release": "changeset publish",
     "changeset": "changeset",
     "version": "changeset version",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "cz": "git-cz",
     "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
     "format": "prettier --write src/"
