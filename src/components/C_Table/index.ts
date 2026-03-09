@@ -4,7 +4,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-export { default as C_Table } from "./index.vue";
+export { default as C_Table } from './index.vue'
 
 /* ================= 类型导出 ================= */
 export type {
@@ -18,29 +18,31 @@ export type {
   UseTableExpandReturn,
   ChildSelectionState,
   PaginationConfig,
-} from "./types";
+  SelectOption,
+  SimpleTableActions,
+} from './types'
 
 /* ================= 组合式函数导出 ================= */
-export { useTableColumns } from "./composables/useTableColumns";
-export { useTableManager } from "./composables/useTableManager";
-export { useTableExpand } from "./composables/useTableExpand";
-export { useDynamicRows } from "./composables/useDynamicRow";
+export { useTableColumns } from './composables/useTableColumns'
+export { useTableManager } from './composables/useTableManager'
+export { useTableExpand } from './composables/useTableExpand'
+export { useDynamicRows } from './composables/useDynamicRow'
 export type {
   DynamicRowsOptions,
   DynamicRowsReturn,
-} from "./composables/useDynamicRow";
-export { useTableActions } from "./composables/useTableActions";
-export { usePagination } from "./composables/usePagination";
-export { useRowEdit } from "./composables/useRowEdit";
-export { useCellEdit } from "./composables/useCellEdit";
-export { useModalEdit } from "./composables/useModalEdit";
+} from './composables/useDynamicRow'
+export { useTableActions } from './composables/useTableActions'
+export { usePagination } from './composables/usePagination'
+export { useRowEdit } from './composables/useRowEdit'
+export { useCellEdit } from './composables/useCellEdit'
+export { useModalEdit } from './composables/useModalEdit'
 export {
   resolveConfig,
   createEditModeChecker,
-} from "./composables/useTableConfig";
-export type { CrudBinding, TableConfig } from "./composables/useTableConfig";
+} from './composables/useTableConfig'
+export type { CrudBinding, TableConfig } from './composables/useTableConfig'
 export {
   usePrintWatermark,
   printPresets,
-} from "./composables/usePrintWatermark";
-export type { PrintWatermarkOptions } from "./composables/usePrintWatermark";
+} from './composables/usePrintWatermark'
+export type { PrintWatermarkOptions } from './composables/usePrintWatermark'
