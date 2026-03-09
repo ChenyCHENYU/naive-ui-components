@@ -120,18 +120,26 @@
     margin: 4px 0;
   }
 
-  // 虚线 —— 垂直
+  // 虚线 —— 垂直（用 repeating-linear-gradient 代替 border，避免 box-sizing:border-box 下 width:0 压扁边框的问题）
   &.is-vertical.is-line-dashed .c-timeline__line {
-    background: none;
-    width: 0;
-    border-left: var(--tl-line-width) dashed var(--tl-line-color);
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--tl-line-color) 0,
+      var(--tl-line-color) 6px,
+      transparent 6px,
+      transparent 10px
+    );
   }
 
   // 点线 —— 垂直
   &.is-vertical.is-line-dotted .c-timeline__line {
-    background: none;
-    width: 0;
-    border-left: var(--tl-line-width) dotted var(--tl-line-color);
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--tl-line-color) 0,
+      var(--tl-line-color) 2px,
+      transparent 2px,
+      transparent 5px
+    );
   }
 
   // 垂直内容体
@@ -217,35 +225,9 @@
     }
   }
 
-  // 水平连接线：从本项中心延伸到下一项中心（dot 在 z-index:1 上方覆盖线）
+  // 水平模式不显示连接线（步骤式布局本来就不需要连接线）
   &.is-horizontal .c-timeline__line {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    left: 50%; // 从当前圆点中心开始
-    width: var(--tl-h-item-width); // 延伸到下一个圆点中心
-    height: var(--tl-line-width);
-    background: var(--tl-line-color);
-    z-index: 0;
-    border-radius: 1px;
-  }
-
-  // 虚线 —— 水平
-  &.is-horizontal.is-line-dashed .c-timeline__line {
-    background: none;
-    height: 0;
-    border-top: var(--tl-line-width) dashed var(--tl-line-color);
-    top: 50%;
-    transform: none;
-  }
-
-  // 点线 —— 水平
-  &.is-horizontal.is-line-dotted .c-timeline__line {
-    background: none;
-    height: 0;
-    border-top: var(--tl-line-width) dotted var(--tl-line-color);
-    top: 50%;
-    transform: none;
+    display: none;
   }
 
   // 水平内容体：居中对齐，显示在圆点下方
