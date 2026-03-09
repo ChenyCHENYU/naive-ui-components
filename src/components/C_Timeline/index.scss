@@ -9,17 +9,22 @@
   --tl-text-time: var(--text-color-3);
   --tl-line-color: color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
   --tl-line-width: 2px;
-  // 动态尺寸（由 size 修饰符覆盖）
+  // 可被 size 修饰符覆盖的动态变量
   --tl-dot-size: 12px;
   --tl-icon-size: 32px;
-  --tl-item-gap: 28px;
-  --tl-rail-offset: 20px;   // 圆点中心距容器左边的距离
-  --tl-content-gap: 12px;   // 圆点右侧到内容区的间距
-  // 固定尺寸常量
+  --tl-item-gap: 0px;       // 垂直模式：item 之间的间距由 line 高度控制
+  --tl-track-spacing: 24px; // 垂直模式：line 占据的最小高度（等效 item 间距）
+  --tl-track-width: 48px;   // 垂直模式：轨道列宽(含左右 padding)
+  --tl-content-gap: 12px;   // 轨道和内容之间的间距
+  // 固定基础常量
   --tl-dot-size-sm: 8px;
   --tl-dot-size-lg: 16px;
   --tl-icon-size-sm: 24px;
   --tl-icon-size-lg: 40px;
+  --tl-track-width-sm: 36px;
+  --tl-track-width-lg: 60px;
+  --tl-track-spacing-sm: 16px;
+  --tl-track-spacing-lg: 32px;
   --tl-dot-default: var(--text-color-3);
   --tl-dot-success: #18a058;
   --tl-dot-warning: #f0a020;
@@ -30,26 +35,26 @@
   --tl-content-radius: 8px;
   --tl-content-padding: 12px 16px;
   --tl-tag-radius: 4px;
-  // 水平模式
+  // 水平模式专用
   --tl-h-item-width: 200px;
-  --tl-h-rail-height: 52px;
+  --tl-h-track-height: 56px; // 水平模式轨道高度
 
   position: relative;
   background: var(--tl-bg);
 
-  // ---- size 修饰符 ----
+  // ---- size 修饰符：只修改动态变量 ----
   &.is-small {
     --tl-dot-size: var(--tl-dot-size-sm);
     --tl-icon-size: var(--tl-icon-size-sm);
-    --tl-rail-offset: 14px;
-    --tl-item-gap: 20px;
+    --tl-track-width: var(--tl-track-width-sm);
+    --tl-track-spacing: var(--tl-track-spacing-sm);
   }
 
   &.is-large {
     --tl-dot-size: var(--tl-dot-size-lg);
     --tl-icon-size: var(--tl-icon-size-lg);
-    --tl-rail-offset: 26px;
-    --tl-item-gap: 36px;
+    --tl-track-width: var(--tl-track-width-lg);
+    --tl-track-spacing: var(--tl-track-spacing-lg);
   }
 
   // =========================================================================
@@ -58,63 +63,38 @@
   &.is-vertical {
     display: flex;
     flex-direction: column;
-    gap: var(--tl-item-gap);
-    // 为左侧圆点 + 间距腾空间
-    padding-left: calc(var(--tl-rail-offset) + var(--tl-icon-size) / 2 + var(--tl-content-gap));
   }
 
-  // 节点容器 —— 定位父层
-  &.is-vertical > &__item {
-    position: relative;
+  // 垂直：每个节点 = 左轨道 + 右内容，行分布
+  &.is-vertical .c-timeline__item {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch; // 让轨道撑满 item 高度
+  }
+
+  // 垂直轨道列：固定宽度，flex 列排布
+  &.is-vertical .c-timeline__track {
+    flex: 0 0 var(--tl-track-width);
     display: flex;
     flex-direction: column;
-    gap: 0;
-    // 保证内容与图标同高起点
-    min-height: var(--tl-icon-size);
+    align-items: center;
+    padding-right: var(--tl-content-gap);
   }
 
-  // ---- 垂直连接线（用 .c-timeline__line 元素，方便 dashed/dotted）----
-  &.is-vertical > &__item > &__line {
-    position: absolute;
-    // 对齐圆点中心：left = -(icon/2) - gap - offset
-    left: calc(-1 * var(--tl-content-gap) - var(--tl-icon-size) / 2);
-    transform: translateX(-50%);
-    top: var(--tl-icon-size);
-    bottom: calc(-1 * var(--tl-item-gap));
-    width: var(--tl-line-width);
-    background: var(--tl-line-color);
-    border-radius: 1px;
-  }
-
-  &.is-vertical.is-line-dashed > &__item > &__line {
-    background: none;
-    border-left: var(--tl-line-width) dashed var(--tl-line-color);
-    width: 0;
-  }
-
-  &.is-vertical.is-line-dotted > &__item > &__line {
-    background: none;
-    border-left: var(--tl-line-width) dotted var(--tl-line-color);
-    width: 0;
-  }
-
-  // ---- 垂直圆点 / 图标 ----
-  &.is-vertical > &__item > &__dot {
-    position: absolute;
-    left: calc(-1 * var(--tl-content-gap) - var(--tl-icon-size) / 2);
-    transform: translateX(-50%);
-    top: 0;
+  // 垂直圆点
+  &.is-vertical .c-timeline__dot {
+    flex-shrink: 0;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
     z-index: 1;
 
     &.is-dot {
       width: var(--tl-dot-size);
       height: var(--tl-dot-size);
-      // 在 icon 高度范围内垂直居中
-      top: calc((var(--tl-icon-size) - var(--tl-dot-size)) / 2);
+      // 圆点在 icon-size 高度范围内垂直居中，使其与首行文字对齐
+      margin-top: calc((var(--tl-icon-size) - var(--tl-dot-size)) / 2);
       background: var(--tl-dot-default);
       border: 2px solid var(--card-color);
       box-shadow: 0 0 0 2px var(--tl-dot-default);
@@ -130,11 +110,43 @@
     }
   }
 
-  // ---- 垂直内容体 ----
-  &.is-vertical > &__item > &__body {
+  // 垂直连接线：flex: 1 自动撑满剩余高度
+  &.is-vertical .c-timeline__line {
+    flex: 1;
+    min-height: var(--tl-track-spacing);
+    width: var(--tl-line-width);
+    background: var(--tl-line-color);
+    border-radius: 1px;
+    margin: 4px 0;
+  }
+
+  // 虚线 —— 垂直
+  &.is-vertical.is-line-dashed .c-timeline__line {
+    background: none;
+    width: 0;
+    border-left: var(--tl-line-width) dashed var(--tl-line-color);
+  }
+
+  // 点线 —— 垂直
+  &.is-vertical.is-line-dotted .c-timeline__line {
+    background: none;
+    width: 0;
+    border-left: var(--tl-line-width) dotted var(--tl-line-color);
+  }
+
+  // 垂直内容体
+  &.is-vertical .c-timeline__body {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    padding-bottom: var(--tl-track-spacing); // 和 line 等高，保证对齐
+  }
+
+  // 最后一项不需要额外 padding（无 line）
+  &.is-vertical .c-timeline__item:last-child .c-timeline__body {
+    padding-bottom: 0;
   }
 
   // =========================================================================
@@ -142,69 +154,50 @@
   // =========================================================================
   &.is-horizontal {
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  // 轨道行：只有圆点和连接线
-  &.is-horizontal > &__rail {
-    display: flex;
-    align-items: center;
-    height: var(--tl-h-rail-height);
-    // 两边留半格宽，使首尾圆点对齐内容格中心
-    padding: 0 calc(var(--tl-h-item-width) / 2);
+    flex-direction: row;
     overflow-x: auto;
-    &::-webkit-scrollbar { display: none; }
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 2px;
+    }
   }
 
-  // 轨道格
-  &.is-horizontal > &__rail > &__rail-cell {
+  // 水平：每个节点 = 上轨道 + 下内容，列分布，固定宽度
+  &.is-horizontal .c-timeline__item {
     flex: 0 0 var(--tl-h-item-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  // 水平轨道区：圆点居中，线延伸到右侧
+  &.is-horizontal .c-timeline__track {
     position: relative;
+    width: 100%;
+    height: var(--tl-h-track-height);
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%;
-  }
-
-  // 水平连接线（从本格中心延伸到下一格中心）
-  &.is-horizontal > &__rail > &__rail-cell > &__line {
-    position: absolute;
-    left: 50%;
-    right: calc(-1 * var(--tl-h-item-width) + 50%);
-    top: 50%;
-    transform: translateY(-50%);
-    height: var(--tl-line-width);
-    background: var(--tl-line-color);
-    border-radius: 1px;
-    z-index: 0;
-  }
-
-  &.is-horizontal.is-line-dashed > &__rail > &__rail-cell > &__line {
-    background: none;
-    height: 0;
-    border-top: var(--tl-line-width) dashed var(--tl-line-color);
-    top: 50%;
-    transform: none;
-  }
-
-  &.is-horizontal.is-line-dotted > &__rail > &__rail-cell > &__line {
-    background: none;
-    height: 0;
-    border-top: var(--tl-line-width) dotted var(--tl-line-color);
-    top: 50%;
-    transform: none;
+    overflow: visible; // 线要溢出到下一个 item
   }
 
   // 水平圆点
-  &.is-horizontal > &__rail > &__rail-cell > &__dot {
+  &.is-horizontal .c-timeline__dot {
     position: relative;
     z-index: 1;
+    flex-shrink: 0;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    flex-shrink: 0;
+    // 背景色覆盖下方的连接线（线从圆点中心延伸，圆点在上层）
+    background: var(--tl-icon-bg);
 
     &.is-dot {
       width: var(--tl-dot-size);
@@ -224,31 +217,65 @@
     }
   }
 
-  // 内容行（与轨道行联动滚动需 JS，这里用 overflow:hidden + flex 实现对齐）
-  &.is-horizontal > &__body {
-    display: flex;
-    padding: 0 calc(var(--tl-h-item-width) / 2) 8px;
-    overflow-x: auto;
-    &::-webkit-scrollbar { display: none; }
+  // 水平连接线：从本项中心延伸到下一项中心（dot 在 z-index:1 上方覆盖线）
+  &.is-horizontal .c-timeline__line {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 50%; // 从当前圆点中心开始
+    width: var(--tl-h-item-width); // 延伸到下一个圆点中心
+    height: var(--tl-line-width);
+    background: var(--tl-line-color);
+    z-index: 0;
+    border-radius: 1px;
   }
 
-  &.is-horizontal > &__body > &__item {
-    flex: 0 0 var(--tl-h-item-width);
+  // 虚线 —— 水平
+  &.is-horizontal.is-line-dashed .c-timeline__line {
+    background: none;
+    height: 0;
+    border-top: var(--tl-line-width) dashed var(--tl-line-color);
+    top: 50%;
+    transform: none;
+  }
+
+  // 点线 —— 水平
+  &.is-horizontal.is-line-dotted .c-timeline__line {
+    background: none;
+    height: 0;
+    border-top: var(--tl-line-width) dotted var(--tl-line-color);
+    top: 50%;
+    transform: none;
+  }
+
+  // 水平内容体：居中对齐，显示在圆点下方
+  &.is-horizontal .c-timeline__body {
+    width: 100%;
+    padding: 8px 12px 0;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 4px;
-    padding: 10px 8px 0;
-    cursor: default;
+    text-align: center;
+  }
+
+  &.is-horizontal .c-timeline__header {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  &.is-horizontal .c-timeline__content {
+    text-align: left; // 详情内容保持左对齐
+    font-size: 12px;
   }
 
   // =========================================================================
-  //  共用内容样式
+  //  共用内容元素样式
   // =========================================================================
   &__header {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
   }
 
@@ -338,7 +365,7 @@
     gap: 10px;
     font-size: 13px;
     color: var(--tl-text-time);
-    padding-top: 8px;
+    padding: 8px 0 0 var(--tl-track-width);
 
     .pending-dot {
       width: 10px;
@@ -350,6 +377,11 @@
       animation: tl-pulse 1.4s infinite;
     }
   }
+
+  // 水平模式下 pending 不需要左缩进
+  &.is-horizontal &__pending {
+    padding-left: 0;
+  }
 }
 
 // ========== 动画 ==========
@@ -357,3 +389,4 @@
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50%       { opacity: 1;   transform: scale(1.15); }
 }
+

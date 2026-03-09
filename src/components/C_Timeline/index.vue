@@ -6,115 +6,14 @@
     :class="rootClasses"
     role="list"
   >
-    <!-- ====== 水平模式 ====== -->
-    <template v-if="props.mode === 'horizontal'">
-      <!-- 轨道行：圆点 + 连接线 -->
-      <div class="c-timeline__rail">
-        <div
-          v-for="(item, idx) in displayItems"
-          :key="item.id"
-          class="c-timeline__rail-cell"
-        >
-          <!-- 连接线（伪元素方式，新组件内操控） -->
-          <span
-            v-if="idx < displayItems.length - 1"
-            class="c-timeline__line"
-          />
-          <!-- 圆点 / 图标 -->
-          <span
-            :class="['c-timeline__dot', item.icon ? 'is-icon' : 'is-dot']"
-            :style="dotStyle(item)"
-          >
-            <slot
-              name="dot"
-              :item="item"
-              :index="idx"
-            >
-              <C_Icon
-                v-if="item.icon"
-                :name="item.icon"
-              />
-            </slot>
-          </span>
-        </div>
-      </div>
-
-      <!-- 内容行 -->
-      <div class="c-timeline__body">
-        <div
-          v-for="(item, idx) in displayItems"
-          :key="item.id"
-          class="c-timeline__item"
-          role="listitem"
-          @click="emit('item-click', item, idx)"
-        >
-          <!-- 标题 + 时间 -->
-          <div class="c-timeline__header">
-            <slot
-              name="title"
-              :item="item"
-              :index="idx"
-            >
-              <span class="c-timeline__title">{{ item.title }}</span>
-            </slot>
-            <span
-              v-if="props.showTime && item.time"
-              class="c-timeline__time"
-              >{{ item.time }}</span
-            >
-          </div>
-
-          <!-- 标签组 -->
-          <div
-            v-if="item.tags?.length"
-            class="c-timeline__tags"
-          >
-            <span
-              v-for="tag in item.tags"
-              :key="tag.text"
-              class="c-timeline__tag"
-              >{{ tag.text }}</span
-            >
-          </div>
-
-          <!-- 内容区 -->
-          <div
-            v-if="item.content"
-            class="c-timeline__detail is-expanded"
-          >
-            <div
-              class="c-timeline__content"
-              v-html="item.content"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Pending -->
-      <div
-        v-if="props.pending"
-        class="c-timeline__pending"
-      >
-        <span class="pending-dot" />
-        <span>{{ props.pendingText }}</span>
-      </div>
-    </template>
-
-    <!-- ====== 垂直模式 ====== -->
-    <template v-else>
-      <div
-        v-for="(item, idx) in displayItems"
-        :key="item.id"
-        class="c-timeline__item"
-        role="listitem"
-      >
-        <!-- 连接线 -->
-        <span
-          v-if="idx < displayItems.length - 1"
-          class="c-timeline__line"
-        />
-
-        <!-- 圆点 / 图标 -->
+    <div
+      v-for="(item, idx) in displayItems"
+      :key="item.id"
+      class="c-timeline__item"
+      role="listitem"
+    >
+      <!-- 轨道区：圆点 + 连接线 -->
+      <div class="c-timeline__track">
         <span
           :class="['c-timeline__dot', item.icon ? 'is-icon' : 'is-dot']"
           :style="dotStyle(item)"
@@ -130,86 +29,87 @@
             />
           </slot>
         </span>
+        <!-- 连接线：最后一项不渲染 -->
+        <span
+          v-if="idx < displayItems.length - 1"
+          class="c-timeline__line"
+        />
+      </div>
 
-        <!-- 右侧内容区 -->
-        <div class="c-timeline__body">
-          <!-- 标题行 -->
-          <div
-            class="c-timeline__header"
-            @click="emit('item-click', item, idx)"
+      <!-- 内容区 -->
+      <div class="c-timeline__body">
+        <div
+          class="c-timeline__header"
+          @click="emit('item-click', item, idx)"
+        >
+          <slot
+            name="title"
+            :item="item"
+            :index="idx"
           >
-            <slot
-              name="title"
-              :item="item"
-              :index="idx"
-            >
-              <span class="c-timeline__title">{{ item.title }}</span>
-            </slot>
-            <span
-              v-if="props.showTime && item.time"
-              class="c-timeline__time"
-              >{{ item.time }}</span
-            >
-          </div>
-
-          <!-- 标签组 -->
-          <div
-            v-if="item.tags?.length"
-            class="c-timeline__tags"
-          >
-            <span
-              v-for="tag in item.tags"
-              :key="tag.text"
-              class="c-timeline__tag"
-              >{{ tag.text }}</span
-            >
-          </div>
-
-          <!-- 内容区 -->
-          <div
-            v-if="item.content && (!item.collapsible || expandedMap[item.id])"
-            :class="[
-              'c-timeline__detail',
-              item.collapsible
-                ? expandedMap[item.id]
-                  ? 'is-expanded'
-                  : 'is-collapsed'
-                : 'is-expanded',
-            ]"
-          >
-            <div
-              class="c-timeline__content"
-              v-html="item.content"
-            />
-          </div>
-
-          <!-- 折叠触发器 -->
+            <span class="c-timeline__title">{{ item.title }}</span>
+          </slot>
           <span
-            v-if="item.collapsible"
-            :class="[
-              'c-timeline__collapse-trigger',
-              { 'is-expanded': expandedMap[item.id] },
-            ]"
-            @click="toggleExpand(item)"
+            v-if="props.showTime && item.time"
+            class="c-timeline__time"
+            >{{ item.time }}</span
           >
-            {{ expandedMap[item.id] ? '收起' : '展开详情' }}
-            <C_Icon
-              name="mdi:chevron-down"
-              class="collapse-arrow"
-            />
-          </span>
         </div>
-      </div>
 
-      <!-- Pending -->
-      <div
-        v-if="props.pending"
-        class="c-timeline__pending"
-      >
-        <span class="pending-dot" />
-        <span>{{ props.pendingText }}</span>
+        <div
+          v-if="item.tags?.length"
+          class="c-timeline__tags"
+        >
+          <span
+            v-for="tag in item.tags"
+            :key="tag.text"
+            class="c-timeline__tag"
+            >{{ tag.text }}</span
+          >
+        </div>
+
+        <div
+          v-if="item.content && (!item.collapsible || expandedMap[item.id])"
+          :class="[
+            'c-timeline__detail',
+            item.collapsible
+              ? expandedMap[item.id]
+                ? 'is-expanded'
+                : 'is-collapsed'
+              : 'is-expanded',
+          ]"
+        >
+          <div
+            class="c-timeline__content"
+            v-html="item.content"
+          />
+        </div>
+
+        <span
+          v-if="item.collapsible"
+          :class="[
+            'c-timeline__collapse-trigger',
+            { 'is-expanded': expandedMap[item.id] },
+          ]"
+          @click="toggleExpand(item)"
+        >
+          {{ expandedMap[item.id] ? '收起' : '展开详情' }}
+          <C_Icon
+            name="mdi:chevron-down"
+            class="collapse-arrow"
+          />
+        </span>
       </div>
-    </template>
+    </div>
+
+    <!-- Pending 加载指示 -->
+    <div
+      v-if="props.pending"
+      class="c-timeline__pending"
+    >
+      <span class="pending-dot" />
+      <span>{{ props.pendingText }}</span>
+    </div>
   </div>
 </template>
 
