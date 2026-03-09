@@ -6,6 +6,9 @@ interface UseSignatureExportOptions {
   watermark?: Ref<Partial<WatermarkConfig>>
 }
 
+/**
+ *
+ */
 export function useSignatureExport(options: UseSignatureExportOptions) {
   const { canvasRef, watermark } = options
 
@@ -18,11 +21,19 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
     const padding = 10
     const positions = {
       'top-left': { x: padding, y: fontSize + padding },
-      'top-right': { x: canvas.width - textWidth - padding, y: fontSize + padding },
+      'top-right': {
+        x: canvas.width - textWidth - padding,
+        y: fontSize + padding,
+      },
       'bottom-left': { x: padding, y: canvas.height - padding },
-      'bottom-right': { x: canvas.width - textWidth - padding, y: canvas.height - padding },
+      'bottom-right': {
+        x: canvas.width - textWidth - padding,
+        y: canvas.height - padding,
+      },
     }
-    return positions[position as keyof typeof positions] || positions['bottom-right']
+    return (
+      positions[position as keyof typeof positions] || positions['bottom-right']
+    )
   }
 
   const drawWatermark = (canvas: HTMLCanvasElement, text: string): void => {
@@ -38,7 +49,12 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
     ctx.fillStyle = config.color
     ctx.textBaseline = 'bottom'
     const textWidth = ctx.measureText(text).width
-    const { x, y } = getWatermarkPosition(canvas, textWidth, config.fontSize, config.position)
+    const { x, y } = getWatermarkPosition(
+      canvas,
+      textWidth,
+      config.fontSize,
+      config.position
+    )
     ctx.fillText(text, x, y)
     ctx.restore()
   }
@@ -61,16 +77,32 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
     return { canvas: tempCanvas, ctx: tempCtx }
   }
 
-  const prepareExportCanvas = (canvas: HTMLCanvasElement, options: ExportOptions): HTMLCanvasElement => {
-    const { includeBackground = false, backgroundColor = '#FFFFFF', includeWatermark = false } = options
-    const { canvas: tempCanvas } = createTempCanvas(canvas, includeBackground, backgroundColor)
-    if (includeWatermark && watermark?.value?.show && watermark.value.text) {
+  const prepareExportCanvas = (
+    canvas: HTMLCanvasElement,
+    options: ExportOptions
+  ): HTMLCanvasElement => {
+    const {
+      includeBackground = false,
+      backgroundColor = '#FFFFFF',
+      includeWatermark = false,
+    } = options
+    const { canvas: tempCanvas } = createTempCanvas(
+      canvas,
+      includeBackground,
+      backgroundColor
+    )
+    // includeWatermark 为 true 时才叠加水印，无视 watermark.show 的状态
+    // 这样「不含水印导出」即使组件配置了水印也不会叠加
+    if (includeWatermark && watermark?.value?.text) {
       drawWatermark(tempCanvas, watermark.value.text)
     }
     return tempCanvas
   }
 
-  const exportToBlob = (canvas: HTMLCanvasElement, quality: number): Promise<Blob> => {
+  const exportToBlob = (
+    canvas: HTMLCanvasElement,
+    quality: number
+  ): Promise<Blob> => {
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         blob => (blob ? resolve(blob) : reject(new Error('导出失败'))),
@@ -80,9 +112,19 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
     })
   }
 
-  const exportSignature = async (options: ExportOptions = {}): Promise<string | Blob> => {
+  const isCanvasEmpty = (canvas: HTMLCanvasElement): boolean => {
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return true
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    return !data.some(v => v !== 0)
+  }
+
+  const exportSignature = async (
+    options: ExportOptions = {}
+  ): Promise<string | Blob> => {
     const canvas = canvasRef.value
     if (!canvas) throw new Error('Canvas 未初始化')
+    if (isCanvasEmpty(canvas)) throw new Error('签名为空，请先签名后再导出')
     const { format = 'png', quality = 0.92 } = options
     if (format === 'svg') {
       return 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg"><text>SVG export placeholder</text></svg>'
@@ -93,7 +135,10 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
     return tempCanvas.toDataURL(mimeType, quality)
   }
 
-  const download = async (filename = 'signature', options: ExportOptions = {}): Promise<void> => {
+  const download = async (
+    filename = 'signature',
+    options: ExportOptions = {}
+  ): Promise<void> => {
     const format = options.format || 'png'
     const result = await exportSignature({ ...options, format })
     if (result instanceof Blob) {

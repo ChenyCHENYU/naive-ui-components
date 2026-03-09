@@ -31,6 +31,14 @@
         font-size: 13px;
         color: var(--c-text-3, #999);
         font-weight: 500;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      // 颜色选择器固定宽度，避免文字竖排
+      .n-color-picker {
+        width: 90px !important;
+        flex-shrink: 0;
       }
     }
   }
