@@ -17,19 +17,32 @@ import type { DynamicRowsOptions } from './useDynamicRow'
 
 /* ================= CRUD 绑定类型 ================= */
 
-/** 可绑定到 C_Table 的 CRUD 对象接口 */
+/**
+ * 可绑定到 C_Table 的 CRUD 对象接口（桥接类型）
+ *
+ * C_Table 内部已将 data/columns 规范化为 DataRecord/TableColumn，
+ * 此接口对 columns/actions 使用 any[] 避免 TableColumn<any> 结构展开异常，
+ * 同时允许 useTableCrud<T>() 任意子类型直接传入而无需类型断言。
+ */
 export interface CrudBinding {
-  data: Ref<DataRecord[]>
+  data: Ref<any[]>
   loading: Ref<boolean>
-  columns: ComputedRef<TableColumn[]>
-  actions?: ComputedRef<SimpleTableActions>
-  pagination?: ComputedRef<PaginationConfig | null>
-  tableRef?: Ref<unknown>
-  save?: (...args: unknown[]) => unknown
+
+  columns: ComputedRef<any[]>
+
+  actions?: ComputedRef<any>
+
+  pagination?: ComputedRef<any>
+
+  tableRef?: Ref<any>
+
+  save?: (...args: any[]) => any
   handleCancel?: () => void
   handlePaginationChange?: (page: number, pageSize: number) => void
-  handleRowDelete?: (...args: unknown[]) => void
-  detail?: { show: (...args: unknown[]) => void }
+
+  handleRowDelete?: (...args: any[]) => any
+
+  detail?: { show: (...args: any[]) => void }
 }
 
 /* ================= 使用侧配置类型（对外 API） ================= */
