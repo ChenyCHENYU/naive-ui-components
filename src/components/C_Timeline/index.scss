@@ -111,35 +111,26 @@
   }
 
   // 垂直连接线：flex: 1 自动撑满剩余高度
+  // 统一用 border-left 渲染所有线型 (solid/dashed/dotted)，与 Ant Design 等主流库一致
+  // box-sizing: content-box 是关键——UnoCSS/Tailwind preflight 全局设置了 border-box，
+  // 导致 width:0 时 border 被压缩到 0px。content-box 让 border 在 content 之外渲染。
   &.is-vertical .c-timeline__line {
     flex: 1;
     min-height: var(--tl-track-spacing);
-    width: var(--tl-line-width);
-    background: var(--tl-line-color);
-    border-radius: 1px;
+    width: 0;
+    box-sizing: content-box;
+    border-left: var(--tl-line-width) solid var(--tl-line-color);
     margin: 4px 0;
   }
 
-  // 虚线 —— 垂直（用 repeating-linear-gradient 代替 border，避免 box-sizing:border-box 下 width:0 压扁边框的问题）
+  // 虚线
   &.is-vertical.is-line-dashed .c-timeline__line {
-    background: repeating-linear-gradient(
-      to bottom,
-      var(--tl-line-color) 0,
-      var(--tl-line-color) 6px,
-      transparent 6px,
-      transparent 10px
-    );
+    border-left-style: dashed;
   }
 
-  // 点线 —— 垂直
+  // 点线
   &.is-vertical.is-line-dotted .c-timeline__line {
-    background: repeating-linear-gradient(
-      to bottom,
-      var(--tl-line-color) 0,
-      var(--tl-line-color) 2px,
-      transparent 2px,
-      transparent 5px
-    );
+    border-left-style: dotted;
   }
 
   // 垂直内容体
