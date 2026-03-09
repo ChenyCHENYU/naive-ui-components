@@ -111,31 +111,28 @@
   }
 
   // 垂直连接线：flex: 1 自动撑满剩余高度
-  // 默认实线用 background 渲染（最简单可靠）
-  // dashed/dotted 用 border-left + content-box，避免 UnoCSS preflight 的 border-box 压缩
+  // 三种线型统一用 border-left 渲染 (solid/dashed/dotted)
+  // ① box-sizing: content-box — 对抗 UnoCSS preflight 的 border-box 重置
+  // ② 用 longhand 拆分 width/style/color — 避免 shorthand+var()+color-mix() 解析失败
   &.is-vertical .c-timeline__line {
     flex: 1;
     min-height: var(--tl-track-spacing);
-    width: var(--tl-line-width);
-    background: var(--tl-line-color);
-    border-radius: 1px;
+    width: 0;
+    box-sizing: content-box;
+    border-left-width: var(--tl-line-width);
+    border-left-style: solid;
+    border-left-color: var(--tl-line-color);
     margin: 4px 0;
   }
 
-  // 虚线
+  // 虚线 —— 只需改 style
   &.is-vertical.is-line-dashed .c-timeline__line {
-    background: none;
-    width: 0;
-    box-sizing: content-box;
-    border-left: var(--tl-line-width) dashed var(--tl-line-color);
+    border-left-style: dashed;
   }
 
-  // 点线
+  // 点线 —— 只需改 style
   &.is-vertical.is-line-dotted .c-timeline__line {
-    background: none;
-    width: 0;
-    box-sizing: content-box;
-    border-left: var(--tl-line-width) dotted var(--tl-line-color);
+    border-left-style: dotted;
   }
 
   // 垂直内容体
