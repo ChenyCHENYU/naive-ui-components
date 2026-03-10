@@ -84,7 +84,7 @@
   const props = withDefaults(defineProps<OrgChartProps>(), {
     direction: 'vertical',
     lineStyle: 'rounded',
-    lineColor: 'var(--c-orgchart-line-color, #d1d5db)',
+    lineColor: '#d1d5db',
     lineWidth: 2,
     nodeSpacing: 24,
     levelSpacing: 48,
