@@ -345,6 +345,6 @@
   }))
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
   @use './index.scss';
 </style>

@@ -75,12 +75,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, defineAsyncComponent } from 'vue'
+  import { ref, computed } from 'vue'
+  import OrgNode from './OrgNode.vue'
   import type { OrgChartProps, OrgChartNode } from './types'
 
   defineOptions({ name: 'C_OrgChart' })
-
-  const OrgNode = defineAsyncComponent(() => import('./OrgNode.vue'))
 
   const props = withDefaults(defineProps<OrgChartProps>(), {
     direction: 'vertical',
@@ -184,6 +183,6 @@
   })
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
   @use './index.scss';
 </style>
