@@ -1,4 +1,8 @@
   .c-code-wrapper {
+    --c-code-copy-bg: rgba(255, 255, 255, 0.9);
+      --c-code-copy-shadow: rgba(0, 0, 0, 0.1);
+      --c-code-loading-bg: rgba(255, 255, 255, 0.8);
+      --c-code-fullscreen-bg: var(--n-color-modal, white);
     border: 1px solid var(--n-border-color);
     border-radius: var(--n-border-radius);
     overflow: hidden;
@@ -52,10 +56,10 @@
   }
 
   .copy-floating {
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--c-code-copy-bg);
     backdrop-filter: blur(4px);
     border: 1px solid var(--n-border-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px var(--c-code-copy-shadow);
   }
 
   .c-code-loading {
@@ -64,7 +68,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: var(--c-code-loading-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -105,7 +109,7 @@
   .fullscreen-body {
     flex: 1;
     overflow: auto;
-    background-color: white;
+    background-color: var(--c-code-fullscreen-bg);
   }
 
   // 过渡动画

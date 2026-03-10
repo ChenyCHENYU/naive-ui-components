@@ -52,6 +52,8 @@ import { C_ContextMenu } from './components/C_ContextMenu'
 import { C_Login } from './components/C_Login'
 import { C_Timeline } from './components/C_Timeline'
 import { C_Transfer } from './components/C_Transfer'
+import { C_Skeleton } from './components/C_Skeleton'
+import { C_OrgChart } from './components/C_OrgChart'
 
 // ====== 插件 ======
 import { setupHighlight, useHighlight } from './plugins/highlight'
@@ -112,6 +114,8 @@ const components: Component[] = [
   C_Login,
   C_Timeline,
   C_Transfer,
+  C_Skeleton,
+  C_OrgChart,
 ]
 
 // ====== Barrel Re-exports：所有组件 + composables + types + constants ======
@@ -164,6 +168,8 @@ export * from './components/C_ContextMenu'
 export * from './components/C_Login'
 export * from './components/C_Timeline'
 export * from './components/C_Transfer'
+export * from './components/C_Skeleton'
+export * from './components/C_OrgChart'
 
 // ====== 共享类型 + 适配器 ======
 export * from './components/_shared'

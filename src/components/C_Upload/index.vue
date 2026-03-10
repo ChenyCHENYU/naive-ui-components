@@ -212,22 +212,28 @@ defineExpose<UploadExpose>({
 
 <style scoped lang="scss">
 .c-upload {
+  --c-upload-progress-bg: var(--body-color, #fff);
+  --c-upload-progress-border: var(--border-color, #e5e7eb);
+  --c-upload-progress-radius: 8px;
+  --c-upload-label-color: var(--text-color-3, #999);
+  --c-upload-label-size: 12px;
+
   width: 100%;
 
   &__total-progress {
     margin-top: 12px;
     padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--body-color);
-    border: 1px solid var(--border-color);
+    border-radius: var(--c-upload-progress-radius);
+    background: var(--c-upload-progress-bg);
+    border: 1px solid var(--c-upload-progress-border);
   }
 
   &__total-label {
     display: flex;
     justify-content: space-between;
     margin-bottom: 6px;
-    font-size: 12px;
-    color: var(--text-color-3);
+    font-size: var(--c-upload-label-size);
+    color: var(--c-upload-label-color);
   }
 }
 </style>

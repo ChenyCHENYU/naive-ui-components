@@ -163,49 +163,71 @@ export function useUploadCore(props: UploadProps) {
 
   /** 上传单个文件 */
   async function processFile(item: UploadFileItem) {
-    if (!item.raw) return;
+    if (!item.raw) return
 
     // 前置校验
-    const valid = await validateFile(item.raw);
+    const valid = await validateFile(item.raw)
     if (!valid) {
-      updateFile(item.uid, { status: "error", error: "文件校验未通过" });
-      return;
+      updateFile(item.uid, { status: 'error', error: '文件校验未通过' })
+      return
+    }
+
+    // 秒传检查（所有模式均支持，只要提供了 instantCheck）
+    if (instantCheck.value && !item.hash) {
+      updateFile(item.uid, { status: 'hashing' })
+      try {
+        const hash = await calculateHash(item.raw)
+        updateFile(item.uid, { hash })
+        const result = await instantCheck.value(hash, item.raw.name)
+        if (result.exists) {
+          updateFile(item.uid, {
+            status: 'instant',
+            percent: 100,
+            url: result.url,
+          })
+          return
+        }
+      } catch {
+        // 秒传检查失败，继续正常上传
+      }
     }
 
     // 分片模式
     if (props.chunked && item.raw.size > chunkSize.value) {
-      await processChunkedUpload(item);
+      await processChunkedUpload(item)
     } else {
-      processNormalUpload(item);
+      processNormalUpload(item)
     }
   }
 
   /** 分片上传流程 */
   async function processChunkedUpload(item: UploadFileItem) {
-    const file = item.raw!;
+    const file = item.raw!
 
-    // 1. 计算 hash
-    updateFile(item.uid, { status: "hashing" });
-    let hash: string;
-    try {
-      hash = await calculateHash(file);
-      updateFile(item.uid, { hash });
-    } catch {
-      updateFile(item.uid, { status: "error", error: "Hash 计算失败" });
-      return;
+    // 1. 计算 hash（如果秒传检查已计算则复用）
+    let hash = item.hash
+    if (!hash) {
+      updateFile(item.uid, { status: 'hashing' })
+      try {
+        hash = await calculateHash(file)
+        updateFile(item.uid, { hash })
+      } catch {
+        updateFile(item.uid, { status: 'error', error: 'Hash 计算失败' })
+        return
+      }
     }
 
-    // 2. 秒传检查
-    if (instantCheck.value) {
+    // 2. 秒传检查（如果 processFile 未提前检查）
+    if (instantCheck.value && item.status !== 'instant') {
       try {
-        const result = await instantCheck.value(hash, file.name);
+        const result = await instantCheck.value(hash, file.name)
         if (result.exists) {
           updateFile(item.uid, {
-            status: "instant",
+            status: 'instant',
             percent: 100,
             url: result.url,
-          });
-          return;
+          })
+          return
         }
       } catch {
         // 秒传检查失败，继续正常上传
@@ -213,7 +235,7 @@ export function useUploadCore(props: UploadProps) {
     }
 
     // 3. 分片上传
-    updateFile(item.uid, { status: "uploading" });
+    updateFile(item.uid, { status: 'uploading' })
 
     await chunkUploader.uploadChunks({
       uid: item.uid,
@@ -221,18 +243,18 @@ export function useUploadCore(props: UploadProps) {
       hash,
       onProgress: (progress: ChunkProgress) => {
         const percent = Math.round(
-          (progress.uploadedBytes / progress.totalBytes) * 100,
-        );
-        updateFile(item.uid, { percent, chunkProgress: progress });
+          (progress.uploadedBytes / progress.totalBytes) * 100
+        )
+        updateFile(item.uid, { percent, chunkProgress: progress })
       },
       onSuccess: (response: any) => {
-        updateFile(item.uid, { status: "success", percent: 100, response });
+        updateFile(item.uid, { status: 'success', percent: 100, response })
       },
       onError: (error: Error) => {
-        updateFile(item.uid, { status: "error", error: error.message });
+        updateFile(item.uid, { status: 'error', error: error.message })
       },
       isPaused: () => pausedSet.has(item.uid),
-    });
+    })
   }
 
   /** 普通上传 */

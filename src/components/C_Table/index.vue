@@ -13,7 +13,10 @@
  -->
 
 <template>
-  <div class="c-table-wrapper">
+  <div
+    ref="tableWrapperRef"
+    class="c-table-wrapper"
+  >
     <!-- 动态行工具栏 -->
     <component
       v-if="tableManager.dynamicRowsState"
@@ -55,6 +58,11 @@
       @update:expanded-row-keys="tableManager.expandState?.handleExpandChange"
       @update:checked-row-keys="tableManager.expandState?.handleSelectionChange"
       :scroll-x="computedScrollX"
+      :virtual-scroll="resolved.virtualScroll"
+      :virtual-scroll-item-size="resolved.virtualScroll ? resolved.virtualItemHeight : undefined"
+      :max-height="resolved.virtualScroll ? resolved.virtualMaxHeight : resolved.maxHeight"
+      :summary="summaryFn"
+      :summary-placement="resolved.summaryPosition"
       style="width: 100%"
     />
 
@@ -303,6 +311,52 @@
     computedScrollX,
   } = columnState
 
+  /* ================= 合计行 ================= */
+
+  const summaryFn = computed(() => {
+    const cfg = resolved.value
+    if (!cfg.summaryRender) return undefined
+    return (data: DataRecord[]) => {
+      const result = cfg.summaryRender!(data)
+      return computedColumns.value.map((col: any) => {
+        const key = col.key as string
+        const def = result[key]
+        return def ? { value: def.value, colSpan: def.colSpan ?? 1 } : { value: '' }
+      })
+    }
+  })
+
+  /* ================= 列拖拽排序 ================= */
+
+  const tableWrapperRef = ref<HTMLElement>()
+  let sortableInstance: any = null
+
+  const initColumnDrag = async () => {
+    if (!resolved.value.enableColumnDrag || !tableWrapperRef.value) return
+    try {
+      const { default: Sortable } = await import('sortablejs')
+      const headerRow = tableWrapperRef.value.querySelector(
+        '.n-data-table-thead tr'
+      )
+      if (!headerRow) return
+      sortableInstance = new Sortable(headerRow as HTMLElement, {
+        animation: resolved.value.columnDragAnimationDuration,
+        handle: `.${resolved.value.columnDragHandleClass}`,
+        ghostClass: 'column-drag-ghost',
+        onEnd: (evt: any) => {
+          if (evt.oldIndex == null || evt.newIndex == null) return
+          const cols = [...reactiveColumns.value]
+          const [moved] = cols.splice(evt.oldIndex, 1)
+          cols.splice(evt.newIndex, 0, moved)
+          columnState.handleColumnChange(cols)
+          emit('column-change', cols)
+        },
+      })
+    } catch {
+      // sortablejs 未安装时静默降级
+    }
+  }
+
   /* ================= 表格属性 ================= */
 
   const tableRef = ref<ComponentPublicInstance>()
@@ -413,10 +467,13 @@
   onMounted(() => {
     const crudRef = props.crud?.tableRef
     if (crudRef) crudRef.value = exposedApi
+    // 列拖拽初始化
+    initColumnDrag()
   })
 
   onBeforeUnmount(() => {
     if (modalCloseTimer) clearTimeout(modalCloseTimer)
+    if (sortableInstance) sortableInstance.destroy()
   })
 </script>
 

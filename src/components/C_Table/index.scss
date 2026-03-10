@@ -1,9 +1,35 @@
 /* ================= 1. 组件根容器 ================= */
 .c-table-wrapper {
+  --c-table-border-color: var(--border-color, #e5e7eb);
+    --c-table-bg: var(--body-color, #fff);
+    --c-table-header-bg: var(--card-color, #fafafc);
+    --c-table-summary-bg: var(--card-color, #fafafc);
+    --c-table-summary-font-weight: 600;
+    --c-table-drag-ghost-opacity: 0.4;
+    --c-table-drag-ghost-bg: var(--primary-color, #2080f0);
   width: 100%;
   position: relative;
 }
 
+/* ================= 列拖拽排序 ================= */
+.column-drag-ghost {
+  opacity: var(--c-table-drag-ghost-opacity);
+  background: var(--c-table-drag-ghost-bg) !important;
+}
+
+.drag-handle {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* ================= 合计行强调 ================= */
+.c-table-wrapper :deep(.n-data-table-tfoot) {
+  background: var(--c-table-summary-bg);
+  font-weight: var(--c-table-summary-font-weight);
+}
 /* ================= 2. 表格工具栏 ================= */
 .table-toolbar {
   display: flex;

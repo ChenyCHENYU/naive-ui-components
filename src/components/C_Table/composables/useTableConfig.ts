@@ -65,6 +65,12 @@ export interface TableConfig<T extends DataRecord = DataRecord> {
   toolbar?: ToolbarConfig
   /** 表格显示属性 */
   display?: DisplayConfig
+  /** 虚拟滚动配置（大数据量） */
+  virtualScroll?: VirtualScrollConfig | boolean
+  /** 合计行配置（财务场景） */
+  summary?: SummaryConfig<T>
+  /** 列拖拽排序 */
+  columnDrag?: ColumnDragConfig | boolean
 }
 
 export interface EditConfig {
@@ -120,6 +126,32 @@ export interface DisplayConfig {
   columnWidth?: number
 }
 
+/** 虚拟滚动配置 */
+export interface VirtualScrollConfig {
+  enabled?: boolean
+  /** 每行高度（px） */
+  itemHeight?: number
+  /** 最大高度（px），用于滚动容器 */
+  maxHeight?: number
+}
+
+/** 合计行配置 */
+export interface SummaryConfig<T extends DataRecord = DataRecord> {
+  /** 合计行位置 */
+  position?: 'top' | 'bottom'
+  /** 自定义合计函数，每列返回 { value, colSpan? } */
+  render?: (data: T[]) => Record<string, { value: string | number; colSpan?: number }>
+}
+
+/** 列拖拽排序配置 */
+export interface ColumnDragConfig {
+  enabled?: boolean
+  /** 拖拽手柄类名（默认拖拽头部区域） */
+  handleClass?: string
+  /** 拖拽动画时长（ms） */
+  animationDuration?: number
+}
+
 /* ================= 内部解析后的扁平配置 ================= */
 
 export interface ResolvedConfig {
@@ -163,6 +195,21 @@ export interface ResolvedConfig {
   columnWidth: number
   showToolbar: boolean
   enableColumnSettings: boolean
+  /** 虚拟滚动 */
+  virtualScroll: boolean
+  virtualItemHeight: number
+  virtualMaxHeight: number
+  /** 合计行 */
+  summaryPosition: 'top' | 'bottom' | undefined
+  summaryRender:
+    | ((
+        data: DataRecord[]
+      ) => Record<string, { value: string | number; colSpan?: number }>)
+    | undefined
+  /** 列拖拽 */
+  enableColumnDrag: boolean
+  columnDragHandleClass: string
+  columnDragAnimationDuration: number
 }
 
 /* ================= 解析逻辑 ================= */
@@ -343,6 +390,52 @@ const resolveToolbar = (toolbar: ToolbarConfig | undefined) => ({
   enableColumnSettings: toolbar?.columnSettings !== false,
 })
 
+const resolveVirtualScroll = (
+  vs: VirtualScrollConfig | boolean | undefined
+) => {
+  if (!vs)
+    return {
+      virtualScroll: false,
+      virtualItemHeight: 34,
+      virtualMaxHeight: 600,
+    }
+  if (vs === true)
+    return { virtualScroll: true, virtualItemHeight: 34, virtualMaxHeight: 600 }
+  return {
+    virtualScroll: vs.enabled !== false,
+    virtualItemHeight: vs.itemHeight ?? 34,
+    virtualMaxHeight: vs.maxHeight ?? 600,
+  }
+}
+
+const resolveSummary = (summary: SummaryConfig | undefined) => {
+  if (!summary) return { summaryPosition: undefined, summaryRender: undefined }
+  return {
+    summaryPosition: summary.position ?? 'bottom',
+    summaryRender: summary.render,
+  }
+}
+
+const resolveColumnDrag = (cd: ColumnDragConfig | boolean | undefined) => {
+  if (!cd)
+    return {
+      enableColumnDrag: false,
+      columnDragHandleClass: 'drag-handle',
+      columnDragAnimationDuration: 150,
+    }
+  if (cd === true)
+    return {
+      enableColumnDrag: true,
+      columnDragHandleClass: 'drag-handle',
+      columnDragAnimationDuration: 150,
+    }
+  return {
+    enableColumnDrag: cd.enabled !== false,
+    columnDragHandleClass: cd.handleClass ?? 'drag-handle',
+    columnDragAnimationDuration: cd.animationDuration ?? 150,
+  }
+}
+
 /* ================= 主配置函数 ================= */
 
 /**
@@ -357,6 +450,9 @@ export function resolveConfig(config: TableConfig = {}): ResolvedConfig {
     ...resolveDynamicRows(config.dynamicRows),
     ...resolveDisplay(config.display),
     ...resolveToolbar(config.toolbar),
+    ...resolveVirtualScroll(config.virtualScroll),
+    ...resolveSummary(config.summary),
+    ...resolveColumnDrag(config.columnDrag),
   }
 }
 

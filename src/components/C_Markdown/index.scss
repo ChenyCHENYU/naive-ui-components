@@ -1,6 +1,12 @@
 /* C_Markdown 组件样式文件 */
 
 .c-markdown-wrapper {
+  --c-markdown-dark-icon-color: #ffffff;
+    --c-markdown-dark-hover-bg: rgba(255, 255, 255, 0.08);
+    --c-markdown-dark-active-bg: rgba(255, 255, 255, 0.12);
+    --c-markdown-dark-scrollbar-track: rgba(255, 255, 255, 0.05);
+    --c-markdown-dark-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+    --c-markdown-dark-scrollbar-hover: rgba(255, 255, 255, 0.3);
   position: relative;
 
   :deep(.v-md-editor) {
@@ -64,18 +70,18 @@
   &.is-dark {
     :deep(.v-md-editor) {
       .v-md-editor__toolbar-item {
-        color: #ffffff;
+        color: var(--c-markdown-dark-icon-color);
 
         &:hover {
-          background-color: rgba(255, 255, 255, 0.08);
+          background-color: var(--c-markdown-dark-hover-bg);
         }
 
         &.is-active {
-          background-color: rgba(255, 255, 255, 0.12);
+          background-color: var(--c-markdown-dark-active-bg);
         }
 
         svg {
-          fill: #ffffff;
+          fill: var(--c-markdown-dark-icon-color);
           opacity: 0.9;
         }
 
@@ -89,11 +95,11 @@
           background-color: transparent;
 
           svg {
-            fill: #ffffff;
+            fill: var(--c-markdown-dark-icon-color);
           }
 
           &:hover {
-            background-color: rgba(255, 255, 255, 0.08);
+            background-color: var(--c-markdown-dark-hover-bg);
           }
         }
       }
@@ -110,15 +116,15 @@
         }
 
         &::-webkit-scrollbar-track {
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: var(--c-markdown-dark-scrollbar-track);
         }
 
         &::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.2);
+          background-color: var(--c-markdown-dark-scrollbar-thumb);
           border-radius: 4px;
 
           &:hover {
-            background-color: rgba(255, 255, 255, 0.3);
+            background-color: var(--c-markdown-dark-scrollbar-hover);
           }
         }
       }

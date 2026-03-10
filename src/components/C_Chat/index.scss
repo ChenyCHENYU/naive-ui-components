@@ -14,6 +14,12 @@
   --chat-text-secondary: var(--text-color-3);
   --chat-text-self: #fff;
   --chat-border: var(--border-color);
+  --chat-online-color: #22c55e;
+    --chat-unread-bg: #ef4444;
+    --chat-unread-color: #fff;
+    --chat-failed-color: #ef4444;
+    --chat-shadow: rgba(0, 0, 0, 0.06);
+    --chat-shadow-light: rgba(0, 0, 0, 0.03);
   --chat-radius: 12px;
   --chat-avatar-size: 36px;
   --chat-scrollbar-thumb: var(--border-color);
@@ -28,7 +34,7 @@
   color: var(--chat-text-primary);
   font-size: 14px;
   border: 1px solid var(--chat-border);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px var(--chat-shadow);
 }
 
 /* ─── 联系人侧栏 ──────────────────────────────────────── */
@@ -39,7 +45,7 @@
   min-width: var(--chat-sidebar-width);
   background: var(--chat-sidebar-bg);
   border-right: 1px solid var(--chat-border);
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.03);
+  box-shadow: 2px 0 8px var(--chat-shadow-light);
 }
 
 .c-chat__sidebar-header {
@@ -122,7 +128,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--chat-online-color);
   border: 2px solid var(--chat-sidebar-bg);
 }
 
@@ -160,8 +166,8 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: #ef4444;
-  color: #fff;
+  background: var(--chat-unread-bg);
+    color: var(--chat-unread-color);
   font-size: 11px;
   font-weight: 600;
   display: flex;
@@ -186,7 +192,7 @@
   padding: 0 20px;
   background: var(--chat-header-bg);
   border-bottom: 1px solid var(--chat-border);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 4px var(--chat-shadow-light);
   font-weight: 600;
   font-size: 15px;
 }
@@ -373,7 +379,7 @@
   }
 
   &.is-failed {
-    color: #ef4444;
+    color: var(--chat-failed-color);
     cursor: pointer;
   }
 }

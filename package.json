@@ -77,6 +77,9 @@
     "naive-ui": "^2.35.0",
     "vue-router": "^4.0.0"
   },
+  "optionalDependencies": {
+    "sortablejs": "^1.15.7"
+  },
   "dependencies": {
     "@antv/x6": "^2.18.0",
     "@chenfengyuan/vue-barcode": "^2.0.0",
@@ -115,6 +118,7 @@
     "@commitlint/config-conventional": "^20.4.2",
     "@robot-admin/git-standards": "1.0.3",
     "@types/node": "^24.2.1",
+    "@types/sortablejs": "^1.15.9",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-vue": "^6.0.1",

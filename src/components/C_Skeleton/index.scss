@@ -1,0 +1,287 @@
+/* C_Skeleton 骨架屏组件样式 */
+
+.c-skeleton {
+  --c-skeleton-bg: #e5e7eb;
+  --c-skeleton-wave-bg: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  --c-skeleton-radius: 4px;
+  --c-skeleton-circle-size: 40px;
+  --c-skeleton-circle-sm: 32px;
+  --c-skeleton-circle-lg: 56px;
+  --c-skeleton-line-height: 16px;
+  --c-skeleton-line-sm-height: 12px;
+  --c-skeleton-line-mini-height: 8px;
+  --c-skeleton-gap: 12px;
+  --c-skeleton-card-cover-height: 160px;
+  --c-skeleton-image-height: 200px;
+
+  width: 100%;
+}
+
+/* ─── 基础骨架块 ─── */
+.c-skeleton__item {
+  background-color: var(--c-skeleton-bg);
+  border-radius: var(--c-skeleton-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── 动画：脉冲 ─── */
+.c-skeleton--pulse .c-skeleton__item {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ─── 动画：波浪 ─── */
+.c-skeleton--wave .c-skeleton__item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--c-skeleton-wave-bg);
+  animation: skeleton-wave 1.6s linear infinite;
+}
+
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ─── 无动画 ─── */
+.c-skeleton--none .c-skeleton__item {
+  animation: none;
+
+  &::after {
+    display: none;
+  }
+}
+
+/* ─── 文本行 ─── */
+.c-skeleton__text {
+  margin-bottom: 8px;
+}
+
+.c-skeleton__line {
+  height: var(--c-skeleton-line-height);
+  width: 100%;
+}
+
+.c-skeleton__line--sm {
+  height: var(--c-skeleton-line-sm-height);
+  margin-top: 6px;
+}
+
+.c-skeleton__line--mini {
+  height: var(--c-skeleton-line-mini-height);
+}
+
+.c-skeleton__line--label {
+  height: var(--c-skeleton-line-sm-height);
+  margin-bottom: 8px;
+}
+
+.c-skeleton__line--input {
+  height: 34px;
+  border-radius: 6px;
+}
+
+.c-skeleton__line--btn {
+  height: 32px;
+  border-radius: 6px;
+}
+
+/* ─── 圆形（头像） ─── */
+.c-skeleton__circle {
+  width: var(--c-skeleton-circle-size);
+  height: var(--c-skeleton-circle-size);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.c-skeleton__circle--sm {
+  width: var(--c-skeleton-circle-sm);
+  height: var(--c-skeleton-circle-sm);
+}
+
+.c-skeleton__circle--lg {
+  width: var(--c-skeleton-circle-lg);
+  height: var(--c-skeleton-circle-lg);
+}
+
+/* ─── Avatar 预设 ─── */
+.c-skeleton__avatar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--c-skeleton-gap);
+}
+
+.c-skeleton__avatar-text {
+  flex: 1;
+}
+
+/* ─── Image 预设 ─── */
+.c-skeleton__image {
+  width: 100%;
+  height: var(--c-skeleton-image-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  margin-bottom: var(--c-skeleton-gap);
+}
+
+.c-skeleton__image-icon {
+  color: var(--c-skeleton-bg);
+  opacity: 0.6;
+  filter: brightness(0.8);
+}
+
+/* ─── Card 预设 ─── */
+.c-skeleton__card {
+  border: 1px solid var(--c-skeleton-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: var(--c-skeleton-gap);
+}
+
+.c-skeleton__card-cover {
+  width: 100%;
+  height: var(--c-skeleton-card-cover-height);
+  border-radius: 0;
+}
+
+.c-skeleton__card-body {
+  padding: 16px;
+}
+
+.c-skeleton__card-desc {
+  margin-top: 8px;
+}
+
+.c-skeleton__card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--c-skeleton-bg);
+}
+
+/* ─── Table 预设 ─── */
+.c-skeleton__table {
+  width: 100%;
+  border: 1px solid var(--c-skeleton-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.c-skeleton__table-header {
+  display: flex;
+  padding: 12px 16px;
+  background-color: color-mix(in srgb, var(--c-skeleton-bg) 30%, transparent);
+  border-bottom: 1px solid var(--c-skeleton-bg);
+}
+
+.c-skeleton__table-row {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--c-skeleton-bg) 50%, transparent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.c-skeleton__table-cell {
+  flex: 1;
+  padding: 0 8px;
+}
+
+.c-skeleton__table-cell--action {
+  flex: 0 0 120px;
+}
+
+.c-skeleton__action-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ─── Form 预设 ─── */
+.c-skeleton__form {
+  display: grid;
+  grid-template-columns: repeat(var(--form-cols, 2), 1fr);
+  gap: 16px 24px;
+}
+
+.c-skeleton__form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.c-skeleton__form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+/* ─── List 预设 ─── */
+.c-skeleton__list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--c-skeleton-gap);
+  padding: 12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--c-skeleton-bg) 50%, transparent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.c-skeleton__list-content {
+  flex: 1;
+}
+
+/* ─── Detail 预设 ─── */
+.c-skeleton__detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.c-skeleton__detail-title {
+  flex: 1;
+}
+
+.c-skeleton__detail-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+}
+
+.c-skeleton__detail-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.c-skeleton__detail-value {
+  margin-top: 4px;
+}

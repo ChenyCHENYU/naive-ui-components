@@ -216,39 +216,71 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 暗色主题样式 */
+/* CSS 变量 — 支持外部主题覆盖 */
+:root {
+  --c-editor-toolbar-bg: #ffffff;
+  --c-editor-toolbar-border: #e5e7eb;
+  --c-editor-menu-color: #333333;
+  --c-editor-menu-hover-bg: #f3f4f6;
+  --c-editor-menu-hover-color: #333333;
+  --c-editor-menu-active-bg: var(--c-primary, #2080f0);
+  --c-editor-menu-active-color: #ffffff;
+  --c-editor-container-bg: #ffffff;
+  --c-editor-container-border: #e5e7eb;
+  --c-editor-text-bg: #ffffff;
+  --c-editor-text-color: #333333;
+  --c-editor-text-focus-bg: #ffffff;
+  --c-editor-text-focus-color: #333333;
+  --c-editor-transition-duration: 0.3s;
+}
+
+/* 暗色主题 — 覆盖 CSS 变量 */
+.editor-dark {
+  --c-editor-toolbar-bg: #1f2937;
+  --c-editor-toolbar-border: #374151;
+  --c-editor-menu-color: #e5e7eb;
+  --c-editor-menu-hover-bg: #374151;
+  --c-editor-menu-hover-color: #ffffff;
+  --c-editor-container-bg: #111827;
+  --c-editor-container-border: #374151;
+  --c-editor-text-bg: #303033;
+  --c-editor-text-color: #e5e7eb;
+  --c-editor-text-focus-bg: #111827;
+  --c-editor-text-focus-color: #e5e7eb;
+}
+
 .editor-dark :deep(.w-e-toolbar) {
-  background-color: #1f2937 !important;
-  border-color: #374151 !important;
+  background-color: var(--c-editor-toolbar-bg) !important;
+  border-color: var(--c-editor-toolbar-border) !important;
 }
 
 .editor-dark :deep(.w-e-toolbar .w-e-menu .w-e-menu-item) {
-  color: #e5e7eb !important;
+  color: var(--c-editor-menu-color) !important;
 }
 
 .editor-dark :deep(.w-e-toolbar .w-e-menu .w-e-menu-item:hover) {
-  background-color: #374151 !important;
-  color: #ffffff !important;
+  background-color: var(--c-editor-menu-hover-bg) !important;
+  color: var(--c-editor-menu-hover-color) !important;
 }
 
 .editor-dark :deep(.w-e-toolbar .w-e-menu .w-e-menu-item.w-e-active) {
-  background-color: #2080f0 !important;
-  color: #ffffff !important;
+  background-color: var(--c-editor-menu-active-bg) !important;
+  color: var(--c-editor-menu-active-color) !important;
 }
 
 .editor-dark :deep(.w-e-text-container) {
-  background-color: #111827 !important;
-  border-color: #374151 !important;
+  background-color: var(--c-editor-container-bg) !important;
+  border-color: var(--c-editor-container-border) !important;
 }
 
 .editor-dark :deep(.w-e-text-container .w-e-text) {
-  background-color: #303033 !important;
-  color: #e5e7eb !important;
+  background-color: var(--c-editor-text-bg) !important;
+  color: var(--c-editor-text-color) !important;
 }
 
 .editor-dark :deep(.w-e-text-container .w-e-text:focus) {
-  background-color: #111827 !important;
-  color: #e5e7eb !important;
+  background-color: var(--c-editor-text-focus-bg) !important;
+  color: var(--c-editor-text-focus-color) !important;
 }
 
 :deep(.w-e-toolbar),
@@ -268,9 +300,9 @@ defineExpose({
 :deep(.w-e-text-container),
 :deep(.w-e-text) {
   transition:
-    background-color 0.3s ease,
-    border-color 0.3s ease,
-    color 0.3s ease !important;
+    background-color var(--c-editor-transition-duration) ease,
+    border-color var(--c-editor-transition-duration) ease,
+    color var(--c-editor-transition-duration) ease !important;
 }
 
 .editor-focused {

@@ -40,7 +40,13 @@ export {
   resolveConfig,
   createEditModeChecker,
 } from './composables/useTableConfig'
-export type { CrudBinding, TableConfig } from './composables/useTableConfig'
+export type {
+  CrudBinding,
+  TableConfig,
+  VirtualScrollConfig,
+  SummaryConfig,
+  ColumnDragConfig,
+} from './composables/useTableConfig'
 export {
   usePrintWatermark,
   printPresets,
