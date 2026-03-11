@@ -1,6 +1,6 @@
 # @agile-team/naive-ui-components
 
-基于 **Naive UI** 的 Vue 3 企业级组件库，从 Robot Admin 中提炼的 49 个高质量业务组件。
+基于 **Naive UI** 的 Vue 3 企业级组件库，从 Robot Admin 中提炼的 51 个高质量业务组件。
 
 支持 **全量注册**、**按需导入（Tree-Shaking）** 和 **子路径独立导入**，配合多入口构建输出 ESM / CJS / DTS，满足不同集成场景。
 
@@ -64,7 +64,7 @@ import {
 } from '@agile-team/naive-ui-components'
 ```
 
-## 📋 组件清单（49 个）
+## 📋 组件清单（51 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
@@ -90,6 +90,8 @@ import {
 | `C_TagsView`     | 标签页导航       | -                           |
 | `C_GlobalSearch` | 全局搜索面板     | -                           |
 | `C_AvatarGroup`  | 头像组合展示     | -                           |
+| `C_OrgChart`     | 组织架构图       | -                           |
+| `C_Skeleton`     | 骨架屏占位组件   | -                           |
 
 ### 内容 & 编辑组件
 
@@ -185,7 +187,7 @@ bun run build
 
 ### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），49 个独立入口并行编译
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），51 个独立入口并行编译
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 编译全局样式
 - **CSS 合并**：构建后将分散的 per-chunk CSS 与 `global-scss.css` 合并为单一 `style.css`
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
