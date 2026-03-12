@@ -5,6 +5,7 @@ export type {
   FormOption,
   FormModel,
   FormInstance,
+  FormMode,
   LayoutType,
   LayoutConfig,
   LabelPlacement,
@@ -39,7 +40,14 @@ export {
   useFormRenderer,
   registerRenderer,
 } from './composables/useFormRenderer'
-export type { ComponentMap, FormRenderer } from './composables/useFormRenderer'
+export type {
+  ComponentMap,
+  FormRenderer,
+  UseFormRendererOptions,
+} from './composables/useFormRenderer'
+
+export { useFormDirty } from './composables/useFormDirty'
+export type { UseFormDirtyReturn } from './composables/useFormDirty'
 
 export {
   useDynamicFormState,

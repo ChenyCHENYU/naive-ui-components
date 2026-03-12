@@ -1,12 +1,12 @@
 /*
- * @Author: ChenYu ycyplus@gmail.com
- * @Description: C_Form 状态引擎 Composable — 表单数据、校验规则、验证 API
+ * @Description: C_Form 状态引擎 Composable — 表单数据、校验规则、验证 API、脏检查、联动
  * @Migration: naive-ui-components 组件库迁移版本
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
 import {
   reactive,
+  ref,
   computed,
   watch,
   nextTick,
@@ -21,12 +21,13 @@ import type {
   FormModel,
   ComponentType,
   SubmitEventPayload,
+  OptionItem,
 } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
+import { useFormDirty } from './useFormDirty'
 
 /* =================== 默认值映射 =================== */
 
-/** 各控件类型的默认空值 */
 const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   input: '',
   textarea: '',
@@ -53,11 +54,7 @@ const getDefaultValue = (type: ComponentType): unknown => {
 /* =================== Composable =================== */
 
 /**
- * C_Form 状态引擎 — 管理表单数据模型、校验规则、验证 API、字段操作
- * @param options - 表单配置项（响应式）
- * @param config - 解析后的表单配置（响应式）
- * @param formRef - NForm 实例引用
- * @param emit - 组件事件发射器
+ * C_Form 状态引擎 — 管理表单数据模型、校验规则、验证 API、字段操作、脏检查、联动
  */
 export function useFormState(
   options: ComputedRef<FormOption[]>,
@@ -74,23 +71,30 @@ export function useFormState(
   const formModel = reactive<FormModel>({})
   const formRules = reactive<FormRules>({})
 
+  /** 异步选项缓存：prop → OptionItem[] */
+  const asyncOptionsCache = ref<Record<string, OptionItem[]>>({})
+  /** 异步选项 loading 状态：prop → boolean */
+  const asyncLoadingMap = ref<Record<string, boolean>>({})
+
+  /* ===== 脏检查引擎 ===== */
+  const { isDirty, getChangedFields, isFieldDirty, markAsClean } =
+    useFormDirty(formModel)
+
   /* ===== 可见字段 ===== */
   const visibleOptions = computed(() =>
-    options.value.filter(item => item.show !== false)
+    options.value.filter(item => {
+      if (item.show === false) return false
+      if (item.showWhen) return item.showWhen(formModel)
+      return true
+    })
   )
 
   /* ===== 初始化 ===== */
   const initialize = (): void => {
     try {
-      /* 清空现有规则 */
       Object.keys(formRules).forEach(key => delete formRules[key])
 
-      /* 初始化表单数据和验证规则 */
       options.value.forEach(item => {
-        /*
-         * 只为新增字段设置默认值，保留已有字段的用户输入
-         * 解决 options 依赖 formData 时的循环重置问题
-         */
         if (!(item.prop in formModel)) {
           formModel[item.prop] =
             item.value !== undefined
@@ -98,27 +102,123 @@ export function useFormState(
               : getDefaultValue(item.type as ComponentType)
         }
 
-        if (item.rules?.length) {
-          /*
-           * mergeRules 内部只调用 rule.validator?.()，
-           * 原生 naive-ui 声明式规则（如 { required: true }）没有 validator 会被跳过。
-           * 仅当所有规则都有 validator 时才走 mergeRules 串行验证，否则直接交给 naive-ui 处理。
-           */
-          const allHaveValidator = item.rules.every(
-            r => typeof (r as Record<string, unknown>).validator === 'function'
-          )
-          formRules[item.prop] = allHaveValidator
-            ? mergeRules(item.rules)
-            : item.rules
-        }
+        syncRulesForField(item)
       })
+
+      /* 初始化结束后保存干净快照 */
+      nextTick(() => markAsClean())
+
+      /* 加载所有异步选项 */
+      loadAllAsyncOptions()
     } catch (error) {
       console.error('[C_Form] 初始化失败:', error)
     }
   }
 
+  /* ===== 校验规则同步 ===== */
+
+  /**
+   * 同步单个字段的校验规则（支持静态 rules + 动态 rulesWhen + crossFieldValidator）
+   */
+  function syncRulesForField(item: FormOption): void {
+    const staticRules = item.rulesWhen
+      ? item.rulesWhen(formModel)
+      : (item.rules ?? [])
+
+    const allRules = [...staticRules]
+
+    /* 跨字段校验转化为 naive-ui validator */
+    if (item.crossFieldValidator) {
+      const crossFn = item.crossFieldValidator
+      allRules.push({
+        validator: () => {
+          const errMsg = crossFn(formModel)
+          return errMsg ? Promise.reject(new Error(errMsg)) : Promise.resolve()
+        },
+        trigger: ['change', 'blur'],
+      } as any)
+    }
+
+    if (allRules.length === 0) {
+      delete formRules[item.prop]
+      return
+    }
+
+    const allHaveValidator = allRules.every(
+      r => typeof (r as Record<string, unknown>).validator === 'function'
+    )
+    formRules[item.prop] = allHaveValidator ? mergeRules(allRules) : allRules
+  }
+
+  /**
+   * 刷新所有字段的动态规则（当 formModel 变化时调用）
+   */
+  function refreshDynamicRules(): void {
+    const itemsWithDynamicRules = options.value.filter(
+      item => item.rulesWhen || item.crossFieldValidator
+    )
+    for (const item of itemsWithDynamicRules) {
+      syncRulesForField(item)
+    }
+  }
+
+  /* ===== 异步选项加载 ===== */
+
+  /** 加载单个字段的异步选项数据 */
+  async function loadAsyncOptions(item: FormOption): Promise<void> {
+    if (!item.asyncOptions) return
+    const { prop } = item
+    asyncLoadingMap.value[prop] = true
+    try {
+      const result = await item.asyncOptions(formModel)
+      asyncOptionsCache.value[prop] = result
+    } catch (error) {
+      console.warn(`[C_Form] asyncOptions 加载失败 (${prop}):`, error)
+      asyncOptionsCache.value[prop] = []
+    } finally {
+      asyncLoadingMap.value[prop] = false
+    }
+  }
+
+  /** 加载所有带 asyncOptions 的字段选项 */
+  function loadAllAsyncOptions(): void {
+    options.value
+      .filter(item => item.asyncOptions)
+      .forEach(item => loadAsyncOptions(item))
+  }
+
+  /* ===== 联动赋值引擎 ===== */
+
+  /** 执行联动赋值 — 根据 valueWhen 计算并写入对应字段值 */
+  function applyValueWhen(): void {
+    const itemsWithValueWhen = options.value.filter(item => item.valueWhen)
+    for (const item of itemsWithValueWhen) {
+      const computed = item.valueWhen!(formModel)
+      if (computed !== undefined && formModel[item.prop] !== computed) {
+        formModel[item.prop] = computed
+      }
+    }
+  }
+
   /* ===== 字段变化处理 ===== */
   const handleFieldChange = (field: string): void => {
+    /* 联动赋值 */
+    applyValueWhen()
+
+    /* 刷新动态规则 */
+    refreshDynamicRules()
+
+    /* 触发依赖本字段的异步选项重载 */
+    options.value
+      .filter(item => {
+        if (!item.asyncOptions) return false
+        const deps = item.dependsOn
+        if (!deps) return false
+        return Array.isArray(deps) ? deps.includes(field) : deps === field
+      })
+      .forEach(item => loadAsyncOptions(item))
+
+    /* 变化时校验 */
     if (config.value.validateOnChange) {
       nextTick(() => {
         validateField(field).catch(() => {})
@@ -148,17 +248,11 @@ export function useFormState(
 
     const fields = Array.isArray(field) ? field : [field]
 
-    /*
-     * naive-ui 的 Form.validate() 不支持直接传字段名数组，
-     * 需要验证整个表单后过滤出目标字段的错误
-     */
     try {
       await formRef.value.validate()
     } catch (allErrors: unknown) {
-      /* allErrors 是 ValidateError[][] — 每个错误数组含 field 信息 */
       if (!Array.isArray(allErrors)) throw allErrors
 
-      /* 过滤出目标字段的错误 */
       const targetErrors = allErrors.filter((errorGroup: unknown[]) =>
         errorGroup?.some(err => {
           const e = err as Record<string, unknown>
@@ -169,7 +263,6 @@ export function useFormState(
       if (targetErrors.length > 0) {
         throw targetErrors
       }
-      /* 目标字段无错误，其他字段的错误忽略 */
     }
   }
 
@@ -207,7 +300,6 @@ export function useFormState(
   const validateStep = async (stepIndex: number): Promise<boolean> => {
     const stepKey = config.value.steps?.steps?.[stepIndex]?.key
     if (!stepKey) return true
-
     return validateByFilter(
       option => option.layout?.step === stepKey,
       `步骤 ${stepIndex} `
@@ -254,6 +346,8 @@ export function useFormState(
 
         formModel[item.prop] = defaultValue
       })
+
+      nextTick(() => markAsClean())
     } catch (error) {
       console.error('[C_Form] 重置表单失败:', error)
     }
@@ -333,5 +427,12 @@ export function useFormState(
     /* 操作 */
     handleSubmit,
     handleReset: resetFields,
+    /* v0.8.0 新增 */
+    isDirty,
+    getChangedFields,
+    isFieldDirty,
+    markAsClean,
+    asyncOptionsCache,
+    asyncLoadingMap,
   }
 }

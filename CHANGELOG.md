@@ -1,5 +1,21 @@
 # @robot-admin/naive-ui-components
 
+## 0.8.1
+
+### Minor Changes
+
+- C_Form 新增8项能力：
+  - 🧹 脏检查系统（isDirty / getChangedFields / isFieldDirty / markAsClean），独立 useFormDirty Composable
+  - ✏️ 编辑模式（mode: "edit" + initialValues 自动回填 + 脏状态重置）
+  - 🔒 字段级 disabled / readonly（支持 boolean | (model) => boolean 动态判断）
+  - 🔄 联动赋值引擎（valueWhen 根据其他字段自动计算回填）
+  - 🌐 异步选项加载（asyncOptions 远程数据源 + asyncLoadingMap loading 状态）
+  - 📐 动态校验规则（rulesWhen 根据表单状态动态切换验证规则）
+  - 🔗 跨字段校验（crossFieldValidator 声明式跨字段验证）
+  - 💡 Help Tooltip（help 字段标签旁 ℹ️ 图标 + NTooltip 帮助文本）
+  - useFormRenderer 重构为 Options 对象参数模式
+  - 新增导出：FormMode 类型、useFormDirty、UseFormRendererOptions
+
 ## 0.7.2
 
 ### Patch Changes

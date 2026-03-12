@@ -77,7 +77,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, ref, watch, getCurrentInstance } from 'vue'
+  import { computed, ref, watch, getCurrentInstance, nextTick } from 'vue'
   import type { FormInst } from 'naive-ui/es/form'
   import {
     NForm,
@@ -99,6 +99,7 @@
     NRadioGroup,
     NRadio,
     NUpload,
+    NTooltip,
   } from 'naive-ui'
   import { C_Editor } from '../C_Editor'
   import type {
@@ -166,6 +167,7 @@
     NUpload,
     NButton,
     NSpace,
+    NTooltip,
     C_Editor,
   } as ComponentMap
 
@@ -224,17 +226,38 @@
     setFieldsValue,
     handleSubmit,
     handleReset,
+    /* v0.8.0 新增 */
+    isDirty,
+    getChangedFields,
+    isFieldDirty,
+    markAsClean,
+    asyncOptionsCache,
+    asyncLoadingMap,
   } = useFormState(optionsRef, resolved, formRef, emit)
 
   /* ===== 渲染引擎 ===== */
   const currentInstance = getCurrentInstance()
-  const { formItems } = useFormRenderer(
+  const { formItems } = useFormRenderer({
     formModel,
     visibleOptions,
-    resolved,
+    config: resolved,
     handleFieldChange,
-    COMPONENT_MAP,
-    currentInstance?.slots
+    componentMap: COMPONENT_MAP,
+    instanceSlots: currentInstance?.slots,
+    asyncOptionsCache,
+    asyncLoadingMap,
+  })
+
+  /* ===== 编辑模式：自动回填 initialValues ===== */
+  watch(
+    () => resolved.value.initialValues,
+    val => {
+      if (val && resolved.value.mode === 'edit') {
+        Object.assign(formModel, val)
+        nextTick(() => markAsClean())
+      }
+    },
+    { immediate: true }
   )
 
   /* ================= 计算属性 ================= */
@@ -333,5 +356,11 @@
     initialize,
     layoutType: computed(() => resolved.value.layout),
     shouldShowDefaultActions: showActions,
+    /* v0.8.0 脏检查 API */
+    isDirty,
+    getChangedFields,
+    isFieldDirty,
+    markAsClean,
+    asyncLoadingMap,
   })
 </script>

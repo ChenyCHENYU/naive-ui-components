@@ -8,6 +8,7 @@
 import type {
   LayoutType,
   LabelPlacement,
+  FormMode,
   GridLayoutConfig,
   InlineLayoutConfig,
   CardLayoutConfig,
@@ -18,32 +19,32 @@ import type {
   DynamicFieldConfig,
   RenderMode,
   FormOption,
-} from "../types";
+} from '../types'
 
 /* =================== FormConfig 类型定义 =================== */
 
 /** 布局回调事件 — 替代原先 16 个 emit 中的纯透传事件 */
 export interface LayoutCallbacks {
   /* tabs 布局回调 */
-  onTabChange?: (tabKey: string, tabIndex: number) => void;
-  onTabValidate?: (tabKey: string) => void;
+  onTabChange?: (tabKey: string, tabIndex: number) => void
+  onTabValidate?: (tabKey: string) => void
 
   /* steps 布局回调 */
-  onStepChange?: (stepIndex: number, stepKey: string) => void;
-  onStepBeforeChange?: (currentStep: number, targetStep: number) => void;
-  onStepValidate?: (stepIndex: number) => void;
+  onStepChange?: (stepIndex: number, stepKey: string) => void
+  onStepBeforeChange?: (currentStep: number, targetStep: number) => void
+  onStepValidate?: (stepIndex: number) => void
 
   /* dynamic 布局回调 */
-  onFieldAdd?: (fieldConfig: DynamicFieldConfig) => void;
-  onFieldRemove?: (fieldId: string) => void;
-  onFieldToggle?: (fieldId: string, visible: boolean) => void;
-  onFieldsClear?: () => void;
+  onFieldAdd?: (fieldConfig: DynamicFieldConfig) => void
+  onFieldRemove?: (fieldId: string) => void
+  onFieldToggle?: (fieldId: string, visible: boolean) => void
+  onFieldsClear?: () => void
 
   /* custom 布局回调 */
-  onRenderModeChange?: (mode: RenderMode) => void;
-  onGroupToggle?: (groupKey: string, collapsed: boolean) => void;
-  onGroupReset?: (groupKey: string) => void;
-  onFieldsChange?: (fields: FormOption[]) => void;
+  onRenderModeChange?: (mode: RenderMode) => void
+  onGroupToggle?: (groupKey: string, collapsed: boolean) => void
+  onGroupReset?: (groupKey: string) => void
+  onFieldsChange?: (fields: FormOption[]) => void
 }
 
 /**
@@ -53,30 +54,37 @@ export interface LayoutCallbacks {
  */
 export interface FormConfig extends LayoutCallbacks {
   /** 布局类型，默认 'default' */
-  layout?: LayoutType;
+  layout?: LayoutType
   /** 标签位置，默认 'left' */
-  labelPlacement?: LabelPlacement;
+  labelPlacement?: LabelPlacement
   /** 标签宽度，默认 'auto' */
-  labelWidth?: string | number;
+  labelWidth?: string | number
   /** 尺寸，默认 'medium' */
-  size?: "small" | "medium" | "large";
+  size?: 'small' | 'medium' | 'large'
   /** 禁用整个表单，默认 false */
-  disabled?: boolean;
+  disabled?: boolean
   /** 只读，默认 false */
-  readonly?: boolean;
+  readonly?: boolean
   /** 显示默认提交/重置按钮，默认 true */
-  showActions?: boolean;
+  showActions?: boolean
   /** 值变化时自动校验，默认 false */
-  validateOnChange?: boolean;
+  validateOnChange?: boolean
+
+  /* ===== v0.8.0 新增 ===== */
+
+  /** 表单模式：create = 新建（默认），edit = 编辑（配合 initialValues 实现回填 + 脏检查） */
+  mode?: FormMode
+  /** 编辑模式初始值：设置后自动作为脏检查基准 */
+  initialValues?: Record<string, any>
 
   /* ===== 布局级配置 ===== */
-  grid?: GridLayoutConfig;
-  inline?: InlineLayoutConfig;
-  card?: CardLayoutConfig;
-  tabs?: TabsLayoutConfig;
-  steps?: StepsLayoutConfig;
-  dynamic?: DynamicLayoutConfig;
-  custom?: CustomLayoutConfig;
+  grid?: GridLayoutConfig
+  inline?: InlineLayoutConfig
+  card?: CardLayoutConfig
+  tabs?: TabsLayoutConfig
+  steps?: StepsLayoutConfig
+  dynamic?: DynamicLayoutConfig
+  custom?: CustomLayoutConfig
 }
 
 /** 解析后的配置（所有必填字段均已设置默认值） */
@@ -84,57 +92,61 @@ export interface ResolvedFormConfig extends Required<
   Omit<
     FormConfig,
     | keyof LayoutCallbacks
-    | "grid"
-    | "inline"
-    | "card"
-    | "tabs"
-    | "steps"
-    | "dynamic"
-    | "custom"
+    | 'grid'
+    | 'inline'
+    | 'card'
+    | 'tabs'
+    | 'steps'
+    | 'dynamic'
+    | 'custom'
+    | 'initialValues'
   >
 > {
   /* 布局配置保留可选，因为只有对应 layout 时才有值 */
-  grid?: GridLayoutConfig;
-  inline?: InlineLayoutConfig;
-  card?: CardLayoutConfig;
-  tabs?: TabsLayoutConfig;
-  steps?: StepsLayoutConfig;
-  dynamic?: DynamicLayoutConfig;
-  custom?: CustomLayoutConfig;
+  grid?: GridLayoutConfig
+  inline?: InlineLayoutConfig
+  card?: CardLayoutConfig
+  tabs?: TabsLayoutConfig
+  steps?: StepsLayoutConfig
+  dynamic?: DynamicLayoutConfig
+  custom?: CustomLayoutConfig
   /* 回调保留可选 */
-  onTabChange?: LayoutCallbacks["onTabChange"];
-  onTabValidate?: LayoutCallbacks["onTabValidate"];
-  onStepChange?: LayoutCallbacks["onStepChange"];
-  onStepBeforeChange?: LayoutCallbacks["onStepBeforeChange"];
-  onStepValidate?: LayoutCallbacks["onStepValidate"];
-  onFieldAdd?: LayoutCallbacks["onFieldAdd"];
-  onFieldRemove?: LayoutCallbacks["onFieldRemove"];
-  onFieldToggle?: LayoutCallbacks["onFieldToggle"];
-  onFieldsClear?: LayoutCallbacks["onFieldsClear"];
-  onRenderModeChange?: LayoutCallbacks["onRenderModeChange"];
-  onGroupToggle?: LayoutCallbacks["onGroupToggle"];
-  onGroupReset?: LayoutCallbacks["onGroupReset"];
-  onFieldsChange?: LayoutCallbacks["onFieldsChange"];
+  onTabChange?: LayoutCallbacks['onTabChange']
+  onTabValidate?: LayoutCallbacks['onTabValidate']
+  onStepChange?: LayoutCallbacks['onStepChange']
+  onStepBeforeChange?: LayoutCallbacks['onStepBeforeChange']
+  onStepValidate?: LayoutCallbacks['onStepValidate']
+  onFieldAdd?: LayoutCallbacks['onFieldAdd']
+  onFieldRemove?: LayoutCallbacks['onFieldRemove']
+  onFieldToggle?: LayoutCallbacks['onFieldToggle']
+  onFieldsClear?: LayoutCallbacks['onFieldsClear']
+  onRenderModeChange?: LayoutCallbacks['onRenderModeChange']
+  onGroupToggle?: LayoutCallbacks['onGroupToggle']
+  onGroupReset?: LayoutCallbacks['onGroupReset']
+  onFieldsChange?: LayoutCallbacks['onFieldsChange']
+  /* v0.8.0 */
+  initialValues?: Record<string, any>
 }
 
 /* =================== 默认值常量 =================== */
 
 export const FORM_DEFAULTS: ResolvedFormConfig = {
-  layout: "default",
-  labelPlacement: "left",
-  labelWidth: "auto",
-  size: "medium",
+  layout: 'default',
+  labelPlacement: 'left',
+  labelWidth: 'auto',
+  size: 'medium',
   disabled: false,
   readonly: false,
   showActions: true,
   validateOnChange: false,
-} as const;
+  mode: 'create',
+} as const
 
 /** 拥有自身控制按钮的布局（不显示默认操作按钮） */
 export const LAYOUTS_WITH_OWN_CONTROLS: readonly LayoutType[] = [
-  "steps",
-  "custom",
-] as const;
+  'steps',
+  'custom',
+] as const
 
 /* =================== 核心函数 =================== */
 
@@ -144,7 +156,7 @@ export const LAYOUTS_WITH_OWN_CONTROLS: readonly LayoutType[] = [
  * @returns 具有完整默认值的 ResolvedFormConfig
  */
 export function resolveFormConfig(config?: FormConfig): ResolvedFormConfig {
-  return { ...FORM_DEFAULTS, ...config };
+  return { ...FORM_DEFAULTS, ...config }
 }
 
 /**
@@ -152,7 +164,7 @@ export function resolveFormConfig(config?: FormConfig): ResolvedFormConfig {
  * @param resolved - 已解析的配置
  */
 export function shouldShowActions(resolved: ResolvedFormConfig): boolean {
-  if (resolved.showActions === false) return false;
-  if (LAYOUTS_WITH_OWN_CONTROLS.includes(resolved.layout)) return false;
-  return true;
+  if (resolved.showActions === false) return false
+  if (LAYOUTS_WITH_OWN_CONTROLS.includes(resolved.layout)) return false
+  return true
 }
