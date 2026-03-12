@@ -205,12 +205,62 @@
 
   /* ================= Props & Emits ================= */
 
-  const props = defineProps<{ columns: TableColumn[] }>()
+  const props = defineProps<{
+    columns: TableColumn[]
+    /** 列配置持久化 key（传入即启用 localStorage） */
+    persistKey?: string
+  }>()
   const emit = defineEmits<{ (e: 'change', columns: TableColumn[]): void }>()
 
   /* ================= 响应式状态 ================= */
 
-  const localColumns = ref<TableColumn[]>([...props.columns])
+  /** 从 localStorage 恢复持久化列配置 */
+  const loadPersistedColumns = (columns: TableColumn[]): TableColumn[] => {
+    if (!props.persistKey) return [...columns]
+    try {
+      const stored = localStorage.getItem(`c_table_cols_${props.persistKey}`)
+      if (!stored) return [...columns]
+      const persisted: Array<{ key: string; visible?: boolean; width?: number | string; fixed?: string }> = JSON.parse(stored)
+      const keyMap = new Map(persisted.map((p, i) => [p.key, { ...p, order: i }]))
+      const merged = columns.map(col => {
+        const saved = keyMap.get((col as any).key)
+        if (!saved) return { ...col }
+        return {
+          ...col,
+          visible: saved.visible ?? col.visible,
+          width: saved.width ?? col.width,
+          fixed: (saved.fixed as any) ?? col.fixed,
+        }
+      })
+      // 按持久化顺序排序
+      merged.sort((a, b) => {
+        const oa = keyMap.get((a as any).key)?.order ?? 999
+        const ob = keyMap.get((b as any).key)?.order ?? 999
+        return oa - ob
+      })
+      return merged
+    } catch {
+      return [...columns]
+    }
+  }
+
+  /** 保存列配置到 localStorage */
+  const persistColumns = (columns: TableColumn[]) => {
+    if (!props.persistKey) return
+    try {
+      const data = columns.map(col => ({
+        key: (col as any).key,
+        visible: col.visible,
+        width: col.width,
+        fixed: col.fixed,
+      }))
+      localStorage.setItem(`c_table_cols_${props.persistKey}`, JSON.stringify(data))
+    } catch {
+      // localStorage 不可用时静默忽略
+    }
+  }
+
+  const localColumns = ref<TableColumn[]>(loadPersistedColumns(props.columns))
   const searchText = ref('')
   const listRef = ref<HTMLElement>()
   const draggedIndex = ref<number | null>(null)
@@ -221,6 +271,10 @@
     enableResizable.value = localColumns.value.some(
       col => col.resizable === true
     )
+    // 如有持久化配置，初始化时通知父组件
+    if (props.persistKey) {
+      emit('change', [...localColumns.value])
+    }
   })
 
   /* ================= 计算属性 ================= */
@@ -282,7 +336,10 @@
     })
   }
 
-  const applyChanges = () => emit('change', [...localColumns.value])
+  const applyChanges = () => {
+    persistColumns(localColumns.value)
+    emit('change', [...localColumns.value])
+  }
 
   const resetColumns = () => {
     localColumns.value = [...props.columns]

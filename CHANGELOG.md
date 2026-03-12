@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.7.0
+
+### Minor Changes
+
+- C_Table 新增10项能力：全局配置 provide/inject、列级 formatter 格式化引擎、树形表格、行拖拽排序、跨页多选、CSV/XLSX 导出、列配置持久化、编辑校验、错误状态、批量操作栏
+
 ## 0.6.2
 
 ### Patch Changes

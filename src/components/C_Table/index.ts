@@ -46,9 +46,39 @@ export type {
   VirtualScrollConfig,
   SummaryConfig,
   ColumnDragConfig,
+  TreeConfig,
+  ErrorConfig,
+  BatchActionsConfig,
 } from './composables/useTableConfig'
 export {
   usePrintWatermark,
   printPresets,
 } from './composables/usePrintWatermark'
 export type { PrintWatermarkOptions } from './composables/usePrintWatermark'
+
+/* ================= 新功能导出 ================= */
+export {
+  useTableGlobalConfig,
+  mergeGlobalConfig,
+  applyFormatter,
+  TABLE_GLOBAL_CONFIG_KEY,
+} from './composables/useTableGlobalConfig'
+export type {
+  TableGlobalConfig,
+  ColumnFormatter,
+  FormatterConfig,
+  FormatterType,
+} from './composables/useTableGlobalConfig'
+
+export { useRowDrag } from './composables/useRowDrag'
+export type { RowDragConfig, UseRowDragOptions, UseRowDragReturn } from './composables/useRowDrag'
+
+export { useCrossPageSelection } from './composables/useCrossPageSelection'
+export type {
+  CrossPageSelectionConfig,
+  UseCrossPageSelectionOptions,
+  UseCrossPageSelectionReturn,
+} from './composables/useCrossPageSelection'
+
+export { exportTableData } from './composables/useTableExport'
+export type { ExportConfig } from './composables/useTableExport'

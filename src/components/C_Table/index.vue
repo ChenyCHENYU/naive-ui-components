@@ -34,6 +34,15 @@
       <div class="toolbar-right">
         <slot name="toolbar-right" />
         <C_Icon
+          v-if="resolved.exportConfig"
+          name="mdi:download"
+          size="18"
+          title="导出"
+          clickable
+          class="column-settings-btn"
+          @click="handleExport()"
+        />
+        <C_Icon
           v-if="resolved.enableColumnSettings"
           name="mdi:cog"
           size="18"
@@ -45,8 +54,45 @@
       </div>
     </div>
 
+    <!-- 批量操作栏 -->
+    <div
+      v-if="resolved.batchActions?.enabled && batchSelectedCount > 0"
+      class="batch-actions-bar"
+    >
+      <span class="batch-info">已选择 {{ batchSelectedCount }} 项</span>
+      <NSpace :size="8">
+        <NButton
+          v-for="action in (resolved.batchActions.actions || [])"
+          :key="action.key"
+          :type="(action.type as any) || 'default'"
+          size="small"
+          @click="handleBatchAction(action)"
+        >
+          <template v-if="action.icon" #icon>
+            <C_Icon :name="action.icon" size="14" />
+          </template>
+          {{ action.label }}
+        </NButton>
+        <NButton size="small" @click="clearBatchSelection">取消选择</NButton>
+      </NSpace>
+    </div>
+
+    <!-- 错误状态 -->
+    <div v-if="resolved.error?.show" class="table-error-state">
+      <slot name="error" :error="resolved.error">
+        <div class="error-content">
+          <C_Icon name="mdi:alert-circle-outline" size="48" />
+          <p class="error-message">{{ resolved.error.message || '数据加载失败' }}</p>
+          <NButton v-if="resolved.error.onRetry" type="primary" size="small" @click="resolved.error.onRetry">
+            重试
+          </NButton>
+        </div>
+      </slot>
+    </div>
+
     <!-- 表格主体 -->
     <NDataTable
+      v-if="!resolved.error?.show"
       ref="tableRef"
       v-bind="{ ...computedTableProps, ...$attrs }"
       :columns="computedColumns"
@@ -54,15 +100,18 @@
       :loading="normalizedLoading"
       :row-key="rowKey"
       :expanded-row-keys="tableManager.expandedKeys.value"
-      :checked-row-keys="tableManager.checkedKeys.value"
+      :checked-row-keys="crossPageCheckedKeys ?? tableManager.checkedKeys.value"
       @update:expanded-row-keys="tableManager.expandState?.handleExpandChange"
-      @update:checked-row-keys="tableManager.expandState?.handleSelectionChange"
+      @update:checked-row-keys="handleCheckedKeysChange"
       :scroll-x="computedScrollX"
       :virtual-scroll="resolved.virtualScroll"
       :virtual-scroll-item-size="resolved.virtualScroll ? resolved.virtualItemHeight : undefined"
       :max-height="resolved.virtualScroll ? resolved.virtualMaxHeight : resolved.maxHeight"
       :summary="summaryFn"
       :summary-placement="resolved.summaryPosition"
+      :children-key="resolved.treeEnabled ? resolved.treeChildrenKey : undefined"
+      :indent="resolved.treeEnabled ? resolved.treeIndent : undefined"
+      :default-expand-all="resolved.treeEnabled ? resolved.treeDefaultExpandAll : undefined"
       style="width: 100%"
     />
 
@@ -130,6 +179,7 @@
       >
         <ColumnSettings
           :columns="reactiveColumns"
+          :persist-key="resolved.persistKey"
           @change="onColumnSettingsChange"
         />
       </NDrawerContent>
@@ -172,6 +222,10 @@
   import { usePagination } from './composables/usePagination'
   import { useTableActions } from './composables/useTableActions'
   import { useTableColumns } from './composables/useTableColumns'
+  import { useTableGlobalConfig, mergeGlobalConfig } from './composables/useTableGlobalConfig'
+  import { useRowDrag } from './composables/useRowDrag'
+  import { useCrossPageSelection } from './composables/useCrossPageSelection'
+  import { exportTableData } from './composables/useTableExport'
   import { generateFormOptions } from './data'
   import ColumnSettings from './components/ColumnSettings/index.vue'
   import C_Icon from '../C_Icon/index.vue'
@@ -235,16 +289,21 @@
     handlers[event]?.(...args)
   }
 
-  /* ================= 有效值（crud 优先 → props 覆盖） ================= */
+  /* ================= 有效值（全局 → crud → props 覆盖） ================= */
 
-  /** 合并 crud 返回的 actions/pagination 到用户 config */
+  const globalConfig = useTableGlobalConfig()
+
+  /** 合并 crud 返回的 actions/pagination 到用户 config，并叠加全局配置 */
   const effectiveConfig = computed<TableConfig>(() => {
-    if (!props.crud) return props.config || {}
-    const fromCrud: Partial<TableConfig> = {}
-    if (props.crud.actions) fromCrud.actions = props.crud.actions.value
-    if (props.crud.pagination)
-      fromCrud.pagination = props.crud.pagination.value ?? undefined
-    return { ...fromCrud, ...props.config }
+    let cfg: TableConfig = props.config || {}
+    if (props.crud) {
+      const fromCrud: Partial<TableConfig> = {}
+      if (props.crud.actions) fromCrud.actions = props.crud.actions.value
+      if (props.crud.pagination)
+        fromCrud.pagination = props.crud.pagination.value ?? undefined
+      cfg = { ...fromCrud, ...cfg }
+    }
+    return mergeGlobalConfig(cfg, globalConfig)
   })
 
   const effectiveColumns = computed<TableColumn[]>(
@@ -282,6 +341,7 @@
     data: () => normalizedData.value,
     rowKey: props.rowKey,
     emit: bridgedEmit,
+    columns: () => effectiveColumns.value,
   })
 
   const tableActions = useTableActions({
@@ -310,6 +370,74 @@
     computedColumns,
     computedScrollX,
   } = columnState
+
+  /* ================= 行拖拽（可选） ================= */
+
+  const rowDragState = resolved.value.rowDrag?.enabled
+    ? useRowDrag({
+        data: normalizedData,
+        rowKey: props.rowKey,
+        config: resolved.value.rowDrag!,
+        onReorder: (newData) => bridgedEmit('update:data' as any, newData),
+        onSort: (row, from, to) => emit('row-move', row, from, to),
+      })
+    : null
+
+  /* ================= 跨页多选（可选） ================= */
+
+  const crossPageState = resolved.value.crossPageSelection?.enabled
+    ? useCrossPageSelection({
+        allData: normalizedData,
+        rowKey: props.rowKey,
+        config: resolved.value.crossPageSelection!,
+      })
+    : null
+
+  /** 批量选中数量（用于批量操作栏） */
+  const batchSelectedCount = computed(() =>
+    crossPageState
+      ? crossPageState.selectedCount.value
+      : (tableManager.checkedKeys?.value?.length ?? 0)
+  )
+
+  /** 处理批量操作按钮点击 */
+  const handleBatchAction = async (action: { onClick: (keys: DataTableRowKey[], rows: DataRecord[]) => void | Promise<void> }) => {
+    const keys = crossPageState
+      ? [...crossPageState.selectedKeys.value]
+      : (tableManager.checkedKeys?.value ?? [])
+    const rows = crossPageState
+      ? crossPageState.getSelectedRows()
+      : normalizedData.value.filter(r => keys.includes(props.rowKey(r)))
+    await action.onClick(keys, rows)
+  }
+
+  /** 清除批量选择 */
+  const clearBatchSelection = () => {
+    if (crossPageState) crossPageState.clearAll()
+    else tableManager.stateManager.selection.clear()
+  }
+
+  /** 跨页多选时的 checked-row-keys */
+  const crossPageCheckedKeys = computed(() =>
+    crossPageState ? crossPageState.getPageCheckedKeys(normalizedData.value) : null
+  )
+
+  /** 选中行变更统一处理 */
+  const handleCheckedKeysChange = (keys: DataTableRowKey[]) => {
+    if (crossPageState) {
+      crossPageState.handlePageSelectionChange(keys, normalizedData.value)
+    }
+    tableManager.expandState?.handleSelectionChange?.(keys)
+  }
+
+  /** 导出 */
+  const handleExport = async () => {
+    const cfg = resolved.value.exportConfig ?? {}
+    await exportTableData(normalizedData.value, effectiveColumns.value, {
+      ...cfg,
+      formatterConfig: resolved.value.formatterConfig,
+    })
+  }
 
   /* ================= 合计行 ================= */
 
@@ -459,6 +587,18 @@
     isEditing: edit.isEditing,
     isExpanded: expand.isExpanded,
     getManager: () => tableManager.stateManager,
+    /** 导出数据 */
+    exportData: handleExport,
+    /** 跨页选择 */
+    crossPageSelection: crossPageState
+      ? {
+          selectedKeys: crossPageState.selectedKeys,
+          selectedCount: crossPageState.selectedCount,
+          selectAll: crossPageState.selectAll,
+          clearAll: crossPageState.clearAll,
+          getSelectedRows: crossPageState.getSelectedRows,
+        }
+      : undefined,
   }
 
   defineExpose(exposedApi)
@@ -469,11 +609,16 @@
     if (crudRef) crudRef.value = exposedApi
     // 列拖拽初始化
     initColumnDrag()
+    // 行拖拽初始化
+    if (rowDragState && tableWrapperRef.value) {
+      rowDragState.initRowDrag(tableWrapperRef.value)
+    }
   })
 
   onBeforeUnmount(() => {
     if (modalCloseTimer) clearTimeout(modalCloseTimer)
     if (sortableInstance) sortableInstance.destroy()
+    rowDragState?.destroyRowDrag()
   })
 </script>
 

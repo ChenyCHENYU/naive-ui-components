@@ -53,6 +53,8 @@ interface TableManagerParams {
   data: () => DataRecord[]
   rowKey: (row: DataRecord) => DataTableRowKey
   emit: (...args: any[]) => void
+  /** 列配置（用于编辑校验） */
+  columns?: () => import('../types').TableColumn[]
 }
 
 /**
@@ -192,12 +194,14 @@ export function useTableManager(params: TableManagerParams) {
       rowKey,
       onSave: eventHandlers.onSave,
       onCancel: eventHandlers.onCancel,
+      columns: params.columns,
     })
 
     const cellEdit = useCellEdit({
       data,
       rowKey,
       onSave: eventHandlers.onSave,
+      columns: params.columns,
     })
 
     const modalEdit = useModalEdit({

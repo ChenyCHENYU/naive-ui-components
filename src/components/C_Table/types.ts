@@ -7,6 +7,7 @@
 import type { MaybeRef, VNodeChild, Ref, ComputedRef } from 'vue'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import type { FormItemRule } from 'naive-ui/es/form'
+import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 
 /* 宽松的 Ref-like 类型，支持跨 Vue 实例的 Ref 传递 */
 type RefLike<T> = { value: T } | T
@@ -192,6 +193,8 @@ interface BaseTableColumn<T extends DataRecord = DataRecord> extends Omit<
   editProps?: EditProps
   editRender?: (value: any, rowData: T, rowIndex: number) => VNodeChild
   render?: (rowData: T, rowIndex: number) => VNodeChild
+  /** 声明式格式化器（优先级低于 render） */
+  formatter?: ColumnFormatter
   fixed?: 'left' | 'right'
   resizable?: boolean
   minWidth?: number

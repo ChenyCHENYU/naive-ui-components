@@ -16,6 +16,7 @@ import {
 import type { DataTableRowKey, DataTableColumn } from 'naive-ui/es'
 import type { TableColumn, DataRecord } from '../types'
 import type { ResolvedConfig } from './useTableConfig'
+import { applyFormatter } from './useTableGlobalConfig'
 import { EDIT_COMPONENTS } from '../data'
 import C_Icon from '../../C_Icon/index.vue'
 
@@ -102,11 +103,23 @@ export function renderDisplayCell(
   column: TableColumn,
   rowData: DataRecord,
   rowIndex: number,
-  value: unknown
+  value: unknown,
+  formatterConfig?: import('./useTableGlobalConfig').FormatterConfig
 ): VNodeChild {
-  return column.render
-    ? (column.render(rowData, rowIndex) ?? String(value ?? ''))
-    : String(value ?? '')
+  if (column.render)
+    return column.render(rowData, rowIndex) ?? String(value ?? '')
+
+  // 列级 formatter
+  if ((column as any).formatter) {
+    return applyFormatter(
+      value,
+      rowData,
+      (column as any).formatter,
+      formatterConfig
+    )
+  }
+
+  return String(value ?? '')
 }
 
 /**
@@ -164,11 +177,22 @@ export function renderEditableCell(
   rowData: DataRecord,
   rowIndex: number,
   value: unknown,
-  onStartEdit: () => void
+  onStartEdit: () => void,
+  formatterConfig?: import('./useTableGlobalConfig').FormatterConfig
 ): VNodeChild {
-  const displayValue = column.render
-    ? (column.render(rowData, rowIndex) ?? String(value ?? ''))
-    : String(value ?? '')
+  let displayValue: string | VNodeChild
+  if (column.render) {
+    displayValue = column.render(rowData, rowIndex) ?? String(value ?? '')
+  } else if ((column as any).formatter) {
+    displayValue = applyFormatter(
+      value,
+      rowData,
+      (column as any).formatter,
+      formatterConfig
+    )
+  } else {
+    displayValue = String(value ?? '')
+  }
 
   return h('div', { class: 'cell-edit-wrapper' }, [
     h('span', { class: 'cell-value' }, displayValue),
@@ -300,8 +324,13 @@ export function useTableColumns(
       )
     }
 
-    return renderEditableCell(column, rowData, rowIndex, value, () =>
-      startEditCell(rowKeyVal, colKey)
+    return renderEditableCell(
+      column,
+      rowData,
+      rowIndex,
+      value,
+      () => startEditCell(rowKeyVal, colKey),
+      config.value.formatterConfig
     )
   }
 
@@ -318,7 +347,13 @@ export function useTableColumns(
     const checker = editModeChecker.value
 
     if (checker.isNonEditable(column)) {
-      return renderDisplayCell(column, rowData, rowIndex, value)
+      return renderDisplayCell(
+        column,
+        rowData,
+        rowIndex,
+        value,
+        config.value.formatterConfig
+      )
     }
 
     if (
@@ -338,7 +373,13 @@ export function useTableColumns(
       return renderCellEdit(column, rowData, rowIndex, key)
     }
 
-    return renderDisplayCell(column, rowData, rowIndex, value)
+    return renderDisplayCell(
+      column,
+      rowData,
+      rowIndex,
+      value,
+      config.value.formatterConfig
+    )
   }
 
   /* ================= 列映射 ================= */

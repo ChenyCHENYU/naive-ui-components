@@ -14,6 +14,10 @@ import type {
   TableColumn,
 } from '../types'
 import type { DynamicRowsOptions } from './useDynamicRow'
+import type { RowDragConfig } from './useRowDrag'
+import type { CrossPageSelectionConfig } from './useCrossPageSelection'
+import type { ExportConfig } from './useTableExport'
+import type { ColumnFormatter, FormatterConfig } from './useTableGlobalConfig'
 
 /* ================= CRUD 绑定类型 ================= */
 
@@ -71,6 +75,22 @@ export interface TableConfig<T extends DataRecord = DataRecord> {
   summary?: SummaryConfig<T>
   /** 列拖拽排序 */
   columnDrag?: ColumnDragConfig | boolean
+  /** 树形表格 */
+  tree?: TreeConfig | boolean
+  /** 行拖拽排序 */
+  rowDrag?: RowDragConfig | boolean
+  /** 跨页多选 */
+  crossPageSelection?: CrossPageSelectionConfig | boolean
+  /** 导出配置 */
+  export?: ExportConfig
+  /** 列配置持久化 key（传入即启用 localStorage） */
+  persistKey?: string
+  /** 全局格式化配置 */
+  formatterConfig?: FormatterConfig
+  /** 错误状态配置 */
+  error?: ErrorConfig
+  /** 批量操作配置 */
+  batchActions?: BatchActionsConfig
 }
 
 export interface EditConfig {
@@ -152,6 +172,40 @@ export interface ColumnDragConfig {
   animationDuration?: number
 }
 
+/** 树形表格配置 */
+export interface TreeConfig {
+  enabled?: boolean
+  /** 子节点字段名 */
+  childrenKey?: string
+  /** 缩进宽度（px） */
+  indent?: number
+  /** 默认展开所有 */
+  defaultExpandAll?: boolean
+}
+
+/** 错误状态配置 */
+export interface ErrorConfig {
+  /** 是否显示错误状态 */
+  show?: boolean
+  /** 错误描述文案 */
+  message?: string
+  /** 重试回调 */
+  onRetry?: () => void | Promise<void>
+}
+
+/** 批量操作配置 */
+export interface BatchActionsConfig {
+  enabled?: boolean
+  /** 自定义批量操作按钮 */
+  actions?: Array<{
+    key: string
+    label: string
+    icon?: string
+    type?: string
+    onClick: (selectedKeys: DataTableRowKey[], selectedRows: DataRecord[]) => void | Promise<void>
+  }>
+}
+
 /* ================= 内部解析后的扁平配置 ================= */
 
 export interface ResolvedConfig {
@@ -210,6 +264,25 @@ export interface ResolvedConfig {
   enableColumnDrag: boolean
   columnDragHandleClass: string
   columnDragAnimationDuration: number
+  /** 树形表格 */
+  treeEnabled: boolean
+  treeChildrenKey: string
+  treeIndent: number
+  treeDefaultExpandAll: boolean
+  /** 行拖拽 */
+  rowDrag: RowDragConfig | undefined
+  /** 跨页多选 */
+  crossPageSelection: CrossPageSelectionConfig | undefined
+  /** 导出配置 */
+  exportConfig: ExportConfig | undefined
+  /** 列持久化 key */
+  persistKey: string | undefined
+  /** 全局格式化配置 */
+  formatterConfig: FormatterConfig | undefined
+  /** 错误状态 */
+  error: ErrorConfig | undefined
+  /** 批量操作 */
+  batchActions: BatchActionsConfig | undefined
 }
 
 /* ================= 解析逻辑 ================= */
@@ -436,6 +509,45 @@ const resolveColumnDrag = (cd: ColumnDragConfig | boolean | undefined) => {
   }
 }
 
+const resolveTree = (tree: TreeConfig | boolean | undefined) => {
+  if (!tree)
+    return {
+      treeEnabled: false,
+      treeChildrenKey: 'children',
+      treeIndent: 16,
+      treeDefaultExpandAll: false,
+    }
+  if (tree === true)
+    return {
+      treeEnabled: true,
+      treeChildrenKey: 'children',
+      treeIndent: 16,
+      treeDefaultExpandAll: false,
+    }
+  return {
+    treeEnabled: tree.enabled !== false,
+    treeChildrenKey: tree.childrenKey ?? 'children',
+    treeIndent: tree.indent ?? 16,
+    treeDefaultExpandAll: tree.defaultExpandAll ?? false,
+  }
+}
+
+const resolveRowDrag = (
+  rd: RowDragConfig | boolean | undefined
+): { rowDrag: RowDragConfig | undefined } => {
+  if (!rd) return { rowDrag: undefined }
+  if (rd === true) return { rowDrag: { enabled: true } }
+  return { rowDrag: rd.enabled !== false ? rd : undefined }
+}
+
+const resolveCrossPageSelection = (
+  cps: CrossPageSelectionConfig | boolean | undefined
+): { crossPageSelection: CrossPageSelectionConfig | undefined } => {
+  if (!cps) return { crossPageSelection: undefined }
+  if (cps === true) return { crossPageSelection: { enabled: true } }
+  return { crossPageSelection: cps.enabled !== false ? cps : undefined }
+}
+
 /* ================= 主配置函数 ================= */
 
 /**
@@ -453,6 +565,14 @@ export function resolveConfig(config: TableConfig = {}): ResolvedConfig {
     ...resolveVirtualScroll(config.virtualScroll),
     ...resolveSummary(config.summary),
     ...resolveColumnDrag(config.columnDrag),
+    ...resolveTree(config.tree),
+    ...resolveRowDrag(config.rowDrag),
+    ...resolveCrossPageSelection(config.crossPageSelection),
+    exportConfig: config.export,
+    persistKey: config.persistKey,
+    formatterConfig: config.formatterConfig,
+    error: config.error,
+    batchActions: config.batchActions,
   }
 }
 
