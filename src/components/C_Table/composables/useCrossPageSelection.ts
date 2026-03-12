@@ -49,6 +49,7 @@ export interface UseCrossPageSelectionReturn<
 
 /* ================= 实现 ================= */
 
+/** 跨页多选组合式函数 */
 export function useCrossPageSelection<T extends DataRecord = DataRecord>(
   options: UseCrossPageSelectionOptions<T>
 ): UseCrossPageSelectionReturn<T> {

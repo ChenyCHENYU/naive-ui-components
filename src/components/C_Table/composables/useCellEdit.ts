@@ -4,9 +4,33 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref } from "vue";
-import type { DataTableRowKey } from "naive-ui/es";
+import { ref } from 'vue'
+import type { DataTableRowKey } from 'naive-ui/es'
+import type { FormItemRule } from 'naive-ui/es/form'
 import type { DataRecord, TableColumn } from '../types'
+
+/**
+ * 执行单条校验规则，返回错误消息或 null
+ */
+async function runRule(
+  rule: FormItemRule,
+  value: unknown,
+  label: string
+): Promise<string | null> {
+  const ruleMsg =
+    typeof rule.message === 'function' ? rule.message() : rule.message
+  if (rule.required && (value == null || value === '')) {
+    return ruleMsg || `${label}不能为空`
+  }
+  if (rule.validator) {
+    try {
+      await rule.validator(rule as any, value, () => {}, {}, {})
+    } catch (e: any) {
+      return e?.message || `${label}校验失败`
+    }
+  }
+  return null
+}
 
 /**
  * 单元格编辑配置选项
@@ -84,22 +108,15 @@ export function useCellEdit(options: CellEditOptions) {
 
     const cellKey = `${rowKey}-${columnKey}`
     const value = editingData.value[cellKey]
+    const label = (col as any).title || columnKey
 
-    for (const rule of col.editProps.rules) {
-      try {
-        if (rule.required && (value == null || value === '')) {
-          cellValidationError.value =
-            rule.message || `${(col as any).title || columnKey}不能为空`
-          return false
-        }
-        if (rule.validator) {
-          await rule.validator(rule, value, () => {})
-        }
-      } catch (e: any) {
-        cellValidationError.value =
-          e?.message || `${(col as any).title || columnKey}校验失败`
-        return false
-      }
+    const results = await Promise.all(
+      col.editProps.rules.map(rule => runRule(rule, value, label))
+    )
+    const firstError = results.find(Boolean)
+    if (firstError) {
+      cellValidationError.value = firstError
+      return false
     }
     return true
   }

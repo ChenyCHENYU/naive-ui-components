@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.7.2
+
+### Patch Changes
+
+- C_Table 类型系统清理：移除 6 个废弃类型（TestRecord、SelectedChildGroup、DemoConfig、DataMapping、CommonMappings），集中定义 ColumnWithKey 消除跨文件重复，修复所有 TypeScript 类型错误
+
 ## 0.7.0
 
 ### Minor Changes

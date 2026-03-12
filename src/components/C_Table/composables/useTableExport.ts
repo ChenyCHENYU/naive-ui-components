@@ -3,8 +3,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import type { DataRecord, TableColumn } from '../types'
-import type { ColumnFormatter } from './useTableGlobalConfig'
+import type { DataRecord, TableColumn, ColumnWithKey } from '../types'
 import { applyFormatter, type FormatterConfig } from './useTableGlobalConfig'
 
 /* ================= 类型定义 ================= */
@@ -25,12 +24,6 @@ export interface ExportConfig {
 }
 
 /* ================= 内部辅助 ================= */
-
-type ColumnWithKey = TableColumn & {
-  key?: string
-  title?: string
-  formatter?: ColumnFormatter
-}
 
 /** 获取导出用的列（过滤掉内置列） */
 function getExportColumns(
@@ -66,6 +59,7 @@ function getCellValue(
 
 /* ================= CSV 导出 ================= */
 
+/** 转义 CSV 单元格值 */
 function escapeCSV(value: string, separator: string): string {
   if (
     value.includes(separator) ||
@@ -77,6 +71,7 @@ function escapeCSV(value: string, separator: string): string {
   return value
 }
 
+/** 导出 CSV 文件 */
 function exportCSV(
   data: DataRecord[],
   columns: TableColumn[],
@@ -106,6 +101,7 @@ function exportCSV(
 
 /* ================= XLSX 导出 ================= */
 
+/** 导出 XLSX 文件（未安装 xlsx 时降级 CSV） */
 async function exportXLSX(
   data: DataRecord[],
   columns: TableColumn[],
@@ -136,6 +132,7 @@ async function exportXLSX(
 
 /* ================= 下载工具 ================= */
 
+/** 下载 Blob 为文件 */
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

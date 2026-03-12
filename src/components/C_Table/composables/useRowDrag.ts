@@ -45,6 +45,7 @@ export interface UseRowDragReturn {
 
 /* ================= 实现 ================= */
 
+/** 行拖拽排序组合式函数 */
 export function useRowDrag<T extends DataRecord = DataRecord>(
   options: UseRowDragOptions<T>
 ): UseRowDragReturn {

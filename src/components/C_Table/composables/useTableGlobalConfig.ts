@@ -38,7 +38,7 @@ export interface ColumnFormatter {
   /** 自定义格式化函数（优先级最高） */
   fn?: (value: unknown, row: DataRecord) => string
   /** 覆盖全局格式配置 */
-  config?: FormatterConfig[FormatterType]
+  config?: Record<string, unknown>
 }
 
 /* ================= 全局配置类型 ================= */
@@ -74,6 +74,9 @@ const defaultFormatters: FormatterConfig = {
   number: { precision: 0 },
 }
 
+/**
+ *
+ */
 function formatDate(value: unknown, format: string): string {
   if (value == null || value === '') return '-'
   const d = new Date(typeof value === 'number' ? value : String(value))
@@ -89,6 +92,9 @@ function formatDate(value: unknown, format: string): string {
     .replace('ss', pad(d.getSeconds()))
 }
 
+/**
+ *
+ */
 function formatNumber(value: unknown, precision: number): string {
   if (value == null || value === '') return '-'
   const num = Number(value)
@@ -99,6 +105,28 @@ function formatNumber(value: unknown, precision: number): string {
   })
 }
 
+/** 各类型的格式化策略 */
+const formatterStrategies: Record<
+  string,
+  (value: unknown, cfg: Record<string, any>) => string
+> = {
+  date: (v, cfg) => formatDate(v, cfg.format ?? 'YYYY-MM-DD'),
+  datetime: (v, cfg) => formatDate(v, cfg.format ?? 'YYYY-MM-DD HH:mm:ss'),
+  currency: (v, cfg) => {
+    const numStr = formatNumber(v, cfg.precision ?? 2)
+    return numStr === '-'
+      ? '-'
+      : `${cfg.prefix ?? '¥'}${numStr}${cfg.suffix ?? ''}`
+  },
+  percent: (v, cfg) => {
+    if (v == null || v === '') return '-'
+    const num = Number(v)
+    if (Number.isNaN(num)) return String(v)
+    return `${(num * 100).toFixed(cfg.precision ?? 2)}${cfg.suffix ?? '%'}`
+  },
+  number: (v, cfg) => formatNumber(v, cfg.precision ?? 0),
+}
+
 /** 根据 ColumnFormatter 配置格式化单元格值 */
 export function applyFormatter(
   value: unknown,
@@ -106,60 +134,22 @@ export function applyFormatter(
   formatter: ColumnFormatter,
   globalConfig?: FormatterConfig
 ): string {
-  // 优先使用自定义函数
   if (formatter.fn) return formatter.fn(value, row)
 
-  const merged = { ...defaultFormatters, ...globalConfig }
-
-  switch (formatter.type) {
-    case 'date': {
-      const cfg = {
-        ...merged.date,
-        ...(formatter.config as FormatterConfig['date']),
-      }
-      return formatDate(value, cfg?.format ?? 'YYYY-MM-DD')
-    }
-    case 'datetime': {
-      const cfg = {
-        ...merged.datetime,
-        ...(formatter.config as FormatterConfig['datetime']),
-      }
-      return formatDate(value, cfg?.format ?? 'YYYY-MM-DD HH:mm:ss')
-    }
-    case 'currency': {
-      const cfg = {
-        ...merged.currency,
-        ...(formatter.config as FormatterConfig['currency']),
-      }
-      const numStr = formatNumber(value, cfg?.precision ?? 2)
-      return numStr === '-'
-        ? '-'
-        : `${cfg?.prefix ?? '¥'}${numStr}${cfg?.suffix ?? ''}`
-    }
-    case 'percent': {
-      const cfg = {
-        ...merged.percent,
-        ...(formatter.config as FormatterConfig['percent']),
-      }
-      if (value == null || value === '') return '-'
-      const num = Number(value)
-      if (Number.isNaN(num)) return String(value)
-      return `${(num * 100).toFixed(cfg?.precision ?? 2)}${cfg?.suffix ?? '%'}`
-    }
-    case 'number': {
-      const cfg = {
-        ...merged.number,
-        ...(formatter.config as FormatterConfig['number']),
-      }
-      return formatNumber(value, cfg?.precision ?? 0)
-    }
-    case 'enum': {
-      if (!formatter.mapping) return String(value ?? '-')
-      return formatter.mapping[String(value)] ?? String(value ?? '-')
-    }
-    default:
-      return String(value ?? '-')
+  if (formatter.type === 'enum') {
+    if (!formatter.mapping) return String(value ?? '-')
+    return formatter.mapping[String(value)] ?? String(value ?? '-')
   }
+
+  const strategy = formatter.type && formatterStrategies[formatter.type]
+  if (!strategy) return String(value ?? '-')
+
+  const merged = { ...defaultFormatters, ...globalConfig }
+  const cfg = {
+    ...(merged as Record<string, any>)[formatter.type!],
+    ...(formatter.config as Record<string, any> | undefined),
+  }
+  return strategy(value, cfg)
 }
 
 /* ================= Hook ================= */
@@ -176,23 +166,16 @@ export function mergeGlobalConfig(
 ): TableConfig {
   const merged = { ...local }
 
-  // 合并 display
-  if (global.display && !local.display) {
-    merged.display = global.display
-  } else if (global.display && local.display) {
-    merged.display = { ...global.display, ...local.display }
+  if (global.display) {
+    merged.display = local.display
+      ? { ...global.display, ...local.display }
+      : global.display
   }
 
-  // 合并分页默认值
   if (global.pageSize && local.pagination !== false) {
-    const currentPagination =
-      local.pagination === true || local.pagination === undefined
-        ? {}
-        : typeof local.pagination === 'object'
-          ? local.pagination
-          : {}
-    if (!currentPagination.pageSize) {
-      merged.pagination = { ...currentPagination, pageSize: global.pageSize }
+    const cur = typeof local.pagination === 'object' ? local.pagination : {}
+    if (!cur.pageSize) {
+      merged.pagination = { ...cur, pageSize: global.pageSize }
     }
   }
 

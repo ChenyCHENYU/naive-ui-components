@@ -4,14 +4,38 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref } from "vue";
-import type { DataTableRowKey } from "naive-ui/es";
+import { ref } from 'vue'
+import type { DataTableRowKey } from 'naive-ui/es'
+import type { FormItemRule } from 'naive-ui/es/form'
 import type { DataRecord, TableColumn } from '../types'
 
 /** 行级校验错误 */
 export interface RowValidationError {
   field: string
   message: string
+}
+
+/**
+ * 执行单条校验规则，返回错误消息或 null
+ */
+async function runRule(
+  rule: FormItemRule,
+  value: unknown,
+  label: string
+): Promise<string | null> {
+  const ruleMsg =
+    typeof rule.message === 'function' ? rule.message() : rule.message
+  if (rule.required && (value == null || value === '')) {
+    return ruleMsg || `${label}不能为空`
+  }
+  if (rule.validator) {
+    try {
+      await rule.validator(rule as any, value, () => {}, {}, {})
+    } catch (e: any) {
+      return e?.message || `${label}校验失败`
+    }
+  }
+  return null
 }
 
 /**
@@ -96,35 +120,25 @@ export function useRowEdit(options: RowEditOptions) {
     const rowData = editingData.value[editingRowKey.value as string]
     if (!rowData) return true
 
-    const errors: RowValidationError[] = []
+    /* 收集每列的首条校验任务，并行执行 */
+    const tasks = columns
+      .filter(col => col.editable !== false && col.editProps?.rules?.length)
+      .map(col => {
+        const key = (col as any).key as string
+        if (!key) return null
+        const label = (col as any).title || key
+        const value = rowData[key]
+        return Promise.all(
+          col.editProps!.rules!.map(rule => runRule(rule, value, label))
+        ).then(results => {
+          const firstError = results.find(Boolean)
+          return firstError ? { field: key, message: firstError } : null
+        })
+      })
+      .filter(Boolean)
 
-    for (const col of columns) {
-      if (col.editable === false || !col.editProps?.rules) continue
-      const key = (col as any).key as string
-      if (!key) continue
-
-      const value = rowData[key]
-      for (const rule of col.editProps.rules) {
-        try {
-          if (rule.required && (value == null || value === '')) {
-            errors.push({
-              field: key,
-              message: rule.message || `${(col as any).title || key}不能为空`,
-            })
-            break
-          }
-          if (rule.validator) {
-            await rule.validator(rule, value, () => {})
-          }
-        } catch (e: any) {
-          errors.push({
-            field: key,
-            message: e?.message || `${(col as any).title || key}校验失败`,
-          })
-          break
-        }
-      }
-    }
+    const results = await Promise.all(tasks)
+    const errors = results.filter(Boolean) as RowValidationError[]
 
     validationErrors.value = errors
     return errors.length === 0

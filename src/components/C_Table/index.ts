@@ -20,6 +20,7 @@ export type {
   PaginationConfig,
   SelectOption,
   SimpleTableActions,
+  ColumnWithKey,
 } from './types'
 
 /* ================= 组合式函数导出 ================= */
@@ -71,7 +72,11 @@ export type {
 } from './composables/useTableGlobalConfig'
 
 export { useRowDrag } from './composables/useRowDrag'
-export type { RowDragConfig, UseRowDragOptions, UseRowDragReturn } from './composables/useRowDrag'
+export type {
+  RowDragConfig,
+  UseRowDragOptions,
+  UseRowDragReturn,
+} from './composables/useRowDrag'
 
 export { useCrossPageSelection } from './composables/useCrossPageSelection'
 export type {

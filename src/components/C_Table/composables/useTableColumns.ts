@@ -14,25 +14,13 @@ import {
   type ComputedRef,
 } from 'vue'
 import type { DataTableRowKey, DataTableColumn } from 'naive-ui/es'
-import type { TableColumn, DataRecord } from '../types'
+import type { TableColumn, DataRecord, ColumnWithKey } from '../types'
 import type { ResolvedConfig } from './useTableConfig'
 import { applyFormatter } from './useTableGlobalConfig'
 import { EDIT_COMPONENTS } from '../data'
 import C_Icon from '../../C_Icon/index.vue'
 
 /* ================= 内部辅助类型 ================= */
-
-/**
- * 内部列类型，展平 TableColumn 联合类型以便直接访问 key/title/visible 等属性
- */
-type ColumnWithKey = TableColumn & {
-  key?: string
-  title?: string
-  visible?: boolean
-  width?: number | string
-  align?: string
-  titleAlign?: string
-}
 
 /** useTableColumns 中对 tableManager 的最小依赖接口 */
 interface TableManagerRef {

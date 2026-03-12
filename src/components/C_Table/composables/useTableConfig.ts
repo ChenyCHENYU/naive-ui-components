@@ -17,7 +17,7 @@ import type { DynamicRowsOptions } from './useDynamicRow'
 import type { RowDragConfig } from './useRowDrag'
 import type { CrossPageSelectionConfig } from './useCrossPageSelection'
 import type { ExportConfig } from './useTableExport'
-import type { ColumnFormatter, FormatterConfig } from './useTableGlobalConfig'
+import type { FormatterConfig } from './useTableGlobalConfig'
 
 /* ================= CRUD 绑定类型 ================= */
 
@@ -160,7 +160,9 @@ export interface SummaryConfig<T extends DataRecord = DataRecord> {
   /** 合计行位置 */
   position?: 'top' | 'bottom'
   /** 自定义合计函数，每列返回 { value, colSpan? } */
-  render?: (data: T[]) => Record<string, { value: string | number; colSpan?: number }>
+  render?: (
+    data: T[]
+  ) => Record<string, { value: string | number; colSpan?: number }>
 }
 
 /** 列拖拽排序配置 */
@@ -202,7 +204,10 @@ export interface BatchActionsConfig {
     label: string
     icon?: string
     type?: string
-    onClick: (selectedKeys: DataTableRowKey[], selectedRows: DataRecord[]) => void | Promise<void>
+    onClick: (
+      selectedKeys: DataTableRowKey[],
+      selectedRows: DataRecord[]
+    ) => void | Promise<void>
   }>
 }
 

@@ -147,13 +147,6 @@ export interface BaseConfig<T extends DataRecord = DataRecord> {
 /* ================= 数据映射类型 ================= */
 export type SelectOption = BaseOption
 
-export type DataMapping = SafeRecord<string, string>
-
-export type CommonMappings = SafeRecord<
-  'gender' | 'department' | 'status',
-  DataMapping
->
-
 /* ================= 编辑相关类型 ================= */
 export interface EditProps {
   min?: number
@@ -477,28 +470,6 @@ export interface UseTableExpandReturn<
   getTableColumns: (originalColumns: TableColumn<T>[]) => any[]
 }
 
-/* ================= 演示和测试类型 ================= */
-export interface TestRecord extends DataRecord {
-  id: number
-  name: string
-  department: string
-  role: string
-  status: string
-  hasChildren: boolean
-}
-
-export interface SelectedChildGroup {
-  parentKey: number
-  parentName: string
-  children: any[]
-}
-
-export interface DemoConfig {
-  enableSelection: boolean
-  enableChildSelection: boolean
-  parentChildLinkMode: ParentChildLinkMode
-}
-
 /** 行操作按钮配置 */
 export interface RowAction<T extends DataRecord = DataRecord> {
   label: string
@@ -508,6 +479,21 @@ export interface RowAction<T extends DataRecord = DataRecord> {
   show?: boolean | ((row: T, index: number) => boolean)
   onClick?: (row: T, index: number) => void | Promise<void>
   tooltip?: string
+}
+
+/* ================= 内部辅助类型 ================= */
+/**
+ * 展平 TableColumn 联合类型以便直接访问 key/title/visible 等属性。
+ * 各 composable 共用此类型，避免重复定义。
+ */
+export type ColumnWithKey = TableColumn & {
+  key?: string
+  title?: string
+  visible?: boolean
+  width?: number | string
+  align?: string
+  titleAlign?: string
+  formatter?: ColumnFormatter
 }
 
 export type { MaybeRefLike }
