@@ -179,7 +179,7 @@ bun add expr-eval
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（49 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（51 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译 global.scss → global-scss.css
   ├── 3. merge-css.js    → 合并 SFC CSS + global SCSS → style.css
   └── 4. gen-exports.js  → 自动生成 package.json exports 映射

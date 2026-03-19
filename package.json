@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
@@ -121,7 +121,7 @@
     "@types/sortablejs": "^1.15.9",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
-    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitejs/plugin-vue": "^6.0.5",
     "@vue/compiler-sfc": "^3.5.18",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.7.0",
@@ -140,11 +140,11 @@
     "sass": "^1.90.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.2",
-    "unplugin-vue": "^7.0.1",
+    "unplugin-vue": "^7.1.1",
     "unplugin-vue-components": "^31.0.0",
-    "vite": "^7.1.2",
+    "vite": "^8.0.1",
     "vue": "^3.5.18",
-    "vue-tsc": "^3.2.5"
+    "vue-tsc": "^3.2.6"
   },
   "config": {
     "commitizen": {
