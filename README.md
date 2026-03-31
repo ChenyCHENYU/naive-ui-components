@@ -1,8 +1,21 @@
+<div align="center">
+
 # @agile-team/naive-ui-components
 
-基于 **Naive UI** 的 Vue 3 企业级组件库，从 Robot Admin 中提炼的 51 个高质量业务组件。
+**基于 Naive UI 的 Vue 3 企业级组件库**
 
-支持 **全量注册**、**按需导入（Tree-Shaking）** 和 **子路径独立导入**，配合多入口构建输出 ESM / CJS / DTS，满足不同集成场景。
+从 Robot Admin 中提炼的 51 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
+
+[![NPM Version](https://img.shields.io/npm/v/@agile-team/naive-ui-components)](https://www.npmjs.com/package/@agile-team/naive-ui-components)
+[![License](https://img.shields.io/npm/l/@agile-team/naive-ui-components)](./LICENSE)
+
+[在线文档](https://www.tzagileteam.com/robot/components/preface) · [GitHub](https://github.com/ChenyCHENYU/naive-ui-components) · [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
+
+[English](./README_EN.md)
+
+</div>
+
+---
 
 ## 📦 安装
 
@@ -16,9 +29,9 @@ bun add @agile-team/naive-ui-components
 bun add vue@^3.5.0 naive-ui@^2.35.0
 ```
 
-## 🚀 快速开始
+### 🚀 快速开始
 
-### 全局注册
+#### 全局注册
 
 ```typescript
 import { createApp } from 'vue'
@@ -30,7 +43,7 @@ app.use(NaiveUIComponents)
 app.mount('#app')
 ```
 
-### 按需导入（主入口 Tree-Shaking）
+#### 按需导入（主入口 Tree-Shaking）
 
 ```vue
 <script setup lang="ts">
@@ -39,7 +52,7 @@ app.mount('#app')
 </script>
 ```
 
-### 子路径独立导入（推荐，最小打包体积）
+#### 子路径独立导入（推荐，最小打包体积）
 
 每个组件都提供独立的子路径入口，仅加载目标组件的代码和类型：
 
@@ -54,7 +67,7 @@ app.mount('#app')
 
 > 子路径导入提供完整的 TypeScript 类型支持（`.d.ts`），IDE 可自动补全 props / emits / slots。
 
-### Composables 单独使用
+#### Composables 单独使用
 
 ```typescript
 import {
@@ -64,11 +77,11 @@ import {
 } from '@agile-team/naive-ui-components'
 ```
 
-## 📋 组件清单（51 个）
+### 📋 组件清单（51 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
-### 基础组件
+#### 基础组件
 
 | 组件             | 说明             | 外部依赖                    |
 | ---------------- | ---------------- | --------------------------- |
@@ -93,7 +106,7 @@ import {
 | `C_OrgChart`     | 组织架构图       | -                           |
 | `C_Skeleton`     | 骨架屏占位组件   | -                           |
 
-### 内容 & 编辑组件
+#### 内容 & 编辑组件
 
 | 组件              | 说明                 | 外部依赖             |
 | ----------------- | -------------------- | -------------------- |
@@ -104,7 +117,7 @@ import {
 | `C_QRCode`        | 二维码生成器         | `qrcode`             |
 | `C_ImageCropper`  | 图片裁剪器           | `vue-cropper`        |
 
-### 数据展示组件
+#### 数据展示组件
 
 | 组件             | 说明                                      | 外部依赖                             |
 | ---------------- | ----------------------------------------- | ------------------------------------ |
@@ -119,7 +132,7 @@ import {
 | `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`、`@tato30/vue-pdf` |
 | `C_Timeline`     | 时间线（垂直/水平/可折叠）                | -                                    |
 
-### 表单 & 布局组件
+#### 表单 & 布局组件
 
 | 组件              | 说明                                              | 外部依赖                     |
 | ----------------- | ------------------------------------------------- | ---------------------------- |
@@ -133,7 +146,7 @@ import {
 | `C_Cron`          | Cron 表达式编辑器                                 | -                            |
 | `C_Transfer`      | 穿梭框（搜索/全选/批量操作）                      | -                            |
 
-### 交互 & 业务组件
+#### 交互 & 业务组件
 
 | 组件            | 说明                                   | 外部依赖 |
 | --------------- | -------------------------------------- | -------- |
@@ -141,7 +154,7 @@ import {
 | `C_ContextMenu` | 右键菜单（嵌套子菜单/快捷键/危险操作） | -        |
 | `C_Login`       | 登录组件（5种模式/验证码/记住密码）    | -        |
 
-### 流程 & 通知组件
+#### 流程 & 通知组件
 
 | 组件                   | 说明                                 | 外部依赖         |
 | ---------------------- | ------------------------------------ | ---------------- |
@@ -149,7 +162,7 @@ import {
 | `C_NotificationCenter` | 通知中心（WebSocket/轮询）           | -                |
 | `C_Upload`             | 大文件上传（分片/断点续传/哈希校验） | `spark-md5`      |
 
-## 🔌 可选依赖
+### 🔌 可选依赖
 
 包含外部依赖的组件以 `optionalDependencies` 声明。**按需安装**：
 
@@ -173,9 +186,9 @@ bun add print-js html2canvas
 bun add expr-eval
 ```
 
-## 🏗️ 构建架构
+### 🏗️ 构建架构
 
-### 四阶段构建流水线
+#### 四阶段构建流水线
 
 ```
 bun run build
@@ -185,7 +198,7 @@ bun run build
   └── 4. gen-exports.js  → 自动生成 package.json exports 映射
 ```
 
-### 技术要点
+#### 技术要点
 
 - **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），51 个独立入口并行编译
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 编译全局样式
@@ -194,7 +207,7 @@ bun run build
 - **子路径导出**：`gen-exports.js` 自动扫描 `dist/` 并写入 `package.json` 的 `exports` 字段
 - **导出冲突检测**：`check-export-conflicts.js` 确保组件间无命名冲突
 
-### 输出产物
+#### 输出产物
 
 ```
 dist/
@@ -204,7 +217,7 @@ dist/
 └── [chunk].js                             # 共享代码块
 ```
 
-## 🔧 开发
+### 🔧 开发
 
 ```bash
 bun install              # 安装依赖
@@ -217,7 +230,7 @@ bun run check:exports    # 检测导出命名冲突
 bun run type-check       # TypeScript 类型检查
 ```
 
-### 项目结构
+#### 项目结构
 
 ```
 naive-ui-components/
@@ -251,14 +264,14 @@ naive-ui-components/
 └── tsconfig.json
 ```
 
-### 添加新组件
+#### 添加新组件
 
 1. 创建 `src/components/C_NewComponent/` 目录
 2. 编写 `index.vue`、`index.ts`（barrel）、`types.ts`
 3. 在 `src/index.ts` 中添加 `export * from './components/C_NewComponent'`
 4. 运行 `bun run build`—构建脚本会自动生成子路径入口和 exports 映射
 
-### 发布
+#### 发布
 
 ```bash
 bun run release:patch   # 0.3.0 → 0.3.1
@@ -270,7 +283,9 @@ bun run release:major   # 0.3.0 → 1.0.0
 
 MIT License
 
-## 🔗 相关链接
+---
+
+## 🔗 链接
 
 - [组件在线文档（含交互演示）](https://www.tzagileteam.com/robot/components/preface)
 - [Robot Admin 主项目](https://github.com/ChenyCHENYU/robot_admin)
