@@ -29,10 +29,11 @@
   import { computed, h } from 'vue'
   import { NDropdown, NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
+  import type { LanguageOption } from './types'
 
   defineOptions({ name: 'C_Language' })
 
-  export interface LanguageOption {
+  interface LegacyLanguageOption extends LanguageOption {
     key: string
     label: string
     iconClass?: string
@@ -41,7 +42,7 @@
   const props = withDefaults(
     defineProps<{
       modelValue?: string
-      options?: LanguageOption[]
+      options?: LegacyLanguageOption[]
       /** Tooltip 文案，默认 "语言切换" */
       tooltip?: string
     }>(),

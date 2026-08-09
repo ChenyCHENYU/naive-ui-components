@@ -13,14 +13,27 @@
       v-if="showControls && isDynamicStateAvailable"
       class="dynamic-controls"
     >
-      <NCard size="small" title="动态表单控制" :bordered="false">
+      <NCard
+        size="small"
+        title="动态表单控制"
+        :bordered="false"
+      >
         <template #header-extra>
-          <NBadge :value="dynamicFieldsCount" type="warning">
-            <C_Icon :name="'mdi:layers'" :size="16" />
+          <NBadge
+            :value="dynamicFieldsCount"
+            type="warning"
+          >
+            <C_Icon
+              :name="'mdi:layers'"
+              :size="16"
+            />
           </NBadge>
         </template>
 
-        <NSpace justify="space-between" align="center">
+        <NSpace
+          justify="space-between"
+          align="center"
+        >
           <NSpace>
             <NButton
               size="small"
@@ -29,7 +42,10 @@
               @click="dynamicState!.addField()"
             >
               <template #icon>
-                <C_Icon :name="'mdi:plus'" :size="14" />
+                <C_Icon
+                  :name="'mdi:plus'"
+                  :size="14"
+                />
               </template>
               添加字段 ({{ dynamicFieldsCount }}/{{ maxFields }})
             </NButton>
@@ -41,7 +57,10 @@
               @click="dynamicState!.removeField()"
             >
               <template #icon>
-                <C_Icon :name="'mdi:minus'" :size="14" />
+                <C_Icon
+                  :name="'mdi:minus'"
+                  :size="14"
+                />
               </template>
               移除字段
             </NButton>
@@ -53,7 +72,10 @@
               @click="dynamicState!.clearDynamicFields()"
             >
               <template #icon>
-                <C_Icon :name="'mdi:delete-sweep'" :size="14" />
+                <C_Icon
+                  :name="'mdi:delete-sweep'"
+                  :size="14"
+                />
               </template>
               清空动态
             </NButton>
@@ -90,10 +112,20 @@
       v-else-if="showControls && !isDynamicStateAvailable"
       class="dynamic-controls-fallback"
     >
-      <NCard size="small" title="动态表单控制 (静态模式)" :bordered="false">
-        <NAlert type="info" show-icon>
+      <NCard
+        size="small"
+        title="动态表单控制 (静态模式)"
+        :bordered="false"
+      >
+        <NAlert
+          type="info"
+          show-icon
+        >
           <template #icon>
-            <C_Icon :name="'mdi:information-outline'" :size="16" />
+            <C_Icon
+              :name="'mdi:information-outline'"
+              :size="16"
+            />
           </template>
           当前为静态模式，如需动态功能请在父组件中提供动态表单状态。
         </NAlert>
@@ -102,7 +134,11 @@
 
     <!-- 表单项渲染区域 -->
     <div class="dynamic-form-items">
-      <NGrid :cols="gridCols" :x-gap="gridGutter" :y-gap="gridGutter">
+      <NGrid
+        :cols="gridCols"
+        :x-gap="gridGutter"
+        :y-gap="gridGutter"
+      >
         <NGridItem
           v-for="(item, index) in formItems"
           :key="getItemKey(item, index)"
@@ -121,126 +157,109 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, watchEffect } from "vue";
-import type { VNode } from "vue";
-import type { DynamicFieldConfig, LayoutConfig, FormOption } from "../../types";
-import {
-  DYNAMIC_FORM_STATE_KEY,
-  type DynamicFormStateType,
-} from "../../composables/useDynamicFormState";
-import C_Icon from "../../../C_Icon/index.vue";
+  import { computed, inject, type VNode } from 'vue'
+  import type {
+    DynamicFieldConfig,
+    LayoutConfig,
+    FormOption,
+  } from '../../types'
+  import {
+    DYNAMIC_FORM_STATE_KEY,
+    type DynamicFormStateType,
+  } from '../../composables/useDynamicFormState'
+  import C_Icon from '../../../C_Icon/index.vue'
 
-/* ================= 接口定义 ================= */
-interface Props {
-  formItems: VNode[];
-  layoutConfig?: LayoutConfig;
-  options?: FormOption[];
-  dynamicFormState?: DynamicFormStateType | null;
-}
+  /* ================= 接口定义 ================= */
+  interface Props {
+    formItems: VNode[]
+    layoutConfig?: LayoutConfig
+    options?: FormOption[]
+    dynamicFormState?: DynamicFormStateType | null
+  }
 
-/* ================= 组件配置 ================= */
-const props = withDefaults(defineProps<Props>(), {
-  layoutConfig: () => ({}),
-  options: () => [],
-  dynamicFormState: null,
-});
+  /* ================= 组件配置 ================= */
+  const props = withDefaults(defineProps<Props>(), {
+    layoutConfig: () => ({}),
+    options: () => [],
+    dynamicFormState: null,
+  })
 
-defineEmits<{
-  "field-add": [fieldConfig: DynamicFieldConfig];
-  "field-remove": [fieldId: string];
-  "fields-clear": [];
-}>();
+  defineEmits<{
+    'field-add': [fieldConfig: DynamicFieldConfig]
+    'field-remove': [fieldId: string]
+    'fields-clear': []
+  }>()
 
-/* ================= 状态管理 ================= */
-const injectedDynamicState = inject<DynamicFormStateType | null>(
-  DYNAMIC_FORM_STATE_KEY,
-  null,
-);
+  /* ================= 状态管理 ================= */
+  const injectedDynamicState = inject<DynamicFormStateType | null>(
+    DYNAMIC_FORM_STATE_KEY,
+    null
+  )
 
-const dynamicState = computed(
-  () => props.dynamicFormState || injectedDynamicState,
-);
-const isDynamicStateAvailable = computed(() => !!dynamicState.value);
+  const dynamicState = computed(
+    () => props.dynamicFormState || injectedDynamicState
+  )
+  const isDynamicStateAvailable = computed(() => !!dynamicState.value)
 
-/* ================= 计算属性 ================= */
-const gridCols = computed(() => props.layoutConfig?.dynamic?.grid?.cols ?? 24);
-const gridGutter = computed(
-  () => props.layoutConfig?.dynamic?.grid?.gutter ?? 16,
-);
-const showControls = computed(
-  () => props.layoutConfig?.dynamic?.controls?.showControls !== false,
-);
+  /* ================= 计算属性 ================= */
+  const gridCols = computed(() => props.layoutConfig?.dynamic?.grid?.cols ?? 24)
+  const gridGutter = computed(
+    () => props.layoutConfig?.dynamic?.grid?.gutter ?? 16
+  )
+  const showControls = computed(
+    () => props.layoutConfig?.dynamic?.controls?.showControls !== false
+  )
 
-const maxFields = computed(() => {
-  return (
-    dynamicState.value?.state.config.maxFields ??
-    props.layoutConfig?.dynamic?.dynamic?.maxFields ??
-    50
-  );
-});
+  const maxFields = computed(() => {
+    return (
+      dynamicState.value?.state.config.maxFields ??
+      props.layoutConfig?.dynamic?.dynamic?.maxFields ??
+      50
+    )
+  })
 
-const dynamicFieldsCount = computed(
-  () => dynamicState.value?.dynamicFieldsCount.value ?? 0,
-);
-const canAddMoreFields = computed(
-  () => dynamicState.value?.canAddMoreFields.value ?? false,
-);
-const totalFieldsCount = computed(() => props.formItems.length);
+  const dynamicFieldsCount = computed(
+    () => dynamicState.value?.dynamicFieldsCount.value ?? 0
+  )
+  const canAddMoreFields = computed(
+    () => dynamicState.value?.canAddMoreFields.value ?? false
+  )
+  const totalFieldsCount = computed(() => props.formItems.length)
 
-/* ================= 工具方法 ================= */
-const getItemKey = (item: VNode, index: number): string => {
-  return (
-    item.key?.toString() || (item.props as any)?.path || `dynamic-item-${index}`
-  );
-};
+  /* ================= 工具方法 ================= */
+  const getItemKey = (item: VNode, index: number): string => {
+    return (
+      item.key?.toString() ||
+      (item.props as any)?.path ||
+      `dynamic-item-${index}`
+    )
+  }
 
-const getItemSpan = (index: number): number => {
-  const span = props.options?.[index]?.layout?.span;
-  return typeof span === "number" && span > 0 && span <= gridCols.value
-    ? span
-    : Math.min(12, gridCols.value);
-};
+  const getItemSpan = (index: number): number => {
+    const span = props.options?.[index]?.layout?.span
+    return typeof span === 'number' && span > 0 && span <= gridCols.value
+      ? span
+      : Math.min(12, gridCols.value)
+  }
 
-const isDynamicField = (item: VNode): boolean => {
-  if (!dynamicState.value) return false;
-  const fieldId = (item.props as any)?.path || item.key?.toString() || "";
-  return dynamicState.value.state.dynamicFields.some(
-    (field: any) => field.prop === fieldId,
-  );
-};
+  const isDynamicField = (item: VNode): boolean => {
+    if (!dynamicState.value) return false
+    const fieldId = (item.props as any)?.path || item.key?.toString() || ''
+    return dynamicState.value.state.dynamicFields.some(
+      (field: any) => field.prop === fieldId
+    )
+  }
 
-/* ================= 对外暴露 ================= */
-defineExpose({
-  addField: () => dynamicState.value?.addField(),
-  removeField: () => dynamicState.value?.removeField(),
-  clearAllDynamic: () => dynamicState.value?.clearDynamicFields(),
-  isDynamicStateAvailable,
-  dynamicState,
-});
-
-/* ================= 开发环境验证 ================= */
-if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
-  watchEffect(() => {
-    const { options, formItems } = props;
-    if (options && options.length !== formItems.length) {
-      console.warn(
-        `[Dynamic Layout] 配置项数量(${options.length})与表单项数量(${formItems.length})不匹配`,
-      );
-    }
-
-    console.log(
-      "[Dynamic Layout]",
-      isDynamicStateAvailable.value ? "动态模式已启用" : "运行在静态模式",
-      {
-        totalFields: totalFieldsCount.value,
-        dynamicFields: dynamicFieldsCount.value,
-        stateSource: props.dynamicFormState ? "props透传" : "inject注入",
-      },
-    );
-  });
-}
+  /* ================= 对外暴露 ================= */
+  defineExpose({
+    addField: () => dynamicState.value?.addField(),
+    removeField: () => dynamicState.value?.removeField(),
+    clearAllDynamic: () => dynamicState.value?.clearDynamicFields(),
+    isDynamicStateAvailable,
+    dynamicState,
+  })
 </script>
 
 <style scoped lang="scss">
-@use "./index.scss";
+  @use './index.scss';
 </style>

@@ -251,7 +251,7 @@ export function useTableColumns(
 
   /* ================= 响应式列状态 ================= */
 
-  const reactiveColumns = ref<TableColumn[]>([])
+  const reactiveColumns = ref<TableColumn[]>([]) as Ref<TableColumn[]>
   const showSettingsPanel = ref(false)
 
   /** 同步外部列配置到响应式状态 */

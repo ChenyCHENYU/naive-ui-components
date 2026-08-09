@@ -1,15 +1,15 @@
 <div align="center">
 
-# @agile-team/naive-ui-components
+# @robot-admin/naive-ui-components
 
 **基于 Naive UI 的 Vue 3 企业级组件库**
 
 从 Robot Admin 中提炼的 51 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
 
-[![NPM Version](https://img.shields.io/npm/v/@agile-team/naive-ui-components)](https://www.npmjs.com/package/@agile-team/naive-ui-components)
-[![License](https://img.shields.io/npm/l/@agile-team/naive-ui-components)](./LICENSE)
+[![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
+[![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
 
-[在线文档](https://www.tzagileteam.com/robot/components/preface) · [GitHub](https://github.com/ChenyCHENYU/naive-ui-components) · [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
+[在线文档](https://www.tzagileteam.com/robot/components/preface) · [GitHub](https://github.com/ChenyCHENYU/naive-ui-components) · [NPM](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 
 [English](./README_EN.md)
 
@@ -20,7 +20,7 @@
 ## 📦 安装
 
 ```bash
-bun add @agile-team/naive-ui-components
+bun add @robot-admin/naive-ui-components
 ```
 
 必需的对等依赖：
@@ -35,8 +35,8 @@ bun add vue@^3.5.0 naive-ui@^2.35.0
 
 ```typescript
 import { createApp } from 'vue'
-import NaiveUIComponents from '@agile-team/naive-ui-components'
-import '@agile-team/naive-ui-components/style.css'
+import NaiveUIComponents from '@robot-admin/naive-ui-components'
+import '@robot-admin/naive-ui-components/style.css'
 
 const app = createApp(App)
 app.use(NaiveUIComponents)
@@ -47,8 +47,8 @@ app.mount('#app')
 
 ```vue
 <script setup lang="ts">
-  import { C_Icon, C_Table, C_Form } from '@agile-team/naive-ui-components'
-  import '@agile-team/naive-ui-components/style.css'
+  import { C_Icon, C_Table, C_Form } from '@robot-admin/naive-ui-components'
+  import '@robot-admin/naive-ui-components/style.css'
 </script>
 ```
 
@@ -58,10 +58,10 @@ app.mount('#app')
 
 ```vue
 <script setup lang="ts">
-  import { C_Form } from '@agile-team/naive-ui-components/C_Form'
-  import { C_Table } from '@agile-team/naive-ui-components/C_Table'
-  import { C_Icon } from '@agile-team/naive-ui-components/C_Icon'
-  import '@agile-team/naive-ui-components/style.css'
+  import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
+  import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
+  import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
+  import '@robot-admin/naive-ui-components/style.css'
 </script>
 ```
 
@@ -74,8 +74,23 @@ import {
   useTableManager,
   useFormState,
   usePlayerCore,
-} from '@agile-team/naive-ui-components'
+} from '@robot-admin/naive-ui-components'
 ```
+
+#### 自动按需导入（推荐）
+
+Resolver 默认从组件子路径加载，避免只使用少量组件时把整个组件库及重型可选依赖带入首屏：
+
+```typescript
+import Components from 'unplugin-vue-components/vite'
+import { RobotNaiveUiResolver } from '@robot-admin/naive-ui-components/resolver'
+
+Components({
+  resolvers: [RobotNaiveUiResolver({ importStyle: true })],
+})
+```
+
+如需兼容旧项目的主入口导入，可显式设置 `importOnDemand: false`。
 
 ### 📋 组件清单（51 个）
 
@@ -212,7 +227,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（49 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（51 组件）
 ├── style.css                              # 合并后的全量样式
 └── [chunk].js                             # 共享代码块
 ```
@@ -228,6 +243,10 @@ bun run build:css        # 仅合并 CSS
 bun run build:exports    # 仅生成 exports 映射
 bun run check:exports    # 检测导出命名冲突
 bun run type-check       # TypeScript 类型检查
+bun run test             # 运行 Bun 单元测试
+bun run lint:check       # 强制 Oxlint 正确性检查
+bun run lint:eslint      # ESLint 存量规则审计
+bun run verify           # 类型、测试、导出和构建全量验证
 ```
 
 #### 项目结构
@@ -274,9 +293,10 @@ naive-ui-components/
 #### 发布
 
 ```bash
-bun run release:patch   # 0.3.0 → 0.3.1
-bun run release:minor   # 0.3.0 → 0.4.0
-bun run release:major   # 0.3.0 → 1.0.0
+bun run changeset       # 记录变更及版本级别
+bun run version         # 更新版本号与 CHANGELOG
+bun run verify          # 发布前完整验证
+bun run release         # 发布 Changesets 中待发布版本
 ```
 
 ## 📄 许可证
@@ -291,4 +311,4 @@ MIT License
 - [Robot Admin 主项目](https://github.com/ChenyCHENYU/robot_admin)
 - [Robot Admin 在线体验](https://www.robotadmin.cn)
 - [GitHub](https://github.com/ChenyCHENYU/naive-ui-components)
-- [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
+- [NPM](https://www.npmjs.com/package/@robot-admin/naive-ui-components)

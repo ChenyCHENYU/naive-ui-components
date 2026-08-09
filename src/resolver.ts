@@ -1,3 +1,13 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-08-09
+ * @LastEditors: ChenYu ycyplus@gmail.com
+ * @LastEditTime: 2026-08-09
+ * @FilePath: \naive-ui-components\src\resolver.ts
+ * @Description: 组件库按需导入解析器
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+
 /**
  * @robot-admin/naive-ui-components Resolver
  * 用于 unplugin-vue-components 的自动导入解析器
@@ -84,8 +94,8 @@ const componentSet = new Set<string>(componentNames)
 export interface RobotNaiveUiResolverOptions {
   /**
    * 按需导入：从子路径解析单个组件，减少打包体积
-   * - false (默认): `import { C_Form } from '@robot-admin/naive-ui-components'`
-   * - true: `import { C_Form } from '@robot-admin/naive-ui-components/C_Form'`
+   * - true (默认): `import { C_Form } from '@robot-admin/naive-ui-components/C_Form'`
+   * - false: `import { C_Form } from '@robot-admin/naive-ui-components'`
    */
   importOnDemand?: boolean
   /**
@@ -105,7 +115,7 @@ export interface RobotNaiveUiResolverOptions {
 export function RobotNaiveUiResolver(
   options: RobotNaiveUiResolverOptions = {}
 ) {
-  const { importOnDemand = false, importStyle = false } = options
+  const { importOnDemand = true, importStyle = false } = options
 
   return {
     type: 'component' as const,

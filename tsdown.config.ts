@@ -1,27 +1,31 @@
-import { defineConfig } from "tsdown";
-import fs from "fs";
-import path from "path";
-import Vue from "unplugin-vue/rolldown";
+import { defineConfig } from 'tsdown'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'node:url'
+import Vue from 'unplugin-vue/rolldown'
 import Components from 'unplugin-vue-components/rolldown'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
-import * as sass from "sass";
+import * as sass from 'sass'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // ====== 动态生成多入口：主入口 + resolver + 每个组件独立入口 ======
 function buildEntryMap(): Record<string, string> {
-  const componentsDir = path.resolve(__dirname, "src/components");
+  const componentsDir = path.resolve(__dirname, 'src/components')
   const entries: Record<string, string> = {
     index: 'src/index.ts',
     resolver: 'src/resolver.ts',
   }
   for (const dir of fs.readdirSync(componentsDir)) {
-    const fullDir = path.join(componentsDir, dir);
-    if (!fs.statSync(fullDir).isDirectory()) continue;
-    const tsEntry = path.join(fullDir, "index.ts");
+    const fullDir = path.join(componentsDir, dir)
+    if (!fs.statSync(fullDir).isDirectory()) continue
+    const tsEntry = path.join(fullDir, 'index.ts')
     if (fs.existsSync(tsEntry)) {
-      entries[dir] = `src/components/${dir}/index.ts`;
+      entries[dir] = `src/components/${dir}/index.ts`
     }
   }
-  return entries;
+  return entries
 }
 
 /**
@@ -73,6 +77,7 @@ export default defineConfig({
   platform: 'neutral',
   outputOptions: {
     chunkFileNames: '[name].js',
+    exports: 'named',
   },
   plugins: [
     // ⚠️ 插件顺序关键（unplugin-vue 7.1.x 兼容）：

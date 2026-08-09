@@ -1,15 +1,15 @@
 <div align="center">
 
-# @agile-team/naive-ui-components
+# @robot-admin/naive-ui-components
 
 **Enterprise-grade Vue 3 component library built on Naive UI**
 
 51 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
 
-[![NPM Version](https://img.shields.io/npm/v/@agile-team/naive-ui-components)](https://www.npmjs.com/package/@agile-team/naive-ui-components)
-[![License](https://img.shields.io/npm/l/@agile-team/naive-ui-components)](./LICENSE)
+[![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
+[![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
 
-[Live Demo](https://www.tzagileteam.com/robot/components/preface) · [GitHub](https://github.com/ChenyCHENYU/naive-ui-components) · [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
+[Live Demo](https://www.tzagileteam.com/robot/components/preface) · [GitHub](https://github.com/ChenyCHENYU/naive-ui-components) · [NPM](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 
 [中文](./README.md)
 
@@ -20,7 +20,7 @@
 ## 📦 Installation
 
 ```bash
-bun add @agile-team/naive-ui-components
+bun add @robot-admin/naive-ui-components
 ```
 
 Required peer dependencies:
@@ -35,8 +35,8 @@ bun add vue@^3.5.0 naive-ui@^2.35.0
 
 ```typescript
 import { createApp } from 'vue'
-import NaiveUIComponents from '@agile-team/naive-ui-components'
-import '@agile-team/naive-ui-components/style.css'
+import NaiveUIComponents from '@robot-admin/naive-ui-components'
+import '@robot-admin/naive-ui-components/style.css'
 
 const app = createApp(App)
 app.use(NaiveUIComponents)
@@ -47,8 +47,8 @@ app.mount('#app')
 
 ```vue
 <script setup lang="ts">
-  import { C_Icon, C_Table, C_Form } from '@agile-team/naive-ui-components'
-  import '@agile-team/naive-ui-components/style.css'
+  import { C_Icon, C_Table, C_Form } from '@robot-admin/naive-ui-components'
+  import '@robot-admin/naive-ui-components/style.css'
 </script>
 ```
 
@@ -58,10 +58,10 @@ Each component provides an independent subpath entry that loads only the target 
 
 ```vue
 <script setup lang="ts">
-  import { C_Form } from '@agile-team/naive-ui-components/C_Form'
-  import { C_Table } from '@agile-team/naive-ui-components/C_Table'
-  import { C_Icon } from '@agile-team/naive-ui-components/C_Icon'
-  import '@agile-team/naive-ui-components/style.css'
+  import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
+  import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
+  import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
+  import '@robot-admin/naive-ui-components/style.css'
 </script>
 ```
 
@@ -74,8 +74,23 @@ import {
   useTableManager,
   useFormState,
   usePlayerCore,
-} from '@agile-team/naive-ui-components'
+} from '@robot-admin/naive-ui-components'
 ```
+
+#### Automatic On-demand Imports (Recommended)
+
+The resolver loads component subpaths by default, preventing unused components and heavyweight optional dependencies from entering the initial bundle:
+
+```typescript
+import Components from 'unplugin-vue-components/vite'
+import { RobotNaiveUiResolver } from '@robot-admin/naive-ui-components/resolver'
+
+Components({
+  resolvers: [RobotNaiveUiResolver({ importStyle: true })],
+})
+```
+
+Set `importOnDemand: false` explicitly when a legacy project still requires imports from the package root.
 
 ### 📋 Component List (51 Components)
 
@@ -212,7 +227,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # Main entry
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (49 components)
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (51 components)
 ├── style.css                              # Merged full styles
 └── [chunk].js                             # Shared code chunks
 ```
@@ -228,6 +243,10 @@ bun run build:css        # Merge CSS only
 bun run build:exports    # Generate exports map only
 bun run check:exports    # Check export naming conflicts
 bun run type-check       # TypeScript type checking
+bun run test             # Run Bun unit tests
+bun run lint:check       # Required Oxlint correctness checks
+bun run lint:eslint      # Audit the existing ESLint rule backlog
+bun run verify           # Type, test, export, and build verification
 ```
 
 #### Project Structure
@@ -274,9 +293,10 @@ naive-ui-components/
 #### Publishing
 
 ```bash
-bun run release:patch   # 0.3.0 → 0.3.1
-bun run release:minor   # 0.3.0 → 0.4.0
-bun run release:major   # 0.3.0 → 1.0.0
+bun run changeset       # Record changes and release level
+bun run version         # Update package version and CHANGELOG
+bun run verify          # Run all pre-publish checks
+bun run release         # Publish pending Changesets releases
 ```
 
 ## 📄 License
@@ -291,4 +311,4 @@ MIT License
 - [Robot Admin Main Project](https://github.com/ChenyCHENYU/robot_admin)
 - [Robot Admin Live Demo](https://www.robotadmin.cn)
 - [GitHub](https://github.com/ChenyCHENYU/naive-ui-components)
-- [NPM](https://www.npmjs.com/package/@agile-team/naive-ui-components)
+- [NPM](https://www.npmjs.com/package/@robot-admin/naive-ui-components)

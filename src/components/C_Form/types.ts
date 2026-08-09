@@ -11,6 +11,7 @@ import type {
   DefineComponent,
   CSSProperties,
   ComputedRef,
+  DeepReadonly,
   Ref,
 } from 'vue'
 import type { FormInst, UploadFileInfo } from 'naive-ui/es'
@@ -455,4 +456,33 @@ export interface DynamicFormState {
   hiddenFieldIds: Set<string>
   fieldCounter: number
   isInitialized: boolean
+}
+
+/**
+ * 动态表单状态控制器
+ * @description 为组合式函数提供稳定的公共返回类型，避免声明文件泄漏依赖库内部类型
+ */
+export interface DynamicFormController {
+  state: DeepReadonly<DynamicFormState>
+  allFields: ComputedRef<FormOption[]>
+  visibleFields: ComputedRef<FormOption[]>
+  dynamicFieldsCount: ComputedRef<number>
+  hiddenFieldsCount: ComputedRef<number>
+  canAddMoreFields: ComputedRef<boolean>
+  allVisible: ComputedRef<boolean>
+  FIELD_TYPE_OPTIONS: ReadonlyArray<{
+    label: string
+    value: ComponentType
+  }>
+  addField(config?: Partial<DynamicFieldConfig>): void
+  removeField(index?: number): void
+  clearDynamicFields(): void
+  toggleFieldVisibility(fieldId: string): void
+  toggleAllVisibility(): void
+  updateConfig(config: Partial<DynamicFormConfig>): void
+  exportConfig(): string
+  initialize(
+    baseFields: FormOption[],
+    config?: Partial<DynamicFormConfig>
+  ): void
 }

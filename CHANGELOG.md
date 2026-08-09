@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.10.0
+
+### Minor Changes
+
+- 默认从组件子路径按需解析组件，避免总入口将编辑器、Office、图表等重依赖带入应用首屏；同时为动态表单状态补充稳定的公共返回类型，修复消费项目生成声明时的内部类型泄漏。
+
 ## 0.8.1
 
 ### Minor Changes

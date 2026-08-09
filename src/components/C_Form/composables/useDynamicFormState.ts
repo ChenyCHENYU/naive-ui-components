@@ -11,6 +11,7 @@ import type {
   ComponentType,
   DynamicFieldConfig,
   DynamicFormConfig,
+  DynamicFormController,
   DynamicFormState,
 } from '../types'
 
@@ -41,7 +42,7 @@ export const FIELD_TYPE_OPTIONS = [
  * @description 创建和管理动态表单状态
  * @returns 包含状态和方法的对象
  */
-export const useDynamicFormState = () => {
+export const useDynamicFormState = (): DynamicFormController => {
   /**
    * @description 响应式表单状态
    */
@@ -265,7 +266,7 @@ export const useDynamicFormState = () => {
 /**
  * @description 动态表单状态类型
  */
-export type DynamicFormStateType = ReturnType<typeof useDynamicFormState>
+export type DynamicFormStateType = DynamicFormController
 
 /**
  * @description 动态表单状态注入键

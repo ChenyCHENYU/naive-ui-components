@@ -116,8 +116,9 @@
   import { Icon } from '@iconify/vue'
   import { useImage } from '../../hooks/useImage'
   import { computed, nextTick, onMounted, readonly, ref, watch } from 'vue'
+  import type { IconProps } from './types'
 
-  export interface IconProps {
+  interface LegacyIconProps extends IconProps {
     /** 图标名称/路径/组件实例 */
     name: string | any
     /** 图标类型 */
@@ -152,7 +153,7 @@
     componentProps?: Record<string, any>
   }
 
-  const props = withDefaults(defineProps<IconProps>(), {
+  const props = withDefaults(defineProps<LegacyIconProps>(), {
     name: undefined,
     type: 'iconify',
     color: 'currentColor',

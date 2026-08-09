@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
@@ -62,7 +62,9 @@
     "build:exports": "node scripts/gen-exports.js",
     "build": "tsdown && bun run build:scss && bun run build:css && bun run build:exports",
     "type-check": "tsc --noEmit",
+    "test": "bun test",
     "check:exports": "node scripts/check-export-conflicts.js",
+    "verify": "bun run type-check && bun run test && bun run check:exports && bun run build",
     "prepublishOnly": "bun run build",
     "release": "changeset publish",
     "changeset": "changeset",
@@ -70,6 +72,10 @@
     "prepare": "husky || true",
     "cz": "git-cz",
     "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
+    "lint:check": "oxlint . -D correctness --ignore-path .gitignore",
+    "lint:eslint": "eslint . --no-fix",
+    "lint:staged": "lint-staged",
+    "commitlint": "commitlint",
     "format": "prettier --write src/"
   },
   "peerDependencies": {
@@ -114,6 +120,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.1",
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
     "@robot-admin/git-standards": "1.0.3",

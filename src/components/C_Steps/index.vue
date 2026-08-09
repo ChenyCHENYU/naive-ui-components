@@ -60,9 +60,11 @@
 </template>
 
 <script setup lang="ts">
+  import type { StepItem } from './types'
+
   defineOptions({ name: 'C_Steps' })
 
-  export interface StepItem {
+  interface LegacyStepItem extends StepItem {
     title: string
     description?: string
     time?: string
@@ -74,7 +76,7 @@
 
   const props = withDefaults(
     defineProps<{
-      steps: StepItem[]
+      steps: LegacyStepItem[]
       current?: number
       direction?: 'horizontal' | 'vertical'
       clickable?: boolean

@@ -29,10 +29,9 @@
   import { computed } from 'vue'
   import { NTooltip, NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
+  import type { ThemeMode } from './types'
 
   defineOptions({ name: 'C_Theme' })
-
-  export type ThemeMode = 'system' | 'light' | 'dark'
 
   const props = withDefaults(
     defineProps<{

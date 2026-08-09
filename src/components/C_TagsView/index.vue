@@ -78,10 +78,11 @@
   import { C_Icon } from '../C_Icon'
   import type { TagItem } from '../_shared'
   import { useTagsView, type UseTagsViewOptions } from './useTagsView'
+  import type { ContextMenuLabels } from './types'
 
   defineOptions({ name: 'C_TagsView' })
 
-  export interface ContextMenuLabels {
+  interface LegacyContextMenuLabels extends ContextMenuLabels {
     close?: string
     closeOthers?: string
     closeLeft?: string
@@ -104,7 +105,7 @@
       /** 持久化 localStorage key，传空字符串禁用 */
       persistKey?: string
       /** 右键菜单文案（国际化适配） */
-      contextMenuLabels?: ContextMenuLabels
+      contextMenuLabels?: LegacyContextMenuLabels
       /** useTagsView 配置项（优先级最高） */
       tagsViewOptions?: UseTagsViewOptions
     }>(),

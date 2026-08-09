@@ -22,108 +22,97 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from "vue";
-import { NSelect } from "naive-ui";
+  import { ref, computed, watch } from 'vue'
+  import { NSelect } from 'naive-ui'
+  import type { CascadeItem, CascadeValue } from './types'
 
-defineOptions({ name: "C_Cascade" });
+  defineOptions({ name: 'C_Cascade' })
 
-export interface CascadeItem {
-  label: string;
-  value: string | number;
-  children?: CascadeItem[];
-}
+  const props = withDefaults(
+    defineProps<{
+      data: CascadeItem[]
+      placeholders?: string[]
+      modelValue?: CascadeValue
+    }>(),
+    {
+      placeholders: () => ['请选择', '请选择', '请选择'],
+    }
+  )
 
-interface CascadeValue {
-  primary?: Pick<CascadeItem, "label" | "value"> | null;
-  secondary?: Pick<CascadeItem, "label" | "value"> | null;
-  tertiary?: Pick<CascadeItem, "label" | "value"> | null;
-}
+  const emit = defineEmits<{
+    'update:modelValue': [value: CascadeValue]
+    change: [value: CascadeValue]
+  }>()
 
-const props = withDefaults(
-  defineProps<{
-    data: CascadeItem[];
-    placeholders?: string[];
-    modelValue?: CascadeValue;
-  }>(),
-  {
-    placeholders: () => ["请选择", "请选择", "请选择"],
-  },
-);
+  const levels = [0, 1, 2]
+  const selectedValues = ref<(string | number | null)[]>([null, null, null])
 
-const emit = defineEmits<{
-  "update:modelValue": [value: CascadeValue];
-  change: [value: CascadeValue];
-}>();
+  const getLevelData = (level: number): CascadeItem[] => {
+    if (level === 0) return props.data
+    if (!selectedValues.value[level - 1]) return []
+    const parentData = getLevelData(level - 1)
+    return (
+      parentData.find(x => x.value === selectedValues.value[level - 1])
+        ?.children || []
+    )
+  }
 
-const levels = [0, 1, 2];
-const selectedValues = ref<(string | number | null)[]>([null, null, null]);
+  const levelOptions = computed(() =>
+    levels.map(level =>
+      getLevelData(level).map(item => ({
+        label: item.label,
+        value: item.value,
+      }))
+    )
+  )
 
-const getLevelData = (level: number): CascadeItem[] => {
-  if (level === 0) return props.data;
-  if (!selectedValues.value[level - 1]) return [];
-  const parentData = getLevelData(level - 1);
-  return (
-    parentData.find((x) => x.value === selectedValues.value[level - 1])
-      ?.children || []
-  );
-};
+  const handleChange = (index: number) => {
+    selectedValues.value.splice(
+      index + 1,
+      levels.length - index - 1,
+      ...Array(levels.length - index - 1).fill(null)
+    )
+    emitValue()
+  }
 
-const levelOptions = computed(() =>
-  levels.map((level) =>
-    getLevelData(level).map((item) => ({
-      label: item.label,
-      value: item.value,
-    })),
-  ),
-);
+  const getSelectedItem = (index: number) => {
+    const value = selectedValues.value[index]
+    if (!value) return null
+    const data = getLevelData(index)
+    const item = data.find(i => i.value === value)
+    return item ? { label: item.label, value: item.value } : null
+  }
 
-const handleChange = (index: number) => {
-  selectedValues.value.splice(
-    index + 1,
-    levels.length - index - 1,
-    ...Array(levels.length - index - 1).fill(null),
-  );
-  emitValue();
-};
+  const emitValue = () => {
+    const result: CascadeValue = {
+      primary: getSelectedItem(0),
+      secondary: getSelectedItem(1),
+      tertiary: getSelectedItem(2),
+    }
+    emit('update:modelValue', result)
+    emit('change', result)
+  }
 
-const getSelectedItem = (index: number) => {
-  const value = selectedValues.value[index];
-  if (!value) return null;
-  const data = getLevelData(index);
-  const item = data.find((i) => i.value === value);
-  return item ? { label: item.label, value: item.value } : null;
-};
-
-const emitValue = () => {
-  const result: CascadeValue = {
-    primary: getSelectedItem(0),
-    secondary: getSelectedItem(1),
-    tertiary: getSelectedItem(2),
-  };
-  emit("update:modelValue", result);
-  emit("change", result);
-};
-
-watch(
-  () => props.modelValue,
-  (val) => {
-    selectedValues.value = [
-      val?.primary?.value ?? null,
-      val?.secondary?.value ?? null,
-      val?.tertiary?.value ?? null,
-    ];
-  },
-  { immediate: true, deep: true },
-);
+  watch(
+    () => props.modelValue,
+    val => {
+      selectedValues.value = [
+        val?.primary?.value ?? null,
+        val?.secondary?.value ?? null,
+        val?.tertiary?.value ?? null,
+      ]
+    },
+    { immediate: true, deep: true }
+  )
 </script>
 
 <style scoped lang="scss">
-.n-cascade-selector {
-  display: flex;
-  gap: 12px;
-  .n-select-item {
-    min-width: 140px;
-    flex: 1;
+  .n-cascade-selector {
+    display: flex;
+    gap: 12px;
+    .n-select-item {
+      min-width: 140px;
+      flex: 1;
+    }
   }
-}
 </style>

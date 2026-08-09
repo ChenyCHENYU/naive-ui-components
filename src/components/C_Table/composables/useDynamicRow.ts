@@ -7,6 +7,7 @@
 import {
   h,
   ref,
+  shallowRef,
   computed,
   onBeforeUnmount,
   type VNode,
@@ -457,7 +458,11 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                   finalOptions.printTargetSelector
                 )
                 if (tableElement) {
-                  await handlePrint(ref(tableElement as HTMLElement))
+                  await handlePrint(
+                    shallowRef<HTMLElement | undefined>(
+                      tableElement as HTMLElement
+                    )
+                  )
                 } else {
                   console.warn('未找到表格容器元素')
                 }

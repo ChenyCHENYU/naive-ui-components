@@ -4,7 +4,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref, computed, nextTick } from 'vue'
+import { shallowRef, computed, nextTick } from 'vue'
 import type { DataTableRowKey } from 'naive-ui/es'
 import type { DataRecord, ParentChildLinkMode } from '../types'
 import { useRowEdit } from './useRowEdit'
@@ -531,14 +531,19 @@ export function useTableManager(params: TableManagerParams) {
         /** 打印表格 */
         async print(elementRef?: HTMLElement) {
           if (dynamicRowsState && elementRef) {
-            await dynamicRowsState.handlePrint(ref(elementRef))
+            await dynamicRowsState.handlePrint(
+              shallowRef<HTMLElement | undefined>(elementRef)
+            )
           }
         },
 
         /** 导出表格数据 */
         async download(elementRef?: HTMLElement, filename?: string) {
           if (dynamicRowsState && elementRef) {
-            await dynamicRowsState.handleDownload(ref(elementRef), filename)
+            await dynamicRowsState.handleDownload(
+              shallowRef<HTMLElement | undefined>(elementRef),
+              filename
+            )
           }
         },
       },

@@ -1,6 +1,6 @@
-import C_Icon from "./index.vue";
+import C_Icon from './index.vue'
 
-export { C_Icon };
+export { C_Icon }
 
 // 导出类型定义
-export type { IconProps } from "./index.vue";
+export type { IconProps } from './types'
