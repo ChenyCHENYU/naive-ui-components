@@ -61,11 +61,12 @@ app.mount('#app')
   import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
   import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
   import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
+  import { createMenuOptions } from '@robot-admin/naive-ui-components/C_Menu'
   import '@robot-admin/naive-ui-components/style.css'
 </script>
 ```
 
-> 子路径导入提供完整的 TypeScript 类型支持（`.d.ts`），IDE 可自动补全 props / emits / slots。
+> 子路径导入提供完整的 TypeScript 类型支持（`.d.ts`），IDE 可自动补全 props / emits / slots。组件相关工具函数（如 `createMenuOptions`）也从对应组件子路径导出，避免为了单个工具加载组件库根入口。
 
 #### Composables 单独使用
 

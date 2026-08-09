@@ -171,9 +171,6 @@ export * from './components/C_Transfer'
 export * from './components/C_Skeleton'
 export * from './components/C_OrgChart'
 
-// ====== 共享类型 + 适配器 ======
-export * from './components/_shared'
-
 // ====== 工具函数（不属于任何组件的公共工具） ======
 export { setItem, getItem, removeItem, removeAllItem } from './utils/storage'
 

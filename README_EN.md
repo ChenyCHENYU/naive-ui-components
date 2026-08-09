@@ -61,11 +61,12 @@ Each component provides an independent subpath entry that loads only the target 
   import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
   import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
   import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
+  import { createMenuOptions } from '@robot-admin/naive-ui-components/C_Menu'
   import '@robot-admin/naive-ui-components/style.css'
 </script>
 ```
 
-> Subpath imports provide full TypeScript support (`.d.ts`) with IDE auto-completion for props / emits / slots.
+> Subpath imports provide full TypeScript support (`.d.ts`) with IDE auto-completion for props / emits / slots. Component-specific utilities such as `createMenuOptions` are exported from the same component subpath, so consumers do not need the root entry for one helper.
 
 #### Standalone Composables
 

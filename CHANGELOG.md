@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.10.2
+
+### Patch Changes
+
+- 从 `C_Menu` 子路径导出菜单适配工具与公共类型，避免消费者为 `createMenuOptions` 引入组件库根入口及无关重依赖。
+
 ## 0.10.1
 
 ### Patch Changes

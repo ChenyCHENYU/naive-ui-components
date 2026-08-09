@@ -16,6 +16,8 @@ const componentsDir = path.resolve(__dirname, "../src/components");
 const exportMap = new Map(); // name → [component1, component2, ...]
 
 for (const dir of fs.readdirSync(componentsDir).sort()) {
+  // 下划线目录是内部共享实现，不属于公共组件入口
+  if (dir.startsWith("_")) continue;
   const fullDir = path.join(componentsDir, dir);
   if (!fs.statSync(fullDir).isDirectory()) continue;
 
