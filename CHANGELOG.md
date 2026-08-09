@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.10.1
+
+### Patch Changes
+
+- 将表单验证库改为 peer dependency，避免消费端安装重复版本导致规则类型冲突；通知中心 Popover 直接桥接 Naive UI 主题变量，修复 Teleport 场景下文本颜色无法随明暗主题切换的问题。
+
 ## 0.10.0
 
 ### Minor Changes

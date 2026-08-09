@@ -14,7 +14,6 @@
         "@fullcalendar/vue3": "^6.1.0",
         "@iconify/vue": "^5.0.0",
         "@kangc/v-md-editor": "^2.3.0",
-        "@robot-admin/form-validate": "latest",
         "@tato30/vue-pdf": "^1.11.0",
         "@visactor/vtable": "^1.0.0",
         "@visactor/vtable-gantt": "^1.0.0",
@@ -42,6 +41,7 @@
         "@changesets/cli": "^2.31.1",
         "@commitlint/cli": "^20.4.2",
         "@commitlint/config-conventional": "^20.4.2",
+        "@robot-admin/form-validate": "2.0.0",
         "@robot-admin/git-standards": "1.0.3",
         "@types/node": "^24.2.1",
         "@types/sortablejs": "^1.15.9",
@@ -76,6 +76,7 @@
         "sortablejs": "^1.15.7",
       },
       "peerDependencies": {
+        "@robot-admin/form-validate": ">=2.0.0 <4.0.0",
         "naive-ui": "^2.35.0",
         "vue": "^3.5.0",
         "vue-router": "^4.0.0",

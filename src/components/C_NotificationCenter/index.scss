@@ -3,6 +3,36 @@
  * 因为 NPopover 将内容渲染到 teleport 容器中，scoped 样式无法覆盖。
  */
 .c-notification-center__popover {
+  /*
+   * Popover 被 Teleport 到 body 后无法继承触发器作用域内的 --c-*。
+   * 直接桥接 NPopover 自身随主题注入的变量，确保明暗主题自动适配。
+   */
+  --c-bg-card: var(--n-color, #fff);
+  --c-bg-surface: var(--n-color, #fff);
+  --c-text-1: var(--n-text-color, #262626);
+  --c-text-2: color-mix(
+    in srgb,
+    var(--n-text-color, #262626) 68%,
+    transparent
+  );
+  --c-text-3: color-mix(
+    in srgb,
+    var(--n-text-color, #262626) 50%,
+    transparent
+  );
+  --c-text-4: color-mix(
+    in srgb,
+    var(--n-text-color, #262626) 36%,
+    transparent
+  );
+  --c-border: color-mix(
+    in srgb,
+    var(--n-text-color, #262626) 14%,
+    transparent
+  );
+
+  color: var(--n-text-color);
+  background-color: var(--n-color);
   padding: 0 !important;
   border-radius: 12px !important;
   overflow: hidden;

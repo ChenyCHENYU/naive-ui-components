@@ -26,7 +26,7 @@ bun add @robot-admin/naive-ui-components
 Required peer dependencies:
 
 ```bash
-bun add vue@^3.5.0 naive-ui@^2.35.0
+bun add vue@^3.5.0 naive-ui@^2.35.0 @robot-admin/form-validate@^2.0.0
 ```
 
 ### 🚀 Quick Start
