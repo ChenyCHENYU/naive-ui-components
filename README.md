@@ -204,14 +204,15 @@ bun add expr-eval
 
 ### 🏗️ 构建架构
 
-#### 四阶段构建流水线
+#### 五阶段构建流水线
 
 ```
 bun run build
   ├── 1. tsdown          → 多入口打包（51 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译 global.scss → global-scss.css
   ├── 3. merge-css.js    → 合并 SFC CSS + global SCSS → style.css
-  └── 4. gen-exports.js  → 自动生成 package.json exports 映射
+  ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
+  └── 5. check:dist      → 校验根入口、子路径及 DTS 公共导出
 ```
 
 #### 技术要点
@@ -222,6 +223,7 @@ bun run build
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
 - **子路径导出**：`gen-exports.js` 自动扫描 `dist/` 并写入 `package.json` 的 `exports` 字段
 - **导出冲突检测**：`check-export-conflicts.js` 确保组件间无命名冲突
+- **产物入口校验**：`check-dist-entries.js` 防止内部 chunk 覆盖根声明，并保证组件工具的子路径类型完整
 
 #### 输出产物
 
@@ -243,6 +245,7 @@ bun run build:scss       # 仅编译全局 SCSS
 bun run build:css        # 仅合并 CSS
 bun run build:exports    # 仅生成 exports 映射
 bun run check:exports    # 检测导出命名冲突
+bun run check:dist       # 校验构建后的 JS / DTS 公共入口
 bun run type-check       # TypeScript 类型检查
 bun run test             # 运行 Bun 单元测试
 bun run lint:check       # 强制 Oxlint 正确性检查

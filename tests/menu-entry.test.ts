@@ -13,11 +13,11 @@ describe('C_Menu subpath entry', () => {
     expect(entry).toContain("from '../_shared'")
   })
 
-  test('内部共享目录不作为独立公共入口', async () => {
-    const config = await Bun.file(
-      new URL('../tsdown.config.ts', import.meta.url)
-    ).text()
-    expect(config).toContain("if (dir.startsWith('_')) continue")
+  test('内部共享目录不在包导出映射中公开', async () => {
+    const packageJson = await Bun.file(
+      new URL('../package.json', import.meta.url)
+    ).json()
+    expect(packageJson.exports['./_*']).toBeUndefined()
   })
 
   test('菜单适配器保持可独立使用', () => {

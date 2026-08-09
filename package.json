@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "type": "module",
   "main": "dist/index.cjs",
@@ -60,10 +60,11 @@
     "build:scss": "node scripts/gen-global-scss.js && sass src/styles/global.scss dist/global-scss.css --style=compressed --no-source-map --load-path=src --silence-deprecation=legacy-js-api",
     "build:css": "node scripts/merge-css.js",
     "build:exports": "node scripts/gen-exports.js",
-    "build": "tsdown && bun run build:scss && bun run build:css && bun run build:exports",
+    "build": "tsdown && bun run build:scss && bun run build:css && bun run build:exports && bun run check:dist",
     "type-check": "tsc --noEmit",
     "test": "bun test",
     "check:exports": "node scripts/check-export-conflicts.js",
+    "check:dist": "node scripts/check-dist-entries.js",
     "verify": "bun run type-check && bun run test && bun run check:exports && bun run build",
     "prepublishOnly": "bun run build",
     "release": "changeset publish",

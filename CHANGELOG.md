@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.10.3
+
+### Patch Changes
+
+- 修复内部共享入口与根声明文件重名导致的类型导出丢失，并增加构建后公共 JS/DTS 入口校验。
+
 ## 0.10.2
 
 ### Patch Changes

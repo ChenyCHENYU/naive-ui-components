@@ -18,8 +18,6 @@ function buildEntryMap(): Record<string, string> {
     resolver: 'src/resolver.ts',
   }
   for (const dir of fs.readdirSync(componentsDir)) {
-    // 下划线目录仅供组件内部共享，不生成对外子路径入口
-    if (dir.startsWith('_')) continue
     const fullDir = path.join(componentsDir, dir)
     if (!fs.statSync(fullDir).isDirectory()) continue
     const tsEntry = path.join(fullDir, 'index.ts')

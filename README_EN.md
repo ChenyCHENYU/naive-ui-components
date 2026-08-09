@@ -204,14 +204,15 @@ bun add expr-eval
 
 ### 🏗️ Build Architecture
 
-#### Four-stage Build Pipeline
+#### Five-stage Build Pipeline
 
 ```
 bun run build
   ├── 1. tsdown          → Multi-entry bundling (51 components ESM/CJS/DTS)
   ├── 2. sass CLI        → Compile global.scss → global-scss.css
   ├── 3. merge-css.js    → Merge SFC CSS + global SCSS → style.css
-  └── 4. gen-exports.js  → Auto-generate package.json exports map
+  ├── 4. gen-exports.js  → Auto-generate package.json exports map
+  └── 5. check:dist      → Validate root, subpath, and DTS public exports
 ```
 
 #### Key Technical Details
@@ -222,6 +223,7 @@ bun run build
 - **Type exports**: Unified `export *` barrel pattern with auto-generated `.d.ts`
 - **Subpath exports**: `gen-exports.js` auto-scans `dist/` and writes the `exports` field in `package.json`
 - **Export conflict detection**: `check-export-conflicts.js` ensures no naming collisions between components
+- **Artifact entry validation**: `check-dist-entries.js` prevents internal chunks from replacing root declarations and verifies component utility subpath types
 
 #### Build Output
 
@@ -243,6 +245,7 @@ bun run build:scss       # Compile global SCSS only
 bun run build:css        # Merge CSS only
 bun run build:exports    # Generate exports map only
 bun run check:exports    # Check export naming conflicts
+bun run check:dist       # Validate built JS / DTS public entries
 bun run type-check       # TypeScript type checking
 bun run test             # Run Bun unit tests
 bun run lint:check       # Required Oxlint correctness checks
