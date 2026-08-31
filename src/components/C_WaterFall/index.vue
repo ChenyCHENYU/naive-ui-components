@@ -6,7 +6,10 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div ref="containerRef" class="c-waterfall">
+  <div
+    ref="containerRef"
+    class="c-waterfall"
+  >
     <div
       class="waterfall__body"
       :style="{ height: `${bodyHeight}px`, position: 'relative' }"
@@ -61,7 +64,10 @@
               @load="handleImageLoaded(lay, $event)"
               @error="handleImageError(lay)"
             />
-            <div v-if="lay.item.title" class="waterfall__title">
+            <div
+              v-if="lay.item.title"
+              class="waterfall__title"
+            >
               {{ lay.item.title }}
             </div>
           </div>
@@ -69,10 +75,22 @@
       </div>
     </div>
 
-    <div v-if="props.infinite" class="waterfall__footer">
-      <div ref="sentinelRef" class="waterfall__sentinel" />
-      <slot name="footer" :status="scrollStatus">
-        <div v-if="props.loading" class="waterfall__status">
+    <div
+      v-if="props.infinite"
+      class="waterfall__footer"
+    >
+      <div
+        ref="sentinelRef"
+        class="waterfall__sentinel"
+      />
+      <slot
+        name="footer"
+        :status="scrollStatus"
+      >
+        <div
+          v-if="props.loading"
+          class="waterfall__status"
+        >
           <NSpin size="small" />
           <span>加载中…</span>
         </div>
@@ -88,231 +106,230 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { NSpin } from "naive-ui";
-import type {
-  WaterFallItem,
-  WaterFallLayoutItem,
-  WaterFallProps,
-  WaterFallExpose,
-  WaterFallBreakpoint,
-} from "./types";
-import type { Ref } from "vue";
-import {
-  DEFAULT_GAP,
-  DEFAULT_ANIMATION_DURATION,
-  DEFAULT_SKELETON_COUNT,
-  SKELETON_HEIGHT_RANGE,
-} from "./constants";
-import { useResponsiveColumns } from "./composables/useResponsiveColumns";
-import { useWaterFallLayout } from "./composables/useWaterFallLayout";
-import { useInfiniteScroll } from "./composables/useInfiniteScroll";
+  import { ref, computed, type Ref } from 'vue'
+  import { NSpin } from 'naive-ui'
+  import type {
+    WaterFallItem,
+    WaterFallLayoutItem,
+    WaterFallProps,
+    WaterFallExpose,
+    WaterFallBreakpoint,
+  } from './types'
+  import {
+    DEFAULT_GAP,
+    DEFAULT_ANIMATION_DURATION,
+    DEFAULT_SKELETON_COUNT,
+    SKELETON_HEIGHT_RANGE,
+  } from './constants'
+  import { useResponsiveColumns } from './composables/useResponsiveColumns'
+  import { useWaterFallLayout } from './composables/useWaterFallLayout'
+  import { useInfiniteScroll } from './composables/useInfiniteScroll'
 
-defineOptions({ name: "C_WaterFall" });
+  defineOptions({ name: 'C_WaterFall' })
 
-const props = withDefaults(defineProps<WaterFallProps>(), {
-  columns: undefined,
-  gap: DEFAULT_GAP,
-  lazy: true,
-  infinite: false,
-  skeleton: true,
-  skeletonCount: DEFAULT_SKELETON_COUNT,
-  animationDuration: DEFAULT_ANIMATION_DURATION,
-  breakpoints: undefined,
-  loading: false,
-  noMore: false,
-});
+  const props = withDefaults(defineProps<WaterFallProps>(), {
+    columns: undefined,
+    gap: DEFAULT_GAP,
+    lazy: true,
+    infinite: false,
+    skeleton: true,
+    skeletonCount: DEFAULT_SKELETON_COUNT,
+    animationDuration: DEFAULT_ANIMATION_DURATION,
+    breakpoints: undefined,
+    loading: false,
+    noMore: false,
+  })
 
-const emit = defineEmits<{
-  "load-more": [];
-  "item-click": [item: WaterFallItem, index: number];
-  "image-loaded": [item: WaterFallItem];
-  "image-error": [item: WaterFallItem];
-}>();
+  const emit = defineEmits<{
+    'load-more': []
+    'item-click': [item: WaterFallItem, index: number]
+    'image-loaded': [item: WaterFallItem]
+    'image-error': [item: WaterFallItem]
+  }>()
 
-const containerRef = ref<HTMLElement>();
-const sentinelRef = ref<HTMLElement>();
+  const containerRef = ref<HTMLElement>()
+  const sentinelRef = ref<HTMLElement>()
 
-const fixedColumns = computed(() => props.columns);
-const breakpointsRef = computed(() => props.breakpoints);
-const { columns, containerWidth } = useResponsiveColumns(
-  containerRef,
-  fixedColumns as Ref<number | undefined>,
-  breakpointsRef as Ref<WaterFallBreakpoint[] | undefined>,
-);
+  const fixedColumns = computed(() => props.columns)
+  const breakpointsRef = computed(() => props.breakpoints)
+  const { columns, containerWidth } = useResponsiveColumns(
+    containerRef,
+    fixedColumns as Ref<number | undefined>,
+    breakpointsRef as Ref<WaterFallBreakpoint[] | undefined>
+  )
 
-const itemsRef = computed(() => props.items);
-const gapRef = computed(() => props.gap);
-const { layoutItems, containerHeight, cacheImageHeight, relayout } =
-  useWaterFallLayout(itemsRef, columns, containerWidth, gapRef);
+  const itemsRef = computed(() => props.items)
+  const gapRef = computed(() => props.gap)
+  const { layoutItems, containerHeight, cacheImageHeight, relayout } =
+    useWaterFallLayout(itemsRef, columns, containerWidth, gapRef)
 
-const showSkeleton = computed(
-  () => props.skeleton && props.loading && layoutItems.value.length === 0,
-);
+  const showSkeleton = computed(
+    () => props.skeleton && props.loading && layoutItems.value.length === 0
+  )
 
-const skeletonItems = computed(() => {
-  const cols = columns.value;
-  const width = containerWidth.value;
-  const g = props.gap;
-  if (cols <= 0 || width <= 0) return [];
+  const skeletonItems = computed(() => {
+    const cols = columns.value
+    const width = containerWidth.value
+    const g = props.gap
+    if (cols <= 0 || width <= 0) return []
 
-  const colWidth = (width - (cols - 1) * g) / cols;
-  const count = props.skeletonCount ?? DEFAULT_SKELETON_COUNT;
-  const colHeights = Array(cols).fill(0);
-  const result: { x: number; y: number; width: number; height: number }[] = [];
+    const colWidth = (width - (cols - 1) * g) / cols
+    const count = props.skeletonCount ?? DEFAULT_SKELETON_COUNT
+    const colHeights = Array(cols).fill(0)
+    const result: { x: number; y: number; width: number; height: number }[] = []
 
-  for (let i = 0; i < count; i++) {
-    const minIdx = colHeights.indexOf(Math.min(...colHeights));
-    const h =
-      SKELETON_HEIGHT_RANGE[0] +
-      Math.random() * (SKELETON_HEIGHT_RANGE[1] - SKELETON_HEIGHT_RANGE[0]);
-    result.push({
-      x: minIdx * (colWidth + g),
-      y: colHeights[minIdx],
-      width: colWidth,
-      height: h,
-    });
-    colHeights[minIdx] += h + g;
+    for (let i = 0; i < count; i++) {
+      const minIdx = colHeights.indexOf(Math.min(...colHeights))
+      const h =
+        SKELETON_HEIGHT_RANGE[0] +
+        Math.random() * (SKELETON_HEIGHT_RANGE[1] - SKELETON_HEIGHT_RANGE[0])
+      result.push({
+        x: minIdx * (colWidth + g),
+        y: colHeights[minIdx],
+        width: colWidth,
+        height: h,
+      })
+      colHeights[minIdx] += h + g
+    }
+    return result
+  })
+
+  const skeletonHeight = computed(() => {
+    if (skeletonItems.value.length === 0) return 0
+    return Math.max(...skeletonItems.value.map(s => s.y + s.height))
+  })
+
+  const bodyHeight = computed(() =>
+    showSkeleton.value ? skeletonHeight.value : containerHeight.value
+  )
+
+  const infiniteEnabled = computed(() => props.infinite)
+  const loadingRef = computed(() => props.loading)
+  const noMoreRef = computed(() => props.noMore)
+
+  const { status: scrollStatus } = useInfiniteScroll(
+    sentinelRef,
+    infiniteEnabled,
+    loadingRef,
+    noMoreRef,
+    () => emit('load-more')
+  )
+
+  function handleImageLoaded(lay: WaterFallLayoutItem, event: Event) {
+    const img = event.target as HTMLImageElement
+    if (img.naturalHeight && img.naturalWidth) {
+      const realHeight = (img.naturalHeight / img.naturalWidth) * lay.width
+      cacheImageHeight(lay.item.id, realHeight)
+    }
+    emit('image-loaded', lay.item)
   }
-  return result;
-});
 
-const skeletonHeight = computed(() => {
-  if (skeletonItems.value.length === 0) return 0;
-  return Math.max(...skeletonItems.value.map((s) => s.y + s.height));
-});
-
-const bodyHeight = computed(() =>
-  showSkeleton.value ? skeletonHeight.value : containerHeight.value,
-);
-
-const infiniteEnabled = computed(() => props.infinite);
-const loadingRef = computed(() => props.loading);
-const noMoreRef = computed(() => props.noMore);
-
-const { status: scrollStatus } = useInfiniteScroll(
-  sentinelRef,
-  infiniteEnabled,
-  loadingRef,
-  noMoreRef,
-  () => emit("load-more"),
-);
-
-function handleImageLoaded(lay: WaterFallLayoutItem, event: Event) {
-  const img = event.target as HTMLImageElement;
-  if (img.naturalHeight && img.naturalWidth) {
-    const realHeight = (img.naturalHeight / img.naturalWidth) * lay.width;
-    cacheImageHeight(lay.item.id, realHeight);
+  function handleImageError(lay: WaterFallLayoutItem) {
+    emit('image-error', lay.item)
   }
-  emit("image-loaded", lay.item);
-}
 
-function handleImageError(lay: WaterFallLayoutItem) {
-  emit("image-error", lay.item);
-}
+  function scrollToTop() {
+    containerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
-function scrollToTop() {
-  containerRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-defineExpose<WaterFallExpose>({
-  relayout,
-  scrollToTop,
-  getColumns: () => columns.value,
-  getContainerHeight: () => containerHeight.value,
-});
+  defineExpose<WaterFallExpose>({
+    relayout,
+    scrollToTop,
+    getColumns: () => columns.value,
+    getContainerHeight: () => containerHeight.value,
+  })
 </script>
 
 <style scoped lang="scss">
-.c-waterfall {
-  width: 100%;
-}
-
-.waterfall__body {
-  overflow: hidden;
-}
-
-.waterfall__item {
-  cursor: pointer;
-}
-
-.waterfall__card {
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: var(--card-color);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-
-  &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+  .c-waterfall {
+    width: 100%;
   }
-}
 
-.waterfall__image {
-  display: block;
-  width: 100%;
-  object-fit: cover;
-  background: var(--body-color);
-}
-
-.waterfall__title {
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-color-1);
-  word-break: break-all;
-}
-
-.waterfall__skeleton {
-  overflow: hidden;
-  border-radius: 8px;
-}
-
-.waterfall__skeleton-inner {
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    var(--body-color) 25%,
-    color-mix(in srgb, var(--body-color) 80%, var(--border-color)) 37%,
-    var(--body-color) 63%
-  );
-  background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 100% 50%;
+  .waterfall__body {
+    overflow: hidden;
   }
-  100% {
-    background-position: 0 50%;
+
+  .waterfall__item {
+    cursor: pointer;
   }
-}
 
-.waterfall__footer {
-  padding: 24px 0;
-  text-align: center;
-}
+  .waterfall__card {
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-color);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
 
-.waterfall__sentinel {
-  height: 1px;
-}
-
-.waterfall__status {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 13px;
-  color: var(--text-color-3);
-
-  &--done {
-    color: var(--text-color-4);
+    &:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
   }
-}
+
+  .waterfall__image {
+    display: block;
+    width: 100%;
+    object-fit: cover;
+    background: var(--body-color);
+  }
+
+  .waterfall__title {
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-color-1);
+    word-break: break-all;
+  }
+
+  .waterfall__skeleton {
+    overflow: hidden;
+    border-radius: 8px;
+  }
+
+  .waterfall__skeleton-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    background: linear-gradient(
+      90deg,
+      var(--body-color) 25%,
+      color-mix(in srgb, var(--body-color) 80%, var(--border-color)) 37%,
+      var(--body-color) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+
+  .waterfall__footer {
+    padding: 24px 0;
+    text-align: center;
+  }
+
+  .waterfall__sentinel {
+    height: 1px;
+  }
+
+  .waterfall__status {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-color-3);
+
+    &--done {
+      color: var(--text-color-4);
+    }
+  }
 </style>

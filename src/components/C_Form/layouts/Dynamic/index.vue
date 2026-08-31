@@ -39,7 +39,7 @@
               size="small"
               type="primary"
               :disabled="!canAddMoreFields"
-              @click="dynamicState!.addField()"
+              @click="handleAddField"
             >
               <template #icon>
                 <C_Icon
@@ -54,7 +54,7 @@
               size="small"
               type="warning"
               :disabled="dynamicFieldsCount === 0"
-              @click="dynamicState!.removeField()"
+              @click="handleRemoveField"
             >
               <template #icon>
                 <C_Icon
@@ -69,7 +69,7 @@
               size="small"
               type="error"
               :disabled="dynamicFieldsCount === 0"
-              @click="dynamicState!.clearDynamicFields()"
+              @click="handleClearFields"
             >
               <template #icon>
                 <C_Icon
@@ -86,9 +86,7 @@
             <span>最大字段数:</span>
             <NInputNumber
               :value="maxFields"
-              @update:value="
-                (v: any) => v && dynamicState!.updateConfig({ maxFields: v })
-              "
+              @update:value="handleMaxFieldsChange"
               :min="5"
               :max="50"
               size="small"
@@ -184,7 +182,7 @@
     dynamicFormState: null,
   })
 
-  defineEmits<{
+  const emit = defineEmits<{
     'field-add': [fieldConfig: DynamicFieldConfig]
     'field-remove': [fieldId: string]
     'fields-clear': []
@@ -226,11 +224,30 @@
   )
   const totalFieldsCount = computed(() => props.formItems.length)
 
+  const handleAddField = (): void => {
+    const field = dynamicState.value?.addField()
+    if (field) emit('field-add', field)
+  }
+
+  const handleRemoveField = (): void => {
+    const field = dynamicState.value?.removeField()
+    if (field) emit('field-remove', field.prop)
+  }
+
+  const handleClearFields = (): void => {
+    const removedCount = dynamicState.value?.clearDynamicFields() ?? 0
+    if (removedCount > 0) emit('fields-clear')
+  }
+
+  const handleMaxFieldsChange = (value: number | null): void => {
+    if (value !== null) dynamicState.value?.updateConfig({ maxFields: value })
+  }
+
   /* ================= 工具方法 ================= */
   const getItemKey = (item: VNode, index: number): string => {
     return (
       item.key?.toString() ||
-      (item.props as any)?.path ||
+      (item.props as Record<string, unknown> | null)?.path?.toString() ||
       `dynamic-item-${index}`
     )
   }
@@ -244,9 +261,12 @@
 
   const isDynamicField = (item: VNode): boolean => {
     if (!dynamicState.value) return false
-    const fieldId = (item.props as any)?.path || item.key?.toString() || ''
+    const fieldId =
+      (item.props as Record<string, unknown> | null)?.path?.toString() ||
+      item.key?.toString() ||
+      ''
     return dynamicState.value.state.dynamicFields.some(
-      (field: any) => field.prop === fieldId
+      field => field.prop === fieldId
     )
   }
 

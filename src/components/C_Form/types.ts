@@ -14,8 +14,11 @@ import type {
   DeepReadonly,
   Ref,
 } from 'vue'
-import type { FormInst, UploadFileInfo } from 'naive-ui/es'
-import type { FieldRule } from '@robot-admin/form-validate'
+import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui/es'
+
+export type MaybePromise<T> = T | Promise<T>
+
+export type FormRecord = Record<string, unknown>
 
 /**
  * 表单模式
@@ -73,7 +76,18 @@ export interface OptionItem {
   value: string | number | boolean
   label: string
   disabled?: boolean
-  [key: string]: any
+  [key: string]: unknown
+}
+
+export interface AsyncOptionsContext {
+  field: string
+  reason: 'initialize' | 'dependency' | 'manual'
+  signal: AbortSignal
+}
+
+export interface FormErrorContext {
+  source: 'initialize' | 'async-options' | 'callback' | 'render' | 'submit'
+  field?: string
 }
 
 /* =================== 布局配置类型 =================== */
@@ -88,6 +102,7 @@ export interface TabConfig {
   description?: string
   disabled?: boolean
   icon?: string
+  closable?: boolean
 }
 
 /**
@@ -132,7 +147,7 @@ export interface DynamicFieldConfig {
   created: number
   placeholder?: string
   layout?: { span?: number }
-  rules?: FieldRule[]
+  rules?: FormItemRule[]
 }
 
 /**
@@ -150,7 +165,7 @@ export interface ItemLayoutConfig {
   customRender?: boolean
   enhanced?: boolean
   class?: string
-  style?: CSSProperties | Record<string, any>
+  style?: CSSProperties | Record<string, unknown>
   hidden?: boolean
 }
 
@@ -192,8 +207,17 @@ export interface CardLayoutConfig {
  */
 export interface TabsLayoutConfig {
   tabs?: TabConfig[]
+  type?: 'line' | 'card' | 'segment'
+  size?: 'small' | 'medium' | 'large'
   placement?: 'top' | 'right' | 'bottom' | 'left'
   defaultTab?: string
+  animated?: boolean
+  closable?: boolean
+  addable?: boolean
+  showTabHeader?: boolean
+  showActions?: boolean
+  showCount?: boolean
+  validateBeforeSwitch?: boolean
 }
 
 /**
@@ -278,36 +302,39 @@ export interface FormOption {
   type: ComponentType | string
   prop: string
   label?: string
-  value?: any
+  value?: unknown
   placeholder?: string
-  rules?: FieldRule[]
-  attrs?: Record<string, any>
+  rules?: FormItemRule[]
+  attrs?: Record<string, unknown>
   children?: OptionItem[]
   show?: boolean
   layout?: ItemLayoutConfig
   help?: string
   required?: boolean
   dependsOn?: string | string[]
-  showWhen?: (formModel: Record<string, any>) => boolean
+  showWhen?: (formModel: FormModel) => boolean
 
   /* ===== v0.8.0 新增 ===== */
 
   /** 字段级禁用（优先级高于全局 config.disabled） */
-  disabled?: boolean | ((formModel: Record<string, any>) => boolean)
+  disabled?: boolean | ((formModel: FormModel) => boolean)
   /** 字段级只读（优先级高于全局 config.readonly） */
-  readonly?: boolean | ((formModel: Record<string, any>) => boolean)
+  readonly?: boolean | ((formModel: FormModel) => boolean)
 
   /** 联动赋值：其他字段变化时自动计算本字段的值 */
-  valueWhen?: (formModel: Record<string, any>) => any
+  valueWhen?: (formModel: FormModel) => unknown
 
   /** 异步数据源：select / cascader / checkbox / radio 的远程选项加载 */
-  asyncOptions?: (formModel: Record<string, any>) => Promise<OptionItem[]>
+  asyncOptions?: (
+    formModel: FormModel,
+    context?: AsyncOptionsContext
+  ) => Promise<readonly OptionItem[]>
 
   /** 联动校验规则：根据表单数据动态返回校验规则 */
-  rulesWhen?: (formModel: Record<string, any>) => FieldRule[]
+  rulesWhen?: (formModel: FormModel) => FormItemRule[]
 
   /** 跨字段校验：需要引用多个字段值的验证函数，返回错误消息或 null */
-  crossFieldValidator?: (formModel: Record<string, any>) => string | null
+  crossFieldValidator?: (formModel: FormModel) => MaybePromise<string | null>
 }
 
 /* =================== 组件 Props 类型 =================== */
@@ -328,7 +355,7 @@ export interface LayoutProps {
  * 表单提交事件参数
  */
 export interface SubmitEventPayload {
-  model: Record<string, any>
+  model: FormModel
   form: FormInst
 }
 
@@ -355,21 +382,18 @@ export interface FormInstance {
   validateDynamicFields(): Promise<boolean>
   validateCustomGroup(groupKey: string): Promise<boolean>
   clearValidation(field?: string | string[]): void
-  getModel(): Record<string, any>
-  setFields(fields: Record<string, any>): void
+  getModel(): FormModel
+  setFields(fields: FormModel): void
   resetFields(): void
   setFieldValue(
     field: string,
-    value: any,
+    value: unknown,
     shouldValidate?: boolean
   ): Promise<void>
-  getFieldValue(field: string): any
-  setFieldsValue(
-    fields: Record<string, any>,
-    shouldValidate?: boolean
-  ): Promise<void>
+  getFieldValue(field: string): unknown
+  setFieldsValue(fields: FormModel, shouldValidate?: boolean): Promise<void>
   formRef: FormInst | null
-  formModel: Record<string, any>
+  formModel: FormModel
   initialize(): void
   layoutType: ComputedRef<LayoutType>
   shouldShowDefaultActions: ComputedRef<boolean>
@@ -385,6 +409,14 @@ export interface FormInstance {
   markAsClean(): void
   /** 字段异步选项的 loading 状态 */
   asyncLoadingMap: Ref<Record<string, boolean>>
+  /** 字段异步选项加载错误 */
+  asyncErrorMap: Ref<Record<string, unknown>>
+  /** 重新加载全部或指定字段的异步选项 */
+  reloadOptions(field?: string): Promise<void>
+  /** 是否正在提交 */
+  isSubmitting: Ref<boolean>
+  /** 验证并提交，成功返回 true */
+  submit(): Promise<boolean>
 }
 
 /* =================== 布局组件类型 =================== */
@@ -399,20 +431,20 @@ export type LayoutComponent = DefineComponent<LayoutProps>
 /**
  * 表单数据模型类型（泛型）
  */
-export type FormModel<T = Record<string, any>> = T
+export type FormModel<T extends FormRecord = FormRecord> = T
 
 /**
  * 表单验证规则映射
  */
-export type FormRulesMap = Record<string, FieldRule[]>
+export type FormRulesMap = Record<string, FormItemRule[]>
 
 /**
  * 字段值变化回调
  */
 export type FieldChangeCallback = (
   field: string,
-  value: any,
-  formModel: Record<string, any>
+  value: unknown,
+  formModel: FormModel
 ) => void
 
 /**
@@ -474,11 +506,11 @@ export interface DynamicFormController {
     label: string
     value: ComponentType
   }>
-  addField(config?: Partial<DynamicFieldConfig>): void
-  removeField(index?: number): void
-  clearDynamicFields(): void
-  toggleFieldVisibility(fieldId: string): void
-  toggleAllVisibility(): void
+  addField(config?: Partial<DynamicFieldConfig>): DynamicFieldConfig | null
+  removeField(index?: number): DynamicFieldConfig | null
+  clearDynamicFields(): number
+  toggleFieldVisibility(fieldId: string): boolean
+  toggleAllVisibility(): boolean
   updateConfig(config: Partial<DynamicFormConfig>): void
   exportConfig(): string
   initialize(

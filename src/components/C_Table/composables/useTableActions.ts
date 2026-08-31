@@ -26,8 +26,12 @@ export function useTableActions<T extends DataRecord = DataRecord>(
   const dialog = useDialog()
 
   /* 检查操作是否启用 */
-  const isActionEnabled = (key: 'edit' | 'delete' | 'detail') =>
-    actions.value?.[key] !== false
+  const isActionEnabled = (key: 'edit' | 'delete' | 'detail') => {
+    if (key === 'edit') {
+      return config.value.editable && actions.value?.edit !== false
+    }
+    return typeof actions.value?.[key] === 'function'
+  }
 
   /* 类型守卫：检查是否为有效API函数 */
   const isValidApiFunction = <TData extends DataRecord>(
@@ -160,10 +164,7 @@ export function useTableActions<T extends DataRecord = DataRecord>(
       )
     }
 
-    if (
-      config.value.editMode === 'modal' &&
-      (isActionEnabled('edit') || config.value.editable)
-    ) {
+    if (config.value.editMode === 'modal' && isActionEnabled('edit')) {
       buttons.push(
         createButton('mdi:pencil', '编辑', 'warning', () =>
           handleEdit(row, index)

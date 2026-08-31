@@ -65,9 +65,12 @@ const useDataUtils = <T extends DataRecord, C>(
   const findRow = (key: DataTableRowKey): T | undefined =>
     data.value.find(row => getRowKey(row) === key)
 
-  const isRowExpandable = options.rowExpandable || ((): boolean => true)
-  const isRowCheckable = options.rowCheckable || ((): boolean => true)
-  const isChildRowCheckable = options.childRowCheckable || ((): boolean => true)
+  const isRowExpandable = (row: T): boolean =>
+    options.rowExpandable?.(row) ?? true
+  const isRowCheckable = (row: T): boolean =>
+    options.rowCheckable?.(row) ?? true
+  const isChildRowCheckable = (child: C, parent: T): boolean =>
+    options.childRowCheckable?.(child, parent) ?? true
 
   return {
     data,
@@ -221,11 +224,24 @@ const useSelectionLogic = <T extends DataRecord, C>(
   const handleSelectionChange = (keys: DataTableRowKey[]): void => {
     if (!options.enableSelection) return
 
-    state.checkedKeys.value = keys
-    const selectedRows = utils.data.value.filter(row =>
-      keys.includes(utils.getRowKey(row))
+    const selectableKeySet = new Set(
+      selectableRows.value.map(row => utils.getRowKey(row))
     )
-    options.onSelectionChange?.(keys, selectedRows, state.childSelections.value)
+    const validKeys = [...new Set(keys)].filter(key =>
+      selectableKeySet.has(key)
+    )
+    const finalKeys = options.maxSelection
+      ? validKeys.slice(0, Math.max(0, options.maxSelection))
+      : validKeys
+    state.checkedKeys.value = finalKeys
+    const selectedRows = utils.data.value.filter(row =>
+      finalKeys.includes(utils.getRowKey(row))
+    )
+    options.onSelectionChange?.(
+      finalKeys,
+      selectedRows,
+      state.childSelections.value
+    )
   }
 
   return {
@@ -242,18 +258,19 @@ const useParentChildLink = <T extends DataRecord, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
-  const isLinkEnabled = Boolean(
-    options.enableParentChildLink &&
-    options.enableSelection &&
-    options.enableChildSelection
-  )
+  const isLinkEnabled = () =>
+    Boolean(
+      options.enableParentChildLink &&
+      options.enableSelection &&
+      options.enableChildSelection
+    )
 
   const handleParentChildLink = (
     parentKey: DataTableRowKey,
     selectedChildKeys: DataTableRowKey[],
     totalChildren: number
   ): void => {
-    if (!isLinkEnabled) return
+    if (!isLinkEnabled()) return
 
     const shouldSelectParent =
       options.parentChildLinkMode === 'strict'
@@ -312,7 +329,7 @@ const useChildSelectionLogic = <T extends DataRecord, C>(
 
     options.onChildSelectionChange?.(parentKey, childKeys, selectedChildren)
 
-    if (parentChildLink.isLinkEnabled) {
+    if (parentChildLink.isLinkEnabled()) {
       parentChildLink.handleParentChildLink(
         parentKey,
         childKeys,

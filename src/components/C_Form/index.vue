@@ -25,21 +25,23 @@
       :layout-config="mergedLayoutConfig"
       :options="visibleOptions"
       :form-data="formModel"
-      @tab-change="handleLayoutEvent('onTabChange', $event)"
-      @tab-validate="handleLayoutEvent('onTabValidate', $event)"
+      v-bind="layoutRuntimeProps"
+      @tab-change="
+        (tabKey: string, tabIndex: number) =>
+          handleLayoutEvent('onTabChange', tabKey, tabIndex)
+      "
       @step-change="handleStepChange"
-      @step-before-change="handleStepBeforeChange"
-      @step-validate="handleStepValidate"
       @field-add="handleLayoutEvent('onFieldAdd', $event)"
       @field-remove="handleLayoutEvent('onFieldRemove', $event)"
       @field-toggle="
-        (id: string, visible: boolean) => resolved.onFieldToggle?.(id, visible)
+        (id: string, visible: boolean) =>
+          handleLayoutEvent('onFieldToggle', id, visible)
       "
       @fields-clear="handleLayoutEvent('onFieldsClear')"
       @render-mode-change="handleLayoutEvent('onRenderModeChange', $event)"
       @group-toggle="
         (key: string, collapsed: boolean) =>
-          resolved.onGroupToggle?.(key, collapsed)
+          handleLayoutEvent('onGroupToggle', key, collapsed)
       "
       @group-reset="handleLayoutEvent('onGroupReset', $event)"
       @validate-success="(model: FormModel) => emit('validate-success', model)"
@@ -62,14 +64,23 @@
         :setFields="setFields"
         :getModel="getModel"
         :clearValidation="clearValidation"
+        :submit="submit"
+        :reloadOptions="reloadOptions"
+        :submitting="isSubmitting"
       >
         <NSpace>
           <NButton
             type="primary"
+            :loading="isSubmitting"
+            :disabled="isSubmitting"
             @click="handleSubmit"
-            >提交</NButton
+            >{{ resolved.submitText }}</NButton
           >
-          <NButton @click="handleReset">重置</NButton>
+          <NButton
+            :disabled="isSubmitting"
+            @click="handleReset"
+            >{{ resolved.resetText }}</NButton
+          >
         </NSpace>
       </slot>
     </NFormItem>
@@ -77,7 +88,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, ref, watch, getCurrentInstance, nextTick } from 'vue'
+  import { computed, ref, getCurrentInstance, type Component } from 'vue'
   import type { FormInst } from 'naive-ui/es/form'
   import {
     NForm,
@@ -111,6 +122,7 @@
   } from './types'
   import {
     type FormConfig,
+    type LayoutCallbacks,
     resolveFormConfig,
     shouldShowActions as calcShowActions,
   } from './composables/useFormConfig'
@@ -118,6 +130,7 @@
   import {
     useFormRenderer,
     type ComponentMap,
+    type FormRenderer,
   } from './composables/useFormRenderer'
 
   /* ===== 布局组件静态映射（取代 DynamicComponent） ===== */
@@ -132,7 +145,7 @@
 
   defineOptions({ name: 'C_Form' })
 
-  const LAYOUT_MAP: Record<LayoutType, any> = {
+  const LAYOUT_MAP: Record<LayoutType, Component> = {
     default: DefaultLayout,
     inline: InlineLayout,
     grid: GridLayout,
@@ -180,6 +193,8 @@
     modelValue?: FormModel
     /** 统一配置对象（收拢原先 13 个分散 Props） */
     config?: FormConfig
+    /** 当前表单实例的自定义渲染器，不污染全局注册表 */
+    renderers?: Record<string, FormRenderer>
   }
 
   const props = withDefaults(defineProps<CFormProps>(), {
@@ -203,6 +218,7 @@
 
   const formRef = ref<FormInst | null>(null)
   const optionsRef = computed(() => props.options)
+  const modelValueRef = computed(() => props.modelValue)
 
   /* ===== 状态引擎 ===== */
   const {
@@ -233,7 +249,12 @@
     markAsClean,
     asyncOptionsCache,
     asyncLoadingMap,
-  } = useFormState(optionsRef, resolved, formRef, emit)
+    asyncErrorMap,
+    reloadOptions,
+    setFormItemRef,
+    isSubmitting,
+    submit,
+  } = useFormState(optionsRef, resolved, formRef, emit, modelValueRef)
 
   /* ===== 渲染引擎 ===== */
   const currentInstance = getCurrentInstance()
@@ -246,19 +267,11 @@
     instanceSlots: currentInstance?.slots,
     asyncOptionsCache,
     asyncLoadingMap,
+    renderers: computed(() => props.renderers),
+    setFormItemRef,
+    onError: (error, field) =>
+      resolved.value.onError?.(error, { source: 'render', field }),
   })
-
-  /* ===== 编辑模式：自动回填 initialValues ===== */
-  watch(
-    () => resolved.value.initialValues,
-    val => {
-      if (val && resolved.value.mode === 'edit') {
-        Object.assign(formModel, val)
-        nextTick(() => markAsClean())
-      }
-    },
-    { immediate: true }
-  )
 
   /* ================= 计算属性 ================= */
 
@@ -279,17 +292,66 @@
 
   const showActions = computed(() => calcShowActions(resolved.value))
 
+  const layoutRuntimeProps = computed(() =>
+    resolved.value.layout === 'steps'
+      ? {
+          beforeStepChange: handleStepBeforeChange,
+          validateStep: handleStepValidate,
+        }
+      : resolved.value.layout === 'tabs'
+        ? {
+            beforeTabChange: handleTabBeforeChange,
+            validateTab: handleTabValidate,
+          }
+        : {}
+  )
+
   /* ================= 布局事件 → config 回调桥接 ================= */
 
   /** 通用布局事件桥接 */
-  const handleLayoutEvent = (callbackName: string, ...args: any[]) => {
-    const callback = (resolved.value as any)[callbackName]
-    callback?.(...args)
+  const handleLayoutEvent = (
+    callbackName: keyof LayoutCallbacks,
+    ...args: unknown[]
+  ): void => {
+    const callback = resolved.value[callbackName]
+    if (typeof callback !== 'function') return
+    try {
+      const result = (callback as (...values: unknown[]) => unknown)(...args)
+      if (result instanceof Promise) {
+        void result.catch(error =>
+          resolved.value.onError?.(error, { source: 'callback' })
+        )
+      }
+    } catch (error) {
+      resolved.value.onError?.(error, { source: 'callback' })
+    }
   }
 
   /** 字段变化事件（保留回调通道） */
   const handleFieldsChange = (fields: FormOption[]): void => {
     resolved.value.onFieldsChange?.(fields)
+  }
+
+  const handleTabBeforeChange = async (
+    currentTab: string,
+    targetTab: string
+  ): Promise<boolean> => {
+    try {
+      const result = await resolved.value.onTabBeforeChange?.(
+        currentTab,
+        targetTab
+      )
+      return result !== false
+    } catch (error) {
+      resolved.value.onError?.(error, { source: 'callback' })
+      return false
+    }
+  }
+
+  const handleTabValidate = async (tabKey: string): Promise<boolean> => {
+    const valid = await validateTab(tabKey)
+    if (valid) resolved.value.onTabValidate?.(tabKey)
+    return valid
   }
 
   /** Steps 布局事件 — 需要多参数特殊处理 */
@@ -301,39 +363,28 @@
     currentStep: number,
     targetStep: number
   ): Promise<boolean> => {
-    resolved.value.onStepBeforeChange?.(currentStep, targetStep)
-    return true
-  }
-
-  const handleStepValidate = async (stepIndex: number): Promise<boolean> => {
     try {
-      const currentStepKey = resolved.value.steps?.steps?.[stepIndex]?.key
-      if (!currentStepKey) return true
-
-      const stepFields = props.options
-        .filter(option => option.layout?.step === currentStepKey)
-        .map(option => option.prop)
-
-      if (stepFields.length === 0) return true
-
-      await validateField(stepFields)
-      resolved.value.onStepValidate?.(stepIndex)
-      return true
+      const result = await resolved.value.onStepBeforeChange?.(
+        currentStep,
+        targetStep
+      )
+      return result !== false
     } catch (error) {
-      console.warn(`[C_Form] 步骤 ${stepIndex} 验证失败:`, error)
+      resolved.value.onError?.(error, { source: 'callback' })
       return false
     }
   }
 
-  /* ================= modelValue 双向同步 ================= */
-
-  watch(
-    () => props.modelValue,
-    val => {
-      if (val) Object.assign(formModel, val)
-    },
-    { immediate: true, deep: true }
-  )
+  const handleStepValidate = async (stepIndex: number): Promise<boolean> => {
+    try {
+      const valid = await validateStep(stepIndex)
+      if (!valid) return false
+      resolved.value.onStepValidate?.(stepIndex)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   /* ================= 组件暴露 ================= */
 
@@ -362,5 +413,9 @@
     isFieldDirty,
     markAsClean,
     asyncLoadingMap,
+    asyncErrorMap,
+    reloadOptions,
+    isSubmitting,
+    submit,
   })
 </script>

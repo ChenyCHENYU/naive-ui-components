@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, onBeforeUnmount } from 'vue'
   import { NTooltip, NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import { driver } from 'driver.js'
@@ -63,6 +63,7 @@
     /** 步骤切换 */
     'step-change': [stepIndex: number, step: GuideStep]
   }>()
+  let activeDriver: ReturnType<typeof driver> | null = null
 
   /** 持久化 key */
   const persistKey = computed(() => {
@@ -111,39 +112,7 @@
    * * @description: 构建主题相关的 CSS 变量
    * ! @return popoverClass 字符串
    */
-  const buildPopoverClass = (): string => {
-    const classes = [props.popoverClass]
-    if (props.theme) {
-      // 通过 CSS 变量注入主题
-      const root = document.documentElement
-      if (props.theme.popoverBgColor)
-        root.style.setProperty(
-          '--c-guide-popover-bg',
-          props.theme.popoverBgColor
-        )
-      if (props.theme.popoverTextColor)
-        root.style.setProperty(
-          '--c-guide-popover-text',
-          props.theme.popoverTextColor
-        )
-      if (props.theme.primaryColor)
-        root.style.setProperty(
-          '--c-guide-primary',
-          props.theme.primaryColor
-        )
-      if (props.theme.overlayOpacity !== undefined)
-        root.style.setProperty(
-          '--c-guide-overlay-opacity',
-          String(props.theme.overlayOpacity)
-        )
-      if (props.theme.borderRadius)
-        root.style.setProperty(
-          '--c-guide-radius',
-          props.theme.borderRadius
-        )
-    }
-    return classes.filter(Boolean).join(' ')
-  }
+  const buildPopoverClass = (): string => props.popoverClass || ''
 
   /**
    * * @description: 启动引导流程
@@ -160,13 +129,17 @@
       return
     }
 
+    activeDriver?.destroy()
     let currentStepIndex = 0
+    let completed = false
 
     const driverObj = driver({
       popoverClass: buildPopoverClass(),
       animate: props.animate,
       showProgress: props.showProgress,
       allowClose: props.allowClose,
+      allowKeyboardControl: props.keyboard,
+      overlayOpacity: props.theme?.overlayOpacity,
       doneBtnText: props.doneBtnText,
       nextBtnText: props.nextBtnText,
       prevBtnText: props.prevBtnText,
@@ -174,32 +147,59 @@
         element: step.element,
         popover: step.popover,
       })),
-      onHighlightStarted: (_el) => {
+      onPopoverRender: popover => {
+        if (props.theme?.popoverBgColor)
+          popover.wrapper.style.backgroundColor = props.theme.popoverBgColor
+        if (props.theme?.popoverTextColor)
+          popover.wrapper.style.color = props.theme.popoverTextColor
+        if (props.theme?.borderRadius)
+          popover.wrapper.style.borderRadius = props.theme.borderRadius
+        if (props.theme?.primaryColor) {
+          popover.nextButton.style.backgroundColor = props.theme.primaryColor
+          popover.nextButton.style.borderColor = props.theme.primaryColor
+        }
+      },
+      onHighlightStarted: (_el, _step, { state }) => {
+        currentStepIndex = state.activeIndex ?? currentStepIndex
         const step = activeSteps[currentStepIndex]
         if (step) {
           step.onHighlightStarted?.(_el as Element | undefined, step)
           emit('step-change', currentStepIndex, step)
         }
       },
-      onDeselected: (_el) => {
+      onDeselected: _el => {
         const step = activeSteps[currentStepIndex]
         step?.onDeselected?.(_el as Element | undefined, step)
-        currentStepIndex++
+      },
+      onNextClick: () => {
+        if (driverObj.isLastStep()) {
+          completed = true
+          driverObj.destroy()
+        } else {
+          driverObj.moveNext()
+        }
       },
       onDestroyStarted: () => {
-        if (currentStepIndex >= activeSteps.length) {
+        if (completed) {
           markCompleted()
           emit('complete')
         } else {
           emit('close', currentStepIndex)
         }
+        activeDriver = null
         driverObj.destroy()
       },
     })
 
     emit('start')
+    activeDriver = driverObj
     driverObj.drive()
   }
+
+  onBeforeUnmount(() => {
+    activeDriver?.destroy()
+    activeDriver = null
+  })
 
   defineExpose({
     startGuide,

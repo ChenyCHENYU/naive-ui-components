@@ -1,68 +1,69 @@
-/**
- * 并发队列管理
- */
+/** Concurrent upload queue with exactly-once request settlement. */
 
-import { ref, readonly } from "vue";
-import type { Ref } from "vue";
+import { readonly, ref, watch, type Ref } from 'vue'
 import type {
+  CustomUploadRequest,
   UploadFileItem,
   UploadRequestOptions,
-  CustomUploadRequest,
-} from "../types";
+} from '../types'
 
 interface UseUploadQueueOptions {
-  /** 最大并发数 */
-  concurrency: Ref<number>;
-  /** 上传地址 */
-  action: Ref<string>;
-  /** 请求头 */
-  headers: Ref<Record<string, string>>;
-  /** 附加字段 */
-  data: Ref<Record<string, any>>;
-  /** 自定义上传函数 */
-  customRequest?: Ref<CustomUploadRequest | undefined>;
+  concurrency: Ref<number>
+  action: Ref<string>
+  headers: Ref<Record<string, string>>
+  data: Ref<Record<string, unknown>>
+  customRequest?: Ref<CustomUploadRequest | undefined>
+}
+
+interface QueueJob {
+  file: UploadFileItem
+  onProgress: (uid: string, percent: number) => void
+  onSuccess: (uid: string, response: unknown) => void
+  onError: (uid: string, error: Error) => void
+}
+
+interface ActiveRequest {
+  abort: () => void
+  settle: (result?: { response?: unknown; error?: Error }) => void
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error))
 }
 
 /**
- * 并发队列管理
  *
- * 控制普通文件（非分片）的并发上传数量，
- * 先进先出排队，自动从队列中取出执行。
  */
 export function useUploadQueue(options: UseUploadQueueOptions) {
-  /** 等待队列 */
-  const queue: UploadFileItem[] = [];
-  /** 正在上传的数量 */
-  const activeCount = ref(0);
-  /** uid → abort */
-  const abortMap = new Map<string, () => void>();
+  const queue: QueueJob[] = []
+  const activeCount = ref(0)
+  const activeRequests = new Map<string, ActiveRequest>()
 
-  /**
-   * 添加文件到队列
-   */
-  function enqueue(
-    file: UploadFileItem,
-    onProgress: (uid: string, percent: number) => void,
-    onSuccess: (uid: string, response: any) => void,
-    onError: (uid: string, error: Error) => void,
-  ) {
-    queue.push(file);
-    processQueue(onProgress, onSuccess, onError);
+  const syncActiveCount = () => {
+    activeCount.value = activeRequests.size
   }
 
-  /**
-   * 处理队列
-   */
-  function processQueue(
-    onProgress: (uid: string, percent: number) => void,
-    onSuccess: (uid: string, response: any) => void,
-    onError: (uid: string, error: Error) => void,
-  ) {
-    while (activeCount.value < options.concurrency.value && queue.length > 0) {
-      const file = queue.shift()!;
-      if (!file.raw) continue;
+  const getConcurrency = () =>
+    Math.max(1, Math.trunc(Number(options.concurrency.value) || 1))
 
-      activeCount.value++;
+  function processQueue() {
+    while (activeRequests.size < getConcurrency() && queue.length > 0) {
+      const job = queue.shift()!
+      const { file } = job
+      if (!file.raw || activeRequests.has(file.uid)) continue
+
+      let settled = false
+      const settle: ActiveRequest['settle'] = result => {
+        if (settled) return
+        settled = true
+        activeRequests.delete(file.uid)
+        syncActiveCount()
+        if (result?.error) job.onError(file.uid, result.error)
+        else if (result && 'response' in result) {
+          job.onSuccess(file.uid, result.response)
+        }
+        processQueue()
+      }
 
       const requestOptions: UploadRequestOptions = {
         action: options.action.value,
@@ -70,104 +71,112 @@ export function useUploadQueue(options: UseUploadQueueOptions) {
         data: options.data.value,
         file: file.raw,
         filename: file.name,
-        onProgress: (percent) => {
-          onProgress(file.uid, percent);
-        },
-        onSuccess: (response) => {
-          activeCount.value--;
-          abortMap.delete(file.uid);
-          onSuccess(file.uid, response);
-          processQueue(onProgress, onSuccess, onError);
-        },
-        onError: (error) => {
-          activeCount.value--;
-          abortMap.delete(file.uid);
-          onError(file.uid, error);
-          processQueue(onProgress, onSuccess, onError);
-        },
-      };
+        onProgress: percent => job.onProgress(file.uid, percent),
+        onSuccess: response => settle({ response }),
+        onError: error => settle({ error }),
+      }
 
-      if (options.customRequest?.value) {
-        const { abort } = options.customRequest.value(requestOptions);
-        abortMap.set(file.uid, abort);
-      } else {
-        const { abort } = defaultRequest(requestOptions);
-        abortMap.set(file.uid, abort);
+      activeRequests.set(file.uid, { abort: () => undefined, settle })
+      syncActiveCount()
+      try {
+        const request = options.customRequest?.value
+          ? options.customRequest.value(requestOptions)
+          : defaultRequest(requestOptions)
+        const active = activeRequests.get(file.uid)
+        if (active) active.abort = request.abort
+      } catch (error) {
+        settle({ error: toError(error) })
       }
     }
   }
 
-  /** 中止指定文件 */
-  function abort(uid: string) {
-    abortMap.get(uid)?.();
-    abortMap.delete(uid);
-    // 从队列移除
-    const idx = queue.findIndex((f) => f.uid === uid);
-    if (idx !== -1) queue.splice(idx, 1);
+  function enqueue(
+    file: UploadFileItem,
+    onProgress: QueueJob['onProgress'],
+    onSuccess: QueueJob['onSuccess'],
+    onError: QueueJob['onError']
+  ) {
+    abort(file.uid)
+    queue.push({ file, onProgress, onSuccess, onError })
+    processQueue()
   }
 
-  /** 中止所有 */
-  function abortAll() {
-    abortMap.forEach((fn) => fn());
-    abortMap.clear();
-    queue.length = 0;
-    activeCount.value = 0;
+  /** Abort without reporting a user-visible upload error. */
+  function abort(uid: string) {
+    for (let index = queue.length - 1; index >= 0; index -= 1) {
+      if (queue[index].file.uid === uid) queue.splice(index, 1)
+    }
+
+    const active = activeRequests.get(uid)
+    if (!active) return
+    active.settle()
+    try {
+      active.abort()
+    } catch {
+      // The request is already detached from queue state.
+    }
   }
+
+  function abortAll() {
+    queue.length = 0
+    const requests = [...activeRequests.values()]
+    activeRequests.clear()
+    syncActiveCount()
+    requests.forEach(request => {
+      request.settle()
+      try {
+        request.abort()
+      } catch {
+        // The request is already detached from queue state.
+      }
+    })
+  }
+
+  watch(options.concurrency, processQueue)
 
   return {
-    /** 当前活跃上传数 */
     activeCount: readonly(activeCount),
     enqueue,
     abort,
     abortAll,
-  };
+  }
 }
 
-/** 默认 XHR 上传 */
 function defaultRequest(options: UploadRequestOptions) {
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", options.action);
+  const xhr = new XMLHttpRequest()
+  xhr.open('POST', options.action)
 
-  if (options.headers) {
-    Object.entries(options.headers).forEach(([key, value]) => {
-      xhr.setRequestHeader(key, value);
-    });
-  }
+  Object.entries(options.headers ?? {}).forEach(([key, value]) => {
+    xhr.setRequestHeader(key, value)
+  })
 
-  xhr.upload.addEventListener("progress", (e) => {
-    if (e.lengthComputable) {
-      options.onProgress?.(Math.round((e.loaded / e.total) * 100));
+  xhr.upload.addEventListener('progress', event => {
+    if (event.lengthComputable) {
+      options.onProgress?.(Math.round((event.loaded / event.total) * 100))
     }
-  });
+  })
 
-  xhr.addEventListener("load", () => {
+  xhr.addEventListener('load', () => {
     if (xhr.status >= 200 && xhr.status < 300) {
-      let response: any;
+      let response: unknown = xhr.responseText
       try {
-        response = JSON.parse(xhr.responseText);
+        response = JSON.parse(xhr.responseText)
       } catch {
-        response = xhr.responseText;
+        // Non-JSON responses remain text.
       }
-      options.onSuccess?.(response);
+      options.onSuccess?.(response)
     } else {
-      options.onError?.(new Error(`上传失败: HTTP ${xhr.status}`));
+      options.onError?.(new Error(`上传失败: HTTP ${xhr.status}`))
     }
-  });
+  })
+  xhr.addEventListener('error', () => options.onError?.(new Error('网络错误')))
 
-  xhr.addEventListener("error", () => {
-    options.onError?.(new Error("网络错误"));
-  });
+  const formData = new FormData()
+  formData.append('file', options.file, options.filename)
+  Object.entries(options.data ?? {}).forEach(([key, value]) => {
+    formData.append(key, String(value))
+  })
+  xhr.send(formData)
 
-  const formData = new FormData();
-  formData.append("file", options.file as File, options.filename);
-
-  if (options.data) {
-    Object.entries(options.data).forEach(([key, value]) => {
-      formData.append(key, String(value));
-    });
-  }
-
-  xhr.send(formData);
-
-  return { abort: () => xhr.abort() };
+  return { abort: () => xhr.abort() }
 }

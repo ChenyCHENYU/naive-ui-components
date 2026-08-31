@@ -405,6 +405,17 @@
     background: rgba(0, 0, 0, 0.35);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 28px rgba(0, 0, 0, 0.4);
 
+    .c-login__qr-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 16px;
+      color: var(--cl-text-secondary);
+      font-size: 13px;
+      text-align: center;
+    }
+
     /* 扫描动画线 */
     @keyframes qr-scan {
       0% {

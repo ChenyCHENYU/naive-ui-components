@@ -34,7 +34,11 @@
           <span class="c-notification-center__title">消息中心</span>
           <div class="c-notification-center__header-extra">
             <!-- WebSocket 连接状态 -->
-            <NTooltip v-if="props.wsConfig" trigger="hover" placement="top">
+            <NTooltip
+              v-if="props.wsConfig"
+              trigger="hover"
+              placement="top"
+            >
               <template #trigger>
                 <span
                   class="c-notification-center__ws-dot"
@@ -47,7 +51,10 @@
         </div>
 
         <!-- 列表 / 详情切换 -->
-        <Transition name="slide-fade" mode="out-in">
+        <Transition
+          name="slide-fade"
+          mode="out-in"
+        >
           <!-- 消息详情 -->
           <NotificationDetail
             v-if="core.selectedMessage.value"
@@ -55,7 +62,7 @@
             :message="core.selectedMessage.value"
             @back="core.clearSelection"
             @action="handleAction"
-            @navigate="(url) => emit('navigate', url)"
+            @navigate="url => emit('navigate', url)"
           />
 
           <!-- 消息列表 -->
@@ -82,218 +89,239 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
-import type {
-  NotificationCenterProps,
-  NotificationCenterExpose,
-  NotificationMessage,
-  NotificationCategory,
-} from "./types";
-import { useNotificationCore } from "./composables/useNotificationCore";
-import NotificationBadge from "./components/NotificationBadge.vue";
-import NotificationList from "./components/NotificationList.vue";
-import NotificationDetail from "./components/NotificationDetail.vue";
+  import { computed, watch } from 'vue'
+  import type {
+    NotificationCenterProps,
+    NotificationCenterExpose,
+    NotificationMessage,
+    NotificationCategory,
+  } from './types'
+  import { useNotificationCore } from './composables/useNotificationCore'
+  import NotificationBadge from './components/NotificationBadge.vue'
+  import NotificationList from './components/NotificationList.vue'
+  import NotificationDetail from './components/NotificationDetail.vue'
 
-defineOptions({ name: "C_NotificationCenter" });
+  defineOptions({ name: 'C_NotificationCenter' })
 
-const props = withDefaults(defineProps<NotificationCenterProps>(), {
-  desktopNotification: false,
-  maxBadgeCount: 99,
-  pollingInterval: 60_000,
-  pageSize: 20,
-  storageKey: "notification_center",
-});
+  const props = withDefaults(defineProps<NotificationCenterProps>(), {
+    desktopNotification: false,
+    maxBadgeCount: 99,
+    pollingInterval: 60_000,
+    pageSize: 20,
+    storageKey: 'notification_center',
+  })
 
-const emit = defineEmits<{
-  itemClick: [message: NotificationMessage];
-  read: [ids: string[]];
-  allRead: [category?: NotificationCategory];
-  delete: [ids: string[]];
-  unreadChange: [count: number];
-  wsStatusChange: [status: string];
-  newMessage: [message: NotificationMessage];
-  navigate: [url: string];
-}>();
+  const emit = defineEmits<{
+    itemClick: [message: NotificationMessage]
+    read: [ids: string[]]
+    allRead: [category?: NotificationCategory]
+    delete: [ids: string[]]
+    unreadChange: [count: number]
+    wsStatusChange: [status: string]
+    newMessage: [message: NotificationMessage]
+    navigate: [url: string]
+  }>()
 
-const core = useNotificationCore(props);
+  const core = useNotificationCore(props)
 
-/* ─── 计算属性 ───────────────────────────────── */
+  /* ─── 计算属性 ───────────────────────────────── */
 
-/** 是否有紧急未读消息 */
-const hasUrgentMessage = computed(() =>
-  core.messages.value.some(
-    (m) => m.status === "unread" && m.priority === "urgent",
-  ),
-);
+  /** 是否有紧急未读消息 */
+  const hasUrgentMessage = computed(() =>
+    core.messages.value.some(
+      m => m.status === 'unread' && m.priority === 'urgent'
+    )
+  )
 
-/** WebSocket 状态文本 */
-const wsStatusText = computed(() => {
-  const map: Record<string, string> = {
-    connected: "已连接",
-    connecting: "连接中...",
-    disconnected: "未连接",
-    reconnecting: "重连中...",
-  };
-  return map[core.wsStatus.value] ?? "未知";
-});
+  /** WebSocket 状态文本 */
+  const wsStatusText = computed(() => {
+    const map: Record<string, string> = {
+      connected: '已连接',
+      connecting: '连接中...',
+      disconnected: '未连接',
+      reconnecting: '重连中...',
+    }
+    return map[core.wsStatus.value] ?? '未知'
+  })
 
-/* ─── 监听未读数变化 ─────────────────────────── */
+  /* ─── 监听未读数变化 ─────────────────────────── */
 
-watch(
-  () => core.unreadCount.value,
-  (count) => {
-    emit("unreadChange", count);
-  },
-);
+  watch(
+    () => core.unreadCount.value,
+    count => {
+      emit('unreadChange', count)
+    }
+  )
 
-/* ─── 事件处理 ───────────────────────────────── */
+  /* ─── 事件处理 ───────────────────────────────── */
 
-/** 角标点击 */
-function handleBadgeClick() {
-  core.popoverVisible.value = !core.popoverVisible.value;
-}
+  /** 角标点击 */
+  function handleBadgeClick() {
+    core.popoverVisible.value = !core.popoverVisible.value
+  }
 
-/** 点击消息 */
-function handleItemClick(message: NotificationMessage) {
-  core.selectMessage(message);
-  emit("itemClick", message);
-}
+  /** 点击消息 */
+  function handleItemClick(message: NotificationMessage) {
+    core.selectMessage(message)
+    emit('itemClick', message)
+  }
 
-/** 标记已读 */
-function handleRead(id: string) {
-  core.markAsRead([id]);
-  emit("read", [id]);
-}
+  /** 标记已读 */
+  async function handleRead(id: string) {
+    try {
+      await core.markAsRead([id])
+      emit('read', [id])
+    } catch {
+      // Core reports the error and restores optimistic state.
+    }
+  }
 
-/** 删除消息 */
-function handleDelete(id: string) {
-  core.deleteMessages([id]);
-  emit("delete", [id]);
-}
+  /** 删除消息 */
+  async function handleDelete(id: string) {
+    try {
+      await core.deleteMessages([id])
+      emit('delete', [id])
+    } catch {
+      // Core reports the error and restores optimistic state.
+    }
+  }
 
-/** 全部已读 */
-function handleMarkAllRead() {
-  const category =
-    core.activeCategory.value === "all" ? undefined : core.activeCategory.value;
-  core.markAllAsRead(category);
-  emit("allRead", category);
-}
+  /** 全部已读 */
+  async function handleMarkAllRead() {
+    const category =
+      core.activeCategory.value === 'all'
+        ? undefined
+        : core.activeCategory.value
+    try {
+      await core.markAllAsRead(category)
+      emit('allRead', category)
+    } catch {
+      // Core reports the error and restores optimistic state.
+    }
+  }
 
-/** 清空 */
-function handleClear() {
-  const category =
-    core.activeCategory.value === "all" ? undefined : core.activeCategory.value;
-  core.clearMessages(category);
-}
+  /** 清空 */
+  async function handleClear() {
+    const category =
+      core.activeCategory.value === 'all'
+        ? undefined
+        : core.activeCategory.value
+    try {
+      await core.clearMessages(category)
+    } catch {
+      // Core reports the error and restores optimistic state.
+    }
+  }
 
-/** 操作链接跳转 */
-function handleAction() {
-  core.popoverVisible.value = false;
-}
+  /** 操作链接跳转 */
+  function handleAction() {
+    core.popoverVisible.value = false
+  }
 
-/** Popover 关闭后重置详情 */
-function handlePopoverClose() {
-  core.clearSelection();
-}
+  /** Popover 关闭后重置详情 */
+  function handlePopoverClose() {
+    core.clearSelection()
+  }
 
-/* ─── Expose ──────────────────────────────────── */
+  /* ─── Expose ──────────────────────────────────── */
 
-defineExpose<NotificationCenterExpose>({
-  refresh: () => core.fetchMessages(true),
-  connectWS: () => {
-    if (props.wsConfig) core.connectWS(props.wsConfig);
-  },
-  disconnectWS: core.disconnectWS,
-  getUnreadCount: () => core.unreadCount.value,
-  getMessages: () => core.messages.value,
-  markRead: (ids: string[]) => core.markAsRead(ids),
-  markAllAsRead: (category?: NotificationCategory) =>
-    core.markAllAsRead(category),
-});
+  defineExpose<NotificationCenterExpose>({
+    refresh: () => core.fetchMessages(true),
+    connectWS: () => {
+      if (props.wsConfig) core.connectWS(props.wsConfig)
+    },
+    disconnectWS: core.disconnectWS,
+    getUnreadCount: () => core.unreadCount.value,
+    getMessages: () => core.messages.value.map(message => ({ ...message })),
+    markRead: (ids: string[]) => core.markAsRead(ids),
+    markAllAsRead: (category?: NotificationCategory) =>
+      core.markAllAsRead(category),
+    requestDesktopPermission: core.requestDesktopPermission,
+  })
 </script>
 
 <style scoped lang="scss">
-.c-notification-center {
-  display: inline-flex;
-  align-items: center;
-
-  &__panel {
-    display: flex;
-    flex-direction: column;
-    max-height: 560px;
-  }
-
-  &__header {
-    display: flex;
+  .c-notification-center {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--c-border);
-  }
 
-  &__title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--c-text-1);
-  }
-
-  &__header-extra {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__ws-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    transition: background-color var(--c-transition, 0.2s ease);
-
-    &--connected {
-      background: #52c41a;
-      box-shadow: 0 0 4px rgba(82, 196, 26, 0.5);
+    &__panel {
+      display: flex;
+      flex-direction: column;
+      max-height: 560px;
     }
 
-    &--connecting,
-    &--reconnecting {
-      background: #faad14;
-      animation: status-blink 1s ease-in-out infinite;
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--c-border);
     }
 
-    &--disconnected {
-      background: var(--c-text-4);
+    &__title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--c-text-1);
+    }
+
+    &__header-extra {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    &__ws-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      transition: background-color var(--c-transition, 0.2s ease);
+
+      &--connected {
+        background: #52c41a;
+        box-shadow: 0 0 4px rgba(82, 196, 26, 0.5);
+      }
+
+      &--connecting,
+      &--reconnecting {
+        background: #faad14;
+        animation: status-blink 1s ease-in-out infinite;
+      }
+
+      &--disconnected {
+        background: var(--c-text-4);
+      }
     }
   }
-}
 
-@keyframes status-blink {
-  0%,
-  100% {
-    opacity: 1;
+  @keyframes status-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.3;
+    }
   }
 
-  50% {
-    opacity: 0.3;
+  /* ─── 切换过渡 ───────────────────────────────── */
+
+  .slide-fade-enter-active {
+    transition: all 0.25s ease-out;
   }
-}
 
-/* ─── 切换过渡 ───────────────────────────────── */
+  .slide-fade-leave-active {
+    transition: all 0.2s ease-in;
+  }
 
-.slide-fade-enter-active {
-  transition: all 0.25s ease-out;
-}
+  .slide-fade-enter-from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 
-.slide-fade-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
+  .slide-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 </style>

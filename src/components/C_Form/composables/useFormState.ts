@@ -1,32 +1,34 @@
-/*
- * @Description: C_Form 状态引擎 Composable — 表单数据、校验规则、验证 API、脏检查、联动
- * @Migration: naive-ui-components 组件库迁移版本
- * Copyright (c) 2025 by CHENY, All Rights Reserved.
- */
-
 import {
+  computed,
+  nextTick,
+  onScopeDispose,
   reactive,
   ref,
-  computed,
   watch,
-  nextTick,
-  onMounted,
   type ComputedRef,
   type Ref,
 } from 'vue'
-import type { FormInst, FormRules } from 'naive-ui/es/form'
-import { mergeRules } from '@robot-admin/form-validate'
 import type {
-  FormOption,
-  FormModel,
+  FormInst,
+  FormItemInst,
+  FormItemRule,
+  FormRules,
+} from 'naive-ui/es/form'
+import type {
+  AsyncOptionsContext,
   ComponentType,
-  SubmitEventPayload,
+  FormModel,
+  FormOption,
   OptionItem,
+  SubmitEventPayload,
 } from '../types'
+import {
+  cloneFormValue,
+  isFormValueEqual,
+  replaceFormRecord,
+} from '../utils/formModel'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { useFormDirty } from './useFormDirty'
-
-/* =================== 默认值映射 =================== */
 
 const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   input: '',
@@ -38,200 +40,336 @@ const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   timePicker: null,
   cascader: null,
   colorPicker: null,
-  checkbox: null,
+  checkbox: [],
   upload: [],
   radio: '',
   inputNumber: null,
   slider: null,
   rate: null,
-  switch: null,
-} as const
-
-const getDefaultValue = (type: ComponentType): unknown => {
-  return DEFAULT_VALUES[type] ?? null
+  switch: false,
 }
 
-/* =================== Composable =================== */
+function getDefaultValue(item: FormOption): unknown {
+  const value =
+    item.value !== undefined
+      ? item.value
+      : DEFAULT_VALUES[item.type as ComponentType]
+  return cloneFormValue(value ?? null)
+}
 
-/**
- * C_Form 状态引擎 — 管理表单数据模型、校验规则、验证 API、字段操作、脏检查、联动
- */
+function ensureValidOptions(options: readonly FormOption[]): void {
+  const props = new Set<string>()
+  options.forEach((item, index) => {
+    if (!item.prop?.trim()) {
+      throw new TypeError(`[C_Form] options[${index}].prop 不能为空`)
+    }
+    if (props.has(item.prop)) {
+      throw new TypeError(`[C_Form] 字段 prop 重复: ${item.prop}`)
+    }
+    props.add(item.prop)
+  })
+}
+
+type FormEmit = {
+  (event: 'update:modelValue', model: FormModel): void
+  (event: 'validate-success', model: FormModel): void
+  (event: 'validate-error', errors: unknown): void
+  (event: 'submit', payload: SubmitEventPayload): void
+}
+
+/** C_Form state, validation, async options and model synchronization engine. */
 export function useFormState(
   options: ComputedRef<FormOption[]>,
   config: ComputedRef<ResolvedFormConfig>,
   formRef: Ref<FormInst | null>,
-  emit: {
-    (e: 'update:modelValue', model: FormModel): void
-    (e: 'validate-success', model: FormModel): void
-    (e: 'validate-error', errors: unknown): void
-    (e: 'submit', payload: SubmitEventPayload): void
-  }
+  emit: FormEmit,
+  externalModel?: ComputedRef<FormModel | undefined>
 ) {
-  /* ===== 响应式状态 ===== */
   const formModel = reactive<FormModel>({})
   const formRules = reactive<FormRules>({})
+  const formItemRefs = new Map<string, FormItemInst>()
 
-  /** 异步选项缓存：prop → OptionItem[] */
   const asyncOptionsCache = ref<Record<string, OptionItem[]>>({})
-  /** 异步选项 loading 状态：prop → boolean */
   const asyncLoadingMap = ref<Record<string, boolean>>({})
+  const asyncErrorMap = ref<Record<string, unknown>>({})
+  const isSubmitting = ref(false)
 
-  /* ===== 脏检查引擎 ===== */
-  const { isDirty, getChangedFields, isFieldDirty, markAsClean } =
-    useFormDirty(formModel)
+  const requestVersions = new Map<string, number>()
+  const requestControllers = new Map<string, AbortController>()
+  const asyncOptionLoaders = new Map<string, FormOption['asyncOptions']>()
+  let previousOptionProps = new Set<string>()
+  let initialized = false
+  let suppressModelEmit = false
+  let suppressionVersion = 0
 
-  /* ===== 可见字段 ===== */
+  const {
+    isDirty,
+    getChangedFields,
+    isFieldDirty,
+    markAsClean,
+    getCleanModel,
+  } = useFormDirty(formModel)
+
+  function reportError(
+    error: unknown,
+    source: Parameters<NonNullable<ResolvedFormConfig['onError']>>[1]['source'],
+    field?: string
+  ): void {
+    config.value.onError?.(error, { source, field })
+  }
+
   const visibleOptions = computed(() =>
     options.value.filter(item => {
       if (item.show === false) return false
-      if (item.showWhen) return item.showWhen(formModel)
-      return true
+      if (!item.showWhen) return true
+      try {
+        return item.showWhen(formModel)
+      } catch (error) {
+        reportError(error, 'callback', item.prop)
+        return false
+      }
     })
   )
 
-  /* ===== 初始化 ===== */
-  const initialize = (): void => {
+  function suppressNextEmit(): void {
+    suppressModelEmit = true
+    const version = ++suppressionVersion
+    void nextTick(() => {
+      if (version === suppressionVersion) suppressModelEmit = false
+    })
+  }
+
+  function getModel(): FormModel {
+    return cloneFormValue(formModel)
+  }
+
+  function createConfiguredModel(source?: FormModel): FormModel {
+    const model: FormModel = {}
+    options.value.forEach(item => {
+      model[item.prop] = getDefaultValue(item)
+    })
+    if (source) Object.assign(model, cloneFormValue(source))
+    return model
+  }
+
+  function syncRulesForField(item: FormOption): void {
     try {
-      Object.keys(formRules).forEach(key => delete formRules[key])
+      const rules: FormItemRule[] = item.rulesWhen
+        ? [...item.rulesWhen(formModel)]
+        : [...(item.rules ?? [])]
+
+      if (item.required && !rules.some(rule => rule.required)) {
+        rules.unshift({
+          required: true,
+          message: `${item.label || item.prop}不能为空`,
+          trigger: ['input', 'change', 'blur'],
+        })
+      }
+
+      if (item.crossFieldValidator) {
+        const validator = item.crossFieldValidator
+        rules.push({
+          async validator() {
+            const message = await validator(formModel)
+            if (message) throw new Error(message)
+          },
+          trigger: ['change', 'blur'],
+        })
+      }
+
+      if (rules.length === 0) {
+        delete formRules[item.prop]
+        return
+      }
+
+      formRules[item.prop] = rules.map(rule => ({
+        ...rule,
+        key: item.prop,
+      }))
+    } catch (error) {
+      delete formRules[item.prop]
+      reportError(error, 'callback', item.prop)
+    }
+  }
+
+  function refreshDynamicRules(): void {
+    options.value.forEach(item => {
+      if (item.rulesWhen || item.crossFieldValidator) syncRulesForField(item)
+    })
+  }
+
+  function cleanupRemovedFields(nextProps: Set<string>): void {
+    previousOptionProps.forEach(prop => {
+      if (nextProps.has(prop)) return
+      formItemRefs.delete(prop)
+      delete formRules[prop]
+      delete asyncOptionsCache.value[prop]
+      delete asyncLoadingMap.value[prop]
+      delete asyncErrorMap.value[prop]
+      requestControllers.get(prop)?.abort()
+      requestControllers.delete(prop)
+      requestVersions.delete(prop)
+      asyncOptionLoaders.delete(prop)
+      if (!config.value.preserveRemovedFields) delete formModel[prop]
+    })
+  }
+
+  function reconcileOptions(markClean = false): void {
+    try {
+      ensureValidOptions(options.value)
+      const nextProps = new Set(options.value.map(item => item.prop))
+      cleanupRemovedFields(nextProps)
 
       options.value.forEach(item => {
-        if (!(item.prop in formModel)) {
-          formModel[item.prop] =
-            item.value !== undefined
-              ? item.value
-              : getDefaultValue(item.type as ComponentType)
+        if (!Object.prototype.hasOwnProperty.call(formModel, item.prop)) {
+          formModel[item.prop] = getDefaultValue(item)
         }
-
         syncRulesForField(item)
+        if (
+          item.asyncOptions &&
+          asyncOptionLoaders.get(item.prop) !== item.asyncOptions
+        ) {
+          asyncOptionLoaders.set(item.prop, item.asyncOptions)
+          void nextTick(() => loadAsyncOptions(item, 'initialize'))
+        }
       })
 
-      /* 初始化结束后保存干净快照 */
-      nextTick(() => markAsClean())
-
-      /* 加载所有异步选项 */
-      loadAllAsyncOptions()
+      previousOptionProps = nextProps
+      if (markClean) void nextTick(markAsClean)
     } catch (error) {
-      console.error('[C_Form] 初始化失败:', error)
+      reportError(error, 'initialize')
+      throw error
     }
   }
 
-  /* ===== 校验规则同步 ===== */
-
-  /**
-   * 同步单个字段的校验规则（支持静态 rules + 动态 rulesWhen + crossFieldValidator）
-   */
-  function syncRulesForField(item: FormOption): void {
-    const staticRules = item.rulesWhen
-      ? item.rulesWhen(formModel)
-      : (item.rules ?? [])
-
-    const allRules = [...staticRules]
-
-    /* 跨字段校验转化为 naive-ui validator */
-    if (item.crossFieldValidator) {
-      const crossFn = item.crossFieldValidator
-      allRules.push({
-        validator: () => {
-          const errMsg = crossFn(formModel)
-          return errMsg ? Promise.reject(new Error(errMsg)) : Promise.resolve()
-        },
-        trigger: ['change', 'blur'],
-      } as any)
-    }
-
-    if (allRules.length === 0) {
-      delete formRules[item.prop]
-      return
-    }
-
-    const allHaveValidator = allRules.every(
-      r => typeof (r as Record<string, unknown>).validator === 'function'
-    )
-    formRules[item.prop] = allHaveValidator ? mergeRules(allRules) : allRules
+  function applyExternalModel(model: FormModel): void {
+    suppressNextEmit()
+    replaceFormRecord(formModel, createConfiguredModel(model))
+    refreshDynamicRules()
   }
 
-  /**
-   * 刷新所有字段的动态规则（当 formModel 变化时调用）
-   */
-  function refreshDynamicRules(): void {
-    const itemsWithDynamicRules = options.value.filter(
-      item => item.rulesWhen || item.crossFieldValidator
-    )
-    for (const item of itemsWithDynamicRules) {
-      syncRulesForField(item)
-    }
+  function isStaleRequest(
+    field: string,
+    version: number,
+    controller: AbortController
+  ): boolean {
+    return controller.signal.aborted || requestVersions.get(field) !== version
   }
 
-  /* ===== 异步选项加载 ===== */
-
-  /** 加载单个字段的异步选项数据 */
-  async function loadAsyncOptions(item: FormOption): Promise<void> {
+  async function loadAsyncOptions(
+    item: FormOption,
+    reason: AsyncOptionsContext['reason']
+  ): Promise<void> {
     if (!item.asyncOptions) return
+
     const { prop } = item
+    const version = (requestVersions.get(prop) ?? 0) + 1
+    requestVersions.set(prop, version)
+    requestControllers.get(prop)?.abort()
+
+    const controller = new AbortController()
+    requestControllers.set(prop, controller)
     asyncLoadingMap.value[prop] = true
+    delete asyncErrorMap.value[prop]
+
     try {
-      const result = await item.asyncOptions(formModel)
-      asyncOptionsCache.value[prop] = result
+      const result = await item.asyncOptions(getModel(), {
+        field: prop,
+        reason,
+        signal: controller.signal,
+      })
+      if (isStaleRequest(prop, version, controller)) return
+      if (!Array.isArray(result)) {
+        throw new TypeError(`[C_Form] ${prop}.asyncOptions 必须返回数组`)
+      }
+      asyncOptionsCache.value[prop] = cloneFormValue([...result])
     } catch (error) {
-      console.warn(`[C_Form] asyncOptions 加载失败 (${prop}):`, error)
-      asyncOptionsCache.value[prop] = []
+      if (isStaleRequest(prop, version, controller)) return
+      asyncErrorMap.value[prop] = error
+      reportError(error, 'async-options', prop)
     } finally {
-      asyncLoadingMap.value[prop] = false
-    }
-  }
-
-  /** 加载所有带 asyncOptions 的字段选项 */
-  function loadAllAsyncOptions(): void {
-    options.value
-      .filter(item => item.asyncOptions)
-      .forEach(item => loadAsyncOptions(item))
-  }
-
-  /* ===== 联动赋值引擎 ===== */
-
-  /** 执行联动赋值 — 根据 valueWhen 计算并写入对应字段值 */
-  function applyValueWhen(): void {
-    const itemsWithValueWhen = options.value.filter(item => item.valueWhen)
-    for (const item of itemsWithValueWhen) {
-      const computed = item.valueWhen!(formModel)
-      if (computed !== undefined && formModel[item.prop] !== computed) {
-        formModel[item.prop] = computed
+      if (requestVersions.get(prop) === version) {
+        asyncLoadingMap.value[prop] = false
+        requestControllers.delete(prop)
       }
     }
   }
 
-  /* ===== 字段变化处理 ===== */
-  const handleFieldChange = (field: string): void => {
-    /* 联动赋值 */
+  async function reloadOptions(field?: string): Promise<void> {
+    const targets = options.value.filter(
+      item => item.asyncOptions && (!field || item.prop === field)
+    )
+    if (field && targets.length === 0) {
+      throw new Error(`[C_Form] 未找到异步选项字段: ${field}`)
+    }
+    await Promise.all(targets.map(item => loadAsyncOptions(item, 'manual')))
+  }
+
+  function applyValueWhen(): void {
+    const derivedItems = options.value.filter(item => item.valueWhen)
+    if (derivedItems.length === 0) return
+
+    for (let pass = 0; pass <= derivedItems.length; pass += 1) {
+      let changed = false
+      for (const item of derivedItems) {
+        try {
+          const nextValue = item.valueWhen?.(formModel)
+          if (
+            nextValue !== undefined &&
+            !isFormValueEqual(formModel[item.prop], nextValue)
+          ) {
+            formModel[item.prop] = cloneFormValue(nextValue)
+            changed = true
+          }
+        } catch (error) {
+          reportError(error, 'callback', item.prop)
+        }
+      }
+      if (!changed) return
+    }
+
+    reportError(
+      new Error('[C_Form] valueWhen 存在循环依赖，已停止继续计算'),
+      'callback'
+    )
+  }
+
+  function dependentAsyncItems(fields: readonly string[]): FormOption[] {
+    const changedFields = new Set(fields)
+    return options.value.filter(item => {
+      if (!item.asyncOptions || !item.dependsOn) return false
+      const dependencies = Array.isArray(item.dependsOn)
+        ? item.dependsOn
+        : [item.dependsOn]
+      return dependencies.some(field => changedFields.has(field))
+    })
+  }
+
+  function handleFieldsChanged(fields: readonly string[]): void {
     applyValueWhen()
-
-    /* 刷新动态规则 */
     refreshDynamicRules()
+    dependentAsyncItems(fields).forEach(item => {
+      void loadAsyncOptions(item, 'dependency')
+    })
 
-    /* 触发依赖本字段的异步选项重载 */
-    options.value
-      .filter(item => {
-        if (!item.asyncOptions) return false
-        const deps = item.dependsOn
-        if (!deps) return false
-        return Array.isArray(deps) ? deps.includes(field) : deps === field
-      })
-      .forEach(item => loadAsyncOptions(item))
-
-    /* 变化时校验 */
     if (config.value.validateOnChange) {
-      nextTick(() => {
-        validateField(field).catch(() => {})
+      void nextTick(() => {
+        void validateField([...fields]).catch(() => undefined)
       })
     }
   }
 
-  /* ===== 验证 API ===== */
-  const validate = async (): Promise<void> => {
-    if (!formRef.value) {
-      throw new Error('[C_Form] 表单引用不存在')
-    }
+  function handleFieldChange(field: string): void {
+    handleFieldsChanged([field])
+  }
 
+  function setFormItemRef(field: string, instance: FormItemInst | null): void {
+    if (instance) formItemRefs.set(field, instance)
+    else formItemRefs.delete(field)
+  }
+
+  async function validate(): Promise<void> {
+    if (!formRef.value) throw new Error('[C_Form] 表单引用不存在')
     try {
       await formRef.value.validate()
       emit('validate-success', getModel())
@@ -241,166 +379,197 @@ export function useFormState(
     }
   }
 
-  const validateField = async (field: string | string[]): Promise<void> => {
-    if (!formRef.value) {
-      throw new Error('[C_Form] 表单引用不存在')
-    }
+  async function validateField(field: string | string[]): Promise<void> {
+    if (!formRef.value) throw new Error('[C_Form] 表单引用不存在')
 
-    const fields = Array.isArray(field) ? field : [field]
-
-    try {
-      await formRef.value.validate()
-    } catch (allErrors: unknown) {
-      if (!Array.isArray(allErrors)) throw allErrors
-
-      const targetErrors = allErrors.filter((errorGroup: unknown[]) =>
-        errorGroup?.some(err => {
-          const e = err as Record<string, unknown>
-          return typeof e.field === 'string' && fields.includes(e.field)
-        })
-      )
-
-      if (targetErrors.length > 0) {
-        throw targetErrors
+    const fields = [...new Set(Array.isArray(field) ? field : [field])]
+    const missingFields: string[] = []
+    const validations: Promise<unknown>[] = fields.flatMap(fieldName => {
+      const itemRef = formItemRefs.get(fieldName)
+      if (!itemRef) {
+        missingFields.push(fieldName)
+        return []
       }
+      return [itemRef.validate()]
+    })
+
+    if (missingFields.length > 0) {
+      validations.push(
+        formRef.value.validate(undefined, rule =>
+          missingFields.includes(String(rule.key ?? ''))
+        )
+      )
     }
+
+    const results = await Promise.allSettled(validations)
+    const errors = results
+      .filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      )
+      .map(result => result.reason)
+    if (errors.length > 0) throw errors
   }
 
-  const clearValidation = (field?: string | string[]): void => {
-    if (!formRef.value) return
-
-    if (field) {
-      const fields = Array.isArray(field) ? field : [field]
-      fields.forEach(fieldName => {
-        if (formModel[fieldName] !== undefined) {
-          const currentValue = formModel[fieldName]
-          formModel[fieldName] = currentValue
-        }
-      })
-    } else {
-      formRef.value.restoreValidation()
+  function clearValidation(field?: string | string[]): void {
+    if (!field) {
+      formRef.value?.restoreValidation()
+      return
     }
+    const fields = Array.isArray(field) ? field : [field]
+    fields.forEach(fieldName =>
+      formItemRefs.get(fieldName)?.restoreValidation()
+    )
   }
 
-  const validateByFilter = async (
-    filterFn: (option: FormOption) => boolean,
-    context: string
-  ): Promise<boolean> => {
+  async function validateByFilter(
+    filter: (option: FormOption) => boolean
+  ): Promise<boolean> {
+    const fields = options.value.filter(filter).map(option => option.prop)
+    if (fields.length === 0) return true
     try {
-      const fields = options.value.filter(filterFn).map(option => option.prop)
-      if (fields.length === 0) return true
       await validateField(fields)
       return true
-    } catch (error) {
-      console.warn(`[C_Form] ${context}验证失败:`, error)
+    } catch {
       return false
     }
   }
 
-  const validateStep = async (stepIndex: number): Promise<boolean> => {
+  function validateStep(stepIndex: number): Promise<boolean> {
     const stepKey = config.value.steps?.steps?.[stepIndex]?.key
-    if (!stepKey) return true
-    return validateByFilter(
-      option => option.layout?.step === stepKey,
-      `步骤 ${stepIndex} `
-    )
+    if (!stepKey) return Promise.resolve(true)
+    return validateByFilter(option => option.layout?.step === stepKey)
   }
 
-  const validateTab = async (tabKey: string): Promise<boolean> => {
-    return validateByFilter(
-      option => option.layout?.tab === tabKey,
-      `标签页 ${tabKey} `
-    )
+  function validateTab(tabKey: string): Promise<boolean> {
+    return validateByFilter(option => option.layout?.tab === tabKey)
   }
 
-  const validateDynamicFields = async (): Promise<boolean> => {
-    return validateByFilter(
-      option => Boolean(option.layout?.dynamic),
-      '动态字段 '
-    )
+  function validateDynamicFields(): Promise<boolean> {
+    return validateByFilter(option => Boolean(option.layout?.dynamic))
   }
 
-  const validateCustomGroup = async (groupKey: string): Promise<boolean> => {
-    return validateByFilter(
-      option => option.layout?.group === groupKey,
-      `自定义分组 ${groupKey} `
-    )
+  function validateCustomGroup(groupKey: string): Promise<boolean> {
+    return validateByFilter(option => option.layout?.group === groupKey)
   }
 
-  /* ===== 数据 API ===== */
-  const getModel = (): FormModel => ({ ...formModel })
-
-  const setFields = (fields: FormModel): void => {
-    Object.assign(formModel, fields)
+  function setFields(fields: FormModel): void {
+    Object.entries(cloneFormValue(fields)).forEach(([field, value]) => {
+      formModel[field] = value
+    })
+    handleFieldsChanged(Object.keys(fields))
   }
 
-  const resetFields = (): void => {
-    try {
-      clearValidation()
-
-      options.value.forEach(item => {
-        const defaultValue =
-          item.value !== undefined
-            ? item.value
-            : getDefaultValue(item.type as ComponentType)
-
-        formModel[item.prop] = defaultValue
-      })
-
-      nextTick(() => markAsClean())
-    } catch (error) {
-      console.error('[C_Form] 重置表单失败:', error)
-    }
+  function resetFields(): void {
+    replaceFormRecord(formModel, getCleanModel())
+    clearValidation()
+    refreshDynamicRules()
   }
 
-  const setFieldValue = async (
+  async function setFieldValue(
     field: string,
     value: unknown,
-    shouldValidate: boolean = false
-  ): Promise<void> => {
-    formModel[field] = value
-    if (shouldValidate) {
-      await validateField(field)
-    }
+    shouldValidate = false
+  ): Promise<void> {
+    formModel[field] = cloneFormValue(value)
+    handleFieldChange(field)
+    if (shouldValidate) await validateField(field)
   }
 
-  const getFieldValue = (field: string): unknown => formModel[field]
+  function getFieldValue(field: string): unknown {
+    return cloneFormValue(formModel[field])
+  }
 
-  const setFieldsValue = async (
+  async function setFieldsValue(
     fields: FormModel,
-    shouldValidate: boolean = false
-  ): Promise<void> => {
-    Object.assign(formModel, fields)
-    if (shouldValidate) {
-      await validate()
-    }
+    shouldValidate = false
+  ): Promise<void> {
+    setFields(fields)
+    if (shouldValidate) await validateField(Object.keys(fields))
   }
 
-  /* ===== 提交 & 重置 ===== */
-  const handleSubmit = async (): Promise<void> => {
+  async function submit(): Promise<boolean> {
+    if (isSubmitting.value) return false
+    isSubmitting.value = true
     try {
       await validate()
-      emit('submit', { model: getModel(), form: formRef.value! })
-    } catch (error) {
-      console.warn('[C_Form] 表单验证失败:', error)
+      const payload = { model: getModel(), form: formRef.value! }
+      try {
+        await config.value.onSubmit?.(payload)
+      } catch (error) {
+        reportError(error, 'submit')
+        return false
+      }
+      emit('submit', payload)
+      return true
+    } catch {
+      return false
+    } finally {
+      isSubmitting.value = false
     }
   }
 
-  /* ===== 生命周期 ===== */
-  onMounted(() => {
-    initialize()
+  function initialize(): void {
+    reconcileOptions(true)
+    const initialSource =
+      externalModel?.value ??
+      (config.value.mode === 'edit' ? config.value.initialValues : undefined)
+    if (initialSource) applyExternalModel(initialSource)
+    applyValueWhen()
+    void nextTick(markAsClean)
+  }
 
-    watch(
-      () => options.value,
-      () => initialize(),
-      { deep: true }
-    )
+  watch(
+    options,
+    () => {
+      const firstRun = !initialized
+      if (firstRun) suppressNextEmit()
+      reconcileOptions(firstRun)
+      initialized = true
+    },
+    { deep: true, immediate: true }
+  )
 
+  if (externalModel) {
     watch(
-      () => formModel,
-      val => emit('update:modelValue', { ...val }),
-      { deep: true }
+      externalModel,
+      model => {
+        if (model !== undefined && !isFormValueEqual(formModel, model)) {
+          applyExternalModel(model)
+        }
+      },
+      { deep: true, immediate: true }
     )
+  }
+
+  watch(
+    () => [config.value.mode, config.value.initialValues] as const,
+    ([mode, initialValues]) => {
+      if (
+        externalModel?.value !== undefined ||
+        mode !== 'edit' ||
+        !initialValues
+      ) {
+        return
+      }
+      applyExternalModel(initialValues)
+      void nextTick(markAsClean)
+    },
+    { deep: true }
+  )
+
+  watch(
+    formModel,
+    model => {
+      if (!suppressModelEmit) emit('update:modelValue', cloneFormValue(model))
+    },
+    { deep: true, flush: 'post' }
+  )
+
+  onScopeDispose(() => {
+    requestControllers.forEach(controller => controller.abort())
+    requestControllers.clear()
+    formItemRefs.clear()
   })
 
   return {
@@ -409,7 +578,7 @@ export function useFormState(
     visibleOptions,
     initialize,
     handleFieldChange,
-    /* 验证 API */
+    setFormItemRef,
     validate,
     validateField,
     validateStep,
@@ -417,22 +586,23 @@ export function useFormState(
     validateDynamicFields,
     validateCustomGroup,
     clearValidation,
-    /* 数据 API */
     getModel,
     setFields,
     resetFields,
     setFieldValue,
     getFieldValue,
     setFieldsValue,
-    /* 操作 */
-    handleSubmit,
+    submit,
+    handleSubmit: submit,
     handleReset: resetFields,
-    /* v0.8.0 新增 */
+    isSubmitting,
     isDirty,
     getChangedFields,
     isFieldDirty,
     markAsClean,
     asyncOptionsCache,
     asyncLoadingMap,
+    asyncErrorMap,
+    reloadOptions,
   }
 }

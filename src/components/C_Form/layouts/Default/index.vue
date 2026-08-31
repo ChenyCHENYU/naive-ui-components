@@ -8,26 +8,29 @@
 
 <template>
   <div class="c-form-default">
-    <template v-for="item in formItems" :key="item.key">
+    <template
+      v-for="item in formItems"
+      :key="item.key"
+    >
       <component :is="item" />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { type VNode } from "vue";
+  import { type VNode } from 'vue'
 
-interface Props {
-  formItems: VNode[];
-  layoutConfig?: any;
-  options?: any[];
-}
+  interface Props {
+    formItems: VNode[]
+    layoutConfig?: any
+    options?: any[]
+  }
 
-defineProps<Props>();
+  defineProps<Props>()
 </script>
 
 <style scoped>
-.c-form-default {
-  width: 100%;
-}
+  .c-form-default {
+    width: 100%;
+  }
 </style>

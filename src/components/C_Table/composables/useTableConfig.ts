@@ -99,6 +99,16 @@ export interface EditConfig {
   showRowActions?: boolean
   modalTitle?: string
   modalWidth?: number
+  /** 保存前回调；抛出异常会保留编辑态，便于修正或重试 */
+  onSave?: (
+    rowData: DataRecord,
+    rowIndex: number,
+    columnKey?: string
+  ) => void | Promise<void>
+  /** 取消编辑回调 */
+  onCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
+  /** 编辑或保存失败回调 */
+  onError?: (error: unknown) => void
 }
 
 export interface ExpandConfig<T extends DataRecord = DataRecord> {
@@ -198,6 +208,10 @@ export interface ErrorConfig {
 /** 批量操作配置 */
 export interface BatchActionsConfig {
   enabled?: boolean
+  /** 操作成功后清空选择，默认不清空 */
+  clearSelectionOnSuccess?: boolean
+  /** 批量操作失败回调 */
+  onError?: (error: unknown, actionKey: string) => void
   /** 自定义批量操作按钮 */
   actions?: Array<{
     key: string
@@ -219,11 +233,13 @@ export interface ResolvedConfig {
   showRowActions: boolean
   modalTitle: string
   modalWidth: number
+  onEditSave: EditConfig['onSave'] | undefined
+  onEditCancel: EditConfig['onCancel'] | undefined
+  onEditError: EditConfig['onError'] | undefined
   expandable: boolean
   defaultExpandedKeys: DataTableRowKey[] | undefined
   onLoadExpandData:
-    | ((row: DataRecord) => Promise<unknown[]> | unknown[])
-    | undefined
+    ((row: DataRecord) => Promise<unknown[]> | unknown[]) | undefined
   renderExpandContent:
     | ((
         row: DataRecord,
@@ -239,8 +255,7 @@ export interface ResolvedConfig {
   maxSelection: number | undefined
   enableChildSelection: boolean
   childRowCheckable:
-    | ((childRow: unknown, parentRow: DataRecord) => boolean)
-    | undefined
+    ((childRow: unknown, parentRow: DataRecord) => boolean) | undefined
   enableParentChildLink: boolean
   parentChildLinkMode: ParentChildLinkMode
   pagination: PaginationConfig | null
@@ -267,7 +282,7 @@ export interface ResolvedConfig {
     | undefined
   /** 列拖拽 */
   enableColumnDrag: boolean
-  columnDragHandleClass: string
+  columnDragHandleClass: string | undefined
   columnDragAnimationDuration: number
   /** 树形表格 */
   treeEnabled: boolean
@@ -294,20 +309,37 @@ export interface ResolvedConfig {
 
 const EDIT_DISABLED: Pick<
   ResolvedConfig,
-  'editable' | 'editMode' | 'showRowActions' | 'modalTitle' | 'modalWidth'
+  | 'editable'
+  | 'editMode'
+  | 'showRowActions'
+  | 'modalTitle'
+  | 'modalWidth'
+  | 'onEditSave'
+  | 'onEditCancel'
+  | 'onEditError'
 > = {
   editable: false,
   editMode: 'none',
   showRowActions: false,
   modalTitle: '编辑数据',
   modalWidth: 600,
+  onEditSave: undefined,
+  onEditCancel: undefined,
+  onEditError: undefined,
 }
 
 const resolveEdit = (
   edit: EditConfig | boolean | undefined
 ): Pick<
   ResolvedConfig,
-  'editable' | 'editMode' | 'showRowActions' | 'modalTitle' | 'modalWidth'
+  | 'editable'
+  | 'editMode'
+  | 'showRowActions'
+  | 'modalTitle'
+  | 'modalWidth'
+  | 'onEditSave'
+  | 'onEditCancel'
+  | 'onEditError'
 > => {
   if (edit === false || edit === undefined) return EDIT_DISABLED
   if (edit === true)
@@ -317,6 +349,9 @@ const resolveEdit = (
       showRowActions: true,
       modalTitle: '编辑数据',
       modalWidth: 600,
+      onEditSave: undefined,
+      onEditCancel: undefined,
+      onEditError: undefined,
     }
   return {
     editable: edit.enabled !== false && edit.mode !== 'none',
@@ -324,6 +359,9 @@ const resolveEdit = (
     showRowActions: edit.showRowActions !== false && edit.mode !== 'none',
     modalTitle: edit.modalTitle || '编辑数据',
     modalWidth: edit.modalWidth || 600,
+    onEditSave: edit.onSave,
+    onEditCancel: edit.onCancel,
+    onEditError: edit.onError,
   }
 }
 
@@ -498,18 +536,18 @@ const resolveColumnDrag = (cd: ColumnDragConfig | boolean | undefined) => {
   if (!cd)
     return {
       enableColumnDrag: false,
-      columnDragHandleClass: 'drag-handle',
+      columnDragHandleClass: undefined,
       columnDragAnimationDuration: 150,
     }
   if (cd === true)
     return {
       enableColumnDrag: true,
-      columnDragHandleClass: 'drag-handle',
+      columnDragHandleClass: undefined,
       columnDragAnimationDuration: 150,
     }
   return {
     enableColumnDrag: cd.enabled !== false,
-    columnDragHandleClass: cd.handleClass ?? 'drag-handle',
+    columnDragHandleClass: cd.handleClass,
     columnDragAnimationDuration: cd.animationDuration ?? 150,
   }
 }

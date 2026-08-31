@@ -11,6 +11,10 @@ export type {
   LabelPlacement,
   ComponentType,
   OptionItem,
+  AsyncOptionsContext,
+  FormErrorContext,
+  FormRecord,
+  MaybePromise,
   SubmitEventPayload,
   GridLayoutConfig,
   TabsLayoutConfig,
@@ -41,10 +45,13 @@ export { useFormState } from './composables/useFormState'
 export {
   useFormRenderer,
   registerRenderer,
+  unregisterRenderer,
 } from './composables/useFormRenderer'
 export type {
   ComponentMap,
   FormRenderer,
+  FormRendererContext,
+  RendererProps,
   UseFormRendererOptions,
 } from './composables/useFormRenderer'
 

@@ -1,41 +1,73 @@
-/**
- * 本地存储封装
- *
- * 组件库内部使用的 localStorage 工具函数。
- * 提供类型安全的序列化/反序列化。
- */
+/** SSR-safe localStorage helpers. Storage failures never break component state. */
 
-const isSerializable = (value: unknown): value is object =>
-  typeof value === "object" && value !== null && !(value instanceof Date);
-
-/** 存储数据 */
-export const setItem = <T extends string | number | boolean | object | null>(
-  key: string,
-  value: T,
-): void => {
-  const storageValue = isSerializable(value)
-    ? JSON.stringify(value)
-    : value instanceof Date
-      ? value.toISOString()
-      : String(value);
-
-  window.localStorage.setItem(key, storageValue);
-};
-
-/** 获取数据（安全反序列化） */
-export const getItem = <T = unknown>(key: string): T | null => {
-  const data = window.localStorage.getItem(key);
-  if (data === null) return null;
-
+function getStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
   try {
-    return JSON.parse(data) as T;
+    return window.localStorage
   } catch {
-    return data as T;
+    return null
   }
-};
+}
 
-/** 删除指定数据 */
-export const removeItem = (key: string) => window.localStorage.removeItem(key);
+function serialize(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value instanceof Date) return value.toISOString()
+  const serialized = JSON.stringify(value)
+  return serialized === undefined ? String(value) : serialized
+}
 
-/** 删除所有数据 */
-export const removeAllItem = () => window.localStorage.clear();
+/** Store a value. Returns false when storage is unavailable or full. */
+export function setItem<T>(key: string, value: T): boolean {
+  const storage = getStorage()
+  if (!storage) return false
+  try {
+    storage.setItem(key, serialize(value))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Read and safely deserialize a value. */
+export function getItem<T = unknown>(key: string): T | null {
+  const storage = getStorage()
+  if (!storage) return null
+  try {
+    const data = storage.getItem(key)
+    if (data === null) return null
+    try {
+      return JSON.parse(data) as T
+    } catch {
+      return data as T
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Remove one value. Returns whether the storage operation was available. */
+export function removeItem(key: string): boolean {
+  const storage = getStorage()
+  if (!storage) return false
+  try {
+    storage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Clear localStorage for backward compatibility.
+ * Prefer `removeItem` in components so unrelated application data is preserved.
+ */
+export function removeAllItem(): boolean {
+  const storage = getStorage()
+  if (!storage) return false
+  try {
+    storage.clear()
+    return true
+  } catch {
+    return false
+  }
+}

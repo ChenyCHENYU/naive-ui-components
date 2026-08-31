@@ -3,8 +3,17 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
+import {
+  ref,
+  onBeforeUnmount,
+  toValue,
+  type MaybeRefOrGetter,
+  type Ref,
+  type ComputedRef,
+} from 'vue'
 import type { DataTableRowKey } from 'naive-ui/es'
+import type Sortable from 'sortablejs'
+import type { SortableEvent } from 'sortablejs'
 import type { DataRecord } from '../types'
 
 /* ================= 类型定义 ================= */
@@ -27,7 +36,7 @@ export interface UseRowDragOptions<T extends DataRecord = DataRecord> {
   /** 获取行键 */
   rowKey: (row: T) => DataTableRowKey
   /** 配置 */
-  config: RowDragConfig
+  config: MaybeRefOrGetter<RowDragConfig | undefined>
   /** 数据重排回调（由外部处理数据更新） */
   onReorder?: (newData: T[]) => void
   /** 排序变更回调 */
@@ -49,15 +58,28 @@ export interface UseRowDragReturn {
 export function useRowDrag<T extends DataRecord = DataRecord>(
   options: UseRowDragOptions<T>
 ): UseRowDragReturn {
-  const { data, config, onReorder, onSort } = options
+  const { data, onReorder, onSort } = options
   const isDragging = ref(false)
-  let sortableInstance: any = null
+  let sortableInstance: Sortable | null = null
+  let initVersion = 0
+  let disposed = false
 
+  const destroyInstance = () => {
+    sortableInstance?.destroy()
+    sortableInstance = null
+    isDragging.value = false
+  }
+
+  // eslint-disable-next-line complexity -- Guards prevent stale async imports and invalid drag indexes.
   const initRowDrag = async (wrapperEl: HTMLElement) => {
-    if (!config.enabled || !wrapperEl) return
+    const version = ++initVersion
+    destroyInstance()
+    const config = toValue(options.config)
+    if (!config?.enabled || !wrapperEl || disposed) return
 
     try {
       const { default: Sortable } = await import('sortablejs')
+      if (disposed || version !== initVersion) return
       const tbody = wrapperEl.querySelector('.n-data-table-tbody')
       if (!tbody) return
 
@@ -69,13 +91,14 @@ export function useRowDrag<T extends DataRecord = DataRecord>(
         onStart: () => {
           isDragging.value = true
         },
-        onEnd: (evt: any) => {
+        onEnd: (evt: SortableEvent) => {
           isDragging.value = false
           if (evt.oldIndex == null || evt.newIndex == null) return
           if (evt.oldIndex === evt.newIndex) return
 
           const newData = [...data.value]
           const [moved] = newData.splice(evt.oldIndex, 1)
+          if (!moved) return
           newData.splice(evt.newIndex, 0, moved)
           onReorder?.(newData)
           onSort?.(moved, evt.oldIndex, evt.newIndex)
@@ -87,13 +110,14 @@ export function useRowDrag<T extends DataRecord = DataRecord>(
   }
 
   const destroyRowDrag = () => {
-    if (sortableInstance) {
-      sortableInstance.destroy()
-      sortableInstance = null
-    }
+    initVersion += 1
+    destroyInstance()
   }
 
-  onBeforeUnmount(destroyRowDrag)
+  onBeforeUnmount(() => {
+    disposed = true
+    destroyRowDrag()
+  })
 
   return { initRowDrag, destroyRowDrag, isDragging }
 }

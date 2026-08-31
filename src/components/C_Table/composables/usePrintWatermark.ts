@@ -290,27 +290,6 @@ function downloadCanvas(
 
 /* ================= 打印函数 ================= */
 
-let focusInterval: ReturnType<typeof setInterval> | null = null
-
-/**
- *
- */
-function startFocusKeep() {
-  focusInterval = setInterval(() => {
-    window.dispatchEvent(new Event('focus'))
-  }, 500)
-}
-
-/**
- *
- */
-function stopFocusKeep() {
-  if (focusInterval) {
-    clearInterval(focusInterval)
-    focusInterval = null
-  }
-}
-
 /**
  *
  */
@@ -322,7 +301,6 @@ function printImage(
 
   return new Promise<void>((resolve, reject) => {
     try {
-      startFocusKeep()
       finalConfig.onLoadingStart?.()
 
       printJS({
@@ -333,13 +311,11 @@ function printImage(
         modalMessage: finalConfig.modalMessage,
         onLoadingEnd: finalConfig.onLoadingEnd,
         onPrintDialogClose: () => {
-          stopFocusKeep()
           finalConfig.onPrintDialogClose?.()
           resolve()
         },
       })
     } catch (error) {
-      stopFocusKeep()
       reject(error)
     }
   })

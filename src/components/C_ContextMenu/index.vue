@@ -23,83 +23,21 @@
       tabindex="-1"
       @keydown.escape="close"
     >
-      <template
-        v-for="item in visibleItems"
-        :key="item.key"
-      >
-        <!-- 分割线 -->
-        <div
-          v-if="item.divider"
-          class="c-context-menu__divider"
-          role="separator"
-        />
-
-        <!-- 普通菜单项 -->
-        <div
-          v-else
-          :class="[
-            'c-context-menu__item',
-            {
-              'is-disabled': item.disabled,
-              'is-danger': item.danger,
-            },
-          ]"
-          role="menuitem"
-          :aria-disabled="item.disabled"
-          @click="handleItemClick(item)"
-          @mouseenter="handleMouseEnter(item)"
-          @mouseleave="handleMouseLeave"
-        >
-          <!-- 图标 -->
-          <span
-            v-if="item.icon"
-            class="c-context-menu__icon"
-          >
-            <C_Icon :name="item.icon" />
-          </span>
-
-          <!-- 文本 -->
-          <span class="c-context-menu__label">{{ item.label }}</span>
-
-          <!-- 快捷键 -->
-          <span
-            v-if="item.shortcut"
-            class="c-context-menu__shortcut"
-          >
-            {{ item.shortcut }}
-          </span>
-
-          <!-- 子菜单箭头 -->
-          <span
-            v-if="item.children?.length"
-            class="c-context-menu__arrow"
-          >
-            <C_Icon name="mdi:chevron-right" />
-          </span>
-
-          <!-- 子菜单（递归） -->
-          <C_ContextMenu
-            v-if="item.children?.length && activeSubKey === item.key"
-            :items="item.children"
-            :min-width="props.minWidth"
-            :max-width="props.maxWidth"
-            :sub-menu-placement="props.subMenuPlacement"
-            :auto-close="props.autoClose"
-            :z-index="props.zIndex + 1"
-            class="c-context-menu__submenu"
-            :class="`is-${props.subMenuPlacement}`"
-            :style="{ position: 'absolute' }"
-            @select="handleSubSelect"
-          />
-        </div>
-      </template>
+      <ContextMenuItems
+        :items="props.items"
+        :min-width="props.minWidth"
+        :max-width="props.maxWidth"
+        :sub-menu-placement="props.subMenuPlacement"
+        :z-index="props.zIndex + 1"
+        @select="handleSelect"
+      />
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, ref } from 'vue'
-  import C_Icon from '../C_Icon/index.vue'
+  import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+  import ContextMenuItems from './ContextMenuItems.vue'
   import {
     DEFAULT_CONTEXT_MENU_PROPS,
     type ContextMenuItem,
@@ -128,12 +66,6 @@
   const visible = ref(false)
   const position = ref({ x: 0, y: 0 })
   const menuRef = ref<HTMLElement>()
-  const activeSubKey = ref<string | null>(null)
-
-  let subTimer: ReturnType<typeof setTimeout> | null = null
-
-  // ===== 可见项 =====
-  const visibleItems = computed(() => props.items.filter(item => !item.hidden))
 
   // ===== 菜单定位样式 =====
   const menuStyle = computed(() => ({
@@ -177,49 +109,18 @@
 
   const close = () => {
     visible.value = false
-    activeSubKey.value = null
     emit('close')
   }
 
-  // ===== 菜单项点击 =====
-  const handleItemClick = (item: ContextMenuItem) => {
-    if (item.disabled) return
-    if (item.children?.length) return // 有子菜单不触发
-
+  // ===== 菜单项选择 =====
+  const handleSelect = (item: ContextMenuItem) => {
     emit('select', item)
     if (props.autoClose) close()
   }
 
-  // ===== 子菜单悬停 =====
-  const handleMouseEnter = (item: ContextMenuItem) => {
-    if (subTimer) {
-      clearTimeout(subTimer)
-      subTimer = null
-    }
-    if (item.children?.length && !item.disabled) {
-      subTimer = setTimeout(() => {
-        activeSubKey.value = item.key
-      }, 150)
-    } else {
-      activeSubKey.value = null
-    }
-  }
-
-  const handleMouseLeave = () => {
-    if (subTimer) {
-      clearTimeout(subTimer)
-      subTimer = null
-    }
-    subTimer = setTimeout(() => {
-      activeSubKey.value = null
-    }, 300)
-  }
-
-  // ===== 子菜单选择向上冒泡 =====
-  const handleSubSelect = (item: ContextMenuItem) => {
-    emit('select', item)
-    if (props.autoClose) close()
-  }
+  onBeforeUnmount(() => {
+    visible.value = false
+  })
 
   // ===== 暴露 API =====
   defineExpose({
@@ -232,6 +133,6 @@
   })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
   @use './index.scss';
 </style>

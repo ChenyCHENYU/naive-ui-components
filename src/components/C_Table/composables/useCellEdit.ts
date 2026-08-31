@@ -6,31 +6,9 @@
 
 import { ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui/es'
-import type { FormItemRule } from 'naive-ui/es/form'
 import type { DataRecord, TableColumn } from '../types'
-
-/**
- * 执行单条校验规则，返回错误消息或 null
- */
-async function runRule(
-  rule: FormItemRule,
-  value: unknown,
-  label: string
-): Promise<string | null> {
-  const ruleMsg =
-    typeof rule.message === 'function' ? rule.message() : rule.message
-  if (rule.required && (value == null || value === '')) {
-    return ruleMsg || `${label}不能为空`
-  }
-  if (rule.validator) {
-    try {
-      await rule.validator(rule as any, value, () => {}, {}, {})
-    } catch (e: any) {
-      return e?.message || `${label}校验失败`
-    }
-  }
-  return null
-}
+import { cloneData } from '../../../utils/data'
+import { validateTableRule } from './tableValidation'
 
 /**
  * 单元格编辑配置选项
@@ -47,6 +25,11 @@ export interface CellEditOptions {
   columns?: () => TableColumn[]
 }
 
+function createCellKey(rowKey: DataTableRowKey, columnKey: string): string {
+  const rowKeyText = String(rowKey)
+  return `${typeof rowKey}:${rowKeyText.length}:${rowKeyText}|${columnKey.length}:${columnKey}`
+}
+
 /**
  * 可编辑单元格组合函数，提供表格单元格的编辑功能
  */
@@ -59,6 +42,7 @@ export function useCellEdit(options: CellEditOptions) {
     columnKey: null,
   })
   const editingData = ref<Record<string, unknown>>({})
+  const isSaving = ref(false)
   /** 当前单元格校验错误 */
   const cellValidationError = ref<string | null>(null)
 
@@ -88,10 +72,14 @@ export function useCellEdit(options: CellEditOptions) {
    */
   const startEditCell = (rowKey: DataTableRowKey, columnKey: string) => {
     const rowData = findRowData(rowKey)
-    if (!rowData) return
+    if (!rowData || !columnKey || isSaving.value) return false
 
     editingCell.value = { rowKey, columnKey }
-    editingData.value[`${rowKey}-${columnKey}`] = rowData[columnKey]
+    editingData.value = {
+      [createCellKey(rowKey, columnKey)]: cloneData(rowData[columnKey]),
+    }
+    cellValidationError.value = null
+    return true
   }
 
   /**
@@ -100,18 +88,21 @@ export function useCellEdit(options: CellEditOptions) {
   const validateCell = async (): Promise<boolean> => {
     cellValidationError.value = null
     const { rowKey, columnKey } = editingCell.value
-    if (!rowKey || !columnKey) return true
+    if (rowKey === null || columnKey === null) return true
 
     const columns = options.columns?.() || []
-    const col = columns.find(c => (c as any).key === columnKey)
+    const col = columns.find(c => c.key === columnKey)
     if (!col || !col.editProps?.rules) return true
 
-    const cellKey = `${rowKey}-${columnKey}`
+    const cellKey = createCellKey(rowKey, columnKey)
     const value = editingData.value[cellKey]
-    const label = (col as any).title || columnKey
+    const label = col.title || columnKey
+    const source = { ...findRowData(rowKey), [columnKey]: value }
 
     const results = await Promise.all(
-      col.editProps.rules.map(rule => runRule(rule, value, label))
+      col.editProps.rules.map(rule =>
+        validateTableRule(rule, value, label, source)
+      )
     )
     const firstError = results.find(Boolean)
     if (firstError) {
@@ -126,7 +117,7 @@ export function useCellEdit(options: CellEditOptions) {
    */
   const saveEditCell = async () => {
     const { rowKey, columnKey } = editingCell.value
-    if (!rowKey || !columnKey) return
+    if (rowKey === null || columnKey === null || isSaving.value) return
 
     // 执行校验
     const isValid = await validateCell()
@@ -140,7 +131,7 @@ export function useCellEdit(options: CellEditOptions) {
     )
     if (rowIndex === -1) return
 
-    const cellKey = `${rowKey}-${columnKey}`
+    const cellKey = createCellKey(rowKey, columnKey)
     const newValue = editingData.value[cellKey]
 
     const updatedData = {
@@ -148,10 +139,14 @@ export function useCellEdit(options: CellEditOptions) {
       [columnKey]: newValue,
     }
 
-    await options.onSave?.(updatedData, rowIndex, columnKey)
-
-    editingCell.value = { rowKey: null, columnKey: null }
-    delete editingData.value[cellKey]
+    isSaving.value = true
+    try {
+      await options.onSave?.(cloneData(updatedData), rowIndex, columnKey)
+      editingCell.value = { rowKey: null, columnKey: null }
+      editingData.value = {}
+    } finally {
+      isSaving.value = false
+    }
 
     return { updatedData, rowIndex, columnKey }
   }
@@ -161,17 +156,18 @@ export function useCellEdit(options: CellEditOptions) {
    */
   const cancelEditCell = () => {
     const { rowKey, columnKey } = editingCell.value
-    if (rowKey && columnKey) {
-      delete editingData.value[`${rowKey}-${columnKey}`]
-    }
+    if (isSaving.value) return
+    if (rowKey !== null && columnKey !== null)
+      delete editingData.value[createCellKey(rowKey, columnKey)]
     editingCell.value = { rowKey: null, columnKey: null }
+    cellValidationError.value = null
   }
 
   /**
    * 获取指定单元格的编辑中数值
    */
   const getEditingCellValue = (rowKey: DataTableRowKey, columnKey: string) => {
-    return editingData.value[`${rowKey}-${columnKey}`]
+    return editingData.value[createCellKey(rowKey, columnKey)]
   }
 
   /**
@@ -182,11 +178,14 @@ export function useCellEdit(options: CellEditOptions) {
     columnKey: string,
     value: unknown
   ) => {
-    editingData.value[`${rowKey}-${columnKey}`] = value
+    if (!isEditingCell(rowKey, columnKey)) return
+    editingData.value[createCellKey(rowKey, columnKey)] = cloneData(value)
   }
 
   return {
     editingCell,
+    editingData,
+    isSaving,
     isEditingCell,
     startEditCell,
     saveEditCell,

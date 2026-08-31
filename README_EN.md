@@ -80,7 +80,7 @@ import {
 
 #### Automatic On-demand Imports (Recommended)
 
-The resolver loads component subpaths by default, preventing unused components and heavyweight optional dependencies from entering the initial bundle:
+The resolver loads component subpaths by default, preventing unused components and heavyweight runtime dependencies from entering the initial bundle:
 
 ```typescript
 import Components from 'unplugin-vue-components/vite'
@@ -124,14 +124,14 @@ Set `importOnDemand: false` explicitly when a legacy project still requires impo
 
 #### Content & Editor Components
 
-| Component         | Description             | External Deps        |
-| ----------------- | ----------------------- | -------------------- |
-| `C_Editor`        | Rich text editor        | `@wangeditor/editor` |
-| `C_Markdown`      | Markdown editor/preview | `@kangc/v-md-editor` |
-| `C_FormulaEditor` | Formula editor          | `expr-eval`          |
-| `C_Signature`     | Electronic signature    | -                    |
-| `C_QRCode`        | QR code generator       | `qrcode`             |
-| `C_ImageCropper`  | Image cropper           | `vue-cropper`        |
+| Component         | Description                  | External Deps             |
+| ----------------- | ---------------------------- | ------------------------- |
+| `C_Editor`        | Rich text editor             | `@wangeditor-next/editor` |
+| `C_Markdown`      | Markdown editor/preview      | `md-editor-v3`            |
+| `C_FormulaEditor` | Formula editor (safe parser) | Built in                  |
+| `C_Signature`     | Electronic signature         | -                         |
+| `C_QRCode`        | QR code generator            | `qrcode`                  |
+| `C_ImageCropper`  | Image cropper                | `vue-cropper`             |
 
 #### Data Display Components
 
@@ -178,29 +178,15 @@ Set `importOnDemand: false` explicitly when a legacy project still requires impo
 | `C_NotificationCenter` | Notification center (WebSocket/polling)  | -                |
 | `C_Upload`             | Large file upload (chunked/resumable)    | `spark-md5`      |
 
-### 🔌 Optional Dependencies
+### 🔌 Dependency Notes
 
-Components with external dependencies are declared as `optionalDependencies`. **Install as needed**:
+Runtime component dependencies are declared by this package and are resolved automatically. Consumers only need to provide the peer dependencies:
 
 ```bash
-# Video player
-bun add xgplayer xgplayer-hls
-
-# Graph editor
-bun add @antv/x6
-
-# Workflow
-bun add @vue-flow/core
-
-# File preview
-bun add xlsx mammoth @tato30/vue-pdf
-
-# Table printing
-bun add print-js html2canvas
-
-# Formula editor
-bun add expr-eval
+bun add vue naive-ui vue-router @robot-admin/form-validate
 ```
+
+If optional dependencies are explicitly skipped during deployment and table row/column dragging is enabled, make sure `sortablejs` is available. The formula editor now uses a bounded built-in parser, does not execute dynamic JavaScript, and no longer needs `expr-eval`.
 
 ### 🏗️ Build Architecture
 

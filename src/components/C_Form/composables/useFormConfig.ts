@@ -19,6 +19,9 @@ import type {
   DynamicFieldConfig,
   RenderMode,
   FormOption,
+  FormErrorContext,
+  MaybePromise,
+  SubmitEventPayload,
 } from '../types'
 
 /* =================== FormConfig 类型定义 =================== */
@@ -27,11 +30,18 @@ import type {
 export interface LayoutCallbacks {
   /* tabs 布局回调 */
   onTabChange?: (tabKey: string, tabIndex: number) => void
+  onTabBeforeChange?: (
+    currentTab: string,
+    targetTab: string
+  ) => MaybePromise<boolean | void>
   onTabValidate?: (tabKey: string) => void
 
   /* steps 布局回调 */
   onStepChange?: (stepIndex: number, stepKey: string) => void
-  onStepBeforeChange?: (currentStep: number, targetStep: number) => void
+  onStepBeforeChange?: (
+    currentStep: number,
+    targetStep: number
+  ) => MaybePromise<boolean | void>
   onStepValidate?: (stepIndex: number) => void
 
   /* dynamic 布局回调 */
@@ -45,6 +55,10 @@ export interface LayoutCallbacks {
   onGroupToggle?: (groupKey: string, collapsed: boolean) => void
   onGroupReset?: (groupKey: string) => void
   onFieldsChange?: (fields: FormOption[]) => void
+
+  /* lifecycle callbacks */
+  onSubmit?: (payload: SubmitEventPayload) => MaybePromise<void>
+  onError?: (error: unknown, context: FormErrorContext) => void
 }
 
 /**
@@ -69,6 +83,12 @@ export interface FormConfig extends LayoutCallbacks {
   showActions?: boolean
   /** 值变化时自动校验，默认 false */
   validateOnChange?: boolean
+  /** 动态移除配置项后是否保留其模型值，默认 false */
+  preserveRemovedFields?: boolean
+  /** 默认提交按钮文案 */
+  submitText?: string
+  /** 默认重置按钮文案 */
+  resetText?: string
 
   /* ===== v0.8.0 新增 ===== */
 
@@ -112,6 +132,7 @@ export interface ResolvedFormConfig extends Required<
   custom?: CustomLayoutConfig
   /* 回调保留可选 */
   onTabChange?: LayoutCallbacks['onTabChange']
+  onTabBeforeChange?: LayoutCallbacks['onTabBeforeChange']
   onTabValidate?: LayoutCallbacks['onTabValidate']
   onStepChange?: LayoutCallbacks['onStepChange']
   onStepBeforeChange?: LayoutCallbacks['onStepBeforeChange']
@@ -124,6 +145,8 @@ export interface ResolvedFormConfig extends Required<
   onGroupToggle?: LayoutCallbacks['onGroupToggle']
   onGroupReset?: LayoutCallbacks['onGroupReset']
   onFieldsChange?: LayoutCallbacks['onFieldsChange']
+  onSubmit?: LayoutCallbacks['onSubmit']
+  onError?: LayoutCallbacks['onError']
   /* v0.8.0 */
   initialValues?: Record<string, any>
 }
@@ -139,6 +162,9 @@ export const FORM_DEFAULTS: ResolvedFormConfig = {
   readonly: false,
   showActions: true,
   validateOnChange: false,
+  preserveRemovedFields: false,
+  submitText: '提交',
+  resetText: '重置',
   mode: 'create',
 } as const
 

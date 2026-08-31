@@ -10,9 +10,16 @@
   <div class="notification-detail">
     <!-- 返回栏 -->
     <div class="notification-detail__back">
-      <NButton text size="small" @click="$emit('back')">
+      <NButton
+        text
+        size="small"
+        @click="$emit('back')"
+      >
         <template #icon>
-          <C_Icon name="mdi:arrow-left" :size="16" />
+          <C_Icon
+            name="mdi:arrow-left"
+            :size="16"
+          />
         </template>
         返回列表
       </NButton>
@@ -22,9 +29,17 @@
     <div class="notification-detail__header">
       <h3 class="notification-detail__title">{{ message.title }}</h3>
       <div class="notification-detail__meta">
-        <NTag :type="categoryTag.color" size="tiny" :bordered="false" round>
+        <NTag
+          :type="categoryTag.color"
+          size="tiny"
+          :bordered="false"
+          round
+        >
           <template #icon>
-            <C_Icon :name="categoryTag.icon" :size="12" />
+            <C_Icon
+              :name="categoryTag.icon"
+              :size="12"
+            />
           </template>
           {{ categoryTag.label }}
         </NTag>
@@ -39,7 +54,10 @@
         </NTag>
         <span class="notification-detail__time">{{ formattedTime }}</span>
       </div>
-      <div v-if="message.sender" class="notification-detail__sender">
+      <div
+        v-if="message.sender"
+        class="notification-detail__sender"
+      >
         <NAvatar
           v-if="message.sender.avatar"
           :src="message.sender.avatar"
@@ -58,19 +76,32 @@
       <div
         v-if="message.content"
         class="notification-detail__body"
-        v-html="message.content"
+        v-html="sanitizedContent"
       />
-      <div v-else class="notification-detail__body">
+      <div
+        v-else
+        class="notification-detail__body"
+      >
         {{ message.summary }}
       </div>
     </NScrollbar>
 
     <!-- 操作区 -->
-    <div v-if="message.actionUrl" class="notification-detail__footer">
-      <NButton type="primary" size="small" @click="handleAction">
-        {{ message.actionText || "查看详情" }}
+    <div
+      v-if="message.actionUrl"
+      class="notification-detail__footer"
+    >
+      <NButton
+        type="primary"
+        size="small"
+        @click="handleAction"
+      >
+        {{ message.actionText || '查看详情' }}
         <template #icon>
-          <C_Icon name="mdi:arrow-right" :size="16" />
+          <C_Icon
+            name="mdi:arrow-right"
+            :size="16"
+          />
         </template>
       </NButton>
     </div>
@@ -78,142 +109,151 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import C_Icon from "../../C_Icon/index.vue";
-import type { NotificationMessage } from "../types";
-import { CATEGORY_MAP, PRIORITY_MAP } from "../constants";
-import { useNotificationFormat } from "../composables/useNotificationFormat";
+  import { computed } from 'vue'
+  import C_Icon from '../../C_Icon/index.vue'
+  import type { NotificationMessage } from '../types'
+  import { CATEGORY_MAP, PRIORITY_MAP } from '../constants'
+  import { useNotificationFormat } from '../composables/useNotificationFormat'
+  import { sanitizeRichHtml } from '../../../utils/html'
 
-interface Props {
-  /** 消息数据 */
-  message: NotificationMessage;
-  /** 内容滚动区高度 */
-  scrollHeight?: number;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  scrollHeight: 320,
-});
-
-const emit = defineEmits<{
-  back: [];
-  action: [url: string];
-  navigate: [url: string];
-}>();
-const { formatRelativeTime } = useNotificationFormat();
-
-/** 分类标签 */
-const categoryTag = computed(
-  () => CATEGORY_MAP[props.message.category] ?? CATEGORY_MAP.system,
-);
-
-/** 优先级标签 */
-const priorityTag = computed(
-  () => PRIORITY_MAP[props.message.priority] ?? PRIORITY_MAP.normal,
-);
-
-/** 格式化时间 */
-const formattedTime = computed(() =>
-  formatRelativeTime(props.message.timestamp),
-);
-
-/** 处理操作按钮点击 */
-function handleAction() {
-  const url = props.message.actionUrl;
-  if (!url) return;
-
-  emit("action", url);
-
-  if (url.startsWith("http")) {
-    window.open(url, "_blank");
-  } else {
-    emit("navigate", url);
+  interface Props {
+    /** 消息数据 */
+    message: NotificationMessage
+    /** 内容滚动区高度 */
+    scrollHeight?: number
   }
-}
+
+  const props = withDefaults(defineProps<Props>(), {
+    scrollHeight: 320,
+  })
+
+  const emit = defineEmits<{
+    back: []
+    action: [url: string]
+    navigate: [url: string]
+  }>()
+  const { formatRelativeTime } = useNotificationFormat()
+
+  /** 分类标签 */
+  const categoryTag = computed(
+    () => CATEGORY_MAP[props.message.category] ?? CATEGORY_MAP.system
+  )
+
+  /** 优先级标签 */
+  const priorityTag = computed(
+    () => PRIORITY_MAP[props.message.priority] ?? PRIORITY_MAP.normal
+  )
+
+  /** 格式化时间 */
+  const formattedTime = computed(() =>
+    formatRelativeTime(props.message.timestamp)
+  )
+
+  const sanitizedContent = computed(() =>
+    sanitizeRichHtml(props.message.content || '')
+  )
+
+  /** 处理操作按钮点击 */
+  function handleAction() {
+    const url = props.message.actionUrl
+    if (!url) return
+
+    emit('action', url)
+
+    if (/^https?:\/\//i.test(url)) {
+      const parsed = new URL(url)
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        window.open(parsed.href, '_blank', 'noopener,noreferrer')
+      }
+      return
+    }
+
+    if (!/^[a-z][a-z\d+.-]*:/i.test(url)) emit('navigate', url)
+  }
 </script>
 
 <style scoped lang="scss">
-.notification-detail {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-
-  &__back {
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--c-border);
-  }
-
-  &__header {
-    padding: 16px;
-    border-bottom: 1px solid var(--c-border);
-  }
-
-  &__title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--c-text-1);
-    line-height: 1.5;
-    margin: 0 0 8px;
-  }
-
-  &__meta {
+  .notification-detail {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+    flex-direction: column;
+    height: 100%;
 
-  &__time {
-    font-size: 11px;
-    color: var(--c-text-4);
-  }
+    &__back {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--c-border);
+    }
 
-  &__sender {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--c-text-2);
-  }
+    &__header {
+      padding: 16px;
+      border-bottom: 1px solid var(--c-border);
+    }
 
-  &__content {
-    flex: 1;
-    min-height: 0;
-  }
-
-  &__body {
-    padding: 16px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--c-text-1);
-    word-break: break-word;
-
-    :deep(p) {
+    &__title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--c-text-1);
+      line-height: 1.5;
       margin: 0 0 8px;
     }
 
-    :deep(ul),
-    :deep(ol) {
-      padding-left: 20px;
-      margin: 8px 0;
+    &__meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    :deep(li) {
-      margin: 4px 0;
+    &__time {
+      font-size: 11px;
+      color: var(--c-text-4);
     }
 
-    :deep(strong) {
-      font-weight: 600;
-      color: var(--c-primary);
+    &__sender {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--c-text-2);
+    }
+
+    &__content {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__body {
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--c-text-1);
+      word-break: break-word;
+
+      :deep(p) {
+        margin: 0 0 8px;
+      }
+
+      :deep(ul),
+      :deep(ol) {
+        padding-left: 20px;
+        margin: 8px 0;
+      }
+
+      :deep(li) {
+        margin: 4px 0;
+      }
+
+      :deep(strong) {
+        font-weight: 600;
+        color: var(--c-primary);
+      }
+    }
+
+    &__footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--c-border);
+      display: flex;
+      justify-content: flex-end;
     }
   }
-
-  &__footer {
-    padding: 12px 16px;
-    border-top: 1px solid var(--c-border);
-    display: flex;
-    justify-content: flex-end;
-  }
-}
 </style>

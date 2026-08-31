@@ -81,7 +81,7 @@
         >
           <div
             class="c-timeline__content"
-            v-html="item.content"
+            v-html="sanitizeRichHtml(item.content)"
           />
         </div>
 
@@ -116,6 +116,7 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
+  import { sanitizeRichHtml } from '../../utils/html'
   import {
     DEFAULT_TIMELINE_PROPS,
     STATUS_COLOR_MAP,

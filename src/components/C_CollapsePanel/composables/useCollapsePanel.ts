@@ -1,5 +1,4 @@
-import { ref, computed, watch } from 'vue'
-import type { Ref } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import type { CollapsePanelItem } from '../types'
 
 interface UseCollapsePanelOptions {
@@ -52,7 +51,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
     try {
       localStorage.setItem(
         `collapse-panel:${persistKey.value}`,
-        JSON.stringify(keys),
+        JSON.stringify(keys)
       )
     } catch {
       /* 静默失败 */
@@ -80,7 +79,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
       externalKeys.value !== undefined
         ? externalKeys.value
         : internalKeys.value,
-    set: (val) => {
+    set: val => {
       internalKeys.value = val
     },
   })
@@ -113,14 +112,14 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
   }
 
   const toggle = (key: string) => {
-    const item = items.value.find((i) => i.key === key)
+    const item = items.value.find(i => i.key === key)
     if (!item || item.disabled) return
 
     const expanded = isExpanded(key)
 
     if (expanded) {
       /* 折叠 */
-      updateKeys(currentKeys.value.filter((k) => k !== key))
+      updateKeys(currentKeys.value.filter(k => k !== key))
       onCollapse?.(key)
     } else {
       /* 展开 */
@@ -131,7 +130,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
         const prevKeys = currentKeys.value
         updateKeys([key])
         /* 通知被折叠的面板 */
-        prevKeys.forEach((k) => {
+        prevKeys.forEach(k => {
           if (k !== key) onCollapse?.(k)
         })
       } else {
@@ -144,9 +143,9 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
   const expandAll = () => {
     if (accordion.value) return /* 手风琴模式不支持全展开 */
 
-    const allKeys = items.value.filter((i) => !i.disabled).map((i) => i.key)
+    const allKeys = items.value.filter(i => !i.disabled).map(i => i.key)
 
-    allKeys.forEach((k) => renderedOnce.value.add(k))
+    allKeys.forEach(k => renderedOnce.value.add(k))
     updateKeys(allKeys)
   }
 
@@ -169,13 +168,13 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
   /* ─── 同步外部 v-model 变化 ───────────────────── */
   watch(
     () => externalKeys.value,
-    (newVal) => {
+    newVal => {
       if (newVal !== undefined) {
         internalKeys.value = [...newVal]
-        newVal.forEach((k) => renderedOnce.value.add(k))
+        newVal.forEach(k => renderedOnce.value.add(k))
         savePersistedKeys(newVal)
       }
-    },
+    }
   )
 
   return {

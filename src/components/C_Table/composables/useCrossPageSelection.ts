@@ -3,7 +3,15 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
+import {
+  ref,
+  computed,
+  watch,
+  toValue,
+  type Ref,
+  type ComputedRef,
+  type MaybeRefOrGetter,
+} from 'vue'
 import type { DataTableRowKey } from 'naive-ui/es'
 import type { DataRecord } from '../types'
 
@@ -23,7 +31,7 @@ export interface UseCrossPageSelectionOptions<
   /** 行键函数 */
   rowKey: (row: T) => DataTableRowKey
   /** 配置 */
-  config: CrossPageSelectionConfig
+  config: MaybeRefOrGetter<CrossPageSelectionConfig | undefined>
 }
 
 export interface UseCrossPageSelectionReturn<
@@ -39,6 +47,10 @@ export interface UseCrossPageSelectionReturn<
   handlePageSelectionChange: (keys: DataTableRowKey[], pageData: T[]) => void
   /** 全选所有页 */
   selectAll: () => void
+  /** 选择指定 key */
+  select: (key: DataTableRowKey) => boolean
+  /** 取消选择指定 key */
+  unselect: (key: DataTableRowKey) => void
   /** 清除所有页选中 */
   clearAll: () => void
   /** 获取所有选中行数据 */
@@ -53,8 +65,13 @@ export interface UseCrossPageSelectionReturn<
 export function useCrossPageSelection<T extends DataRecord = DataRecord>(
   options: UseCrossPageSelectionOptions<T>
 ): UseCrossPageSelectionReturn<T> {
-  const { allData, rowKey, config } = options
+  const { allData, rowKey } = options
   const selectedKeys = ref<Set<DataTableRowKey>>(new Set())
+
+  const getMaxSelection = () => {
+    const max = toValue(options.config)?.maxSelection
+    return Number.isFinite(max) && (max ?? 0) > 0 ? Math.trunc(max!) : undefined
+  }
 
   const selectedCount = computed(() => selectedKeys.value.size)
 
@@ -68,6 +85,7 @@ export function useCrossPageSelection<T extends DataRecord = DataRecord>(
     keys: DataTableRowKey[],
     pageData: T[]
   ) => {
+    if (!toValue(options.config)?.enabled) return
     const newSet = new Set(selectedKeys.value)
     // 先清除当前页的所有 key
     for (const row of pageData) {
@@ -75,17 +93,37 @@ export function useCrossPageSelection<T extends DataRecord = DataRecord>(
     }
     // 再添加当前页新选中的
     for (const key of keys) {
-      if (config.maxSelection && newSet.size >= config.maxSelection) break
+      const maxSelection = getMaxSelection()
+      if (maxSelection && newSet.size >= maxSelection) break
       newSet.add(key)
     }
     selectedKeys.value = newSet
   }
 
   const selectAll = () => {
-    const all = allData.value.map(row => rowKey(row))
+    if (!toValue(options.config)?.enabled) return
+    const all = [...new Set(allData.value.map(row => rowKey(row)))]
+    const maxSelection = getMaxSelection()
     selectedKeys.value = new Set(
-      config.maxSelection ? all.slice(0, config.maxSelection) : all
+      maxSelection ? all.slice(0, maxSelection) : all
     )
+  }
+
+  const select = (key: DataTableRowKey): boolean => {
+    if (!toValue(options.config)?.enabled) return false
+    if (!allData.value.some(row => rowKey(row) === key)) return false
+    if (selectedKeys.value.has(key)) return true
+    const maxSelection = getMaxSelection()
+    if (maxSelection && selectedKeys.value.size >= maxSelection) return false
+    selectedKeys.value = new Set([...selectedKeys.value, key])
+    return true
+  }
+
+  const unselect = (key: DataTableRowKey) => {
+    if (!selectedKeys.value.has(key)) return
+    const nextKeys = new Set(selectedKeys.value)
+    nextKeys.delete(key)
+    selectedKeys.value = nextKeys
   }
 
   const clearAll = () => {
@@ -111,12 +149,29 @@ export function useCrossPageSelection<T extends DataRecord = DataRecord>(
     }
   })
 
+  watch(
+    () => [toValue(options.config)?.enabled, getMaxSelection()] as const,
+    ([enabled, maxSelection]) => {
+      if (!enabled) {
+        clearAll()
+        return
+      }
+      if (maxSelection && selectedKeys.value.size > maxSelection) {
+        selectedKeys.value = new Set(
+          [...selectedKeys.value].slice(0, maxSelection)
+        )
+      }
+    }
+  )
+
   return {
     selectedKeys,
     selectedCount,
     getPageCheckedKeys,
     handlePageSelectionChange,
     selectAll,
+    select,
+    unselect,
     clearAll,
     getSelectedRows,
     isSelected,

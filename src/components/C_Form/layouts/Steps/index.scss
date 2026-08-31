@@ -80,8 +80,7 @@
   margin-right: 24px;
 }
 
-.steps-container:has(.steps-indicator:deep(.n-steps--vertical))
-  .steps-content {
+.steps-container:has(.steps-indicator:deep(.n-steps--vertical)) .steps-content {
   flex: 1;
 }
 

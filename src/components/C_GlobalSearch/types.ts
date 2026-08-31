@@ -1,9 +1,11 @@
+export type SearchIcon = string | object | ((...args: unknown[]) => unknown)
+
 /** 全局搜索菜单项 */
 export interface SearchMenuItem {
   key: string
   label: string
-  icon?: any
-  children?: any[]
+  icon?: SearchIcon
+  children?: SearchMenuItem[]
 }
 
 /** 搜索历史记录项 */
@@ -12,8 +14,8 @@ export interface HistoryItem {
   menuItem: {
     key: string
     label: string
-    icon?: any
-    children?: any[]
+    icon?: SearchIcon
+    children?: SearchMenuItem[]
   } | null
   timestamp: number
 }

@@ -171,10 +171,22 @@
                           <div class="i-mdi:file-document-outline" />
                         </div>
                         <div class="robot-item-content">
-                          <div
-                            class="robot-item-label"
-                            v-html="highlightMatch(item.label, searchValue)"
-                          ></div>
+                          <div class="robot-item-label">
+                            <template
+                              v-for="(part, partIndex) in highlightMatch(
+                                item.label,
+                                searchValue
+                              )"
+                              :key="partIndex"
+                            >
+                              <mark
+                                v-if="part.matched"
+                                class="robot-highlight"
+                                >{{ part.text }}</mark
+                              >
+                              <template v-else>{{ part.text }}</template>
+                            </template>
+                          </div>
                           <div class="robot-item-desc">
                             {{ formatMenuPath(item.key) }}
                           </div>

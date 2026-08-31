@@ -62,28 +62,56 @@
       <span class="batch-info">已选择 {{ batchSelectedCount }} 项</span>
       <NSpace :size="8">
         <NButton
-          v-for="action in (resolved.batchActions.actions || [])"
+          v-for="action in resolved.batchActions.actions || []"
           :key="action.key"
           :type="(action.type as any) || 'default'"
           size="small"
+          :loading="runningBatchActions.has(action.key)"
+          :disabled="runningBatchActions.has(action.key)"
           @click="handleBatchAction(action)"
         >
-          <template v-if="action.icon" #icon>
-            <C_Icon :name="action.icon" size="14" />
+          <template
+            v-if="action.icon"
+            #icon
+          >
+            <C_Icon
+              :name="action.icon"
+              size="14"
+            />
           </template>
           {{ action.label }}
         </NButton>
-        <NButton size="small" @click="clearBatchSelection">取消选择</NButton>
+        <NButton
+          size="small"
+          @click="clearBatchSelection"
+          >取消选择</NButton
+        >
       </NSpace>
     </div>
 
     <!-- 错误状态 -->
-    <div v-if="resolved.error?.show" class="table-error-state">
-      <slot name="error" :error="resolved.error">
+    <div
+      v-if="resolved.error?.show"
+      class="table-error-state"
+    >
+      <slot
+        name="error"
+        :error="resolved.error"
+      >
         <div class="error-content">
-          <C_Icon name="mdi:alert-circle-outline" size="48" />
-          <p class="error-message">{{ resolved.error.message || '数据加载失败' }}</p>
-          <NButton v-if="resolved.error.onRetry" type="primary" size="small" @click="resolved.error.onRetry">
+          <C_Icon
+            name="mdi:alert-circle-outline"
+            size="48"
+          />
+          <p class="error-message">{{
+            resolved.error.message || '数据加载失败'
+          }}</p>
+          <NButton
+            v-if="resolved.error.onRetry"
+            type="primary"
+            size="small"
+            @click="resolved.error.onRetry"
+          >
             重试
           </NButton>
         </div>
@@ -96,7 +124,7 @@
       ref="tableRef"
       v-bind="{ ...computedTableProps, ...$attrs }"
       :columns="computedColumns"
-      :data="normalizedData"
+      :data="pagination.paginatedData.value"
       :loading="normalizedLoading"
       :row-key="rowKey"
       :expanded-row-keys="tableManager.expandedKeys.value"
@@ -105,13 +133,21 @@
       @update:checked-row-keys="handleCheckedKeysChange"
       :scroll-x="computedScrollX"
       :virtual-scroll="resolved.virtualScroll"
-      :virtual-scroll-item-size="resolved.virtualScroll ? resolved.virtualItemHeight : undefined"
-      :max-height="resolved.virtualScroll ? resolved.virtualMaxHeight : resolved.maxHeight"
+      :virtual-scroll-item-size="
+        resolved.virtualScroll ? resolved.virtualItemHeight : undefined
+      "
+      :max-height="
+        resolved.virtualScroll ? resolved.virtualMaxHeight : resolved.maxHeight
+      "
       :summary="summaryFn"
       :summary-placement="resolved.summaryPosition"
-      :children-key="resolved.treeEnabled ? resolved.treeChildrenKey : undefined"
+      :children-key="
+        resolved.treeEnabled ? resolved.treeChildrenKey : undefined
+      "
       :indent="resolved.treeEnabled ? resolved.treeIndent : undefined"
-      :default-expand-all="resolved.treeEnabled ? resolved.treeDefaultExpandAll : undefined"
+      :default-expand-all="
+        resolved.treeEnabled ? resolved.treeDefaultExpandAll : undefined
+      "
       style="width: 100%"
     />
 
@@ -192,10 +228,13 @@
     ref,
     computed,
     watch,
+    nextTick,
     onMounted,
     onBeforeUnmount,
     type ComponentPublicInstance,
   } from 'vue'
+  import type { SortableEvent } from 'sortablejs'
+  import type Sortable from 'sortablejs'
   import {
     type DataTableRowKey,
     NDataTable,
@@ -222,7 +261,10 @@
   import { usePagination } from './composables/usePagination'
   import { useTableActions } from './composables/useTableActions'
   import { useTableColumns } from './composables/useTableColumns'
-  import { useTableGlobalConfig, mergeGlobalConfig } from './composables/useTableGlobalConfig'
+  import {
+    useTableGlobalConfig,
+    mergeGlobalConfig,
+  } from './composables/useTableGlobalConfig'
   import { useRowDrag } from './composables/useRowDrag'
   import { useCrossPageSelection } from './composables/useCrossPageSelection'
   import { exportTableData } from './composables/useTableExport'
@@ -230,6 +272,7 @@
   import ColumnSettings from './components/ColumnSettings/index.vue'
   import C_Icon from '../C_Icon/index.vue'
   import C_Form from '../C_Form/index.vue'
+  import { cloneData } from '../../utils/data'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
 
@@ -278,7 +321,7 @@
   const bridgedEmit: typeof emit = (event: any, ...args: any[]) => {
     ;(emit as any)(event, ...args)
 
-    if (!props.crud) return
+    if (!props.crud) return undefined as never
     const handlers: Record<string, ((...a: any[]) => void) | undefined> = {
       save: props.crud.save,
       cancel: props.crud.handleCancel,
@@ -286,7 +329,7 @@
       'row-delete': props.crud.handleRowDelete,
       'view-detail': props.crud.detail?.show,
     }
-    handlers[event]?.(...args)
+    return handlers[event]?.(...args) as never
   }
 
   /* ================= 有效值（全局 → crud → props 覆盖） ================= */
@@ -337,7 +380,7 @@
   })
 
   const tableManager = useTableManager({
-    config: resolved.value,
+    config: resolved,
     data: () => normalizedData.value,
     rowKey: props.rowKey,
     emit: bridgedEmit,
@@ -353,6 +396,17 @@
     onViewDetail: (data: DataRecord) => bridgedEmit('view-detail', data),
   })
 
+  const showActionsColumn = computed(() => {
+    const { actions } = effectiveConfig.value
+    return Boolean(
+      resolved.value.showRowActions ||
+      actions?.delete ||
+      actions?.detail ||
+      actions?.custom?.length ||
+      actions?.render
+    )
+  })
+
   const columnState = useTableColumns({
     rawColumns: effectiveColumns,
     config: resolved,
@@ -362,6 +416,7 @@
     tableManager,
     actionsRenderer: tableActions.renderActions,
     editModeChecker,
+    showActionsColumn,
   })
 
   const {
@@ -373,59 +428,107 @@
 
   /* ================= 行拖拽（可选） ================= */
 
-  const rowDragState = resolved.value.rowDrag?.enabled
-    ? useRowDrag({
-        data: normalizedData,
-        rowKey: props.rowKey,
-        config: resolved.value.rowDrag!,
-        onReorder: (newData) => bridgedEmit('update:data' as any, newData),
-        onSort: (row, from, to) => emit('row-move', row, from, to),
-      })
-    : null
+  const rowDragState = useRowDrag({
+    data: pagination.paginatedData,
+    rowKey: props.rowKey,
+    config: computed(() => resolved.value.rowDrag),
+    onReorder: newPageData => {
+      const paginationConfig = resolved.value.pagination
+      if (!paginationConfig?.enabled || paginationConfig.remote) {
+        bridgedEmit('update:data', newPageData)
+        return
+      }
+
+      const start =
+        (pagination.currentPage.value - 1) * pagination.currentPageSize.value
+      const newData = [...normalizedData.value]
+      newData.splice(start, newPageData.length, ...newPageData)
+      bridgedEmit('update:data', newData)
+    },
+    onSort: (row, from, to) => {
+      const isLocalPagination =
+        resolved.value.pagination?.enabled && !resolved.value.pagination.remote
+      const offset = isLocalPagination
+        ? (pagination.currentPage.value - 1) * pagination.currentPageSize.value
+        : 0
+      emit('row-move', row, from + offset, to + offset)
+    },
+  })
 
   /* ================= 跨页多选（可选） ================= */
 
-  const crossPageState = resolved.value.crossPageSelection?.enabled
-    ? useCrossPageSelection({
-        allData: normalizedData,
-        rowKey: props.rowKey,
-        config: resolved.value.crossPageSelection!,
-      })
-    : null
+  const crossPageState = useCrossPageSelection({
+    allData: normalizedData,
+    rowKey: props.rowKey,
+    config: computed(() => resolved.value.crossPageSelection),
+  })
+  const isCrossPageSelectionEnabled = computed(
+    () => resolved.value.crossPageSelection?.enabled === true
+  )
 
   /** 批量选中数量（用于批量操作栏） */
   const batchSelectedCount = computed(() =>
-    crossPageState
+    isCrossPageSelectionEnabled.value
       ? crossPageState.selectedCount.value
       : (tableManager.checkedKeys?.value?.length ?? 0)
   )
+  const runningBatchActions = ref<Set<string>>(new Set())
+  type BatchAction = {
+    key: string
+    onClick: (
+      keys: DataTableRowKey[],
+      rows: DataRecord[]
+    ) => void | Promise<void>
+  }
 
   /** 处理批量操作按钮点击 */
-  const handleBatchAction = async (action: { onClick: (keys: DataTableRowKey[], rows: DataRecord[]) => void | Promise<void> }) => {
-    const keys = crossPageState
+  // eslint-disable-next-line complexity -- 跨页/当前页选择与异步回滚必须作为同一操作处理。
+  const handleBatchAction = async (action: BatchAction) => {
+    if (runningBatchActions.value.has(action.key)) return
+    const keys = isCrossPageSelectionEnabled.value
       ? [...crossPageState.selectedKeys.value]
       : (tableManager.checkedKeys?.value ?? [])
-    const rows = crossPageState
+    const rows = isCrossPageSelectionEnabled.value
       ? crossPageState.getSelectedRows()
       : normalizedData.value.filter(r => keys.includes(props.rowKey(r)))
-    await action.onClick(keys, rows)
+    runningBatchActions.value = new Set(runningBatchActions.value).add(
+      action.key
+    )
+    try {
+      await action.onClick(keys, rows)
+      if (resolved.value.batchActions?.clearSelectionOnSuccess) {
+        clearBatchSelection()
+      }
+    } catch (error) {
+      resolved.value.batchActions?.onError?.(error, action.key)
+      emit('batch-action-error', error, action.key)
+    } finally {
+      const nextRunning = new Set(runningBatchActions.value)
+      nextRunning.delete(action.key)
+      runningBatchActions.value = nextRunning
+    }
   }
 
   /** 清除批量选择 */
   const clearBatchSelection = () => {
-    if (crossPageState) crossPageState.clearAll()
+    if (isCrossPageSelectionEnabled.value) crossPageState.clearAll()
     else tableManager.stateManager.selection.clear()
   }
 
   /** 跨页多选时的 checked-row-keys */
   const crossPageCheckedKeys = computed(() =>
-    crossPageState ? crossPageState.getPageCheckedKeys(normalizedData.value) : null
+    isCrossPageSelectionEnabled.value
+      ? crossPageState.getPageCheckedKeys(pagination.paginatedData.value)
+      : null
   )
 
   /** 选中行变更统一处理 */
   const handleCheckedKeysChange = (keys: DataTableRowKey[]) => {
-    if (crossPageState) {
-      crossPageState.handlePageSelectionChange(keys, normalizedData.value)
+    if (isCrossPageSelectionEnabled.value) {
+      crossPageState.handlePageSelectionChange(
+        keys,
+        pagination.paginatedData.value
+      )
     }
     tableManager.expandState?.handleSelectionChange?.(keys)
   }
@@ -449,7 +552,9 @@
       return computedColumns.value.map((col: any) => {
         const key = col.key as string
         const def = result[key]
-        return def ? { value: def.value, colSpan: def.colSpan ?? 1 } : { value: '' }
+        return def
+          ? { value: def.value, colSpan: def.colSpan ?? 1 }
+          : { value: '' }
       })
     }
   })
@@ -457,25 +562,48 @@
   /* ================= 列拖拽排序 ================= */
 
   const tableWrapperRef = ref<HTMLElement>()
-  let sortableInstance: any = null
+  let sortableInstance: Sortable | null = null
+  let columnDragVersion = 0
+
+  const destroyColumnDrag = () => {
+    columnDragVersion += 1
+    sortableInstance?.destroy()
+    sortableInstance = null
+  }
 
   const initColumnDrag = async () => {
+    const version = ++columnDragVersion
+    sortableInstance?.destroy()
+    sortableInstance = null
     if (!resolved.value.enableColumnDrag || !tableWrapperRef.value) return
     try {
       const { default: Sortable } = await import('sortablejs')
+      if (version !== columnDragVersion || !tableWrapperRef.value) return
       const headerRow = tableWrapperRef.value.querySelector(
         '.n-data-table-thead tr'
       )
       if (!headerRow) return
       sortableInstance = new Sortable(headerRow as HTMLElement, {
         animation: resolved.value.columnDragAnimationDuration,
-        handle: `.${resolved.value.columnDragHandleClass}`,
+        handle: resolved.value.columnDragHandleClass
+          ? `.${resolved.value.columnDragHandleClass}`
+          : undefined,
+        filter: '.c-table-actions-column',
+        preventOnFilter: true,
         ghostClass: 'column-drag-ghost',
-        onEnd: (evt: any) => {
+        onEnd: (evt: SortableEvent) => {
           if (evt.oldIndex == null || evt.newIndex == null) return
           const cols = [...reactiveColumns.value]
-          const [moved] = cols.splice(evt.oldIndex, 1)
-          cols.splice(evt.newIndex, 0, moved)
+          const visibleColumns = cols.filter(
+            column => column.visible !== false && column.key !== '_actions'
+          )
+          const moved = visibleColumns[evt.oldIndex]
+          const target = visibleColumns[evt.newIndex]
+          if (!moved || !target || moved === target) return
+          const fromIndex = cols.indexOf(moved)
+          const toIndex = cols.indexOf(target)
+          cols.splice(fromIndex, 1)
+          cols.splice(toIndex, 0, moved)
           columnState.handleColumnChange(cols)
           emit('column-change', cols)
         },
@@ -499,7 +627,7 @@
 
   /* ================= 编辑弹窗 ================= */
 
-  const editFormRef = ref<any>()
+  const editFormRef = ref<{ validate: () => Promise<void> }>()
   const modalSubmitLoading = ref(false)
   const localEditingData = ref<DataRecord>({})
 
@@ -518,7 +646,7 @@
 
   const formKey = computed(
     () =>
-      `edit-form-${tableManager.editStates.modalEdit.editingRowKey.value || 'new'}`
+      `edit-form-${tableManager.editStates.modalEdit.editingRowKey.value ?? 'new'}`
   )
 
   const formOptions = computed(() => generateFormOptions(editableColumns.value))
@@ -527,7 +655,7 @@
     () => tableManager.editStates.modalEdit.editingData.value,
     newData => {
       if (newData && Object.keys(newData).length > 0) {
-        localEditingData.value = JSON.parse(JSON.stringify(newData))
+        localEditingData.value = cloneData(newData)
       }
     },
     { immediate: true, deep: true }
@@ -536,7 +664,12 @@
   let modalCloseTimer: ReturnType<typeof setTimeout> | null = null
 
   watch(modalVisible, visible => {
+    if (visible && modalCloseTimer) {
+      clearTimeout(modalCloseTimer)
+      modalCloseTimer = null
+    }
     if (!visible) {
+      if (modalCloseTimer) clearTimeout(modalCloseTimer)
       modalCloseTimer = setTimeout(() => {
         localEditingData.value = {}
         modalCloseTimer = null
@@ -549,9 +682,13 @@
     modalSubmitLoading.value = true
     try {
       await editFormRef.value.validate()
-      await tableManager.editStates.modalEdit.saveEdit(localEditingData.value)
     } catch {
       /* 表单验证错误由组件内联显示 */
+      modalSubmitLoading.value = false
+      return
+    }
+    try {
+      await tableManager.editStates.modalEdit.saveEdit(localEditingData.value)
     } finally {
       modalSubmitLoading.value = false
     }
@@ -575,14 +712,59 @@
 
   const exposedApi = {
     startEdit: edit.start,
+    cancelEdit: edit.cancel,
+    saveEdit: edit.save,
+    expandRow: expand.row,
+    collapseRow: expand.collapse,
+    toggleExpand: expand.toggle,
     expandAll: expand.all,
     collapseAll: expand.collapseAll,
-    selectAll: selection.all,
-    clearSelection: selection.clear,
-    clearAllSelections: tableManager.stateManager.clearAllSelections,
+    selectRow: (rowKey: DataTableRowKey) => {
+      if (isCrossPageSelectionEnabled.value)
+        return crossPageState.select(rowKey)
+      selection.select(rowKey)
+      return selection.isSelected(rowKey)
+    },
+    unselectRow: (rowKey: DataTableRowKey) => {
+      if (isCrossPageSelectionEnabled.value) crossPageState.unselect(rowKey)
+      else selection.unselect(rowKey)
+    },
+    selectAll: () => {
+      if (isCrossPageSelectionEnabled.value) crossPageState.selectAll()
+      else selection.all()
+    },
+    clearSelection: clearBatchSelection,
+    isRowSelected: (rowKey: DataTableRowKey) =>
+      isCrossPageSelectionEnabled.value
+        ? crossPageState.isSelected(rowKey)
+        : selection.isSelected(rowKey),
+    clearAllSelections: () => {
+      crossPageState.clearAll()
+      tableManager.stateManager.clearAllSelections()
+    },
+    selectChildRow: tableManager.stateManager.childSelection.select,
+    unselectChildRow: tableManager.stateManager.childSelection.unselect,
+    selectAllChildren: tableManager.stateManager.childSelection.selectAll,
+    clearChildrenSelection: tableManager.stateManager.childSelection.clear,
+    getChildSelectedRows: tableManager.stateManager.childSelection.getSelected,
+    addRow: dynamicRows.add,
+    insertRow: dynamicRows.insert,
+    deleteRow: dynamicRows.delete,
+    copyRow: dynamicRows.copy,
+    moveRowUp: dynamicRows.moveUp,
+    moveRowDown: dynamicRows.moveDown,
     clearRowSelection: dynamicRows?.clearSelection,
+    getSelectedRowData: dynamicRows.getSelected,
+    printTable: (elementRef?: HTMLElement) =>
+      dynamicRows.print(elementRef ?? tableWrapperRef.value),
+    downloadTableScreenshot: (elementRef?: HTMLElement, filename?: string) =>
+      dynamicRows.download(elementRef ?? tableWrapperRef.value, filename),
     resetToFirstPage: pagination.resetToFirstPage,
-    getSelectedRows: selection.getSelected,
+    getTotalPages: pagination.getTotalPages,
+    getSelectedRows: () =>
+      isCrossPageSelectionEnabled.value
+        ? crossPageState.getSelectedRows()
+        : selection.getSelected(),
     getEditingData: edit.getEditingData,
     isEditing: edit.isEditing,
     isExpanded: expand.isExpanded,
@@ -590,15 +772,16 @@
     /** 导出数据 */
     exportData: handleExport,
     /** 跨页选择 */
-    crossPageSelection: crossPageState
-      ? {
-          selectedKeys: crossPageState.selectedKeys,
-          selectedCount: crossPageState.selectedCount,
-          selectAll: crossPageState.selectAll,
-          clearAll: crossPageState.clearAll,
-          getSelectedRows: crossPageState.getSelectedRows,
-        }
-      : undefined,
+    crossPageSelection: {
+      enabled: isCrossPageSelectionEnabled,
+      selectedKeys: crossPageState.selectedKeys,
+      selectedCount: crossPageState.selectedCount,
+      select: crossPageState.select,
+      unselect: crossPageState.unselect,
+      selectAll: crossPageState.selectAll,
+      clearAll: crossPageState.clearAll,
+      getSelectedRows: crossPageState.getSelectedRows,
+    },
   }
 
   defineExpose(exposedApi)
@@ -607,18 +790,46 @@
   onMounted(() => {
     const crudRef = props.crud?.tableRef
     if (crudRef) crudRef.value = exposedApi
-    // 列拖拽初始化
-    initColumnDrag()
-    // 行拖拽初始化
-    if (rowDragState && tableWrapperRef.value) {
-      rowDragState.initRowDrag(tableWrapperRef.value)
+    void initColumnDrag()
+    if (tableWrapperRef.value) {
+      void rowDragState.initRowDrag(tableWrapperRef.value)
     }
   })
 
+  watch(
+    [
+      () => resolved.value.enableColumnDrag,
+      () => resolved.value.columnDragHandleClass,
+      () => normalizedLoading.value,
+      () => computedColumns.value.length,
+    ],
+    async () => {
+      await nextTick()
+      await initColumnDrag()
+    },
+    { immediate: true, flush: 'post' }
+  )
+
+  watch(
+    [
+      () => resolved.value.rowDrag,
+      () => normalizedLoading.value,
+      () => pagination.paginatedData.value.length,
+      () => pagination.currentPage.value,
+    ],
+    async () => {
+      await nextTick()
+      if (tableWrapperRef.value) {
+        await rowDragState.initRowDrag(tableWrapperRef.value)
+      }
+    },
+    { immediate: true, deep: true, flush: 'post' }
+  )
+
   onBeforeUnmount(() => {
     if (modalCloseTimer) clearTimeout(modalCloseTimer)
-    if (sortableInstance) sortableInstance.destroy()
-    rowDragState?.destroyRowDrag()
+    destroyColumnDrag()
+    rowDragState.destroyRowDrag()
   })
 </script>
 

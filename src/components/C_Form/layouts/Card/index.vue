@@ -16,7 +16,10 @@
     >
       <template #header>
         <div class="flex items-center gap-2">
-          <C_Icon :name="'mdi:cog'" :size="18" />
+          <C_Icon
+            :name="'mdi:cog'"
+            :size="18"
+          />
           <span>布局配置</span>
         </div>
       </template>
@@ -38,17 +41,26 @@
 
         <div class="config-item">
           <span>显示图标</span>
-          <NSwitch v-model:value="showIcons" size="small" />
+          <NSwitch
+            v-model:value="showIcons"
+            size="small"
+          />
         </div>
 
         <div class="config-item">
           <span>可折叠</span>
-          <NSwitch v-model:value="collapsible" size="small" />
+          <NSwitch
+            v-model:value="collapsible"
+            size="small"
+          />
         </div>
 
         <div class="config-item">
           <span>布局方向</span>
-          <NRadioGroup v-model:value="currentDirection" size="small">
+          <NRadioGroup
+            v-model:value="currentDirection"
+            size="small"
+          >
             <NRadio value="vertical">垂直</NRadio>
             <NRadio value="horizontal">水平</NRadio>
           </NRadioGroup>
@@ -63,7 +75,11 @@
       :style="{ gap: `${cardGap}px` }"
     >
       <!-- 无分组时的单卡片模式 -->
-      <NCard v-if="!hasGroups" class="single-card" hoverable>
+      <NCard
+        v-if="!hasGroups"
+        class="single-card"
+        hoverable
+      >
         <template #header>
           <div class="flex items-center gap-3">
             <C_Icon
@@ -76,7 +92,10 @@
           </div>
         </template>
 
-        <template v-for="item in formItems" :key="item.key">
+        <template
+          v-for="item in formItems"
+          :key="item.key"
+        >
           <component :is="item" />
         </template>
       </NCard>
@@ -120,7 +139,11 @@
               <div class="header-actions">
                 <!-- 统计信息 -->
                 <div class="field-stats">
-                  <NBadge :value="group.items.length" type="info" show-zero />
+                  <NBadge
+                    :value="group.items.length"
+                    type="info"
+                    show-zero
+                  />
                   <NBadge
                     :value="`${getFilledCount(group)}/${group.items.length}`"
                     :type="
@@ -154,9 +177,15 @@
             </div>
           </template>
 
-          <div v-show="!collapsedGroups[group.config.key]" class="card-content">
+          <div
+            v-show="!collapsedGroups[group.config.key]"
+            class="card-content"
+          >
             <!-- 进度指示器 -->
-            <div v-if="showProgress" class="progress-section">
+            <div
+              v-if="showProgress"
+              class="progress-section"
+            >
               <NProgress
                 :percentage="getGroupProgress(group)"
                 :color="getGroupProgress(group) === 100 ? '#52c41a' : '#1890ff'"
@@ -166,7 +195,10 @@
             </div>
 
             <!-- 表单项 -->
-            <template v-for="item in group.items" :key="item.key">
+            <template
+              v-for="item in group.items"
+              :key="item.key"
+            >
               <component :is="item" />
             </template>
           </div>
@@ -197,7 +229,10 @@
         </div>
 
         <div class="action-buttons">
-          <NButton v-if="collapsible" @click="toggleAllGroups">
+          <NButton
+            v-if="collapsible"
+            @click="toggleAllGroups"
+          >
             <template #icon>
               <C_Icon
                 :name="
@@ -208,7 +243,7 @@
                 :size="18"
               />
             </template>
-            {{ allCollapsed ? "展开全部" : "折叠全部" }}
+            {{ allCollapsed ? '展开全部' : '折叠全部' }}
           </NButton>
         </div>
       </div>
@@ -217,205 +252,205 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import type { VNode } from "vue";
-import C_Icon from "../../../C_Icon/index.vue";
+  import { ref, computed, onMounted, type VNode } from 'vue'
+  import C_Icon from '../../../C_Icon/index.vue'
 
-/**
- * 分组配置接口
- */
-interface GroupConfig {
-  key: string;
-  title: string;
-  description?: string;
-  icon?: string;
-}
+  /**
+   * 分组配置接口
+   */
+  interface GroupConfig {
+    key: string
+    title: string
+    description?: string
+    icon?: string
+  }
 
-/**
- * 分组数据接口
- */
-interface GroupWithItems {
-  config: GroupConfig;
-  items: VNode[];
-}
+  /**
+   * 分组数据接口
+   */
+  interface GroupWithItems {
+    config: GroupConfig
+    items: VNode[]
+  }
 
-/**
- * 组件属性接口
- */
-interface Props {
-  formItems: VNode[];
-  layoutConfig?: {
-    card?: {
-      groups?: GroupConfig[];
-      direction?: "vertical" | "horizontal";
-      showLayoutConfig?: boolean;
-      showActionPanel?: boolean;
-      showProgress?: boolean;
-    };
-  };
-  options?: Array<{
-    layout?: {
-      group?: string;
-    };
-    prop?: string;
-  }>;
-  formData?: Record<string, any>;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  layoutConfig: () => ({}),
-  options: () => [],
-  formData: () => ({}),
-});
-
-/* ================= 响应式状态 ================= */
-const cardGap = ref(20);
-const showIcons = ref(true);
-const collapsible = ref(true);
-const showProgress = ref(true);
-const currentDirection = ref<"vertical" | "horizontal">("vertical");
-const collapsedGroups = ref<Record<string, boolean>>({});
-
-/* ================= 计算属性 ================= */
-const groups = computed((): GroupConfig[] => {
-  return props.layoutConfig?.card?.groups || [];
-});
-
-const hasGroups = computed((): boolean => {
-  return groups.value.length > 0;
-});
-
-const showLayoutConfig = computed((): boolean => {
-  return props.layoutConfig?.card?.showLayoutConfig ?? true;
-});
-
-const showActionPanel = computed((): boolean => {
-  return props.layoutConfig?.card?.showActionPanel ?? true;
-});
-
-const layoutClass = computed((): string => {
-  if (!hasGroups.value) return "layout-single";
-  return `layout-${currentDirection.value}`;
-});
-
-const groupsWithItems = computed((): GroupWithItems[] => {
-  if (!hasGroups.value) return [];
-
-  const groupMap = new Map<string, VNode[]>();
-
-  /* 初始化分组映射 */
-  groups.value.forEach((group) => {
-    groupMap.set(group.key, []);
-  });
-
-  /* 将表单项分配到对应分组 */
-  props.formItems.forEach((item, index) => {
-    const option = props.options?.[index];
-    const groupKey = option?.layout?.group || groups.value[0]?.key || "default";
-
-    if (!groupMap.has(groupKey)) {
-      groupMap.set(groupKey, []);
+  /**
+   * 组件属性接口
+   */
+  interface Props {
+    formItems: VNode[]
+    layoutConfig?: {
+      card?: {
+        groups?: GroupConfig[]
+        direction?: 'vertical' | 'horizontal'
+        showLayoutConfig?: boolean
+        showActionPanel?: boolean
+        showProgress?: boolean
+      }
     }
-    groupMap.get(groupKey)!.push(item);
-  });
-
-  /* 只返回有表单项的分组 */
-  return groups.value
-    .map((groupConfig) => ({
-      config: groupConfig,
-      items: groupMap.get(groupConfig.key) || [],
-    }))
-    .filter((group) => group.items.length > 0);
-});
-
-const allCollapsed = computed(() => {
-  const groupKeys = Object.keys(collapsedGroups.value);
-  return (
-    groupKeys.length > 0 && groupKeys.every((key) => collapsedGroups.value[key])
-  );
-});
-
-const totalProgress = computed(() => {
-  if (!props.options || props.options.length === 0) return 0;
-
-  const filledCount = props.options.filter((option) => {
-    const value = props.formData?.[option.prop || ""];
-    return isFieldFilled(value);
-  }).length;
-
-  return Math.round((filledCount / props.options.length) * 100);
-});
-
-/* ================= 工具函数 ================= */
-const isFieldFilled = (value: any): boolean => {
-  if (value === null || value === undefined) return false;
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === "string") return value.trim() !== "";
-  return true;
-};
-
-const getFilledCount = (group: GroupWithItems): number => {
-  if (!props.options) return 0;
-
-  const groupFields = props.options.filter(
-    (option) => option.layout?.group === group.config.key,
-  );
-
-  return groupFields.filter((option) => {
-    const value = props.formData?.[option.prop || ""];
-    return isFieldFilled(value);
-  }).length;
-};
-
-const getGroupProgress = (group: GroupWithItems): number => {
-  if (group.items.length === 0) return 0;
-  const filledCount = getFilledCount(group);
-  return Math.round((filledCount / group.items.length) * 100);
-};
-
-const getDefaultIcon = (groupKey: string): string => {
-  const iconMap: Record<string, string> = {
-    basic: "mdi:account",
-    contact: "mdi:phone",
-    preferences: "mdi:cog",
-    settings: "mdi:cog",
-    info: "mdi:information",
-    default: "mdi:form-select",
-  };
-  return iconMap[groupKey] || iconMap.default;
-};
-
-/* ================= 操作方法 ================= */
-const toggleGroup = (groupKey: string): void => {
-  collapsedGroups.value[groupKey] = !collapsedGroups.value[groupKey];
-};
-
-const toggleAllGroups = (): void => {
-  const shouldCollapse = !allCollapsed.value;
-  groups.value.forEach((group) => {
-    collapsedGroups.value[group.key] = shouldCollapse;
-  });
-};
-
-/* ================= 生命周期 ================= */
-onMounted(() => {
-  /* 初始化配置 */
-  const config = props.layoutConfig?.card;
-  if (config?.direction) {
-    currentDirection.value = config.direction;
+    options?: Array<{
+      layout?: {
+        group?: string
+      }
+      prop?: string
+    }>
+    formData?: Record<string, any>
   }
 
-  if (config?.showProgress !== undefined) {
-    showProgress.value = config.showProgress;
+  const props = withDefaults(defineProps<Props>(), {
+    layoutConfig: () => ({}),
+    options: () => [],
+    formData: () => ({}),
+  })
+
+  /* ================= 响应式状态 ================= */
+  const cardGap = ref(20)
+  const showIcons = ref(true)
+  const collapsible = ref(true)
+  const showProgress = ref(true)
+  const currentDirection = ref<'vertical' | 'horizontal'>('vertical')
+  const collapsedGroups = ref<Record<string, boolean>>({})
+
+  /* ================= 计算属性 ================= */
+  const groups = computed((): GroupConfig[] => {
+    return props.layoutConfig?.card?.groups || []
+  })
+
+  const hasGroups = computed((): boolean => {
+    return groups.value.length > 0
+  })
+
+  const showLayoutConfig = computed((): boolean => {
+    return props.layoutConfig?.card?.showLayoutConfig ?? true
+  })
+
+  const showActionPanel = computed((): boolean => {
+    return props.layoutConfig?.card?.showActionPanel ?? true
+  })
+
+  const layoutClass = computed((): string => {
+    if (!hasGroups.value) return 'layout-single'
+    return `layout-${currentDirection.value}`
+  })
+
+  const groupsWithItems = computed((): GroupWithItems[] => {
+    if (!hasGroups.value) return []
+
+    const groupMap = new Map<string, VNode[]>()
+
+    /* 初始化分组映射 */
+    groups.value.forEach(group => {
+      groupMap.set(group.key, [])
+    })
+
+    /* 将表单项分配到对应分组 */
+    props.formItems.forEach((item, index) => {
+      const option = props.options?.[index]
+      const groupKey =
+        option?.layout?.group || groups.value[0]?.key || 'default'
+
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, [])
+      }
+      groupMap.get(groupKey)!.push(item)
+    })
+
+    /* 只返回有表单项的分组 */
+    return groups.value
+      .map(groupConfig => ({
+        config: groupConfig,
+        items: groupMap.get(groupConfig.key) || [],
+      }))
+      .filter(group => group.items.length > 0)
+  })
+
+  const allCollapsed = computed(() => {
+    const groupKeys = Object.keys(collapsedGroups.value)
+    return (
+      groupKeys.length > 0 && groupKeys.every(key => collapsedGroups.value[key])
+    )
+  })
+
+  const totalProgress = computed(() => {
+    if (!props.options || props.options.length === 0) return 0
+
+    const filledCount = props.options.filter(option => {
+      const value = props.formData?.[option.prop || '']
+      return isFieldFilled(value)
+    }).length
+
+    return Math.round((filledCount / props.options.length) * 100)
+  })
+
+  /* ================= 工具函数 ================= */
+  const isFieldFilled = (value: any): boolean => {
+    if (value === null || value === undefined) return false
+    if (Array.isArray(value)) return value.length > 0
+    if (typeof value === 'string') return value.trim() !== ''
+    return true
   }
 
-  /* 初始化折叠状态 */
-  groups.value.forEach((group) => {
-    collapsedGroups.value[group.key] = false;
-  });
-});
+  const getFilledCount = (group: GroupWithItems): number => {
+    if (!props.options) return 0
+
+    const groupFields = props.options.filter(
+      option => option.layout?.group === group.config.key
+    )
+
+    return groupFields.filter(option => {
+      const value = props.formData?.[option.prop || '']
+      return isFieldFilled(value)
+    }).length
+  }
+
+  const getGroupProgress = (group: GroupWithItems): number => {
+    if (group.items.length === 0) return 0
+    const filledCount = getFilledCount(group)
+    return Math.round((filledCount / group.items.length) * 100)
+  }
+
+  const getDefaultIcon = (groupKey: string): string => {
+    const iconMap: Record<string, string> = {
+      basic: 'mdi:account',
+      contact: 'mdi:phone',
+      preferences: 'mdi:cog',
+      settings: 'mdi:cog',
+      info: 'mdi:information',
+      default: 'mdi:form-select',
+    }
+    return iconMap[groupKey] || iconMap.default
+  }
+
+  /* ================= 操作方法 ================= */
+  const toggleGroup = (groupKey: string): void => {
+    collapsedGroups.value[groupKey] = !collapsedGroups.value[groupKey]
+  }
+
+  const toggleAllGroups = (): void => {
+    const shouldCollapse = !allCollapsed.value
+    groups.value.forEach(group => {
+      collapsedGroups.value[group.key] = shouldCollapse
+    })
+  }
+
+  /* ================= 生命周期 ================= */
+  onMounted(() => {
+    /* 初始化配置 */
+    const config = props.layoutConfig?.card
+    if (config?.direction) {
+      currentDirection.value = config.direction
+    }
+
+    if (config?.showProgress !== undefined) {
+      showProgress.value = config.showProgress
+    }
+
+    /* 初始化折叠状态 */
+    groups.value.forEach(group => {
+      collapsedGroups.value[group.key] = false
+    })
+  })
 </script>
 
 <style scoped lang="scss">
-@use "./index.scss";
+  @use './index.scss';
 </style>

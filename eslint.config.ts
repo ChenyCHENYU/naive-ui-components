@@ -22,11 +22,7 @@ export default defineConfigWithVueTs(
 
   {
     name: 'app/files-to-ignore',
-    ignores: [
-      '**/dist/**',
-      '**/dist-ssr/**',
-      '**/coverage/**',
-    ],
+    ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**'],
   },
 
   //MARK: 核心规则组（按优先级排序）
@@ -61,7 +57,6 @@ export default defineConfigWithVueTs(
     },
   },
 
-
   //MARK: 自定义规则组（优先级最高）
   {
     plugins: {
@@ -73,18 +68,17 @@ export default defineConfigWithVueTs(
         'error',
         {
           require: {
-            FunctionDeclaration: true,
-            MethodDefinition: true,
-            ClassDeclaration: true,
+            FunctionDeclaration: false,
+            MethodDefinition: false,
+            ClassDeclaration: false,
             ArrowFunctionExpression: false,
-            FunctionExpression: true,
+            FunctionExpression: false,
           },
           contexts: [
-            'FunctionDeclaration',
-            'ClassDeclaration',
-            'ClassProperty',
-            'MethodDefinition',
-            'FunctionExpression',
+            'ExportNamedDeclaration > FunctionDeclaration',
+            'ExportDefaultDeclaration > FunctionDeclaration',
+            'ExportNamedDeclaration > ClassDeclaration',
+            'ExportDefaultDeclaration > ClassDeclaration',
           ],
           checkConstructors: true,
           checkGetters: true,
@@ -170,10 +164,7 @@ export default defineConfigWithVueTs(
       'no-eval': 'error',
       'prefer-const': 'warn',
       'no-var': 'warn',
-      'prefer-destructuring': [
-        1,
-        { object: true, array: false },
-      ],
+      'prefer-destructuring': [1, { object: true, array: false }],
       'no-duplicate-imports': 'error',
     },
   },

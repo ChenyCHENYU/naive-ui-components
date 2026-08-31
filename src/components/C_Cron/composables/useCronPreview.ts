@@ -6,7 +6,7 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, watch, type Ref } from 'vue'
+import { onScopeDispose, ref, watch, type Ref } from 'vue'
 import type { CronValidation } from '../types'
 
 /**
@@ -23,6 +23,8 @@ export function useCronPreview(
 
   /** 是否正在计算 */
   const computing = ref(false)
+  let computationVersion = 0
+  let computationTimer: ReturnType<typeof setTimeout> | null = null
 
   /* ─── 匹配检查工具 ─────────────────────────── */
 
@@ -77,7 +79,8 @@ export function useCronPreview(
   }
 
   /** 计算未来 N 次执行时间 */
-  function computeNextExecutions(): Date[] {
+  // eslint-disable-next-line complexity -- Cron 匹配是受边界和取消令牌约束的状态扫描。
+  async function computeNextExecutions(version: number): Promise<Date[]> {
     const expr = expression.value
     if (!expr || !validation.value.valid) return []
 
@@ -90,25 +93,31 @@ export function useCronPreview(
     cursor.setMilliseconds(0)
 
     /* 判断是否包含秒级调度（秒字段不是 0） */
-    const hasSecond = parts[0] !== '0'
+    const fixedSecond = /^\d{1,2}$/.test(parts[0]) ? Number(parts[0]) : null
+    const hasSecond = fixedSecond === null
     const stepMs = hasSecond ? 1000 : 60_000 /* 秒级/分钟级步进 */
 
-    /* 分钟级步进时，对齐到整分（秒归零），否则秒位永远无法匹配 '0' */
+    /* 固定秒值时按分钟步进，避免为月度任务扫描数百万秒。 */
     if (!hasSecond) {
-      cursor.setSeconds(0)
+      cursor.setSeconds(fixedSecond ?? 0)
       if (cursor.getTime() <= now.getTime()) {
         cursor.setTime(cursor.getTime() + 60_000)
       }
     }
 
     const maxIterations = 525_600 /* 最多遍历 1 年的分钟数 */
-    const target = count.value
+    const target = Math.min(100, Math.max(1, Math.trunc(count.value)))
 
     for (let i = 0; i < maxIterations && results.length < target; i++) {
+      if (version !== computationVersion) return []
       if (matchesCron(cursor, parts)) {
         results.push(new Date(cursor))
       }
       cursor.setTime(cursor.getTime() + stepMs)
+      if (i > 0 && i % 10_000 === 0) {
+        // eslint-disable-next-line no-await-in-loop -- 主动让出 UI 线程，且扫描必须保持顺序。
+        await new Promise<void>(resolve => setTimeout(resolve, 0))
+      }
     }
 
     return results
@@ -117,21 +126,33 @@ export function useCronPreview(
   /* ─── 监听表达式变化自动计算 ─────────────────── */
 
   watch(
-    [expression, count],
+    [expression, count, validation],
     () => {
+      computationVersion += 1
+      const version = computationVersion
+      if (computationTimer) clearTimeout(computationTimer)
       if (!validation.value.valid) {
         nextExecutions.value = []
+        computing.value = false
+        computationTimer = null
         return
       }
       computing.value = true
-      /* 使用 setTimeout 避免阻塞 UI */
-      setTimeout(() => {
-        nextExecutions.value = computeNextExecutions()
+      computationTimer = setTimeout(async () => {
+        const result = await computeNextExecutions(version)
+        if (version !== computationVersion) return
+        nextExecutions.value = result
         computing.value = false
+        computationTimer = null
       }, 0)
     },
     { immediate: true }
   )
+
+  onScopeDispose(() => {
+    computationVersion += 1
+    if (computationTimer) clearTimeout(computationTimer)
+  })
 
   /* ─── 格式化输出 ───────────────────────────── */
 

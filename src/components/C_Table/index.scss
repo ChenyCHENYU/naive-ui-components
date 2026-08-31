@@ -1,12 +1,12 @@
 /* ================= 1. 组件根容器 ================= */
 .c-table-wrapper {
   --c-table-border-color: var(--border-color, #e5e7eb);
-    --c-table-bg: var(--body-color, #fff);
-    --c-table-header-bg: var(--card-color, #fafafc);
-    --c-table-summary-bg: var(--card-color, #fafafc);
-    --c-table-summary-font-weight: 600;
-    --c-table-drag-ghost-opacity: 0.4;
-    --c-table-drag-ghost-bg: var(--primary-color, #2080f0);
+  --c-table-bg: var(--body-color, #fff);
+  --c-table-header-bg: var(--card-color, #fafafc);
+  --c-table-summary-bg: var(--card-color, #fafafc);
+  --c-table-summary-font-weight: 600;
+  --c-table-drag-ghost-opacity: 0.4;
+  --c-table-drag-ghost-bg: var(--primary-color, #2080f0);
   width: 100%;
   position: relative;
 }
@@ -50,7 +50,9 @@
 
     .column-settings-btn {
       opacity: 0.6;
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
       cursor: pointer;
 
       &:hover {
@@ -99,14 +101,12 @@
 /* ================= 5. 表格列宽度管理 ================= */
 
 /* 普通列的最小宽度保护 */
-:deep(.n-data-table-th:not(:last-child),
-       .n-data-table-td:not(:last-child)) {
+:deep(.n-data-table-th:not(:last-child), .n-data-table-td:not(:last-child)) {
   min-width: 80px !important;
 }
 
 /* 操作列固定宽度（适应4个按钮的布局） */
-:deep(.n-data-table-th:last-child,
-       .n-data-table-td:last-child) {
+:deep(.c-table-actions-column) {
   width: 180px !important;
   min-width: 160px !important;
   max-width: 200px !important;
@@ -115,7 +115,7 @@
 }
 
 /* 操作按钮容器居中 */
-:deep(.n-data-table-td:last-child .n-space) {
+:deep(.c-table-actions-column .n-space) {
   justify-content: center !important;
   align-items: center !important;
 }
@@ -407,8 +407,7 @@
   }
 
   /* 操作列在移动端的适配 */
-  :deep(.n-data-table-th:last-child,
-         .n-data-table-td:last-child) {
+  :deep(.n-data-table-th:last-child, .n-data-table-td:last-child) {
     width: 160px !important;
     min-width: 160px !important;
   }
@@ -432,7 +431,7 @@
 /* ================= 12. 主题适配 ================= */
 
 /* 暗色主题适配 - 已通过 CSS 变量自动适配 */
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* CSS 变量已自动适配，如有特殊需求可在此添加 */
 }
 

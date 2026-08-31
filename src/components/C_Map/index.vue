@@ -12,195 +12,241 @@
       class="map-container"
       :style="{ height: height }"
     ></div>
-    <div v-if="loading" class="map-loading">
+    <div
+      v-if="loading"
+      class="map-loading"
+    >
       <NSpin size="large" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
-import { NSpin } from "naive-ui";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { OSM_TILE_CONFIG, AMAP_CONFIG, MAP_ICONS } from "./data";
+  import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+  import { NSpin } from 'naive-ui'
+  import L from 'leaflet'
+  import 'leaflet/dist/leaflet.css'
+  import { OSM_TILE_CONFIG, MAP_ICONS } from './data'
+  import { loadAMapApi } from './amapLoader'
 
-defineOptions({ name: "C_Map" });
+  defineOptions({ name: 'C_Map' })
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions(MAP_ICONS);
-
-interface MapMarker {
-  lat: number;
-  lng: number;
-  popup?: string;
-}
-
-const props = withDefaults(
-  defineProps<{
-    height?: string;
-    center?: [number, number];
-    zoom?: number;
-    markers?: MapMarker[];
-    mapType?: "osm" | "amap";
-    amapKey?: string;
-  }>(),
-  {
-    height: "400px",
-    center: () => [39.9042, 116.4074],
-    zoom: 10,
-    markers: () => [],
-    mapType: "osm",
-    amapKey: "",
-  },
-);
-
-const emit = defineEmits<{
-  ready: [map: any];
-  markerClick: [marker: MapMarker, event: any];
-}>();
-
-const mapContainer = ref<HTMLElement>();
-const loading = ref(true);
-let map: any = null;
-
-const initOSMMap = async () => {
-  if (!mapContainer.value) return;
-  try {
-    mapContainer.value.innerHTML = "";
-    map = L.map(mapContainer.value, {
-      center: props.center,
-      zoom: props.zoom,
-      zoomControl: true,
-      preferCanvas: true,
-    });
-    const tileLayer = L.tileLayer(OSM_TILE_CONFIG.url, OSM_TILE_CONFIG);
-    tileLayer.addTo(map);
-    addMarkers();
-    await nextTick();
-    requestAnimationFrame(() => {
-      map?.invalidateSize({ reset: true, pan: false });
-    });
-    loading.value = false;
-    emit("ready", map);
-  } catch (error) {
-    console.error("OpenStreetMap初始化失败:", error);
-    loading.value = false;
+  interface MapMarker {
+    lat: number
+    lng: number
+    popup?: string
   }
-};
 
-const initAMap = async () => {
-  if (!mapContainer.value || !props.amapKey) return;
-  try {
-    mapContainer.value.innerHTML = "";
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = `${AMAP_CONFIG.apiUrl}${props.amapKey}`;
-    script.onload = () => {
-      if ((window as any).AMap) {
-        const amap = new (window as any).AMap.Map(mapContainer.value, {
-          zoom: props.zoom,
-          center: props.center,
-        });
-        addAMapMarkers(amap);
-        loading.value = false;
-        emit("ready", amap);
+  const props = withDefaults(
+    defineProps<{
+      height?: string
+      center?: [number, number]
+      zoom?: number
+      markers?: MapMarker[]
+      mapType?: 'osm' | 'amap'
+      amapKey?: string
+    }>(),
+    {
+      height: '400px',
+      center: () => [39.9042, 116.4074],
+      zoom: 10,
+      markers: () => [],
+      mapType: 'osm',
+      amapKey: '',
+    }
+  )
+
+  const emit = defineEmits<{
+    ready: [map: unknown]
+    markerClick: [marker: MapMarker, event: unknown]
+    error: [error: Error]
+  }>()
+
+  const mapContainer = ref<HTMLElement>()
+  const loading = ref(true)
+  let map: any = null
+  let amapMarkers: any[] = []
+  let initVersion = 0
+  let disposed = false
+
+  const toError = (error: unknown) =>
+    error instanceof Error ? error : new Error(String(error))
+
+  const destroyMap = () => {
+    initVersion += 1
+    amapMarkers.forEach(marker => marker.setMap?.(null))
+    amapMarkers = []
+    if (!map) return
+    if (typeof map.remove === 'function') map.remove()
+    else if (typeof map.destroy === 'function') map.destroy()
+    map = null
+  }
+
+  const initOSMMap = async () => {
+    if (!mapContainer.value) return
+    const version = ++initVersion
+    try {
+      destroyMap()
+      initVersion = version
+      mapContainer.value.replaceChildren()
+      map = L.map(mapContainer.value, {
+        center: props.center,
+        zoom: props.zoom,
+        zoomControl: true,
+        preferCanvas: true,
+      })
+      const tileLayer = L.tileLayer(OSM_TILE_CONFIG.url, OSM_TILE_CONFIG)
+      tileLayer.addTo(map)
+      if (disposed || version !== initVersion) {
+        destroyMap()
+        return
       }
-    };
-    script.onerror = () => {
-      loading.value = false;
-    };
-    document.head.appendChild(script);
-  } catch {
-    loading.value = false;
+      addMarkers()
+      await nextTick()
+      requestAnimationFrame(() => {
+        if (version === initVersion) {
+          map?.invalidateSize({ reset: true, pan: false })
+        }
+      })
+      if (disposed || version !== initVersion) return
+      loading.value = false
+      emit('ready', map)
+    } catch (error) {
+      if (version === initVersion) {
+        destroyMap()
+        emit('error', toError(error))
+        loading.value = false
+      }
+    }
   }
-};
 
-const addMarkers = () => {
-  if (!map || props.mapType !== "osm" || !props.markers) return;
-  map.eachLayer((layer: any) => {
-    if (layer instanceof L.Marker) {
-      map.removeLayer(layer);
+  const initAMap = async () => {
+    if (!mapContainer.value || !props.amapKey) {
+      if (!props.amapKey)
+        emit('error', new Error('使用高德地图时必须提供 amapKey'))
+      loading.value = false
+      return
     }
-  });
-  props.markers.forEach((marker) => {
-    const leafletMarker = L.marker([marker.lat, marker.lng]);
-    if (marker.popup) {
-      leafletMarker.bindPopup(marker.popup);
-      leafletMarker.on("click", (event: any) => {
-        emit("markerClick", marker, event);
-      });
+    const version = ++initVersion
+    try {
+      destroyMap()
+      initVersion = version
+      mapContainer.value.replaceChildren()
+      const AMap = await loadAMapApi(props.amapKey)
+      if (disposed || version !== initVersion || !mapContainer.value) return
+      map = new AMap.Map(mapContainer.value, {
+        zoom: props.zoom,
+        center: props.center,
+      })
+      addAMapMarkers(map)
+      loading.value = false
+      emit('ready', map)
+    } catch (error) {
+      if (version === initVersion) {
+        emit('error', toError(error))
+        loading.value = false
+      }
     }
-    leafletMarker.addTo(map);
-  });
-};
-
-const addAMapMarkers = (amap: any) => {
-  if (!amap || props.mapType !== "amap" || !props.markers) return;
-  props.markers.forEach((marker) => {
-    const amapMarker = new (window as any).AMap.Marker({
-      position: [marker.lat, marker.lng],
-      title: marker.popup || "",
-    });
-    if (marker.popup) {
-      const infoWindow = new (window as any).AMap.InfoWindow({
-        content: marker.popup,
-        offset: new (window as any).AMap.Pixel(0, -30),
-      });
-      amapMarker.on("click", () => {
-        infoWindow.open(amap, amapMarker.getPosition());
-        emit("markerClick", marker, null);
-      });
-    }
-    amapMarker.setMap(amap);
-  });
-};
-
-watch(
-  () => props.markers,
-  () => {
-    if (map && props.mapType === "osm") addMarkers();
-  },
-  { deep: true },
-);
-
-watch(
-  () => props.mapType,
-  async (newType, oldType) => {
-    if (newType === oldType) return;
-    if (map) {
-      map.remove();
-      map = null;
-      loading.value = true;
-      await nextTick();
-      if (newType === "amap" && props.amapKey) await initAMap();
-      else await initOSMMap();
-    }
-  },
-);
-
-watch(
-  [() => props.center, () => props.zoom],
-  () => {
-    if (map) map.setView(props.center, props.zoom);
-  },
-  { deep: true },
-);
-
-onMounted(async () => {
-  await nextTick();
-  if (props.mapType === "amap" && props.amapKey) await initAMap();
-  else await initOSMMap();
-});
-
-onUnmounted(() => {
-  if (map) {
-    map.remove();
-    map = null;
   }
-});
+
+  const addMarkers = () => {
+    if (!map || props.mapType !== 'osm' || !props.markers) return
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.Marker) {
+        map.removeLayer(layer)
+      }
+    })
+    props.markers.forEach(marker => {
+      if (!Number.isFinite(marker.lat) || !Number.isFinite(marker.lng)) return
+      const leafletMarker = L.marker([marker.lat, marker.lng], {
+        icon: L.icon(MAP_ICONS),
+      })
+      if (marker.popup) {
+        const popup = document.createElement('span')
+        popup.textContent = marker.popup
+        leafletMarker.bindPopup(popup)
+        leafletMarker.on('click', (event: any) => {
+          emit('markerClick', marker, event)
+        })
+      }
+      leafletMarker.addTo(map)
+    })
+  }
+
+  const addAMapMarkers = (amap: any) => {
+    if (!amap || props.mapType !== 'amap' || !props.markers) return
+    amapMarkers.forEach(marker => marker.setMap?.(null))
+    amapMarkers = []
+    props.markers.forEach(marker => {
+      if (!Number.isFinite(marker.lat) || !Number.isFinite(marker.lng)) return
+      const amapMarker = new (window as any).AMap.Marker({
+        position: [marker.lat, marker.lng],
+        title: marker.popup || '',
+      })
+      if (marker.popup) {
+        const content = document.createElement('span')
+        content.textContent = marker.popup
+        const infoWindow = new (window as any).AMap.InfoWindow({
+          content,
+          offset: new (window as any).AMap.Pixel(0, -30),
+        })
+        amapMarker.on('click', () => {
+          infoWindow.open(amap, amapMarker.getPosition())
+          emit('markerClick', marker, null)
+        })
+      }
+      amapMarker.setMap(amap)
+      amapMarkers.push(amapMarker)
+    })
+  }
+
+  watch(
+    () => props.markers,
+    () => {
+      if (!map) return
+      if (props.mapType === 'osm') addMarkers()
+      else addAMapMarkers(map)
+    },
+    { deep: true }
+  )
+
+  watch(
+    () => props.mapType,
+    async (newType, oldType) => {
+      if (newType === oldType) return
+      destroyMap()
+      loading.value = true
+      await nextTick()
+      if (newType === 'amap') await initAMap()
+      else await initOSMMap()
+    }
+  )
+
+  watch(
+    [() => props.center, () => props.zoom],
+    () => {
+      if (!map) return
+      if (props.mapType === 'osm') map.setView(props.center, props.zoom)
+      else {
+        map.setCenter?.(props.center)
+        map.setZoom?.(props.zoom)
+      }
+    },
+    { deep: true }
+  )
+
+  onMounted(async () => {
+    await nextTick()
+    if (props.mapType === 'amap') await initAMap()
+    else await initOSMMap()
+  })
+
+  onUnmounted(() => {
+    disposed = true
+    destroyMap()
+  })
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

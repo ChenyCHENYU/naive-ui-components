@@ -36,7 +36,27 @@ export const FIELD_TYPE_OPTIONS = [
   { label: '下拉选择', value: 'select' as ComponentType },
   { label: '开关切换', value: 'switch' as ComponentType },
   { label: '评分组件', value: 'rate' as ComponentType },
-]
+] as const
+
+// eslint-disable-next-line complexity -- Defaults are resolved independently for every public field option.
+function createDynamicField(
+  counter: number,
+  config: Partial<DynamicFieldConfig>
+): DynamicFieldConfig {
+  const label = config.label || `动态字段 ${counter}`
+  return {
+    ...config,
+    id: config.id?.trim() || `dynamic_field_${counter}`,
+    type: config.type || FIELD_TYPE_OPTIONS[0].value,
+    prop: config.prop?.trim() || `dynamic_${counter}`,
+    label,
+    placeholder: config.placeholder || `请输入${label || '内容'}`,
+    visible: config.visible ?? true,
+    removable: config.removable ?? true,
+    created: config.created ?? Date.now(),
+    layout: config.layout || { span: 12 },
+  }
+}
 
 /**
  * @description 创建和管理动态表单状态
@@ -99,103 +119,83 @@ export const useDynamicFormState = (): DynamicFormController => {
    * @description 添加动态字段
    * @param config - 字段配置
    */
-  const addField = (config: Partial<DynamicFieldConfig> = {}) => {
+  const addField = (
+    config: Partial<DynamicFieldConfig> = {}
+  ): DynamicFieldConfig | null => {
     if (!canAddMoreFields.value) {
-      console.warn('[useDynamicFormState] 已达到最大字段数量限制')
-      return
+      return null
     }
 
     state.fieldCounter++
-
-    const defaultType =
-      config.type ||
-      FIELD_TYPE_OPTIONS[Math.floor(Math.random() * FIELD_TYPE_OPTIONS.length)]
-        .value
-
-    const newField: DynamicFieldConfig = {
-      id: `dynamic_field_${state.fieldCounter}`,
-      type: defaultType,
-      prop: config.prop || `dynamic_${state.fieldCounter}`,
-      label: config.label || `动态字段 ${state.fieldCounter}`,
-      placeholder: config.placeholder || `请输入${config.label || '内容'}`,
-      visible: true,
-      removable: true,
-      created: Date.now(),
-      layout: config.layout || { span: 12 },
-      ...config,
-    }
+    const newField = createDynamicField(state.fieldCounter, config)
+    if (allFields.value.some(field => field.prop === newField.prop)) return null
 
     state.dynamicFields.push(newField)
-
-    console.log('[useDynamicFormState] 添加字段:', newField)
+    return newField
   }
 
   /**
    * @description 移除动态字段
    * @param index - 可选，要移除的字段索引，默认移除最后一个
    */
-  const removeField = (index?: number) => {
+  const removeField = (index?: number): DynamicFieldConfig | null => {
     if (state.dynamicFields.length === 0) {
-      console.warn('[useDynamicFormState] 没有可移除的动态字段')
-      return
+      return null
     }
 
     const targetIndex = index ?? state.dynamicFields.length - 1
 
     if (targetIndex < 0 || targetIndex >= state.dynamicFields.length) {
-      console.warn('[useDynamicFormState] 字段索引超出范围')
-      return
+      return null
     }
 
+    if (state.dynamicFields[targetIndex]?.removable === false) return null
     const removed = state.dynamicFields.splice(targetIndex, 1)[0]
     if (removed) {
       state.hiddenFieldIds.delete(removed.prop)
-      console.log('[useDynamicFormState] 移除字段:', removed.prop)
     }
+    return removed ?? null
   }
 
   /**
    * @description 清空所有动态字段
    */
-  const clearDynamicFields = () => {
-    console.log(
-      '[useDynamicFormState] 清空动态字段:',
-      state.dynamicFields.length
-    )
+  const clearDynamicFields = (): number => {
+    const removedCount = state.dynamicFields.length
     state.dynamicFields.forEach(field =>
       state.hiddenFieldIds.delete(field.prop)
     )
     state.dynamicFields.length = 0
     state.fieldCounter = 0
+    return removedCount
   }
 
   /**
    * @description 切换字段可见性
    * @param fieldId - 字段ID
    */
-  const toggleFieldVisibility = (fieldId: string) => {
+  const toggleFieldVisibility = (fieldId: string): boolean => {
+    if (!allFields.value.some(field => field.prop === fieldId)) return false
     if (state.hiddenFieldIds.has(fieldId)) {
       state.hiddenFieldIds.delete(fieldId)
-      console.log('[useDynamicFormState] 显示字段:', fieldId)
     } else {
       state.hiddenFieldIds.add(fieldId)
-      console.log('[useDynamicFormState] 隐藏字段:', fieldId)
     }
+    return !state.hiddenFieldIds.has(fieldId)
   }
 
   /**
    * @description 切换所有字段可见性
    */
-  const toggleAllVisibility = () => {
+  const toggleAllVisibility = (): boolean => {
     if (allVisible.value) {
       state.dynamicFields.forEach(field => {
         state.hiddenFieldIds.add(field.prop)
       })
-      console.log('[useDynamicFormState] 隐藏所有动态字段')
     } else {
       state.hiddenFieldIds.clear()
-      console.log('[useDynamicFormState] 显示所有字段')
     }
+    return allVisible.value
   }
 
   /**
@@ -203,8 +203,11 @@ export const useDynamicFormState = (): DynamicFormController => {
    * @param newConfig - 新的配置对象
    */
   const updateConfig = (newConfig: Partial<DynamicFormConfig>) => {
-    Object.assign(state.config, newConfig)
-    console.log('[useDynamicFormState] 更新配置:', newConfig)
+    const normalized = { ...newConfig }
+    if (normalized.maxFields !== undefined) {
+      normalized.maxFields = Math.max(0, Math.trunc(normalized.maxFields))
+    }
+    Object.assign(state.config, normalized)
   }
 
   /**
@@ -231,16 +234,13 @@ export const useDynamicFormState = (): DynamicFormController => {
     baseFields: FormOption[],
     config: Partial<DynamicFormConfig> = {}
   ) => {
-    console.log('[useDynamicFormState] 初始化状态:', {
-      baseFieldsCount: baseFields.length,
-      config,
-    })
-
     state.baseFields = [...baseFields]
-    Object.assign(state.config, config)
+    state.dynamicFields.length = 0
+    state.hiddenFieldIds.clear()
+    state.fieldCounter = 0
+    Object.assign(state.config, DEFAULT_CONFIG)
+    updateConfig(config)
     state.isInitialized = true
-
-    console.log('[useDynamicFormState] 初始化完成')
   }
 
   return {

@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted } from 'vue'
+  import { ref, computed, onMounted, watch } from 'vue'
   import {
     NInput,
     NText,
@@ -220,8 +220,16 @@
     try {
       const stored = localStorage.getItem(`c_table_cols_${props.persistKey}`)
       if (!stored) return [...columns]
-      const persisted: Array<{ key: string; visible?: boolean; width?: number | string; fixed?: string }> = JSON.parse(stored)
-      const keyMap = new Map(persisted.map((p, i) => [p.key, { ...p, order: i }]))
+      const persisted: Array<{
+        key: string
+        visible?: boolean
+        width?: number | string
+        fixed?: string
+      }> = JSON.parse(stored)
+      if (!Array.isArray(persisted)) return [...columns]
+      const keyMap = new Map(
+        persisted.map((p, i) => [p.key, { ...p, order: i }])
+      )
       const merged = columns.map(col => {
         const saved = keyMap.get((col as any).key)
         if (!saved) return { ...col }
@@ -254,7 +262,10 @@
         width: col.width,
         fixed: col.fixed,
       }))
-      localStorage.setItem(`c_table_cols_${props.persistKey}`, JSON.stringify(data))
+      localStorage.setItem(
+        `c_table_cols_${props.persistKey}`,
+        JSON.stringify(data)
+      )
     } catch {
       // localStorage 不可用时静默忽略
     }
@@ -277,6 +288,17 @@
     }
   })
 
+  watch(
+    () => props.columns,
+    columns => {
+      localColumns.value = loadPersistedColumns(columns)
+      enableResizable.value = localColumns.value.some(
+        col => col.resizable === true
+      )
+    },
+    { deep: true }
+  )
+
   /* ================= 计算属性 ================= */
 
   const filteredColumns = computed(() => {
@@ -284,8 +306,12 @@
     const search = searchText.value.toLowerCase()
     return localColumns.value.filter(
       col =>
-        col.title?.toLowerCase().includes(search) ||
-        col.key?.toLowerCase().includes(search)
+        String(col.title ?? '')
+          .toLowerCase()
+          .includes(search) ||
+        String(col.key ?? '')
+          .toLowerCase()
+          .includes(search)
     )
   })
 

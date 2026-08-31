@@ -2,7 +2,7 @@
  * 分片上传引擎
  */
 
-import type { Ref } from "vue";
+import type { Ref } from 'vue'
 import type {
   UploadChunk,
   ChunkProgress,
@@ -10,25 +10,25 @@ import type {
   CustomUploadRequest,
   UploadedChunksQueryFn,
   MergeChunksFn,
-} from "../types";
+} from '../types'
 
 interface UseChunkUploadOptions {
   /** 分片大小 */
-  chunkSize: Ref<number>;
+  chunkSize: Ref<number>
   /** 最大并发数 */
-  concurrency: Ref<number>;
+  concurrency: Ref<number>
   /** 上传地址 */
-  action: Ref<string>;
+  action: Ref<string>
   /** 请求头 */
-  headers: Ref<Record<string, string>>;
+  headers: Ref<Record<string, string>>
   /** 附加字段 */
-  data: Ref<Record<string, any>>;
+  data: Ref<Record<string, any>>
   /** 自定义上传函数 */
-  customRequest?: Ref<CustomUploadRequest | undefined>;
+  customRequest?: Ref<CustomUploadRequest | undefined>
   /** 已上传分片查询 */
-  uploadedChunksQuery?: Ref<UploadedChunksQueryFn | undefined>;
+  uploadedChunksQuery?: Ref<UploadedChunksQueryFn | undefined>
   /** 分片合并函数 */
-  mergeChunks?: Ref<MergeChunksFn | undefined>;
+  mergeChunks?: Ref<MergeChunksFn | undefined>
 }
 
 /**
@@ -38,43 +38,45 @@ interface UseChunkUploadOptions {
  */
 export function useChunkUpload(options: UseChunkUploadOptions) {
   /** 正在进行的上传中止控制器映射 uid → abort[] */
-  const abortMap = new Map<string, (() => void)[]>();
+  const abortMap = new Map<string, (() => void)[]>()
+  const cancelledUploads = new Set<string>()
+  const uploadVersions = new Map<string, number>()
 
   /**
    * 将文件切割为分片
    */
   function createChunks(file: File): UploadChunk[] {
-    const size = options.chunkSize.value;
-    const chunks: UploadChunk[] = [];
-    let index = 0;
-    let offset = 0;
+    const size = Math.max(1, Math.trunc(Number(options.chunkSize.value) || 1))
+    const chunks: UploadChunk[] = []
+    let index = 0
+    let offset = 0
 
     while (offset < file.size) {
-      const end = Math.min(offset + size, file.size);
+      const end = Math.min(offset + size, file.size)
       chunks.push({
         index,
         blob: file.slice(offset, end),
         size: end - offset,
         uploaded: false,
-      });
-      offset = end;
-      index++;
+      })
+      offset = end
+      index++
     }
 
-    return chunks;
+    return chunks
   }
 
   /**
    * 查询已上传的分片（断点续传）
    */
   async function queryExistingChunks(hash: string, chunks: UploadChunk[]) {
-    if (!options.uploadedChunksQuery?.value) return;
+    if (!options.uploadedChunksQuery?.value) return
 
     try {
-      const uploaded = await options.uploadedChunksQuery.value(hash);
+      const uploaded = await options.uploadedChunksQuery.value(hash)
       for (const idx of uploaded) {
-        const chunk = chunks[idx];
-        if (chunk) chunk.uploaded = true;
+        const chunk = chunks[idx]
+        if (chunk) chunk.uploaded = true
       }
     } catch {
       // 查询失败，全部重传
@@ -85,18 +87,30 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
    * 上传单个分片
    */
   function uploadSingleChunk(ctx: {
-    chunk: UploadChunk;
-    hash: string;
-    file: File;
-    totalChunks: number;
-    chunks: UploadChunk[];
-    totalBytes: number;
-    abortControllers: (() => void)[];
-    onProgress: (progress: ChunkProgress) => void;
-    setUploadedBytes: (bytes: number) => void;
-    setError: () => void;
+    chunk: UploadChunk
+    hash: string
+    file: File
+    totalChunks: number
+    chunks: UploadChunk[]
+    totalBytes: number
+    abortControllers: (() => void)[]
+    onProgress: (progress: ChunkProgress) => void
+    setUploadedBytes: (bytes: number) => void
+    setError: () => void
   }): Promise<void> {
     return new Promise<void>((resolve, reject) => {
+      let settled = false
+      const resolveOnce = () => {
+        if (settled) return
+        settled = true
+        resolve()
+      }
+      const rejectOnce = (error: unknown) => {
+        if (settled) return
+        settled = true
+        ctx.setError()
+        reject(error instanceof Error ? error : new Error(String(error)))
+      }
       const requestOptions: UploadRequestOptions = {
         action: options.action.value,
         headers: options.headers.value,
@@ -116,86 +130,100 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
           /* 分片内部进度可选 */
         },
         onSuccess: () => {
-          ctx.chunk.uploaded = true;
-          ctx.setUploadedBytes(ctx.chunk.size);
+          if (settled) return
+          ctx.chunk.uploaded = true
+          ctx.setUploadedBytes(ctx.chunk.size)
           ctx.onProgress({
-            uploadedChunks: ctx.chunks.filter((c) => c.uploaded).length,
+            uploadedChunks: ctx.chunks.filter(c => c.uploaded).length,
             totalChunks: ctx.totalChunks,
             uploadedBytes: ctx.chunks
-              .filter((c) => c.uploaded)
+              .filter(c => c.uploaded)
               .reduce((sum, c) => sum + c.size, 0),
             totalBytes: ctx.totalBytes,
-          });
-          resolve();
+          })
+          resolveOnce()
         },
-        onError: (err) => {
-          ctx.setError();
-          reject(err);
-        },
-      };
+        onError: rejectOnce,
+      }
 
-      const req = options.customRequest?.value
-        ? options.customRequest.value(requestOptions)
-        : defaultUploadRequest(requestOptions);
-      ctx.abortControllers.push(req.abort);
-    });
+      try {
+        const req = options.customRequest?.value
+          ? options.customRequest.value(requestOptions)
+          : defaultUploadRequest(requestOptions)
+        ctx.abortControllers.push(req.abort)
+      } catch (error) {
+        rejectOnce(error)
+      }
+    })
   }
 
   /**
    * 执行分片上传
    */
+  // eslint-disable-next-line complexity -- 分片上传状态机集中处理暂停、取消、恢复和合并。
   async function uploadChunks(params: {
-    uid: string;
-    file: File;
-    hash: string;
-    onProgress: (progress: ChunkProgress) => void;
-    onSuccess: (response: any) => void;
-    onError: (error: Error) => void;
-    isPaused: () => boolean;
+    uid: string
+    file: File
+    hash: string
+    onProgress: (progress: ChunkProgress) => void
+    onSuccess: (response: any) => void
+    onError: (error: Error) => void
+    isPaused: () => boolean
   }) {
-    const { uid, file, hash, onProgress, onSuccess, onError, isPaused } =
-      params;
-    const chunks = createChunks(file);
-    const totalChunks = chunks.length;
-    const totalBytes = file.size;
-    let uploadedBytes = 0;
+    const { uid, file, hash, onProgress, onSuccess, onError, isPaused } = params
+    const version = (uploadVersions.get(uid) ?? 0) + 1
+    uploadVersions.set(uid, version)
+    cancelledUploads.delete(uid)
+    const isCancelled = () =>
+      cancelledUploads.has(uid) || uploadVersions.get(uid) !== version
+    const chunks = createChunks(file)
+    const totalChunks = chunks.length
+    const totalBytes = file.size
+    let uploadedBytes = 0
 
     // 查询已上传分片（断点续传）
-    await queryExistingChunks(hash, chunks);
+    await queryExistingChunks(hash, chunks)
+    if (isCancelled() || isPaused()) return
     uploadedBytes = chunks
-      .filter((c) => c.uploaded)
-      .reduce((sum, c) => sum + c.size, 0);
+      .filter(c => c.uploaded)
+      .reduce((sum, c) => sum + c.size, 0)
 
     // 初始进度
     onProgress({
-      uploadedChunks: chunks.filter((c) => c.uploaded).length,
+      uploadedChunks: chunks.filter(c => c.uploaded).length,
       totalChunks,
       uploadedBytes,
       totalBytes,
-    });
+    })
 
     // 过滤待上传分片
-    const pendingChunks = chunks.filter((c) => !c.uploaded);
+    const pendingChunks = chunks.filter(c => !c.uploaded)
 
     if (pendingChunks.length === 0) {
       // 全部已上传，直接合并
-      await mergeAndFinish(hash, file.name, totalChunks, onSuccess, onError);
-      return;
+      if (!isCancelled()) {
+        await mergeAndFinish(hash, file.name, totalChunks, onSuccess, onError)
+      }
+      return
     }
 
     // 并发控制上传
-    const abortControllers: (() => void)[] = [];
-    abortMap.set(uid, abortControllers);
+    const abortControllers: (() => void)[] = []
+    abortMap.set(uid, abortControllers)
 
-    const concurrency = options.concurrency.value;
-    let current = 0;
-    let hasError = false;
+    const concurrency = Math.max(
+      1,
+      Math.trunc(Number(options.concurrency.value) || 1)
+    )
+    let current = 0
+    let hasError = false
 
     /** 上传下一个分片 */
     async function uploadNext(): Promise<void> {
       while (current < pendingChunks.length && !hasError && !isPaused()) {
-        const chunk = pendingChunks[current++];
+        const chunk = pendingChunks[current++]
 
+        // eslint-disable-next-line no-await-in-loop -- 每个 worker 必须顺序认领并上传分片。
         await uploadSingleChunk({
           chunk,
           hash,
@@ -204,34 +232,47 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
           chunks,
           totalBytes,
           abortControllers,
-          onProgress,
+          onProgress: progress => {
+            if (!isCancelled()) onProgress(progress)
+          },
           setUploadedBytes: (bytes: number) => {
-            uploadedBytes += bytes;
+            uploadedBytes += bytes
           },
           setError: () => {
-            hasError = true;
+            hasError = true
           },
-        });
+        })
       }
     }
 
     // 启动并发池
     const pool = Array.from(
       { length: Math.min(concurrency, pendingChunks.length) },
-      () => uploadNext(),
-    );
+      () => uploadNext()
+    )
 
     try {
-      await Promise.all(pool);
+      const results = await Promise.allSettled(pool)
+      const rejected = results.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      )
 
-      if (!hasError && !isPaused()) {
+      if (rejected && !isCancelled()) {
+        onError(
+          rejected.reason instanceof Error
+            ? rejected.reason
+            : new Error(String(rejected.reason))
+        )
+      } else if (!hasError && !isPaused() && !isCancelled()) {
         // 全部分片完成 → 合并
-        await mergeAndFinish(hash, file.name, totalChunks, onSuccess, onError);
+        await mergeAndFinish(hash, file.name, totalChunks, onSuccess, onError)
       }
-    } catch (err) {
-      onError(err instanceof Error ? err : new Error(String(err)));
     } finally {
-      abortMap.delete(uid);
+      if (uploadVersions.get(uid) === version) {
+        abortMap.delete(uid)
+        cancelledUploads.delete(uid)
+      }
     }
   }
 
@@ -241,37 +282,40 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     filename: string,
     totalChunks: number,
     onSuccess: (response: any) => void,
-    onError: (error: Error) => void,
+    onError: (error: Error) => void
   ) {
     if (options.mergeChunks?.value) {
       try {
         const result = await options.mergeChunks.value(
           hash,
           filename,
-          totalChunks,
-        );
-        onSuccess(result);
+          totalChunks
+        )
+        onSuccess(result)
       } catch (err) {
-        onError(err instanceof Error ? err : new Error("分片合并失败"));
+        onError(err instanceof Error ? err : new Error('分片合并失败'))
       }
     } else {
-      onSuccess({ message: "分片上传完成（未配置合并函数）" });
+      onSuccess({ message: '分片上传完成（未配置合并函数）' })
     }
   }
 
   /** 中止指定文件的分片上传 */
   function abortUpload(uid: string) {
-    const controllers = abortMap.get(uid);
-    controllers?.forEach((abort) => abort());
-    abortMap.delete(uid);
+    cancelledUploads.add(uid)
+    uploadVersions.set(uid, (uploadVersions.get(uid) ?? 0) + 1)
+    const controllers = abortMap.get(uid)
+    controllers?.forEach(abort => abort())
+    abortMap.delete(uid)
   }
 
   /** 中止所有 */
   function abortAll() {
-    abortMap.forEach((controllers) => {
-      controllers.forEach((abort) => abort());
-    });
-    abortMap.clear();
+    abortMap.forEach((controllers, uid) => {
+      cancelledUploads.add(uid)
+      controllers.forEach(abort => abort())
+    })
+    abortMap.clear()
   }
 
   return {
@@ -279,59 +323,62 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     uploadChunks,
     abortUpload,
     abortAll,
-  };
+  }
 }
 
 /** 默认 XMLHttpRequest 上传实现 */
 function defaultUploadRequest(options: UploadRequestOptions) {
-  const xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest()
 
-  xhr.open("POST", options.action);
+  xhr.open('POST', options.action)
 
   // 设置请求头
   if (options.headers) {
     Object.entries(options.headers).forEach(([key, value]) => {
-      xhr.setRequestHeader(key, value);
-    });
+      xhr.setRequestHeader(key, value)
+    })
   }
 
   // 上传进度
-  xhr.upload.addEventListener("progress", (e) => {
+  xhr.upload.addEventListener('progress', e => {
     if (e.lengthComputable) {
-      options.onProgress?.(Math.round((e.loaded / e.total) * 100));
+      options.onProgress?.(Math.round((e.loaded / e.total) * 100))
     }
-  });
+  })
 
-  xhr.addEventListener("load", () => {
+  xhr.addEventListener('load', () => {
     if (xhr.status >= 200 && xhr.status < 300) {
-      let response: any;
+      let response: any
       try {
-        response = JSON.parse(xhr.responseText);
+        response = JSON.parse(xhr.responseText)
       } catch {
-        response = xhr.responseText;
+        response = xhr.responseText
       }
-      options.onSuccess?.(response);
+      options.onSuccess?.(response)
     } else {
-      options.onError?.(new Error(`上传失败: HTTP ${xhr.status}`));
+      options.onError?.(new Error(`上传失败: HTTP ${xhr.status}`))
     }
-  });
+  })
 
-  xhr.addEventListener("error", () => {
-    options.onError?.(new Error("网络错误"));
-  });
+  xhr.addEventListener('error', () => {
+    options.onError?.(new Error('网络错误'))
+  })
+  xhr.addEventListener('abort', () => {
+    options.onError?.(new DOMException('上传已取消', 'AbortError'))
+  })
 
-  const formData = new FormData();
-  formData.append("file", options.file, options.filename);
+  const formData = new FormData()
+  formData.append('file', options.file, options.filename)
 
   if (options.data) {
     Object.entries(options.data).forEach(([key, value]) => {
-      formData.append(key, String(value));
-    });
+      formData.append(key, String(value))
+    })
   }
 
-  xhr.send(formData);
+  xhr.send(formData)
 
   return {
     abort: () => xhr.abort(),
-  };
+  }
 }

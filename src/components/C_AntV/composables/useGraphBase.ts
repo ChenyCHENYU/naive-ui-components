@@ -1,29 +1,35 @@
-import { Graph } from "@antv/x6";
-import { ref, watch, nextTick, onUnmounted } from "vue";
-import type { ComputedRef, Ref } from "vue";
+import { Graph } from '@antv/x6'
+import {
+  ref,
+  watch,
+  nextTick,
+  onUnmounted,
+  type ComputedRef,
+  type Ref,
+} from 'vue'
 
 /**
  * 获取主题相关的颜色配置
  */
 function getThemeColors(isDark: boolean) {
   return {
-    background: isDark ? "#18181c" : "#f5f5f5",
-    gridPrimary: isDark ? "rgba(255, 255, 255, 0.08)" : "#eee",
-    gridSecondary: isDark ? "rgba(255, 255, 255, 0.04)" : "#ddd",
-  };
+    background: isDark ? '#18181c' : '#f5f5f5',
+    gridPrimary: isDark ? 'rgba(255, 255, 255, 0.08)' : '#eee',
+    gridSecondary: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ddd',
+  }
 }
 
 /**
  * 默认的图表配置选项
  */
 function getDefaultOptions(isDark: boolean = false) {
-  const colors = getThemeColors(isDark);
+  const colors = getThemeColors(isDark)
 
   return {
     background: { color: colors.background },
     grid: {
       visible: true,
-      type: "doubleMesh",
+      type: 'doubleMesh',
       args: [
         { color: colors.gridPrimary, thickness: 1 },
         { color: colors.gridSecondary, thickness: 1, factor: 4 },
@@ -32,7 +38,7 @@ function getDefaultOptions(isDark: boolean = false) {
     mousewheel: {
       enabled: true,
       zoomAtMousePosition: true,
-      modifiers: "ctrl",
+      modifiers: 'ctrl',
       minScale: 0.5,
       maxScale: 2,
     },
@@ -47,18 +53,18 @@ function getDefaultOptions(isDark: boolean = false) {
     snapline: true,
     keyboard: true,
     clipboard: true,
-  };
+  }
 }
 
 /**
  * 获取容器的尺寸
  */
 function getContainerSize(container: HTMLElement | undefined) {
-  if (!container) return { width: 0, height: 0 };
+  if (!container) return { width: 0, height: 0 }
   return {
     width: container.clientWidth || container.offsetWidth || 800,
     height: container.clientHeight || container.offsetHeight || 600,
-  };
+  }
 }
 
 /**
@@ -66,44 +72,44 @@ function getContainerSize(container: HTMLElement | undefined) {
  */
 export function useGraphBase(
   containerRef: Ref<HTMLElement | undefined>,
-  isDarkRef?: Ref<boolean> | ComputedRef<boolean>,
+  isDarkRef?: Ref<boolean> | ComputedRef<boolean>
 ) {
-  const MAX_RETRY = 10;
-  let retryCount = 0;
+  const MAX_RETRY = 10
+  let retryCount = 0
 
-  const graph: Ref<any> = ref(null);
-  const loading = ref(false);
+  const graph: Ref<any> = ref(null)
+  const loading = ref(false)
 
   /**
    * 初始化图表实例
    */
   const initGraph = async (options: any = {}) => {
-    await nextTick();
-    loading.value = true;
+    await nextTick()
+    loading.value = true
 
     try {
-      if (!containerRef.value) return;
+      if (!containerRef.value) return
 
       // 销毁旧实例
       if (graph.value) {
-        graph.value.dispose();
-        graph.value = null;
+        graph.value.dispose()
+        graph.value = null
       }
 
-      const { width, height } = getContainerSize(containerRef.value);
+      const { width, height } = getContainerSize(containerRef.value)
 
       // 容器尺寸为0，延迟重试（最多 10 次）
       if (width === 0 || height === 0) {
-        retryCount++;
+        retryCount++
         if (retryCount < MAX_RETRY) {
-          setTimeout(() => initGraph(options), 100);
+          setTimeout(() => initGraph(options), 100)
         }
-        return;
+        return
       }
-      retryCount = 0;
+      retryCount = 0
 
-      const isDark = isDarkRef?.value ?? false;
-      const defaultOptions = getDefaultOptions(isDark);
+      const isDark = isDarkRef?.value ?? false
+      const defaultOptions = getDefaultOptions(isDark)
 
       const finalOptions = {
         container: containerRef.value,
@@ -111,42 +117,42 @@ export function useGraphBase(
         height,
         ...defaultOptions,
         ...options,
-      };
+      }
 
-      graph.value = new Graph(finalOptions);
+      graph.value = new Graph(finalOptions)
     } catch {
       // 初始化失败静默处理
     } finally {
-      loading.value = false;
+      loading.value = false
     }
-  };
+  }
 
   /**
    * 更新主题
    */
   function updateTheme(isDark: boolean) {
-    if (!graph.value) return;
+    if (!graph.value) return
 
-    const colors = getThemeColors(isDark);
+    const colors = getThemeColors(isDark)
 
     // 更新背景色
-    graph.value.drawBackground({ color: colors.background });
+    graph.value.drawBackground({ color: colors.background })
 
     // 更新网格颜色
     graph.value.drawGrid({
-      type: "doubleMesh",
+      type: 'doubleMesh',
       args: [
         { color: colors.gridPrimary, thickness: 1 },
         { color: colors.gridSecondary, thickness: 1, factor: 4 },
       ],
-    });
+    })
   }
 
   // 监听主题变化
   if (isDarkRef) {
-    watch(isDarkRef, (isDark) => {
-      updateTheme(isDark);
-    });
+    watch(isDarkRef, isDark => {
+      updateTheme(isDark)
+    })
   }
 
   /**
@@ -154,8 +160,8 @@ export function useGraphBase(
    */
   function destroyGraph() {
     if (graph.value) {
-      graph.value.dispose();
-      graph.value = null;
+      graph.value.dispose()
+      graph.value = null
     }
   }
 
@@ -163,21 +169,21 @@ export function useGraphBase(
    * 将图表内容居中显示
    */
   function centerContent() {
-    graph.value?.centerContent();
+    graph.value?.centerContent()
   }
 
   /**
    * 自适应缩放图表以适应容器
    */
   function zoomToFit() {
-    graph.value?.zoomToFit({ padding: 20, maxScale: 1 });
+    graph.value?.zoomToFit({ padding: 20, maxScale: 1 })
   }
 
   /**
    * 按指定因子缩放图表
    */
   function zoom(factor: number) {
-    graph.value?.zoom(factor);
+    graph.value?.zoom(factor)
   }
 
   /**
@@ -185,13 +191,13 @@ export function useGraphBase(
    */
   function resizeGraph() {
     if (graph.value && containerRef.value) {
-      const { width, height } = getContainerSize(containerRef.value);
-      graph.value.resize(width, height);
+      const { width, height } = getContainerSize(containerRef.value)
+      graph.value.resize(width, height)
     }
   }
 
   // 组件卸载时自动销毁图表
-  onUnmounted(destroyGraph);
+  onUnmounted(destroyGraph)
 
   return {
     graph,
@@ -203,5 +209,5 @@ export function useGraphBase(
     zoom,
     resizeGraph,
     updateTheme,
-  };
+  }
 }

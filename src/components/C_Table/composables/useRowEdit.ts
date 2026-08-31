@@ -6,36 +6,14 @@
 
 import { ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui/es'
-import type { FormItemRule } from 'naive-ui/es/form'
 import type { DataRecord, TableColumn } from '../types'
+import { cloneData } from '../../../utils/data'
+import { validateTableRule } from './tableValidation'
 
 /** 行级校验错误 */
 export interface RowValidationError {
   field: string
   message: string
-}
-
-/**
- * 执行单条校验规则，返回错误消息或 null
- */
-async function runRule(
-  rule: FormItemRule,
-  value: unknown,
-  label: string
-): Promise<string | null> {
-  const ruleMsg =
-    typeof rule.message === 'function' ? rule.message() : rule.message
-  if (rule.required && (value == null || value === '')) {
-    return ruleMsg || `${label}不能为空`
-  }
-  if (rule.validator) {
-    try {
-      await rule.validator(rule as any, value, () => {}, {}, {})
-    } catch (e: any) {
-      return e?.message || `${label}校验失败`
-    }
-  }
-  return null
 }
 
 /**
@@ -45,7 +23,7 @@ export interface RowEditOptions {
   data: () => DataRecord[]
   rowKey: (row: DataRecord) => DataTableRowKey
   onSave?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
-  onCancel?: (rowData: DataRecord, rowIndex: number) => void
+  onCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
   /** 列配置（用于提取校验规则） */
   columns?: () => TableColumn[]
 }
@@ -56,6 +34,7 @@ export interface RowEditOptions {
 export function useRowEdit(options: RowEditOptions) {
   const editingRowKey = ref<DataTableRowKey | null>(null)
   const editingData = ref<Record<string, DataRecord>>({})
+  const isSaving = ref(false)
   /** 校验错误信息 */
   const validationErrors = ref<RowValidationError[]>([])
 
@@ -82,17 +61,19 @@ export function useRowEdit(options: RowEditOptions) {
    */
   const startEditRow = (rowKey: DataTableRowKey) => {
     const rowData = findRowData(rowKey)
-    if (!rowData) return
+    if (!rowData || isSaving.value) return false
 
     editingRowKey.value = rowKey
-    editingData.value[rowKey as string] = { ...rowData }
+    editingData.value = { [String(rowKey)]: cloneData(rowData) }
+    validationErrors.value = []
+    return true
   }
 
   /**
    * 取消当前行编辑，调用取消回调并清理编辑状态
    */
   const cancelEditRow = async () => {
-    if (!editingRowKey.value) return
+    if (editingRowKey.value === null || isSaving.value) return
 
     const currentData = options.data()
     if (!currentData || !Array.isArray(currentData)) return
@@ -114,22 +95,24 @@ export function useRowEdit(options: RowEditOptions) {
    */
   const validateRow = async (): Promise<boolean> => {
     validationErrors.value = []
-    if (!editingRowKey.value) return true
+    if (editingRowKey.value === null) return true
 
     const columns = options.columns?.() || []
-    const rowData = editingData.value[editingRowKey.value as string]
+    const rowData = editingData.value[String(editingRowKey.value)]
     if (!rowData) return true
 
     /* 收集每列的首条校验任务，并行执行 */
     const tasks = columns
       .filter(col => col.editable !== false && col.editProps?.rules?.length)
       .map(col => {
-        const key = (col as any).key as string
+        const key = typeof col.key === 'string' ? col.key : ''
         if (!key) return null
-        const label = (col as any).title || key
+        const label = col.title || key
         const value = rowData[key]
         return Promise.all(
-          col.editProps!.rules!.map(rule => runRule(rule, value, label))
+          col.editProps!.rules!.map(rule =>
+            validateTableRule(rule, value, label, rowData)
+          )
         ).then(results => {
           const firstError = results.find(Boolean)
           return firstError ? { field: key, message: firstError } : null
@@ -148,7 +131,7 @@ export function useRowEdit(options: RowEditOptions) {
    * 保存当前行编辑，调用保存回调并清理编辑状态
    */
   const saveEditRow = async () => {
-    if (!editingRowKey.value) return
+    if (editingRowKey.value === null || isSaving.value) return
 
     // 执行校验
     const isValid = await validateRow()
@@ -164,13 +147,17 @@ export function useRowEdit(options: RowEditOptions) {
 
     if (rowIndex === -1) return
 
-    const updatedData = editingData.value[rowKey as string]
+    const updatedData = editingData.value[String(rowKey)]
     if (!updatedData) return
 
-    await options.onSave?.(updatedData, rowIndex)
-
-    editingRowKey.value = null
-    editingData.value = {}
+    isSaving.value = true
+    try {
+      await options.onSave?.(cloneData(updatedData), rowIndex)
+      editingRowKey.value = null
+      editingData.value = {}
+    } finally {
+      isSaving.value = false
+    }
 
     return { updatedData, rowIndex }
   }
@@ -179,7 +166,8 @@ export function useRowEdit(options: RowEditOptions) {
    * 获取指定行的编辑中数据
    */
   const getEditingRowData = (rowKey: DataTableRowKey) => {
-    return editingData.value[rowKey as string]
+    if (editingRowKey.value !== rowKey) return undefined
+    return editingData.value[String(rowKey)]
   }
 
   /**
@@ -190,12 +178,15 @@ export function useRowEdit(options: RowEditOptions) {
     field: string,
     value: unknown
   ) => {
-    if (!editingData.value[rowKey as string]) return
-    editingData.value[rowKey as string][field] = value
+    const rowData = getEditingRowData(rowKey)
+    if (!rowData) return
+    rowData[field] = cloneData(value)
   }
 
   return {
     editingRowKey,
+    editingData,
+    isSaving,
     isEditingRow,
     startEditRow,
     cancelEditRow,

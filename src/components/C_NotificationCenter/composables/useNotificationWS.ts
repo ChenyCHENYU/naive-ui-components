@@ -6,18 +6,18 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, readonly, onBeforeUnmount } from "vue";
+import { ref, readonly, onBeforeUnmount } from 'vue'
 import type {
   NotificationWSConfig,
   WSConnectionStatus,
   WSNotificationPayload,
-} from "../types";
+} from '../types'
 import {
   DEFAULT_WS_RECONNECT_INTERVAL,
   DEFAULT_WS_MAX_RECONNECT,
   DEFAULT_WS_HEARTBEAT_INTERVAL,
   DEFAULT_WS_HEARTBEAT_MESSAGE,
-} from "../constants";
+} from '../constants'
 
 /**
  * WebSocket 连接管理
@@ -27,104 +27,121 @@ import {
  */
 export function useNotificationWS(
   onMessage: (payload: WSNotificationPayload) => void,
-  onStatusChange?: (status: WSConnectionStatus) => void,
+  onStatusChange?: (status: WSConnectionStatus) => void
 ) {
   /** 连接状态 */
-  const status = ref<WSConnectionStatus>("disconnected");
+  const status = ref<WSConnectionStatus>('disconnected')
 
   /** WebSocket 实例 */
-  let ws: WebSocket | null = null;
+  let ws: WebSocket | null = null
   /** 重连计数器 */
-  let reconnectCount = 0;
+  let reconnectCount = 0
   /** 重连定时器 */
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   /** 心跳定时器 */
-  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   /** 当前配置 */
-  let currentConfig: NotificationWSConfig | null = null;
+  let currentConfig: NotificationWSConfig | null = null
+  /** 连接代次，用于忽略旧 socket 的延迟事件 */
+  let connectionVersion = 0
 
   /**
    * 更新连接状态
    */
   function setStatus(s: WSConnectionStatus) {
-    status.value = s;
-    onStatusChange?.(s);
+    status.value = s
+    onStatusChange?.(s)
   }
 
   /**
    * 建立连接
    */
   function connect(config: NotificationWSConfig) {
-    currentConfig = config;
-    reconnectCount = 0;
-    createConnection(config);
+    currentConfig = config
+    reconnectCount = 0
+    createConnection(config)
   }
 
   /**
    * 创建 WebSocket 连接
    */
   function createConnection(config: NotificationWSConfig) {
-    cleanup();
+    const version = ++connectionVersion
+    cleanup()
 
-    const url = buildUrl(config);
-    setStatus("connecting");
+    const url = buildUrl(config)
+    setStatus('connecting')
 
     try {
-      ws = new WebSocket(url);
+      ws = new WebSocket(url)
     } catch {
-      setStatus("disconnected");
-      scheduleReconnect(config);
-      return;
+      setStatus('disconnected')
+      scheduleReconnect(config)
+      return
     }
 
-    ws.addEventListener("open", () => {
-      setStatus("connected");
-      reconnectCount = 0;
-      startHeartbeat(config);
-    });
+    const socket = ws
+    socket.addEventListener('open', () => {
+      if (version !== connectionVersion || socket !== ws) return
+      setStatus('connected')
+      reconnectCount = 0
+      startHeartbeat(config)
+    })
 
-    ws.addEventListener("message", (event) => {
-      handleMessage(event.data);
-    });
+    socket.addEventListener('message', event => {
+      if (version !== connectionVersion || socket !== ws) return
+      handleMessage(event.data)
+    })
 
-    ws.addEventListener("close", () => {
-      stopHeartbeat();
-      setStatus("disconnected");
+    socket.addEventListener('close', () => {
+      if (version !== connectionVersion || socket !== ws) return
+      ws = null
+      stopHeartbeat()
+      setStatus('disconnected')
 
       if (config.autoReconnect !== false) {
-        scheduleReconnect(config);
+        scheduleReconnect(config)
       }
-    });
+    })
 
-    ws.addEventListener("error", () => {
+    socket.addEventListener('error', () => {
       /* error 事件后通常紧接 close 事件，交由 close 处理重连 */
-    });
+    })
   }
 
   /**
    * 构建带 token 的 WebSocket URL
    */
   function buildUrl(config: NotificationWSConfig): string {
-    const token = config.getToken?.();
+    const token = config.getToken?.()
     if (token) {
-      const separator = config.url.includes("?") ? "&" : "?";
-      return `${config.url}${separator}token=${encodeURIComponent(token)}`;
+      const separator = config.url.includes('?') ? '&' : '?'
+      return `${config.url}${separator}token=${encodeURIComponent(token)}`
     }
-    return config.url;
+    return config.url
   }
 
   /**
    * 处理接收到的消息
    */
   function handleMessage(raw: string | ArrayBuffer | Blob) {
-    if (typeof raw !== "string") return;
+    if (typeof raw !== 'string') return
 
     /* 过滤心跳响应 */
-    if (raw === "pong") return;
+    if (raw === 'pong') return
 
     try {
-      const payload = JSON.parse(raw) as WSNotificationPayload;
-      onMessage(payload);
+      const payload: unknown = JSON.parse(raw)
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        ['new_message', 'read_sync', 'count_update'].includes(
+          String((payload as Record<string, unknown>).type)
+        ) &&
+        'data' in payload
+      ) {
+        onMessage(payload as WSNotificationPayload)
+      }
     } catch {
       /* 非标准 JSON 消息，忽略 */
     }
@@ -134,31 +151,47 @@ export function useNotificationWS(
    * 调度重连
    */
   function scheduleReconnect(config: NotificationWSConfig) {
-    const maxAttempts = config.maxReconnectAttempts ?? DEFAULT_WS_MAX_RECONNECT;
-    if (reconnectCount >= maxAttempts) return;
+    if (currentConfig !== config || reconnectTimer) return
+    const maxAttempts = Math.max(
+      0,
+      Math.trunc(config.maxReconnectAttempts ?? DEFAULT_WS_MAX_RECONNECT)
+    )
+    if (reconnectCount >= maxAttempts) return
 
-    reconnectCount++;
-    setStatus("reconnecting");
+    reconnectCount++
+    setStatus('reconnecting')
 
-    const interval = config.reconnectInterval ?? DEFAULT_WS_RECONNECT_INTERVAL;
+    const baseInterval = Math.max(
+      0,
+      config.reconnectInterval ?? DEFAULT_WS_RECONNECT_INTERVAL
+    )
+    const interval = Math.min(60_000, baseInterval * 2 ** (reconnectCount - 1))
+    const version = connectionVersion
     reconnectTimer = setTimeout(() => {
-      createConnection(config);
-    }, interval);
+      reconnectTimer = null
+      if (version !== connectionVersion || currentConfig !== config) return
+      createConnection(config)
+    }, interval)
   }
 
   /**
    * 启动心跳
    */
   function startHeartbeat(config: NotificationWSConfig) {
-    const interval = config.heartbeatInterval ?? DEFAULT_WS_HEARTBEAT_INTERVAL;
-    if (interval <= 0) return;
+    stopHeartbeat()
+    const interval = config.heartbeatInterval ?? DEFAULT_WS_HEARTBEAT_INTERVAL
+    if (interval <= 0) return
 
-    const message = config.heartbeatMessage ?? DEFAULT_WS_HEARTBEAT_MESSAGE;
+    const message = config.heartbeatMessage ?? DEFAULT_WS_HEARTBEAT_MESSAGE
     heartbeatTimer = setInterval(() => {
       if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(message);
+        try {
+          ws.send(message)
+        } catch {
+          ws.close()
+        }
       }
-    }, interval);
+    }, interval)
   }
 
   /**
@@ -166,8 +199,8 @@ export function useNotificationWS(
    */
   function stopHeartbeat() {
     if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
+      clearInterval(heartbeatTimer)
+      heartbeatTimer = null
     }
   }
 
@@ -175,14 +208,14 @@ export function useNotificationWS(
    * 清理资源
    */
   function cleanup() {
-    stopHeartbeat();
+    stopHeartbeat()
     if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
     }
     if (ws) {
-      ws.close();
-      ws = null;
+      ws.close()
+      ws = null
     }
   }
 
@@ -190,10 +223,11 @@ export function useNotificationWS(
    * 断开连接
    */
   function disconnect() {
-    currentConfig = null;
-    reconnectCount = Infinity;
-    cleanup();
-    setStatus("disconnected");
+    currentConfig = null
+    connectionVersion++
+    reconnectCount = 0
+    cleanup()
+    setStatus('disconnected')
   }
 
   /**
@@ -201,13 +235,17 @@ export function useNotificationWS(
    */
   function reconnect() {
     if (currentConfig) {
-      reconnectCount = 0;
-      createConnection(currentConfig);
+      reconnectCount = 0
+      createConnection(currentConfig)
     }
   }
 
   /* 组件卸载时自动清理 */
-  onBeforeUnmount(cleanup);
+  onBeforeUnmount(() => {
+    currentConfig = null
+    connectionVersion++
+    cleanup()
+  })
 
   return {
     /** WebSocket 连接状态 */
@@ -215,5 +253,5 @@ export function useNotificationWS(
     connect,
     disconnect,
     reconnect,
-  };
+  }
 }

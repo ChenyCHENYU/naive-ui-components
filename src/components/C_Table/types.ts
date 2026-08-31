@@ -26,12 +26,7 @@ export type EditType =
   | 'email'
   | 'mobile'
 export type ButtonType =
-  | 'default'
-  | 'primary'
-  | 'info'
-  | 'success'
-  | 'warning'
-  | 'error'
+  'default' | 'primary' | 'info' | 'success' | 'warning' | 'error'
 export type ParentChildLinkMode = 'strict' | 'loose'
 
 /* ================= 分页相关类型 ================= */
@@ -211,8 +206,7 @@ interface BuiltInTableColumn<
 }
 
 export type TableColumn<T extends DataRecord = DataRecord> =
-  | NormalTableColumn<T>
-  | BuiltInTableColumn<T>
+  NormalTableColumn<T> | BuiltInTableColumn<T>
 
 /* ================= 选择和展开功能类型 ================= */
 export interface ChildSelectionState {
@@ -345,12 +339,14 @@ export interface TableEditEvents<T extends DataRecord = DataRecord> {
   'update:data': [data: T[]]
   save: [rowData: T, rowIndex: number, columnKey?: string]
   cancel: [rowData: T, rowIndex: number]
+  'edit-error': [error: unknown]
 }
 
 export interface TableEmits<T extends DataRecord = DataRecord>
   extends TableExpandEvents<T>, TableSelectionEvents<T>, TableEditEvents<T> {
   'pagination-change': [page: number, pageSize: number]
   'row-delete': [deletedRow: T, index: number]
+  'batch-action-error': [error: unknown, actionKey: string]
 }
 
 /* ================= 实例方法系统 ================= */
@@ -372,7 +368,7 @@ export interface TableExpandMethods {
 }
 
 export interface TableSelectionMethods<T extends DataRecord = DataRecord> {
-  selectRow: (rowKey: DataTableRowKey) => void
+  selectRow: (rowKey: DataTableRowKey) => boolean | void
   unselectRow: (rowKey: DataTableRowKey) => void
   selectAll: () => void
   clearSelection: () => void

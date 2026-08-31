@@ -8,38 +8,67 @@
 <template>
   <div
     class="c-markdown-wrapper"
-    :class="{ 'is-dark': isDark }"
+    :class="{ 'is-dark': isDark, 'toc-left': tocNavPosition === 'left' }"
   >
-    <VMdEditor
+    <MdEditor
+      :id="editorId"
       ref="editorRef"
       :model-value="modelValue"
       :height="height"
       :placeholder="placeholder"
-      :toolbar="toolbar"
-      :mode="mode"
-      :upload-image-config="computedUploadImageConfig"
-      :toc-nav-position="tocNavPosition"
-      :default-fullscreen="defaultFullscreen"
-      :autofocus="autofocus"
-      :include-level="includeLevel"
-      :left-toolbar="leftToolbar"
-      :right-toolbar="rightToolbar"
-      :default-show-toc="true"
+      :theme="isDark ? 'dark' : 'light'"
+      :preview="effectiveMode !== 'edit'"
+      :preview-only="effectiveMode === 'preview'"
+      :read-only="disabled"
+      :auto-focus="autofocus"
+      :max-length="maxLength"
+      :toolbars="resolvedToolbars"
+      :footers="showWordCount ? ['markdownTotal', '=', 'scrollSwitch'] : []"
+      catalog-layout="flat"
+      :catalog-max-depth="catalogMaxDepth"
+      :no-upload-img="!hasUploadHandler"
+      :sanitize="sanitizeRichHtml"
+      :format-copied-text="handleCopiedText"
       @update:model-value="handleInput"
-      @change="handleChange"
-      @save="handleSave"
-      @upload-image="handleUploadImage"
-      @fullscreen-change="handleFullscreenChange"
-      @copy-code-success="handleCopyCodeSuccess"
+      @on-html-changed="handleHtmlChanged"
+      @on-save="handleSave"
+      @on-upload-img="handleUploadImage"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, onMounted } from 'vue'
-  import VMdEditor from '@kangc/v-md-editor'
+  import {
+    ref,
+    computed,
+    watch,
+    onMounted,
+    onBeforeUnmount,
+    getCurrentInstance,
+    type Component,
+  } from 'vue'
+  import { MdEditor as MdEditorRuntime } from 'md-editor-v3'
+  import 'md-editor-v3/lib/style.css'
+  import { sanitizeRichHtml } from '../../utils/html'
 
   defineOptions({ name: 'C_Markdown' })
+
+  type ToolbarName = string | number
+  interface MarkdownEditorExpose {
+    on(eventName: 'fullscreen', callback: (status: boolean) => void): void
+    toggleFullscreen(status?: boolean): void
+    insert(
+      generate: (selectedText: string) => {
+        targetValue: string
+        select?: boolean
+        deviationStart?: number
+        deviationEnd?: number
+      }
+    ): void
+    focus(): void
+  }
+
+  const MdEditor = MdEditorRuntime as unknown as Component
 
   export type InsertImageFunction = (config: {
     url: string
@@ -50,15 +79,17 @@
 
   interface Props {
     modelValue?: string
+    /** SSR 或同页多实例时建议显式传入稳定 ID */
+    editorId?: string
     height?: string | number
     disabled?: boolean
     placeholder?: string
     mode?: 'edit' | 'editable' | 'preview'
-    toolbar?: object
+    toolbar?: object | ToolbarName[]
     uploadImageConfig?: {
       accept?: string
       multiple?: boolean
-      [key: string]: any
+      [key: string]: unknown
     }
     tocNavPosition?: 'left' | 'right'
     defaultFullscreen?: boolean
@@ -111,22 +142,62 @@
   }
 
   const emit = defineEmits<Emits>()
+  const currentInstance = getCurrentInstance()
 
-  const editorRef = ref<any>(null)
+  const editorRef = ref<MarkdownEditorExpose>()
   const cachedHtml = ref('')
+  const latestText = ref(props.modelValue)
+  const instanceUid = currentInstance?.uid ?? 0
+
+  const editorId = computed(
+    () => props.editorId || `c-markdown-editor-${instanceUid}`
+  )
 
   const wordCount = computed(() => {
     return props.modelValue?.length || 0
   })
+  const effectiveMode = computed(() =>
+    props.disabled ? 'preview' : props.mode
+  )
+  const catalogMaxDepth = computed(() => {
+    const levels = props.includeLevel.filter(
+      level => Number.isInteger(level) && level >= 1 && level <= 6
+    )
+    return levels.length > 0 ? Math.max(...levels) : 6
+  })
 
-  const computedUploadImageConfig = computed(() => {
-    const defaultConfig = {
-      accept: 'image/*',
-      multiple: false,
-    }
-    return props.uploadImageConfig
-      ? { ...defaultConfig, ...props.uploadImageConfig }
-      : defaultConfig
+  const hasUploadHandler = computed(
+    () => typeof currentInstance?.vnode.props?.onUploadImage === 'function'
+  )
+
+  const TOOLBAR_NAME_MAP: Readonly<Record<string, ToolbarName | undefined>> = {
+    undo: 'revoke',
+    redo: 'next',
+    h: 'title',
+    bold: 'bold',
+    italic: 'italic',
+    strikethrough: 'strikeThrough',
+    quote: 'quote',
+    ul: 'unorderedList',
+    ol: 'orderedList',
+    table: 'table',
+    hr: 'horizontalLine',
+    link: 'link',
+    image: 'image',
+    code: 'code',
+    save: 'save',
+    preview: 'preview',
+    toc: 'catalog',
+    fullscreen: 'fullscreen',
+  }
+
+  const resolvedToolbars = computed<ToolbarName[]>(() => {
+    if (Array.isArray(props.toolbar)) return [...props.toolbar]
+    const names = `${props.leftToolbar} ${props.rightToolbar}`
+      .split(/[\s|]+/)
+      .map(name => TOOLBAR_NAME_MAP[name])
+      .filter((name): name is ToolbarName => name !== undefined)
+    return [...new Set(names)]
   })
 
   onMounted(() => {
@@ -150,38 +221,55 @@
       emit('max-length-exceeded', value.length, props.maxLength)
       return
     }
+    latestText.value = value
     emit('update:modelValue', value)
     if (props.showWordCount) {
       emit('word-count-change', value.length)
     }
   }
 
-  const handleChange = (text: string, html: string) => {
+  const handleHtmlChanged = (html: string) => {
     cachedHtml.value = html
-    emit('change', text, html)
+    emit('change', latestText.value, html)
     if (props.autoSave) {
-      autoSave(text)
+      autoSave(latestText.value)
     }
   }
 
-  const handleSave = (text: string, html: string) => {
-    emit('save', text, html)
+  const handleSave = async (text: string, html: Promise<string>) => {
+    emit('save', text, await html)
   }
 
   const handleUploadImage = (
-    event: Event,
-    insertImage: InsertImageFunction,
-    files: FileList
+    files: File[],
+    insertImages: (
+      urls: Array<{ url: string; alt: string; title: string }>
+    ) => void
   ) => {
-    emit('upload-image', event, insertImage, files)
+    const filteredFiles = files.filter(file =>
+      matchesAccept(file, props.uploadImageConfig?.accept)
+    )
+    const acceptedFiles = props.uploadImageConfig?.multiple
+      ? filteredFiles
+      : filteredFiles.slice(0, 1)
+    if (acceptedFiles.length === 0) return
+    const transfer = new DataTransfer()
+    acceptedFiles.forEach(file => transfer.items.add(file))
+    const insertImage: InsertImageFunction = config => {
+      insertImages([
+        {
+          url: config.url,
+          alt: config.desc ?? '',
+          title: config.desc ?? '',
+        },
+      ])
+    }
+    emit('upload-image', new Event('upload-image'), insertImage, transfer.files)
   }
 
-  const handleFullscreenChange = (isFullscreen: boolean) => {
-    emit('fullscreen-change', isFullscreen)
-  }
-
-  const handleCopyCodeSuccess = (text: string) => {
+  const handleCopiedText = (text: string): string => {
     emit('copy-code-success', text)
+    return text
   }
 
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -193,6 +281,10 @@
     }, props.autoSaveInterval)
   }
 
+  onBeforeUnmount(() => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  })
+
   const focus = () => {
     editorRef.value?.focus()
   }
@@ -203,10 +295,19 @@
 
   const insertText = (text: string) => {
     editorRef.value?.insert((selected: string) => ({
-      text: `${selected}${text}`,
-      selected: text,
+      targetValue: `${selected}${text}`,
+      select: true,
+      deviationStart: -text.length,
+      deviationEnd: 0,
     }))
   }
+
+  onMounted(() => {
+    editorRef.value?.on('fullscreen', isFullscreen => {
+      emit('fullscreen-change', isFullscreen)
+    })
+    if (props.defaultFullscreen) editorRef.value?.toggleFullscreen(true)
+  })
 
   defineExpose({
     focus,
@@ -214,6 +315,21 @@
     insertText,
     wordCount,
   })
+
+  function matchesAccept(file: File, accept?: string): boolean {
+    if (!accept?.trim()) return true
+    return accept
+      .split(',')
+      .map(rule => rule.trim().toLowerCase())
+      .filter(Boolean)
+      .some(rule => {
+        if (rule.startsWith('.')) return file.name.toLowerCase().endsWith(rule)
+        if (rule.endsWith('/*')) {
+          return file.type.toLowerCase().startsWith(rule.slice(0, -1))
+        }
+        return file.type.toLowerCase() === rule
+      })
+  }
 </script>
 
 <style lang="scss" scoped>

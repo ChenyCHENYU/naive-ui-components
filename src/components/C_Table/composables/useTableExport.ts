@@ -19,6 +19,8 @@ export interface ExportConfig {
   columnKeys?: string[]
   /** CSV 分隔符 */
   csvSeparator?: string
+  /** 阻止表格软件把用户文本识别为公式，默认开启 */
+  preventFormulaInjection?: boolean
   /** 全局格式化配置（用于 formatter） */
   formatterConfig?: FormatterConfig
 }
@@ -31,7 +33,7 @@ function getExportColumns(
   columnKeys?: string[]
 ): ColumnWithKey[] {
   return (columns as ColumnWithKey[]).filter(col => {
-    if (!col.key || col.key.startsWith('_')) return false
+    if (typeof col.key !== 'string' || col.key.startsWith('_')) return false
     if ((col as any).type === 'selection' || (col as any).type === 'expand')
       return false
     if (columnKeys?.length) return columnKeys.includes(col.key as string)
@@ -60,15 +62,32 @@ function getCellValue(
 /* ================= CSV 导出 ================= */
 
 /** 转义 CSV 单元格值 */
-function escapeCSV(value: string, separator: string): string {
+function escapeCSV(
+  value: string,
+  separator: string,
+  preventFormulaInjection: boolean
+): string {
+  const safeValue =
+    preventFormulaInjection && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
   if (
-    value.includes(separator) ||
-    value.includes('"') ||
-    value.includes('\n')
+    safeValue.includes(separator) ||
+    safeValue.includes('"') ||
+    safeValue.includes('\n') ||
+    safeValue.includes('\r')
   ) {
-    return `"${value.replace(/"/g, '""')}"`
+    return `"${safeValue.replace(/"/g, '""')}"`
   }
-  return value
+  return safeValue
+}
+
+function getSafeFilename(filename: string | undefined): string {
+  const normalized = [...(filename || 'export')]
+    .map(char =>
+      char.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(char) ? '_' : char
+    )
+    .join('')
+    .trim()
+  return normalized || 'export'
 }
 
 /** 导出 CSV 文件 */
@@ -78,16 +97,25 @@ function exportCSV(
   config: ExportConfig
 ): void {
   const sep = config.csvSeparator ?? ','
+  const preventFormulaInjection = config.preventFormulaInjection !== false
   const exportCols = getExportColumns(columns, config.columnKeys)
   const lines: string[] = []
 
   if (config.includeHeader !== false) {
-    lines.push(exportCols.map(col => escapeCSV(col.title ?? '', sep)).join(sep))
+    lines.push(
+      exportCols
+        .map(col => escapeCSV(col.title ?? '', sep, preventFormulaInjection))
+        .join(sep)
+    )
   }
 
   for (const row of data) {
     const cells = exportCols.map(col =>
-      escapeCSV(getCellValue(row, col, config.formatterConfig), sep)
+      escapeCSV(
+        getCellValue(row, col, config.formatterConfig),
+        sep,
+        preventFormulaInjection
+      )
     )
     lines.push(cells.join(sep))
   }
@@ -96,7 +124,7 @@ function exportCSV(
   const blob = new Blob(['\uFEFF' + lines.join('\n')], {
     type: 'text/csv;charset=utf-8;',
   })
-  downloadBlob(blob, `${config.filename || 'export'}.csv`)
+  downloadBlob(blob, `${getSafeFilename(config.filename)}.csv`)
 }
 
 /* ================= XLSX 导出 ================= */
@@ -109,25 +137,27 @@ async function exportXLSX(
 ): Promise<void> {
   const exportCols = getExportColumns(columns, config.columnKeys)
 
+  let XLSX: typeof import('xlsx')
   try {
-    const XLSX = await import('xlsx')
-
-    const headers = exportCols.map(col => col.title ?? col.key ?? '')
-    const rows = data.map(row =>
-      exportCols.map(col => getCellValue(row, col, config.formatterConfig))
-    )
-
-    const wsData = config.includeHeader !== false ? [headers, ...rows] : rows
-    const ws = XLSX.utils.aoa_to_sheet(wsData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-
-    XLSX.writeFile(wb, `${config.filename || 'export'}.xlsx`)
+    XLSX = await import('xlsx')
   } catch {
     // xlsx 未安装时降级到 CSV
     console.warn('[C_Table] xlsx 库未安装，已自动降级为 CSV 导出')
     exportCSV(data, columns, { ...config, format: 'csv' })
+    return
   }
+
+  const headers = exportCols.map(col => col.title ?? col.key ?? '')
+  const rows = data.map(row =>
+    exportCols.map(col => getCellValue(row, col, config.formatterConfig))
+  )
+
+  const wsData = config.includeHeader !== false ? [headers, ...rows] : rows
+  const ws = XLSX.utils.aoa_to_sheet(wsData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+
+  XLSX.writeFile(wb, `${getSafeFilename(config.filename)}.xlsx`)
 }
 
 /* ================= 下载工具 ================= */
@@ -142,7 +172,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 /* ================= 对外 API ================= */

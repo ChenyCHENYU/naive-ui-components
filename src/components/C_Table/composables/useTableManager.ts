@@ -4,7 +4,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { shallowRef, computed, nextTick } from 'vue'
+import { shallowRef, computed, toValue, type MaybeRefOrGetter } from 'vue'
 import type { DataTableRowKey } from 'naive-ui/es'
 import type { DataRecord, ParentChildLinkMode } from '../types'
 import { useRowEdit } from './useRowEdit'
@@ -23,6 +23,13 @@ interface TableManagerConfig {
   showRowActions: boolean
   modalTitle: string
   modalWidth: number
+  onEditSave?: (
+    rowData: DataRecord,
+    rowIndex: number,
+    columnKey?: string
+  ) => void | Promise<void>
+  onEditCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
+  onEditError?: (error: unknown) => void
 
   /* 展开配置 */
   expandable: boolean
@@ -49,10 +56,10 @@ interface TableManagerConfig {
  * 表格管理器参数接口
  */
 interface TableManagerParams {
-  config: TableManagerConfig
+  config: MaybeRefOrGetter<TableManagerConfig>
   data: () => DataRecord[]
   rowKey: (row: DataRecord) => DataTableRowKey
-  emit: (...args: any[]) => void
+  emit: (...args: any[]) => unknown
   /** 列配置（用于编辑校验） */
   columns?: () => import('../types').TableColumn[]
 }
@@ -66,7 +73,7 @@ interface EventHandlers {
     rowIndex: number,
     columnKey?: string
   ) => Promise<void>
-  onCancel: (rowData: DataRecord, rowIndex: number) => void
+  onCancel: (rowData: DataRecord, rowIndex: number) => Promise<void>
   onExpandChange: (
     keys: DataTableRowKey[],
     row?: DataRecord,
@@ -97,7 +104,8 @@ interface EventHandlers {
  * 表格统一状态管理器
  */
 export function useTableManager(params: TableManagerParams) {
-  const { config, data, rowKey, emit } = params
+  const { data, rowKey, emit } = params
+  const getConfig = () => toValue(params.config)
 
   /* ================= 事件处理器工厂 ================= */
 
@@ -114,13 +122,26 @@ export function useTableManager(params: TableManagerParams) {
       const newData = [...data()]
       newData[rowIndex] = { ...newData[rowIndex], ...rowData }
 
-      emit('update:data', newData)
-      await nextTick()
-      emit('save', newData[rowIndex], rowIndex, columnKey)
+      try {
+        await getConfig().onEditSave?.(newData[rowIndex], rowIndex, columnKey)
+        await emit('save', newData[rowIndex], rowIndex, columnKey)
+        emit('update:data', newData)
+      } catch (error) {
+        getConfig().onEditError?.(error)
+        emit('edit-error', error)
+        throw error
+      }
     },
 
-    onCancel: (rowData: DataRecord, rowIndex: number) => {
-      emit('cancel', rowData, rowIndex)
+    onCancel: async (rowData: DataRecord, rowIndex: number) => {
+      try {
+        await getConfig().onEditCancel?.(rowData, rowIndex)
+        await emit('cancel', rowData, rowIndex)
+      } catch (error) {
+        getConfig().onEditError?.(error)
+        emit('edit-error', error)
+        throw error
+      }
     },
 
     /* 展开选择事件 */
@@ -151,7 +172,7 @@ export function useTableManager(params: TableManagerParams) {
     /* 动态行事件 */
     onRowChange: (data: DataRecord[]) => {
       emit('update:data', data)
-      config.dynamicRows?.onRowChange?.(data)
+      getConfig().dynamicRows?.onRowChange?.(data)
     },
 
     onRowSelectionChange: (
@@ -159,27 +180,27 @@ export function useTableManager(params: TableManagerParams) {
       selectedRow: DataRecord | null
     ) => {
       emit('row-selection-change', selectedKey, selectedRow)
-      config.dynamicRows?.onSelectionChange?.(selectedKey, selectedRow)
+      getConfig().dynamicRows?.onSelectionChange?.(selectedKey, selectedRow)
     },
 
     onRowAdd: (newRow: DataRecord) => {
       emit('row-add', newRow)
-      config.dynamicRows?.onRowAdd?.(newRow)
+      getConfig().dynamicRows?.onRowAdd?.(newRow)
     },
 
     onRowDelete: (deletedRow: DataRecord, index: number) => {
       emit('row-delete', deletedRow, index)
-      config.dynamicRows?.onRowDelete?.(deletedRow, index)
+      getConfig().dynamicRows?.onRowDelete?.(deletedRow, index)
     },
 
     onRowCopy: (originalRow: DataRecord, newRow: DataRecord) => {
       emit('row-copy', originalRow, newRow)
-      config.dynamicRows?.onRowCopy?.(originalRow, newRow)
+      getConfig().dynamicRows?.onRowCopy?.(originalRow, newRow)
     },
 
     onRowMove: (row: DataRecord, fromIndex: number, toIndex: number) => {
       emit('row-move', row, fromIndex, toIndex)
-      config.dynamicRows?.onRowMove?.(row, fromIndex, toIndex)
+      getConfig().dynamicRows?.onRowMove?.(row, fromIndex, toIndex)
     },
   })
 
@@ -216,28 +237,47 @@ export function useTableManager(params: TableManagerParams) {
 
   /** 初始化展开功能状态 */
   const initExpandState = () => {
-    const needsExpand =
-      config.expandable || config.enableSelection || config.enableChildSelection
-
-    if (!needsExpand) return null
-
     return useTableExpand({
       data: computed(() => data()),
       rowKey,
       childRowKey: (child: DataRecord) => child.id as DataTableRowKey,
 
-      defaultExpandedKeys: config.defaultExpandedKeys,
-      onLoadData: config.onLoadExpandData,
-      renderContent: config.renderExpandContent as any,
-      rowExpandable: config.rowExpandable,
-      enableSelection: config.enableSelection,
-      defaultCheckedKeys: config.defaultCheckedKeys,
-      rowCheckable: config.rowCheckable,
-      maxSelection: config.maxSelection,
-      enableChildSelection: config.enableChildSelection,
-      childRowCheckable: config.childRowCheckable,
-      enableParentChildLink: config.enableParentChildLink,
-      parentChildLinkMode: config.parentChildLinkMode,
+      get defaultExpandedKeys() {
+        return getConfig().defaultExpandedKeys
+      },
+      get onLoadData() {
+        return getConfig().onLoadExpandData
+      },
+      get renderContent() {
+        return getConfig().renderExpandContent as any
+      },
+      get rowExpandable() {
+        return getConfig().rowExpandable
+      },
+      get enableSelection() {
+        return getConfig().enableSelection
+      },
+      get defaultCheckedKeys() {
+        return getConfig().defaultCheckedKeys
+      },
+      get rowCheckable() {
+        return getConfig().rowCheckable
+      },
+      get maxSelection() {
+        return getConfig().maxSelection
+      },
+      get enableChildSelection() {
+        return getConfig().enableChildSelection
+      },
+      get childRowCheckable() {
+        return getConfig().childRowCheckable
+      },
+      get enableParentChildLink() {
+        return getConfig().enableParentChildLink
+      },
+      get parentChildLinkMode() {
+        return getConfig().parentChildLinkMode
+      },
 
       onExpandChange: eventHandlers.onExpandChange,
       onSelectionChange: eventHandlers.onSelectionChange as any,
@@ -247,10 +287,11 @@ export function useTableManager(params: TableManagerParams) {
 
   /** 初始化动态行功能状态 */
   const initDynamicRowsState = () => {
-    if (!config.dynamicRows) return null
+    const { dynamicRows } = getConfig()
+    if (!dynamicRows) return null
 
     const dynamicOptions: DynamicRowsOptions<DataRecord> = {
-      ...config.dynamicRows,
+      ...dynamicRows,
       onRowChange: eventHandlers.onRowChange,
       onSelectionChange: eventHandlers.onRowSelectionChange,
       onRowAdd: eventHandlers.onRowAdd,
@@ -279,7 +320,7 @@ export function useTableManager(params: TableManagerParams) {
       edit: {
         /** 开始编辑 */
         start(rowKey: DataTableRowKey, columnKey?: string) {
-          const mode = config.editMode
+          const mode = getConfig().editMode
           if (mode === 'modal') editStates.modalEdit.startEdit(rowKey)
           else if (mode === 'cell' && columnKey)
             editStates.cellEdit.startEditCell(rowKey, columnKey)
@@ -291,9 +332,9 @@ export function useTableManager(params: TableManagerParams) {
         cancel() {
           if (editStates.modalEdit.isModalVisible.value)
             editStates.modalEdit.cancelEdit()
-          else if (editStates.cellEdit.editingCell.value.rowKey)
+          else if (editStates.cellEdit.editingCell.value.rowKey !== null)
             editStates.cellEdit.cancelEditCell()
-          else if (editStates.rowEdit.editingRowKey.value)
+          else if (editStates.rowEdit.editingRowKey.value !== null)
             editStates.rowEdit.cancelEditRow()
         },
 
@@ -301,15 +342,15 @@ export function useTableManager(params: TableManagerParams) {
         async save() {
           if (editStates.modalEdit.isModalVisible.value)
             await editStates.modalEdit.saveEdit()
-          else if (editStates.cellEdit.editingCell.value.rowKey)
+          else if (editStates.cellEdit.editingCell.value.rowKey !== null)
             await editStates.cellEdit.saveEditCell()
-          else if (editStates.rowEdit.editingRowKey.value)
+          else if (editStates.rowEdit.editingRowKey.value !== null)
             await editStates.rowEdit.saveEditRow()
         },
 
         /** 是否正在编辑 */
         isEditing(rowKey: DataTableRowKey, columnKey?: string) {
-          if (config.editMode === 'modal')
+          if (getConfig().editMode === 'modal')
             return editStates.modalEdit.isEditingRow(rowKey)
           if (columnKey)
             return editStates.cellEdit.isEditingCell(rowKey, columnKey)
@@ -319,8 +360,8 @@ export function useTableManager(params: TableManagerParams) {
         /** 获取当前编辑数据 */
         getEditingData() {
           if (editStates.modalEdit.isModalVisible.value)
-            return editStates.modalEdit.editingData
-          if (editStates.rowEdit.editingRowKey.value) {
+            return editStates.modalEdit.editingData.value
+          if (editStates.rowEdit.editingRowKey.value !== null) {
             return editStates.rowEdit.getEditingRowData(
               editStates.rowEdit.editingRowKey.value!
             )

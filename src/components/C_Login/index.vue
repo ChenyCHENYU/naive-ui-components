@@ -223,7 +223,7 @@
     >
       <div class="c-login__qr-frame">
         <C_QRCode
-          ref="qrcodeRef"
+          v-if="qrcodeValue"
           :value="qrcodeValue"
           :size="148"
           :margin="1"
@@ -232,7 +232,16 @@
           bg-color="#000000"
           error-correction-level="M"
         />
-        <div class="c-login__qr-scan-line" />
+        <div
+          v-else
+          class="c-login__qr-placeholder"
+        >
+          {{ t('cl_qr_missing', '请配置二维码地址') }}
+        </div>
+        <div
+          v-if="qrcodeValue"
+          class="c-login__qr-scan-line"
+        />
         <div class="c-login__qr-corner c-login__qr-corner--tl" />
         <div class="c-login__qr-corner c-login__qr-corner--tr" />
         <div class="c-login__qr-corner c-login__qr-corner--bl" />
@@ -476,6 +485,7 @@
   import C_Icon from '../C_Icon/index.vue'
   import C_Captcha from '../C_Captcha/index.vue'
   import C_QRCode from '../C_QRCode/index.vue'
+  import { getItem, removeItem, setItem } from '../../utils/storage'
   import { RULE_COMBOS } from '@robot-admin/form-validate'
   import {
     DEFAULT_FEATURES,
@@ -564,27 +574,17 @@
 
   watch(rememberMe, val => {
     if (val) {
-      localStorage.setItem(
-        props.storageKey!,
-        JSON.stringify({ username: passwordForm.username })
-      )
+      setItem(props.storageKey, { username: passwordForm.username })
     } else {
-      localStorage.removeItem(props.storageKey!)
+      removeItem(props.storageKey)
     }
   })
 
   onMounted(() => {
-    try {
-      const saved = localStorage.getItem(props.storageKey!)
-      if (saved) {
-        const data = JSON.parse(saved)
-        if (data.username) {
-          passwordForm.username = data.username
-          rememberMe.value = true
-        }
-      }
-    } catch {
-      /* ignore */
+    const saved = getItem<{ username?: unknown }>(props.storageKey)
+    if (typeof saved?.username === 'string') {
+      passwordForm.username = saved.username
+      rememberMe.value = true
     }
   })
 
@@ -681,13 +681,9 @@
   }
 
   // ===== 扫码登录 =====
-  const qrcodeRef = ref<any>(null)
-  const qrcodeValue = ref(
-    `https://robot-admin.app/qrcode-login?t=${Date.now()}`
-  )
+  const qrcodeValue = computed(() => props.qrcodeUrl?.trim() ?? '')
 
   const handleQrcodeRefresh = () => {
-    qrcodeValue.value = `https://robot-admin.app/qrcode-login?t=${Date.now()}`
     emit('qrcode-refresh')
   }
 

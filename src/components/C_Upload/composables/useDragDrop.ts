@@ -25,6 +25,7 @@ export function useDragDrop(
 ) {
   /** 是否正在拖拽悬停 */
   const isDragOver = ref(false)
+  let boundElement: HTMLElement | null = null
 
   // ─── 拖拽事件 ─────────────────────────────────
 
@@ -96,7 +97,8 @@ export function useDragDrop(
   /** 绑定事件 */
   function bindEvents() {
     const el = containerRef.value
-    if (!el) return
+    if (!el || boundElement === el) return
+    boundElement = el
 
     el.addEventListener('dragenter', handleDragEnter)
     el.addEventListener('dragover', handleDragOver)
@@ -104,20 +106,21 @@ export function useDragDrop(
     el.addEventListener('drop', handleDrop)
 
     if (pasteable.value) {
-      document.addEventListener('paste', handlePaste)
+      el.addEventListener('paste', handlePaste)
     }
   }
 
   /** 解绑事件 */
   function unbindEvents() {
-    const el = containerRef.value
+    const el = boundElement
     if (el) {
       el.removeEventListener('dragenter', handleDragEnter)
       el.removeEventListener('dragover', handleDragOver)
       el.removeEventListener('dragleave', handleDragLeave)
       el.removeEventListener('drop', handleDrop)
     }
-    document.removeEventListener('paste', handlePaste)
+    el?.removeEventListener('paste', handlePaste)
+    boundElement = null
   }
 
   onMounted(bindEvents)
@@ -175,12 +178,18 @@ async function readEntry(entry: FileSystemEntry): Promise<File[]> {
 
   if (entry.isDirectory) {
     const reader = (entry as FileSystemDirectoryEntry).createReader()
-    const entries = await new Promise<FileSystemEntry[]>(resolve => {
-      reader.readEntries(
-        result => resolve(result),
-        () => resolve([])
-      )
-    })
+    const entries: FileSystemEntry[] = []
+    while (true) {
+      // eslint-disable-next-line no-await-in-loop -- FileSystem API 分批返回目录项，必须读至空批次。
+      const batch = await new Promise<FileSystemEntry[]>(resolve => {
+        reader.readEntries(
+          result => resolve(result),
+          () => resolve([])
+        )
+      })
+      if (batch.length === 0) break
+      entries.push(...batch)
+    }
     const results = await Promise.all(entries.map(readEntry))
     return results.flat()
   }
@@ -203,7 +212,7 @@ function filterByAccept(files: File[], accept: string): File[] {
       if (type.endsWith('/*')) {
         // MIME 前缀匹配 (image/*, video/*)
         const prefix = type.replace('/*', '')
-        return file.type.toLowerCase().startsWith(prefix)
+        return file.type.toLowerCase().startsWith(`${prefix}/`)
       }
       // 精确 MIME 匹配
       return file.type.toLowerCase() === type

@@ -80,7 +80,7 @@ import {
 
 #### 自动按需导入（推荐）
 
-Resolver 默认从组件子路径加载，避免只使用少量组件时把整个组件库及重型可选依赖带入首屏：
+Resolver 默认从组件子路径加载，避免只使用少量组件时把整个组件库及重型运行依赖带入首屏：
 
 ```typescript
 import Components from 'unplugin-vue-components/vite'
@@ -92,6 +92,109 @@ Components({
 ```
 
 如需兼容旧项目的主入口导入，可显式设置 `importOnDemand: false`。
+
+### C_Form / C_Table 推荐用法
+
+将字段、列和配置对象定义在 `setup` 中，避免模板内临时创建对象；异步保存直接放入配置回调，组件会处理提交锁、校验和失败后的编辑态保留。
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_Form,
+    type FormConfig,
+    type FormInstance,
+    type FormModel,
+    type FormOption,
+  } from '@robot-admin/naive-ui-components/C_Form'
+
+  const formRef = ref<FormInstance>()
+  const model = ref<FormModel>({ name: '', departmentId: null })
+  const fields: FormOption[] = [
+    {
+      type: 'input',
+      prop: 'name',
+      label: '名称',
+      required: true,
+      rules: [{ required: true, message: '请输入名称', trigger: 'blur' }],
+    },
+    {
+      type: 'select',
+      prop: 'departmentId',
+      label: '部门',
+      asyncOptions: async (_model, context) =>
+        fetch('/api/departments', { signal: context?.signal }).then(response =>
+          response.json()
+        ),
+    },
+  ]
+  const config: FormConfig = {
+    mode: 'edit',
+    validateOnChange: true,
+    onSubmit: async ({ model: validatedModel }) => save(validatedModel),
+    onError: (error, context) => reportError(error, context),
+  }
+</script>
+
+<template>
+  <C_Form
+    ref="formRef"
+    v-model="model"
+    :options="fields"
+    :config="config"
+  />
+</template>
+```
+
+远程分页时只传当前页数据，并设置 `remote` 与服务端 `total`；本地分页则传全量数据并省略 `remote`，组件会自动切片。`row-key` 必须稳定且唯一。
+
+```vue
+<script setup lang="ts">
+  import { computed, ref } from 'vue'
+  import {
+    C_Table,
+    type DataRecord,
+    type TableColumn,
+    type TableConfig,
+  } from '@robot-admin/naive-ui-components/C_Table'
+
+  const rows = ref<DataRecord[]>([])
+  const total = ref(0)
+  const query = ref({ page: 1, pageSize: 20 })
+  const columns: TableColumn[] = [
+    { key: 'name', title: '名称', editable: true },
+  ]
+  const config = computed<TableConfig>(() => ({
+    pagination: {
+      enabled: true,
+      remote: true,
+      total: total.value,
+      ...query.value,
+    },
+    selection: { enabled: true },
+    edit: {
+      enabled: true,
+      mode: 'row',
+      onSave: row => saveRow(row),
+      onError: error => reportError(error),
+    },
+  }))
+  const handlePageChange = (page: number, pageSize: number) => {
+    query.value = { page, pageSize }
+    void loadPage()
+  }
+</script>
+
+<template>
+  <C_Table
+    :columns="columns"
+    :data="rows"
+    :row-key="row => row.id as string"
+    :config="config"
+    @pagination-change="handlePageChange"
+  />
+</template>
+```
 
 ### 📋 组件清单（51 个）
 
@@ -124,14 +227,14 @@ Components({
 
 #### 内容 & 编辑组件
 
-| 组件              | 说明                 | 外部依赖             |
-| ----------------- | -------------------- | -------------------- |
-| `C_Editor`        | 富文本编辑器         | `@wangeditor/editor` |
-| `C_Markdown`      | Markdown 编辑器/预览 | `@kangc/v-md-editor` |
-| `C_FormulaEditor` | 公式编辑器           | `expr-eval`          |
-| `C_Signature`     | 电子签名             | -                    |
-| `C_QRCode`        | 二维码生成器         | `qrcode`             |
-| `C_ImageCropper`  | 图片裁剪器           | `vue-cropper`        |
+| 组件              | 说明                         | 外部依赖                  |
+| ----------------- | ---------------------------- | ------------------------- |
+| `C_Editor`        | 富文本编辑器                 | `@wangeditor-next/editor` |
+| `C_Markdown`      | Markdown 编辑器/预览         | `md-editor-v3`            |
+| `C_FormulaEditor` | 公式编辑器（安全表达式引擎） | 内置                      |
+| `C_Signature`     | 电子签名                     | -                         |
+| `C_QRCode`        | 二维码生成器                 | `qrcode`                  |
+| `C_ImageCropper`  | 图片裁剪器                   | `vue-cropper`             |
 
 #### 数据展示组件
 
@@ -178,29 +281,15 @@ Components({
 | `C_NotificationCenter` | 通知中心（WebSocket/轮询）           | -                |
 | `C_Upload`             | 大文件上传（分片/断点续传/哈希校验） | `spark-md5`      |
 
-### 🔌 可选依赖
+### 🔌 依赖说明
 
-包含外部依赖的组件以 `optionalDependencies` 声明。**按需安装**：
+组件运行依赖已由本包声明，安装组件库时会自动解析，一般不需要逐项安装。使用侧只需确保以下 peer dependencies 已安装：
 
 ```bash
-# 视频播放器
-bun add xgplayer xgplayer-hls
-
-# 图编辑器
-bun add @antv/x6
-
-# 工作流
-bun add @vue-flow/core
-
-# 文件预览
-bun add xlsx mammoth @tato30/vue-pdf
-
-# 表格打印
-bun add print-js html2canvas
-
-# 公式编辑器
-bun add expr-eval
+bun add vue naive-ui vue-router @robot-admin/form-validate
 ```
+
+若部署时显式跳过了可选依赖，同时启用了表格行/列拖拽，请额外确保 `sortablejs` 可用。公式编辑器使用组件库内置的受限表达式解析器，不执行动态 JavaScript，也无需安装 `expr-eval`。
 
 ### 🏗️ 构建架构
 

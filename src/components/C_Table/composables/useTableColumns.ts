@@ -221,6 +221,8 @@ export interface UseTableColumnsOptions {
     isRowEditMode: () => boolean
     isCellEditMode: () => boolean
   }>
+  /** 是否渲染操作列 */
+  showActionsColumn: ComputedRef<boolean>
 }
 
 export interface UseTableColumnsReturn {
@@ -247,6 +249,7 @@ export function useTableColumns(
     tableManager,
     actionsRenderer,
     editModeChecker,
+    showActionsColumn,
   } = options
 
   /* ================= 响应式列状态 ================= */
@@ -259,24 +262,30 @@ export function useTableColumns(
     const existingActions = reactiveColumns.value.find(
       col => (col as ColumnWithKey).key === '_actions'
     )
-    reactiveColumns.value = [
-      ...newColumns,
-      existingActions ||
-        ({
-          key: '_actions',
-          title: '操作',
-          width: 180,
-          editable: false,
-          visible: true,
-          fixed: 'right',
-        } as TableColumn),
-    ]
+    const regularColumns = newColumns.filter(
+      col => (col as ColumnWithKey).key !== '_actions'
+    )
+    reactiveColumns.value = showActionsColumn.value
+      ? [
+          ...regularColumns,
+          existingActions ||
+            ({
+              key: '_actions',
+              title: '操作',
+              width: 180,
+              editable: false,
+              visible: true,
+              fixed: 'right',
+            } as TableColumn),
+        ]
+      : regularColumns
   }
 
   watch(
-    rawColumns,
-    cols => {
+    [rawColumns, showActionsColumn],
+    ([cols]) => {
       if (cols?.length) syncColumns(cols)
+      else reactiveColumns.value = []
     },
     { deep: true, immediate: true }
   )
@@ -449,17 +458,21 @@ export function useTableColumns(
       ) as unknown as DataTableColumn[]
     }
 
-    const actionsMeta = reactiveColumns.value.find(
-      c => (c as ColumnWithKey).key === '_actions'
-    )
-    cols.push({
-      key: '_actions',
-      title: '操作',
-      align: 'center' as const,
-      titleAlign: 'center' as const,
-      render: actionsRenderer,
-      fixed: (actionsMeta as ColumnWithKey)?.fixed,
-    })
+    if (showActionsColumn.value) {
+      const actionsMeta = reactiveColumns.value.find(
+        c => (c as ColumnWithKey).key === '_actions'
+      )
+      cols.push({
+        key: '_actions',
+        title: '操作',
+        width: (actionsMeta as ColumnWithKey)?.width ?? 180,
+        className: 'c-table-actions-column',
+        align: 'center' as const,
+        titleAlign: 'center' as const,
+        render: actionsRenderer,
+        fixed: (actionsMeta as ColumnWithKey)?.fixed,
+      })
+    }
 
     return cols
   })
