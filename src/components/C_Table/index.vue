@@ -19,8 +19,8 @@
   >
     <!-- 动态行工具栏 -->
     <component
-      v-if="tableManager.dynamicRowsState"
-      :is="tableManager.dynamicRowsState.renderToolbar()"
+      v-if="resolved.dynamicRows && tableManager.dynamicRowsState"
+      :is="tableManager.dynamicRowsState.renderToolbar(tableWrapperRef)"
     />
 
     <!-- 表格工具栏 -->
@@ -37,7 +37,7 @@
           v-if="resolved.exportConfig"
           name="mdi:download"
           size="18"
-          title="导出"
+          :title="t('table.export')"
           clickable
           class="column-settings-btn"
           @click="handleExport()"
@@ -46,7 +46,7 @@
           v-if="resolved.enableColumnSettings"
           name="mdi:cog"
           size="18"
-          title="表格设置"
+          :title="t('table.settings')"
           clickable
           class="column-settings-btn"
           @click="showSettingsPanel = true"
@@ -59,7 +59,9 @@
       v-if="resolved.batchActions?.enabled && batchSelectedCount > 0"
       class="batch-actions-bar"
     >
-      <span class="batch-info">已选择 {{ batchSelectedCount }} 项</span>
+      <span class="batch-info">{{
+        t('table.selectedCount', { count: batchSelectedCount })
+      }}</span>
       <NSpace :size="8">
         <NButton
           v-for="action in resolved.batchActions.actions || []"
@@ -84,7 +86,7 @@
         <NButton
           size="small"
           @click="clearBatchSelection"
-          >取消选择</NButton
+          >{{ t('table.cancelSelection') }}</NButton
         >
       </NSpace>
     </div>
@@ -104,7 +106,7 @@
             size="48"
           />
           <p class="error-message">{{
-            resolved.error.message || '数据加载失败'
+            resolved.error.message || t('table.loadFailed')
           }}</p>
           <NButton
             v-if="resolved.error.onRetry"
@@ -112,7 +114,7 @@
             size="small"
             @click="resolved.error.onRetry"
           >
-            重试
+            {{ t('common.retry') }}
           </NButton>
         </div>
       </slot>
@@ -126,14 +128,14 @@
       :columns="computedColumns"
       :data="pagination.paginatedData.value"
       :loading="normalizedLoading"
-      :row-key="rowKey"
+      :row-key="resolvedRowKey"
       :expanded-row-keys="tableManager.expandedKeys.value"
       :checked-row-keys="crossPageCheckedKeys ?? tableManager.checkedKeys.value"
       @update:expanded-row-keys="tableManager.expandState?.handleExpandChange"
       @update:checked-row-keys="handleCheckedKeysChange"
       :scroll-x="computedScrollX"
       :virtual-scroll="resolved.virtualScroll"
-      :virtual-scroll-item-size="
+      :min-row-height="
         resolved.virtualScroll ? resolved.virtualItemHeight : undefined
       "
       :max-height="
@@ -184,13 +186,13 @@
       />
       <template #action>
         <NSpace justify="end">
-          <NButton @click="handleModalCancel">取消</NButton>
+          <NButton @click="handleModalCancel">{{ t('common.cancel') }}</NButton>
           <NButton
             type="primary"
             :loading="modalSubmitLoading"
             @click="handleModalSave"
           >
-            保存
+            {{ t('common.save') }}
           </NButton>
         </NSpace>
       </template>
@@ -198,7 +200,7 @@
 
     <!-- 动态行确认删除弹窗 -->
     <component
-      v-if="tableManager.dynamicRowsState"
+      v-if="resolved.dynamicRows && tableManager.dynamicRowsState"
       :is="tableManager.dynamicRowsState.renderConfirmModal()"
     />
 
@@ -210,7 +212,7 @@
       :mask-closable="true"
     >
       <NDrawerContent
-        title="列设置"
+        :title="t('table.columnSettings')"
         closable
       >
         <ColumnSettings
@@ -244,7 +246,7 @@
     NButton,
     NDrawer,
     NDrawerContent,
-  } from 'naive-ui/es'
+  } from 'naive-ui'
   import type {
     TableColumn,
     TableEmits,
@@ -273,6 +275,8 @@
   import C_Icon from '../C_Icon/index.vue'
   import C_Form from '../C_Form/index.vue'
   import { cloneData } from '../../utils/data'
+  import { useComponentFeedback, useComponentLocale } from '../../config'
+  import { validateTableRowKeys } from './helpers'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
 
@@ -287,14 +291,14 @@
       /** 加载状态 */
       loading?: MaybeRefLike<boolean>
       /** 行唯一键 */
-      rowKey?: (row: DataRecord) => DataTableRowKey
+      rowKey?: string | ((row: DataRecord) => DataTableRowKey)
       /** 统一功能配置（edit / selection / expand / pagination / dynamicRows / toolbar / display） */
       config?: TableConfig
       /** CRUD 绑定 — 传入 useTableCrud() 的返回值，自动接管 data/columns/loading/actions/pagination/events */
       crud?: CrudBinding
     }>(),
     {
-      rowKey: (row: DataRecord) => row.id as DataTableRowKey,
+      rowKey: 'id',
       config: () => ({}),
     }
   )
@@ -335,6 +339,10 @@
   /* ================= 有效值（全局 → crud → props 覆盖） ================= */
 
   const globalConfig = useTableGlobalConfig()
+  const resolvedRowKey = (row: DataRecord): DataTableRowKey =>
+    typeof props.rowKey === 'function'
+      ? props.rowKey(row)
+      : (row[props.rowKey] as DataTableRowKey)
 
   /** 合并 crud 返回的 actions/pagination 到用户 config，并叠加全局配置 */
   const effectiveConfig = computed<TableConfig>(() => {
@@ -356,6 +364,8 @@
   /* ================= 配置解析 ================= */
 
   const resolved = computed(() => resolveConfig(effectiveConfig.value))
+  const feedback = useComponentFeedback(() => resolved.value.feedback)
+  const { t } = useComponentLocale(() => resolved.value.locale)
   const editModeChecker = computed(() => createEditModeChecker(resolved.value))
 
   /* ================= 数据规范化（兼容跨实例 Ref） ================= */
@@ -371,6 +381,41 @@
     () => unwrapRef(props.loading) ?? props.crud?.loading.value ?? false
   )
 
+  let lastRowKeyIssueSignature = ''
+  watch(
+    () =>
+      normalizedData.value.map(row => {
+        try {
+          return resolvedRowKey(row)
+        } catch {
+          return undefined
+        }
+      }),
+    () => {
+      if (effectiveConfig.value.validateRowKeys === false) {
+        lastRowKeyIssueSignature = ''
+        return
+      }
+      const issues = validateTableRowKeys(normalizedData.value, resolvedRowKey)
+      if (issues.length === 0) {
+        lastRowKeyIssueSignature = ''
+        return
+      }
+      const signature = issues
+        .map(issue =>
+          [issue.type, issue.index, issue.firstIndex, String(issue.key)].join(
+            ':'
+          )
+        )
+        .join('|')
+      if (signature === lastRowKeyIssueSignature) return
+      lastRowKeyIssueSignature = signature
+      feedback.warning(t('table.invalidRowKeys', { count: issues.length }))
+      emit('row-key-error', issues)
+    },
+    { immediate: true }
+  )
+
   /* ================= Hooks ================= */
 
   const pagination = usePagination({
@@ -382,7 +427,7 @@
   const tableManager = useTableManager({
     config: resolved,
     data: () => normalizedData.value,
-    rowKey: props.rowKey,
+    rowKey: resolvedRowKey,
     emit: bridgedEmit,
     columns: () => effectiveColumns.value,
   })
@@ -391,8 +436,8 @@
     actions: computed(() => effectiveConfig.value.actions || {}),
     config: resolved,
     tableManager,
-    rowKey: props.rowKey,
-    emit: bridgedEmit,
+    rowKey: resolvedRowKey,
+    onRowDeleted: (row, index) => emit('row-delete', row, index),
     onViewDetail: (data: DataRecord) => bridgedEmit('view-detail', data),
   })
 
@@ -412,7 +457,7 @@
     config: resolved,
     columnWidth: resolved.value.columnWidth,
     scrollX: resolved.value.scrollX,
-    rowKey: props.rowKey,
+    rowKey: resolvedRowKey,
     tableManager,
     actionsRenderer: tableActions.renderActions,
     editModeChecker,
@@ -430,7 +475,7 @@
 
   const rowDragState = useRowDrag({
     data: pagination.paginatedData,
-    rowKey: props.rowKey,
+    rowKey: resolvedRowKey,
     config: computed(() => resolved.value.rowDrag),
     onReorder: newPageData => {
       const paginationConfig = resolved.value.pagination
@@ -459,7 +504,7 @@
 
   const crossPageState = useCrossPageSelection({
     allData: normalizedData,
-    rowKey: props.rowKey,
+    rowKey: resolvedRowKey,
     config: computed(() => resolved.value.crossPageSelection),
   })
   const isCrossPageSelectionEnabled = computed(
@@ -490,7 +535,7 @@
       : (tableManager.checkedKeys?.value ?? [])
     const rows = isCrossPageSelectionEnabled.value
       ? crossPageState.getSelectedRows()
-      : normalizedData.value.filter(r => keys.includes(props.rowKey(r)))
+      : normalizedData.value.filter(r => keys.includes(resolvedRowKey(r)))
     runningBatchActions.value = new Set(runningBatchActions.value).add(
       action.key
     )

@@ -95,28 +95,29 @@ Components({
 
 ### C_Form / C_Table 推荐用法
 
-将字段、列和配置对象定义在 `setup` 中，避免模板内临时创建对象；异步保存直接放入配置回调，组件会处理提交锁、校验和失败后的编辑态保留。
+推荐使用类型助手和绑定助手：业务模型只声明一次，字段路径、字段值、列 key、保存回调和实例方法即可保持同一套类型推导。字段支持 `profile.name`、`contacts.0.email` 这类嵌套路径。
 
 ```vue
 <script setup lang="ts">
-  import { ref } from 'vue'
   import {
     C_Form,
-    type FormConfig,
-    type FormInstance,
-    type FormModel,
-    type FormOption,
+    defineFormConfig,
+    defineFormOptions,
+    useCForm,
   } from '@robot-admin/naive-ui-components/C_Form'
 
-  const formRef = ref<FormInstance>()
-  const model = ref<FormModel>({ name: '', departmentId: null })
-  const fields: FormOption[] = [
+  interface UserForm {
+    name: string
+    departmentId: number | null
+    profile: { email: string }
+  }
+
+  const fields = defineFormOptions<UserForm>([
     {
       type: 'input',
       prop: 'name',
       label: '名称',
       required: true,
-      rules: [{ required: true, message: '请输入名称', trigger: 'blur' }],
     },
     {
       type: 'select',
@@ -127,50 +128,53 @@ Components({
           response.json()
         ),
     },
-  ]
-  const config: FormConfig = {
+    { type: 'input', prop: 'profile.email', label: '邮箱' },
+  ])
+  const config = defineFormConfig<UserForm>({
     mode: 'edit',
     validateOnChange: true,
     onSubmit: async ({ model: validatedModel }) => save(validatedModel),
     onError: (error, context) => reportError(error, context),
-  }
+  })
+  const { model, formRef, bindings } = useCForm<UserForm>({
+    initialValues: {
+      name: '',
+      departmentId: null,
+      profile: { email: '' },
+    },
+    options: fields,
+    config,
+  })
 </script>
 
 <template>
   <C_Form
     ref="formRef"
-    v-model="model"
-    :options="fields"
-    :config="config"
+    v-bind="bindings"
   />
 </template>
 ```
 
-远程分页时只传当前页数据，并设置 `remote` 与服务端 `total`；本地分页则传全量数据并省略 `remote`，组件会自动切片。`row-key` 必须稳定且唯一。
+远程表格推荐交给 `useTableQuery` 管理请求取消、竞态、分页和 loading；只需把 `bindings` 绑定给组件。`rowKey` 必须稳定且唯一，默认会检测缺失和重复键。
 
 ```vue
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
   import {
     C_Table,
-    type DataRecord,
-    type TableColumn,
-    type TableConfig,
+    defineTableColumns,
+    defineTableConfig,
+    useTableQuery,
   } from '@robot-admin/naive-ui-components/C_Table'
 
-  const rows = ref<DataRecord[]>([])
-  const total = ref(0)
-  const query = ref({ page: 1, pageSize: 20 })
-  const columns: TableColumn[] = [
+  interface UserRow {
+    id: string
+    name: string
+  }
+
+  const columns = defineTableColumns<UserRow>([
     { key: 'name', title: '名称', editable: true },
-  ]
-  const config = computed<TableConfig>(() => ({
-    pagination: {
-      enabled: true,
-      remote: true,
-      total: total.value,
-      ...query.value,
-    },
+  ])
+  const config = defineTableConfig<UserRow>({
     selection: { enabled: true },
     edit: {
       enabled: true,
@@ -178,23 +182,29 @@ Components({
       onSave: row => saveRow(row),
       onError: error => reportError(error),
     },
-  }))
-  const handlePageChange = (page: number, pageSize: number) => {
-    query.value = { page, pageSize }
-    void loadPage()
-  }
+  })
+  const { bindings } = useTableQuery<UserRow, { keyword: string }>({
+    initialQuery: { keyword: '' },
+    columns,
+    config,
+    rowKey: 'id',
+    request: async ({ page, pageSize, query, signal }) => {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({ page, pageSize, ...query }),
+        signal,
+      })
+      return response.json() as Promise<{ data: UserRow[]; total: number }>
+    },
+  })
 </script>
 
 <template>
-  <C_Table
-    :columns="columns"
-    :data="rows"
-    :row-key="row => row.id as string"
-    :config="config"
-    @pagination-change="handlePageChange"
-  />
+  <C_Table v-bind="bindings" />
 </template>
 ```
+
+`C_Date`、`C_Time`、`C_Menu`、`C_FormSearch` 均支持标准 `v-model`。组件可直接放在没有 `NMessageProvider` / `NDialogProvider` 的页面；如需统一提示、确认和文案，可在安装时传入 `feedback`、`locale`、`form` 与 `table.defaults`。
 
 ### 📋 组件清单（51 个）
 

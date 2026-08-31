@@ -1,4 +1,10 @@
 import type { App, Component } from 'vue'
+import {
+  COMPONENT_FEEDBACK_KEY,
+  COMPONENT_LOCALE_KEY,
+  type ComponentFeedback,
+  type ComponentLocale,
+} from './config'
 
 // ====== 全局样式由 sass CLI 编译到 dist/style.css，不再通过 JS 导入 ======
 
@@ -39,8 +45,16 @@ import { C_AntV } from './components/C_AntV'
 import { C_VideoPlayer } from './components/C_VideoPlayer'
 import { C_FilePreview } from './components/C_FilePreview'
 import { C_WorkFlow } from './components/C_WorkFlow'
-import { C_Form } from './components/C_Form'
-import { C_Table } from './components/C_Table'
+import {
+  C_Form,
+  FORM_GLOBAL_CONFIG_KEY,
+  type FormConfig,
+} from './components/C_Form'
+import {
+  C_Table,
+  TABLE_GLOBAL_CONFIG_KEY,
+  type TableGlobalConfig,
+} from './components/C_Table'
 import { C_GlobalSearch } from './components/C_GlobalSearch'
 import { C_Menu } from './components/C_Menu'
 import { C_Breadcrumb } from './components/C_Breadcrumb'
@@ -61,6 +75,10 @@ import { setupHighlight, useHighlight } from './plugins/highlight'
 // ====== 安装选项 ======
 export interface ComponentLibOptions {
   highlight?: import('./plugins/highlight').HighlightPluginOptions
+  feedback?: ComponentFeedback
+  locale?: ComponentLocale
+  form?: FormConfig
+  table?: TableGlobalConfig
 }
 
 // ====== 组件列表（全量注册使用） ======
@@ -173,6 +191,18 @@ export * from './components/C_OrgChart'
 
 // ====== 工具函数（不属于任何组件的公共工具） ======
 export { setItem, getItem, removeItem, removeAllItem } from './utils/storage'
+export {
+  COMPONENT_FEEDBACK_KEY,
+  COMPONENT_LOCALE_KEY,
+  useComponentFeedback,
+  useComponentLocale,
+} from './config'
+export type {
+  ComponentFeedback,
+  ComponentLocale,
+  ComponentLocaleName,
+  ConfirmOptions,
+} from './config'
 
 // ====== 插件导出 ======
 export { setupHighlight, useHighlight }
@@ -189,6 +219,10 @@ const install = (app: App, options: ComponentLibOptions = {}) => {
   if (options.highlight !== undefined) {
     setupHighlight(app, options.highlight)
   }
+  if (options.feedback) app.provide(COMPONENT_FEEDBACK_KEY, options.feedback)
+  if (options.locale) app.provide(COMPONENT_LOCALE_KEY, options.locale)
+  if (options.form) app.provide(FORM_GLOBAL_CONFIG_KEY, options.form)
+  if (options.table) app.provide(TABLE_GLOBAL_CONFIG_KEY, options.table)
 }
 
 export default {

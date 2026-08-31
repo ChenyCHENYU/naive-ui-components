@@ -14,7 +14,7 @@ import {
   type Component,
   type Ref,
 } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useComponentFeedback } from '../../../config'
 import type {
   WorkflowNode,
   WorkflowEdge,
@@ -46,7 +46,7 @@ export function useWorkflowNodes(
   emit: EmitFn,
   vueFlowRef: Ref
 ) {
-  const message = useMessage()
+  const message = useComponentFeedback()
 
   /* ─── 响应式状态 ────────────────────────────────────────── */
   const nodes = ref<WorkflowNode[]>([{ ...INITIAL_NODE }])
@@ -245,8 +245,7 @@ export function useWorkflowNodes(
       emitChange()
       deferFitView()
     } catch (error) {
-      console.error('Error adding node:', error)
-      message.error('添加节点失败，请重试')
+      message.error('添加节点失败，请重试', error)
     }
   }
 

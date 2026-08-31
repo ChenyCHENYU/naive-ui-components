@@ -23,9 +23,7 @@ export interface CrossPageSelectionConfig {
   maxSelection?: number
 }
 
-export interface UseCrossPageSelectionOptions<
-  T extends DataRecord = DataRecord,
-> {
+export interface UseCrossPageSelectionOptions<T extends object = DataRecord> {
   /** 全量数据（非分页后的） */
   allData: Ref<T[]> | ComputedRef<T[]>
   /** 行键函数 */
@@ -34,9 +32,7 @@ export interface UseCrossPageSelectionOptions<
   config: MaybeRefOrGetter<CrossPageSelectionConfig | undefined>
 }
 
-export interface UseCrossPageSelectionReturn<
-  T extends DataRecord = DataRecord,
-> {
+export interface UseCrossPageSelectionReturn<T extends object = DataRecord> {
   /** 所有选中的 key（跨页） */
   selectedKeys: Ref<Set<DataTableRowKey>>
   /** 选中行数量 */
@@ -62,7 +58,7 @@ export interface UseCrossPageSelectionReturn<
 /* ================= 实现 ================= */
 
 /** 跨页多选组合式函数 */
-export function useCrossPageSelection<T extends DataRecord = DataRecord>(
+export function useCrossPageSelection<T extends object = DataRecord>(
   options: UseCrossPageSelectionOptions<T>
 ): UseCrossPageSelectionReturn<T> {
   const { allData, rowKey } = options

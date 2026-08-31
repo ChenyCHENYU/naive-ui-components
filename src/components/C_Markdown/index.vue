@@ -48,7 +48,6 @@
     type Component,
   } from 'vue'
   import { MdEditor as MdEditorRuntime } from 'md-editor-v3'
-  import 'md-editor-v3/lib/style.css'
   import { sanitizeRichHtml } from '../../utils/html'
 
   defineOptions({ name: 'C_Markdown' })

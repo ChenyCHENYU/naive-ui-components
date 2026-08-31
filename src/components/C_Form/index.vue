@@ -74,12 +74,12 @@
             :loading="isSubmitting"
             :disabled="isSubmitting"
             @click="handleSubmit"
-            >{{ resolved.submitText }}</NButton
+            >{{ resolved.submitText || t('common.submit') }}</NButton
           >
           <NButton
             :disabled="isSubmitting"
             @click="handleReset"
-            >{{ resolved.resetText }}</NButton
+            >{{ resolved.resetText || t('common.reset') }}</NButton
           >
         </NSpace>
       </slot>
@@ -88,7 +88,13 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, ref, getCurrentInstance, type Component } from 'vue'
+  import {
+    computed,
+    defineAsyncComponent,
+    ref,
+    getCurrentInstance,
+    type Component,
+  } from 'vue'
   import type { FormInst } from 'naive-ui/es/form'
   import {
     NForm,
@@ -112,7 +118,7 @@
     NUpload,
     NTooltip,
   } from 'naive-ui'
-  import { C_Editor } from '../C_Editor'
+  import { useComponentLocale } from '../../config'
   import type {
     FormOption,
     LayoutType,
@@ -123,8 +129,10 @@
   import {
     type FormConfig,
     type LayoutCallbacks,
+    mergeFormConfig,
     resolveFormConfig,
     shouldShowActions as calcShowActions,
+    useFormGlobalConfig,
   } from './composables/useFormConfig'
   import { useFormState } from './composables/useFormState'
   import {
@@ -144,6 +152,10 @@
   import CustomLayout from './layouts/Custom/index.vue'
 
   defineOptions({ name: 'C_Form' })
+
+  const C_Editor = defineAsyncComponent(() =>
+    import('../C_Editor').then(module => module.C_Editor)
+  )
 
   const LAYOUT_MAP: Record<LayoutType, Component> = {
     default: DefaultLayout,
@@ -212,7 +224,11 @@
 
   /* ================= 配置解析 ================= */
 
-  const resolved = computed(() => resolveFormConfig(props.config))
+  const globalConfig = useFormGlobalConfig()
+  const resolved = computed(() =>
+    resolveFormConfig(mergeFormConfig(props.config, globalConfig))
+  )
+  const { t } = useComponentLocale(() => resolved.value.locale)
 
   /* ================= 响应式状态 ================= */
 

@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { Graph } from '@antv/x6'
 import type { DropdownMixedOption } from 'naive-ui/es/dropdown/src/interface'
-import { useMessage } from 'naive-ui'
+import { useComponentFeedback } from '../../../config'
 import { exportJSON, exportPNG, exportSVG } from '../utils/exportUtils'
 
 /** 导出下拉菜单选项（三个布局共享） */
@@ -20,7 +20,7 @@ export function useGraphExport(
   graph: Ref<Graph | null>,
   filenamePrefix = 'diagram'
 ) {
-  const message = useMessage()
+  const message = useComponentFeedback()
   /**
    * 处理导出操作
    * @param key - 导出格式 'png' | 'svg' | 'json'
@@ -44,8 +44,7 @@ export function useGraphExport(
           break
       }
     } catch (error) {
-      console.error(`[useGraphExport] 导出失败 (${key}):`, error)
-      message.error(`导出${key.toUpperCase()}失败，请重试`)
+      message.error(`导出${key.toUpperCase()}失败，请重试`, error)
     }
   }
 

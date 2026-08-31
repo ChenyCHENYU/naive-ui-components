@@ -6,9 +6,9 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, type ShallowRef } from "vue";
-import { Events } from "xgplayer";
-import type { PlayerInstance, QualityDefinition, QualityLevel } from "../types";
+import { ref, type ShallowRef } from 'vue'
+import { XGPLAYER_EVENTS as Events } from '../constants'
+import type { PlayerInstance, QualityDefinition, QualityLevel } from '../types'
 
 /**
  * 清晰度切换 composable
@@ -17,42 +17,42 @@ import type { PlayerInstance, QualityDefinition, QualityLevel } from "../types";
  */
 export function useQualitySwitch(
   playerRef: ShallowRef<PlayerInstance | null>,
-  qualityList: QualityDefinition[] = [],
+  qualityList: QualityDefinition[] = []
 ) {
-  const currentQuality = ref<QualityLevel | null>(null);
-  const isSwitching = ref(false);
+  const currentQuality = ref<QualityLevel | null>(null)
+  const isSwitching = ref(false)
 
   /** 初始化：监听清晰度变化事件 */
   function bindEvents(player: PlayerInstance) {
     player.on(Events.AFTER_DEFINITION_CHANGE, (data: { to: string }) => {
-      currentQuality.value = data.to as QualityLevel;
-      isSwitching.value = false;
-    });
+      currentQuality.value = data.to as QualityLevel
+      isSwitching.value = false
+    })
 
     player.on(Events.BEFORE_DEFINITION_CHANGE, () => {
-      isSwitching.value = true;
-    });
+      isSwitching.value = true
+    })
   }
 
   /** 编程式切换清晰度 */
   function switchQuality(quality: QualityLevel) {
-    const player = playerRef.value;
-    if (!player || !qualityList.length) return;
+    const player = playerRef.value
+    if (!player || !qualityList.length) return
 
-    const target = qualityList.find((q) => q.label === quality);
+    const target = qualityList.find(q => q.label === quality)
     if (!target) {
-      console.warn(`[C_VideoPlayer] 未找到清晰度: ${quality}`);
-      return;
+      console.warn(`[C_VideoPlayer] 未找到清晰度: ${quality}`)
+      return
     }
 
-    isSwitching.value = true;
+    isSwitching.value = true
     /* xgplayer definition 切换 */
     player.changeDefinition?.({
       url: target.url,
       definition: target.label,
       text: { zh: target.label, en: target.label },
       bitrate: target.bitrate,
-    });
+    })
   }
 
   return {
@@ -60,5 +60,5 @@ export function useQualitySwitch(
     isSwitching,
     switchQuality,
     bindEvents,
-  };
+  }
 }

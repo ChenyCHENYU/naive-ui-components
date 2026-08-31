@@ -20,6 +20,61 @@ export type MaybePromise<T> = T | Promise<T>
 
 export type FormRecord = Record<string, unknown>
 
+type AtomicFormValue =
+  | string
+  | number
+  | boolean
+  | bigint
+  | symbol
+  | null
+  | undefined
+  | Date
+  | RegExp
+  | File
+  | Blob
+
+type NestedFieldPath<T extends object> = {
+  [K in Extract<keyof T, string>]: NonNullable<T[K]> extends AtomicFormValue
+    ? K
+    : NonNullable<T[K]> extends readonly (infer Item)[]
+      ? NonNullable<Item> extends AtomicFormValue
+        ? K | `${K}.${number}`
+        : NonNullable<Item> extends object
+          ? | K
+            | `${K}.${number}`
+            | `${K}.${number}.${NestedFieldPath<NonNullable<Item>>}`
+          : K
+      : NonNullable<T[K]> extends object
+        ? K | `${K}.${NestedFieldPath<NonNullable<T[K]>>}`
+        : K
+}[Extract<keyof T, string>]
+
+export type FieldPath<T extends object = FormRecord> = string extends keyof T
+  ? string
+  : NestedFieldPath<T>
+
+type NestedFieldPathValue<
+  T,
+  P extends string,
+> = T extends readonly (infer Item)[]
+  ? P extends `${number}.${infer Rest}`
+    ? NestedFieldPathValue<NonNullable<Item>, Rest>
+    : P extends `${number}`
+      ? Item
+      : unknown
+  : P extends keyof T
+    ? T[P]
+    : P extends `${infer K}.${infer Rest}`
+      ? K extends keyof T
+        ? NestedFieldPathValue<NonNullable<T[K]>, Rest>
+        : unknown
+      : unknown
+
+export type FieldPathValue<
+  T extends object,
+  P extends string,
+> = NestedFieldPathValue<T, P>
+
 /**
  * 表单模式
  * @description create = 新建（空白表单），edit = 编辑（回填已有数据 + 脏检查）
@@ -297,10 +352,10 @@ export interface LayoutConfig {
  * 表单配置项接口
  * @description 单个表单项的完整配置
  */
-export interface FormOption {
+export interface FormOption<T extends object = FormRecord> {
   id?: string
   type: ComponentType | string
-  prop: string
+  prop: FieldPath<T>
   label?: string
   value?: unknown
   placeholder?: string
@@ -311,30 +366,30 @@ export interface FormOption {
   layout?: ItemLayoutConfig
   help?: string
   required?: boolean
-  dependsOn?: string | string[]
-  showWhen?: (formModel: FormModel) => boolean
+  dependsOn?: FieldPath<T> | FieldPath<T>[]
+  showWhen?: (formModel: FormModel<T>) => boolean
 
   /* ===== v0.8.0 新增 ===== */
 
   /** 字段级禁用（优先级高于全局 config.disabled） */
-  disabled?: boolean | ((formModel: FormModel) => boolean)
+  disabled?: boolean | ((formModel: FormModel<T>) => boolean)
   /** 字段级只读（优先级高于全局 config.readonly） */
-  readonly?: boolean | ((formModel: FormModel) => boolean)
+  readonly?: boolean | ((formModel: FormModel<T>) => boolean)
 
   /** 联动赋值：其他字段变化时自动计算本字段的值 */
-  valueWhen?: (formModel: FormModel) => unknown
+  valueWhen?: (formModel: FormModel<T>) => unknown
 
   /** 异步数据源：select / cascader / checkbox / radio 的远程选项加载 */
   asyncOptions?: (
-    formModel: FormModel,
+    formModel: FormModel<T>,
     context?: AsyncOptionsContext
   ) => Promise<readonly OptionItem[]>
 
   /** 联动校验规则：根据表单数据动态返回校验规则 */
-  rulesWhen?: (formModel: FormModel) => FormItemRule[]
+  rulesWhen?: (formModel: FormModel<T>) => FormItemRule[]
 
   /** 跨字段校验：需要引用多个字段值的验证函数，返回错误消息或 null */
-  crossFieldValidator?: (formModel: FormModel) => MaybePromise<string | null>
+  crossFieldValidator?: (formModel: FormModel<T>) => MaybePromise<string | null>
 }
 
 /* =================== 组件 Props 类型 =================== */
@@ -354,8 +409,8 @@ export interface LayoutProps {
 /**
  * 表单提交事件参数
  */
-export interface SubmitEventPayload {
-  model: FormModel
+export interface SubmitEventPayload<T extends object = FormRecord> {
+  model: FormModel<T>
   form: FormInst
 }
 
@@ -374,26 +429,29 @@ export interface UploadEventPayload {
  * C_Form 组件实例暴露的方法
  * @description 表单组件实例对外暴露的所有方法
  */
-export interface FormInstance {
+export interface FormInstance<T extends object = FormRecord> {
   validate(): Promise<void>
-  validateField(field: string | string[]): Promise<void>
+  validateField(field: FieldPath<T> | FieldPath<T>[]): Promise<void>
   validateStep(stepIndex: number): Promise<boolean>
   validateTab(tabKey: string): Promise<boolean>
   validateDynamicFields(): Promise<boolean>
   validateCustomGroup(groupKey: string): Promise<boolean>
-  clearValidation(field?: string | string[]): void
-  getModel(): FormModel
-  setFields(fields: FormModel): void
+  clearValidation(field?: FieldPath<T> | FieldPath<T>[]): void
+  getModel(): FormModel<T>
+  setFields(fields: Partial<FormModel<T>>): void
   resetFields(): void
-  setFieldValue(
-    field: string,
-    value: unknown,
+  setFieldValue<P extends FieldPath<T>>(
+    field: P,
+    value: FieldPathValue<T, P>,
     shouldValidate?: boolean
   ): Promise<void>
-  getFieldValue(field: string): unknown
-  setFieldsValue(fields: FormModel, shouldValidate?: boolean): Promise<void>
+  getFieldValue<P extends FieldPath<T>>(field: P): FieldPathValue<T, P>
+  setFieldsValue(
+    fields: Partial<FormModel<T>>,
+    shouldValidate?: boolean
+  ): Promise<void>
   formRef: FormInst | null
-  formModel: FormModel
+  formModel: FormModel<T>
   initialize(): void
   layoutType: ComputedRef<LayoutType>
   shouldShowDefaultActions: ComputedRef<boolean>
@@ -402,9 +460,9 @@ export interface FormInstance {
   /** 表单是否被修改过 */
   isDirty: Ref<boolean>
   /** 获取被修改的字段列表 */
-  getChangedFields(): string[]
+  getChangedFields(): FieldPath<T>[]
   /** 检查某字段是否被修改 */
-  isFieldDirty(field: string): boolean
+  isFieldDirty(field: FieldPath<T>): boolean
   /** 将当前值设为初始快照（常用于编辑模式加载数据后） */
   markAsClean(): void
   /** 字段异步选项的 loading 状态 */
@@ -412,7 +470,7 @@ export interface FormInstance {
   /** 字段异步选项加载错误 */
   asyncErrorMap: Ref<Record<string, unknown>>
   /** 重新加载全部或指定字段的异步选项 */
-  reloadOptions(field?: string): Promise<void>
+  reloadOptions(field?: FieldPath<T>): Promise<void>
   /** 是否正在提交 */
   isSubmitting: Ref<boolean>
   /** 验证并提交，成功返回 true */
@@ -431,7 +489,7 @@ export type LayoutComponent = DefineComponent<LayoutProps>
 /**
  * 表单数据模型类型（泛型）
  */
-export type FormModel<T extends FormRecord = FormRecord> = T
+export type FormModel<T extends object = FormRecord> = T
 
 /**
  * 表单验证规则映射

@@ -14,7 +14,7 @@ interface PaginationRenderInfo {
   endIndex: number
 }
 
-export interface UsePaginationOptions<T extends DataRecord = DataRecord> {
+export interface UsePaginationOptions<T extends object = DataRecord> {
   /** 数据源 - 支持函数、Ref 或 ComputedRef */
   data: (() => T[]) | Ref<T[]> | ComputedRef<T[]>
   /** 分页配置 */
@@ -23,7 +23,7 @@ export interface UsePaginationOptions<T extends DataRecord = DataRecord> {
   emit?: (event: 'pagination-change', page: number, pageSize: number) => void
 }
 
-export interface UsePaginationReturn<T extends DataRecord = DataRecord> {
+export interface UsePaginationReturn<T extends object = DataRecord> {
   currentPage: Ref<number>
   currentPageSize: Ref<number>
   paginatedData: ComputedRef<T[]>
@@ -50,7 +50,7 @@ function normalizePositiveInteger(value: number | undefined, fallback: number) {
 }
 
 /** Local and remote pagination with stable controlled-state synchronization. */
-export function usePagination<T extends DataRecord = DataRecord>(
+export function usePagination<T extends object = DataRecord>(
   options: UsePaginationOptions<T>
 ): UsePaginationReturn<T> {
   const { data, config, emit } = options

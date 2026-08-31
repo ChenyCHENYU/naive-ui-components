@@ -12,11 +12,19 @@ import { useCellEdit } from './useCellEdit'
 import { useModalEdit } from './useModalEdit'
 import { useTableExpand } from './useTableExpand'
 import { useDynamicRows, type DynamicRowsOptions } from './useDynamicRow'
+import {
+  useComponentFeedback,
+  useComponentLocale,
+  type ComponentFeedback,
+  type ComponentLocale,
+} from '../../../config'
 
 /**
  * 表格管理器配置接口
  */
 interface TableManagerConfig {
+  feedback?: ComponentFeedback
+  locale?: ComponentLocale
   /* 基础配置 */
   editable: boolean
   editMode: string
@@ -35,6 +43,7 @@ interface TableManagerConfig {
   expandable: boolean
   defaultExpandedKeys?: DataTableRowKey[]
   onLoadExpandData?: (row: DataRecord) => Promise<any[]> | any[]
+  onExpandError?: (error: unknown, row: DataRecord) => void
   renderExpandContent?: unknown
   rowExpandable?: (row: DataRecord) => boolean
 
@@ -106,6 +115,8 @@ interface EventHandlers {
 export function useTableManager(params: TableManagerParams) {
   const { data, rowKey, emit } = params
   const getConfig = () => toValue(params.config)
+  const feedback = useComponentFeedback(() => getConfig().feedback)
+  const { t } = useComponentLocale(() => getConfig().locale)
 
   /* ================= 事件处理器工厂 ================= */
 
@@ -248,6 +259,11 @@ export function useTableManager(params: TableManagerParams) {
       get onLoadData() {
         return getConfig().onLoadExpandData
       },
+      onError: (error: unknown, row: DataRecord) => {
+        const handler = getConfig().onExpandError
+        if (handler) handler(error, row)
+        else feedback.error(t('table.loadFailed'), error)
+      },
       get renderContent() {
         return getConfig().renderExpandContent as any
       },
@@ -287,22 +303,20 @@ export function useTableManager(params: TableManagerParams) {
 
   /** 初始化动态行功能状态 */
   const initDynamicRowsState = () => {
-    const { dynamicRows } = getConfig()
-    if (!dynamicRows) return null
-
-    const dynamicOptions: DynamicRowsOptions<DataRecord> = {
-      ...dynamicRows,
-      onRowChange: eventHandlers.onRowChange,
-      onSelectionChange: eventHandlers.onRowSelectionChange,
-      onRowAdd: eventHandlers.onRowAdd,
-      onRowDelete: eventHandlers.onRowDelete,
-      onRowCopy: eventHandlers.onRowCopy,
-      onRowMove: eventHandlers.onRowMove,
-    }
-
     return useDynamicRows(
       computed(() => data()),
-      dynamicOptions
+      computed<DynamicRowsOptions<DataRecord>>(() => ({
+        ...getConfig().dynamicRows,
+        enabled: Boolean(getConfig().dynamicRows),
+        feedback: getConfig().feedback,
+        locale: getConfig().locale,
+        onRowChange: eventHandlers.onRowChange,
+        onSelectionChange: eventHandlers.onRowSelectionChange,
+        onRowAdd: eventHandlers.onRowAdd,
+        onRowDelete: eventHandlers.onRowDelete,
+        onRowCopy: eventHandlers.onRowCopy,
+        onRowMove: eventHandlers.onRowMove,
+      }))
     )
   }
 

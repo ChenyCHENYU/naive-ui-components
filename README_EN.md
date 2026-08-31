@@ -93,6 +93,60 @@ Components({
 
 Set `importOnDemand: false` explicitly when a legacy project still requires imports from the package root.
 
+### Recommended C_Form / C_Table setup
+
+Declare the business model once and keep nested field paths, values, column keys, callbacks, and exposed methods type-safe:
+
+```ts
+import {
+  defineFormConfig,
+  defineFormOptions,
+  useCForm,
+} from '@robot-admin/naive-ui-components/C_Form'
+
+interface UserForm {
+  name: string
+  profile: { email: string }
+}
+
+const options = defineFormOptions<UserForm>([
+  { type: 'input', prop: 'name', required: true },
+  { type: 'input', prop: 'profile.email' },
+])
+const config = defineFormConfig<UserForm>({
+  onSubmit: ({ model }) => save(model),
+})
+const { model, formRef, bindings } = useCForm({
+  initialValues: { name: '', profile: { email: '' } },
+  options,
+  config,
+})
+```
+
+For remote tables, `useTableQuery` owns cancellation, latest-request-wins behavior, pagination, and loading. Destructure its `bindings` and use `<C_Table v-bind="bindings" />`:
+
+```ts
+import {
+  defineTableColumns,
+  useTableQuery,
+} from '@robot-admin/naive-ui-components/C_Table'
+
+interface UserRow {
+  id: string
+  name: string
+}
+const columns = defineTableColumns<UserRow>([{ key: 'name', title: 'Name' }])
+const { bindings } = useTableQuery<UserRow, { keyword: string }>({
+  initialQuery: { keyword: '' },
+  columns,
+  rowKey: 'id',
+  request: ({ page, pageSize, query, signal }) =>
+    fetchUsers({ page, pageSize, ...query }, signal),
+})
+```
+
+`C_Date`, `C_Time`, `C_Menu`, and `C_FormSearch` support standard `v-model`. Message/dialog providers are optional; application-wide feedback, locale, form defaults, and `table.defaults` can be supplied through plugin options.
+
 ### 📋 Component List (51 Components)
 
 > 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).

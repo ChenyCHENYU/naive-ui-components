@@ -10,8 +10,27 @@ import {
   replaceFormRecord,
 } from '../src/components/C_Form/utils/formModel'
 import type { FormModel, FormOption } from '../src/components/C_Form/types'
+import {
+  deleteDataPath,
+  getDataPath,
+  hasDataPath,
+  setDataPath,
+} from '../src/utils/data'
 
 describe('C_Form data safety', () => {
+  test('nested paths are safe, support arrays, and preserve literal keys', () => {
+    const model: FormModel = {}
+    setDataPath(model, 'profile.contacts[0].email', 'a@example.com')
+    expect(getDataPath(model, 'profile.contacts.0.email')).toBe('a@example.com')
+    expect(hasDataPath(model, 'profile.contacts[0].email')).toBe(true)
+    deleteDataPath(model, 'profile.contacts[0].email')
+    expect(hasDataPath(model, 'profile.contacts[0].email')).toBe(false)
+
+    model['literal.key'] = 'legacy'
+    setDataPath(model, 'literal.key', 'compatible')
+    expect(model['literal.key']).toBe('compatible')
+    expect(() => setDataPath(model, '__proto__.polluted', true)).toThrow()
+  })
   test('clone keeps structured values and isolates nested mutations', () => {
     const source = {
       date: new Date('2026-08-31T00:00:00.000Z'),
@@ -54,6 +73,25 @@ describe('C_Form data safety', () => {
 })
 
 describe('C_Form state engine', () => {
+  test('fills missing nested defaults without replacing supplied siblings', () => {
+    const scope = effectScope()
+    const state = scope.run(() =>
+      useFormState(
+        computed(() => [
+          { type: 'input', prop: 'profile.name', value: 'Anonymous' },
+          { type: 'inputNumber', prop: 'profile.age', value: 18 },
+        ]),
+        computed(() => resolveFormConfig()),
+        ref<FormInst | null>(null),
+        () => undefined,
+        computed(() => ({ profile: { name: 'Ada' } }))
+      )
+    )!
+
+    expect(state.getModel()).toEqual({ profile: { name: 'Ada', age: 18 } })
+    scope.stop()
+  })
+
   test('validates and clears only the requested mounted field', async () => {
     const options = ref<FormOption[]>([
       { type: 'input', prop: 'name', label: '姓名', required: true },

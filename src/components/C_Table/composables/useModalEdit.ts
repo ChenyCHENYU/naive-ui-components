@@ -9,7 +9,7 @@ import type { DataTableRowKey } from 'naive-ui/es'
 import type { DataRecord } from '../types'
 import { cloneData } from '../../../utils/data'
 
-export interface ModalEditOptions<T extends DataRecord = DataRecord> {
+export interface ModalEditOptions<T extends object = DataRecord> {
   data: () => T[]
   rowKey: (row: T) => DataTableRowKey
   onSave?: (editingData: T, rowIndex: number) => void | Promise<void>
@@ -17,7 +17,7 @@ export interface ModalEditOptions<T extends DataRecord = DataRecord> {
 }
 
 /** Modal edit state with lossless snapshots and retry-safe async saves. */
-export function useModalEdit<T extends DataRecord = DataRecord>(
+export function useModalEdit<T extends object = DataRecord>(
   options: ModalEditOptions<T>
 ) {
   const isModalVisible = ref(false)

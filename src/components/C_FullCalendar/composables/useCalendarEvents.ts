@@ -1,5 +1,5 @@
 import { ref, shallowRef, watch, type Ref } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useComponentFeedback } from '../../../config'
 import type { CalendarEvent, CalendarProps, CalendarEditForm } from '../types'
 import {
   EVENT_COLORS,
@@ -25,7 +25,7 @@ type EmitFn = {
  *
  */
 export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
-  const message = useMessage()
+  const message = useComponentFeedback()
   const calendarRef = ref()
 
   const internalEvents = ref<CalendarEvent[]>([...(props.events ?? [])])

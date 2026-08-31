@@ -22,12 +22,15 @@ import type {
   FormErrorContext,
   MaybePromise,
   SubmitEventPayload,
+  FormRecord,
 } from '../types'
+import { getCurrentInstance, inject, type InjectionKey } from 'vue'
+import type { ComponentFeedback, ComponentLocale } from '../../../config'
 
 /* =================== FormConfig 类型定义 =================== */
 
 /** 布局回调事件 — 替代原先 16 个 emit 中的纯透传事件 */
-export interface LayoutCallbacks {
+export interface LayoutCallbacks<T extends object = FormRecord> {
   /* tabs 布局回调 */
   onTabChange?: (tabKey: string, tabIndex: number) => void
   onTabBeforeChange?: (
@@ -54,10 +57,10 @@ export interface LayoutCallbacks {
   onRenderModeChange?: (mode: RenderMode) => void
   onGroupToggle?: (groupKey: string, collapsed: boolean) => void
   onGroupReset?: (groupKey: string) => void
-  onFieldsChange?: (fields: FormOption[]) => void
+  onFieldsChange?: (fields: FormOption<T>[]) => void
 
   /* lifecycle callbacks */
-  onSubmit?: (payload: SubmitEventPayload) => MaybePromise<void>
+  onSubmit?: (payload: SubmitEventPayload<T>) => MaybePromise<void>
   onError?: (error: unknown, context: FormErrorContext) => void
 }
 
@@ -66,7 +69,11 @@ export interface LayoutCallbacks {
  * @description 收拢原先 13 个分散 Props 为 1 个 config 对象
  * 默认值均在 FORM_DEFAULTS 中集中管理
  */
-export interface FormConfig extends LayoutCallbacks {
+export interface FormConfig<
+  T extends object = FormRecord,
+> extends LayoutCallbacks<T> {
+  feedback?: ComponentFeedback
+  locale?: ComponentLocale
   /** 布局类型，默认 'default' */
   layout?: LayoutType
   /** 标签位置，默认 'left' */
@@ -95,7 +102,7 @@ export interface FormConfig extends LayoutCallbacks {
   /** 表单模式：create = 新建（默认），edit = 编辑（配合 initialValues 实现回填 + 脏检查） */
   mode?: FormMode
   /** 编辑模式初始值：设置后自动作为脏检查基准 */
-  initialValues?: Record<string, any>
+  initialValues?: Partial<T>
 
   /* ===== 布局级配置 ===== */
   grid?: GridLayoutConfig
@@ -105,6 +112,43 @@ export interface FormConfig extends LayoutCallbacks {
   steps?: StepsLayoutConfig
   dynamic?: DynamicLayoutConfig
   custom?: CustomLayoutConfig
+}
+
+/** Application-level C_Form defaults injection key. */
+export const FORM_GLOBAL_CONFIG_KEY: InjectionKey<FormConfig> = Symbol(
+  'c-form-global-config'
+)
+
+/** Read application-level C_Form defaults without requiring a provider. */
+export function useFormGlobalConfig(): FormConfig {
+  return getCurrentInstance() ? inject(FORM_GLOBAL_CONFIG_KEY, {}) : {}
+}
+
+/** Merge nested layout sections while preserving local-over-global precedence. */
+export function mergeFormConfig(
+  local: FormConfig | undefined,
+  global: FormConfig
+): FormConfig {
+  const current = local ?? {}
+  const mergeSection = <T extends object>(
+    globalSection: T | undefined,
+    localSection: T | undefined
+  ): T | undefined =>
+    globalSection || localSection
+      ? ({ ...globalSection, ...localSection } as T)
+      : undefined
+
+  return {
+    ...global,
+    ...current,
+    grid: mergeSection(global.grid, current.grid),
+    inline: mergeSection(global.inline, current.inline),
+    card: mergeSection(global.card, current.card),
+    tabs: mergeSection(global.tabs, current.tabs),
+    steps: mergeSection(global.steps, current.steps),
+    dynamic: mergeSection(global.dynamic, current.dynamic),
+    custom: mergeSection(global.custom, current.custom),
+  }
 }
 
 /** 解析后的配置（所有必填字段均已设置默认值） */
@@ -120,6 +164,8 @@ export interface ResolvedFormConfig extends Required<
     | 'dynamic'
     | 'custom'
     | 'initialValues'
+    | 'feedback'
+    | 'locale'
   >
 > {
   /* 布局配置保留可选，因为只有对应 layout 时才有值 */
@@ -149,6 +195,8 @@ export interface ResolvedFormConfig extends Required<
   onError?: LayoutCallbacks['onError']
   /* v0.8.0 */
   initialValues?: Record<string, any>
+  feedback?: ComponentFeedback
+  locale?: ComponentLocale
 }
 
 /* =================== 默认值常量 =================== */
@@ -163,8 +211,8 @@ export const FORM_DEFAULTS: ResolvedFormConfig = {
   showActions: true,
   validateOnChange: false,
   preserveRemovedFields: false,
-  submitText: '提交',
-  resetText: '重置',
+  submitText: '',
+  resetText: '',
   mode: 'create',
 } as const
 

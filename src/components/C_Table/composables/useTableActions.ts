@@ -5,7 +5,7 @@
  */
 
 import { h, type VNodeChild } from 'vue'
-import { NButton, NSpace, NDropdown, useMessage, useDialog } from 'naive-ui'
+import { NButton, NSpace, NDropdown } from 'naive-ui'
 import type { DataTableRowKey } from 'naive-ui/es'
 import type {
   DataRecord,
@@ -14,16 +14,18 @@ import type {
   UseTableActionsReturn,
 } from '../types'
 import C_Icon from '../../C_Icon/index.vue'
+import { useComponentFeedback, useComponentLocale } from '../../../config'
 
 /**
  * 表格操作Hook
  */
-export function useTableActions<T extends DataRecord = DataRecord>(
+export function useTableActions<T extends object = DataRecord>(
   options: UseTableActionsOptions<T>
 ): UseTableActionsReturn<T> {
-  const { actions, config, tableManager, rowKey, emit, onViewDetail } = options
-  const message = useMessage()
-  const dialog = useDialog()
+  const { actions, config, tableManager, rowKey, onRowDeleted, onViewDetail } =
+    options
+  const feedback = useComponentFeedback(() => config.value.feedback)
+  const { t } = useComponentLocale(() => config.value.locale)
 
   /* 检查操作是否启用 */
   const isActionEnabled = (key: 'edit' | 'delete' | 'detail') => {
@@ -34,7 +36,7 @@ export function useTableActions<T extends DataRecord = DataRecord>(
   }
 
   /* 类型守卫：检查是否为有效API函数 */
-  const isValidApiFunction = <TData extends DataRecord>(
+  const isValidApiFunction = <TData extends object>(
     action: false | ApiFunction<TData> | undefined
   ): action is ApiFunction<TData> => {
     return action !== false && typeof action === 'function'
@@ -86,30 +88,30 @@ export function useTableActions<T extends DataRecord = DataRecord>(
   ) => {
     try {
       await deleteAction(row, index)
-      message.success('删除成功')
-      emit('row-delete', row, index)
+      feedback.success(t('table.deleteSuccess'))
+      onRowDeleted?.(row, index)
     } catch (error) {
-      console.error('删除失败:', error)
-      message.error('删除失败')
+      feedback.error(t('table.deleteFailed'), error)
       throw error
     }
   }
 
   /* 处理删除操作 */
-  const handleDelete = (row: T, index: number) => {
+  const handleDelete = async (row: T, index: number) => {
     const deleteAction = actions.value?.delete
 
     if (!isValidApiFunction(deleteAction)) {
       return
     }
 
-    dialog.warning({
-      title: '确认删除',
-      content: '确定要删除这条记录吗？',
-      positiveText: '确定',
-      negativeText: '取消',
-      onPositiveClick: () => executeDelete(deleteAction, row, index),
+    const confirmed = await feedback.confirm({
+      title: t('table.deleteTitle'),
+      content: t('table.deleteContent'),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      type: 'warning',
     })
+    if (confirmed) await executeDelete(deleteAction, row, index)
   }
 
   /* 处理详情操作 */
@@ -126,8 +128,7 @@ export function useTableActions<T extends DataRecord = DataRecord>(
       const detailData = extractApiResponseData<T>(apiResponse)
       onViewDetail?.(detailData || row)
     } catch (error) {
-      console.error('获取详情失败:', error)
-      message.error('获取详情失败')
+      feedback.error(t('table.detailFailed'), error)
       onViewDetail?.(row)
     }
   }
@@ -138,17 +139,28 @@ export function useTableActions<T extends DataRecord = DataRecord>(
 
     if (isEditing) {
       return [
-        createButton('mdi:check', '保存', 'primary', () =>
-          tableManager.editStates.rowEdit.saveEditRow()
+        createButton(
+          'mdi:check',
+          t('common.save'),
+          'primary',
+          () =>
+            void tableManager.editStates.rowEdit
+              .saveEditRow()
+              .catch((error: unknown) =>
+                feedback.error(
+                  t('table.actionFailed', { action: t('common.save') }),
+                  error
+                )
+              )
         ),
-        createButton('mdi:close', '取消', 'default', () =>
+        createButton('mdi:close', t('common.cancel'), 'default', () =>
           tableManager.editStates.rowEdit.cancelEditRow()
         ),
       ]
     }
 
     return [
-      createButton('mdi:pencil', '编辑', 'warning', () =>
+      createButton('mdi:pencil', t('common.edit'), 'warning', () =>
         tableManager.editStates.rowEdit.startEditRow(rowKeyValue)
       ),
     ]
@@ -160,13 +172,18 @@ export function useTableActions<T extends DataRecord = DataRecord>(
 
     if (isActionEnabled('detail')) {
       buttons.push(
-        createButton('mdi:eye', '详情', 'info', () => handleDetail(row, index))
+        createButton(
+          'mdi:eye',
+          t('common.detail'),
+          'info',
+          () => void handleDetail(row, index)
+        )
       )
     }
 
     if (config.value.editMode === 'modal' && isActionEnabled('edit')) {
       buttons.push(
-        createButton('mdi:pencil', '编辑', 'warning', () =>
+        createButton('mdi:pencil', t('common.edit'), 'warning', () =>
           handleEdit(row, index)
         )
       )
@@ -174,8 +191,11 @@ export function useTableActions<T extends DataRecord = DataRecord>(
 
     if (isActionEnabled('delete')) {
       buttons.push(
-        createButton('mdi:delete', '删除', 'error', () =>
-          handleDelete(row, index)
+        createButton(
+          'mdi:delete',
+          t('common.delete'),
+          'error',
+          () => void handleDelete(row, index).catch(() => undefined)
         )
       )
     }
@@ -218,17 +238,26 @@ export function useTableActions<T extends DataRecord = DataRecord>(
         options,
         onSelect: (key: string) => {
           const action = visibleActions.find(a => a.key === key)
-          if (action) {
-            try {
-              action.onClick(row, index)
-            } catch (error) {
-              console.error(`操作"${action.label}"执行失败:`, error)
-              message.error(`${action.label}失败`)
-            }
-          }
+          if (!action) return
+          const actionLabel =
+            typeof action.label === 'function'
+              ? action.label(row, index)
+              : action.label
+          void Promise.resolve(action.onClick(row, index)).catch(error =>
+            feedback.error(
+              t('table.actionFailed', { action: actionLabel }),
+              error
+            )
+          )
         },
       },
-      () => createButton('mdi:dots-horizontal', '更多操作', 'default', () => {})
+      () =>
+        createButton(
+          'mdi:dots-horizontal',
+          t('table.moreActions'),
+          'default',
+          () => {}
+        )
     )
   }
 

@@ -18,6 +18,7 @@ import type { FormItemInst } from 'naive-ui/es/form'
 
 import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
+import { getDataPath, setDataPath } from '../../../utils/data'
 
 /* =================== 组件映射类型 =================== */
 
@@ -252,9 +253,9 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
 
   const getBaseProps = (item: FormOption): RendererProps => {
     const baseProps: RendererProps = {
-      value: formModel[item.prop],
+      value: getDataPath(formModel, item.prop),
       'onUpdate:value': (value: unknown) => {
-        formModel[item.prop] = value
+        setDataPath(formModel, item.prop, value)
         handleFieldChange(item.prop)
       },
       disabled: resolveFieldFlag(

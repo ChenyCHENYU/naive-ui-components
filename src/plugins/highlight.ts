@@ -1,11 +1,6 @@
-
-
 import type { App } from 'vue'
 import type { HLJSApi, LanguageFn } from 'highlight.js'
 import hljs from 'highlight.js/lib/core'
-
-// 导入默认主题样式
-import 'highlight.js/styles/github.css'
 
 // 默认支持的语言包（常用语言预加载）
 import javascript from 'highlight.js/lib/languages/javascript'

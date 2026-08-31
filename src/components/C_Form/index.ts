@@ -14,6 +14,8 @@ export type {
   AsyncOptionsContext,
   FormErrorContext,
   FormRecord,
+  FieldPath,
+  FieldPathValue,
   MaybePromise,
   SubmitEventPayload,
   GridLayoutConfig,
@@ -28,9 +30,15 @@ export type {
   CustomLayoutConfig,
 } from './types'
 
+export { defineFormConfig, defineFormOptions, useCForm } from './helpers'
+export type { UseCFormOptions } from './helpers'
+
 /* 导出 Composables */
 export {
   resolveFormConfig,
+  mergeFormConfig,
+  useFormGlobalConfig,
+  FORM_GLOBAL_CONFIG_KEY,
   shouldShowActions,
   FORM_DEFAULTS,
   LAYOUTS_WITH_OWN_CONTROLS,

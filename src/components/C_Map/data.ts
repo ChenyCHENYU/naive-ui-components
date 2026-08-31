@@ -42,12 +42,3 @@ export const AMAP_CONFIG = {
   apiUrl: 'https://webapi.amap.com/maps?v=2.0&key=',
   note: '高德地图需要API Key，如需使用请申请：https://lbs.amap.com/api/javascript-api/guide/create/',
 } as const
-
-export const MAP_ICONS = {
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-} as const
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'

@@ -5,6 +5,10 @@ import { useCrossPageSelection } from '../src/components/C_Table/composables/use
 import { useModalEdit } from '../src/components/C_Table/composables/useModalEdit'
 import { usePagination } from '../src/components/C_Table/composables/usePagination'
 import { useRowEdit } from '../src/components/C_Table/composables/useRowEdit'
+import { useTableQuery } from '../src/components/C_Table/composables/useTableQuery'
+import { useTableExpand } from '../src/components/C_Table/composables/useTableExpand'
+import { validateTableRowKeys } from '../src/components/C_Table/helpers'
+import { mergeGlobalConfig } from '../src/components/C_Table/composables/useTableGlobalConfig'
 import type {
   DataRecord,
   PaginationConfig,
@@ -13,6 +17,105 @@ import type {
 
 const rows = (count: number): DataRecord[] =>
   Array.from({ length: count }, (_, id) => ({ id, name: `row-${id}` }))
+
+describe('C_Table remote query controller', () => {
+  test('latest request wins and stale requests receive an abort signal', async () => {
+    const signals: AbortSignal[] = []
+    const resolvers: Array<(value: { data: DataRecord[]; total: number }) => void> = []
+    const scope = effectScope()
+    const query = scope.run(() =>
+      useTableQuery<DataRecord, { keyword: string }>({
+        immediate: false,
+        initialQuery: { keyword: '' },
+        request: ({ signal }) => {
+          signals.push(signal)
+          return new Promise(resolve => resolvers.push(resolve))
+        },
+      })
+    )!
+
+    const first = query.execute()
+    const second = query.execute()
+    expect(signals[0].aborted).toBe(true)
+    resolvers[0]({ data: [{ id: 'stale' }], total: 1 })
+    resolvers[1]({ data: [{ id: 'latest' }], total: 1 })
+    expect(await first).toBe(false)
+    expect(await second).toBe(true)
+    expect(query.data.value).toEqual([{ id: 'latest' }])
+    scope.stop()
+  })
+})
+
+describe('C_Table row-key contract', () => {
+  test('reports missing, duplicate, and throwing row-key resolvers', () => {
+    const data = [{ id: 1 }, { id: 1 }, {}, { id: 4 }]
+    const issues = validateTableRowKeys(data, row => {
+      if (row.id === 4) throw new Error('bad key')
+      return row.id
+    })
+
+    expect(issues.map(issue => issue.type)).toEqual([
+      'duplicate',
+      'missing',
+      'error',
+    ])
+    expect(issues[0]?.firstIndex).toBe(0)
+  })
+})
+
+describe('C_Table global defaults', () => {
+  test('merges nested defaults without replacing local section values', () => {
+    const merged = mergeGlobalConfig(
+      {
+        display: { striped: false },
+        pagination: { enabled: true, remote: true },
+      },
+      {
+        defaults: {
+          display: { bordered: false, striped: true },
+          pagination: { enabled: true, pageSize: 50 },
+          validateRowKeys: false,
+        },
+      }
+    )
+
+    expect(merged.display).toEqual({ bordered: false, striped: false })
+    expect(merged.pagination).toEqual({
+      enabled: true,
+      pageSize: 50,
+      remote: true,
+    })
+    expect(merged.validateRowKeys).toBe(false)
+  })
+})
+
+describe('C_Table async expansion', () => {
+  test('deduplicates pending loads and a later collapse wins the race', async () => {
+    const data = ref([{ id: 1, name: 'parent' }])
+    let resolveLoad: (rows: DataRecord[]) => void = () => undefined
+    let calls = 0
+    const expanded = useTableExpand({
+      data,
+      rowKey: row => row.id as number,
+      onLoadData: () => {
+        calls += 1
+        return new Promise<DataRecord[]>(resolve => {
+          resolveLoad = resolve
+        })
+      },
+    })
+
+    const first = expanded.expandRow(1)
+    const second = expanded.expandRow(1)
+    expect(calls).toBe(1)
+    expanded.collapseAll()
+    resolveLoad([{ id: 'child' }])
+    await Promise.all([first, second])
+
+    expect(expanded.expandedKeys.value).toEqual([])
+    expect(expanded.expandDataMap.value.get(1)).toEqual([{ id: 'child' }])
+  })
+})
 
 describe('C_Table pagination', () => {
   test('paginates local data without snapping user state back', async () => {

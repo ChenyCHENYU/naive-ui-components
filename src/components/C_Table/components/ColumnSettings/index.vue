@@ -196,7 +196,7 @@
     NCheckbox,
     NTag,
     NDropdown,
-  } from 'naive-ui/es'
+  } from 'naive-ui'
   import C_Icon from '../../../C_Icon/index.vue'
   import type { TableColumn } from '../../types'
   import { getFixedOptions, isSpecialColumn } from './data'

@@ -9,7 +9,11 @@ import {
   ref,
   shallowRef,
   computed,
+  reactive,
+  toValue,
+  watch,
   onBeforeUnmount,
+  type MaybeRefOrGetter,
   type VNode,
   type Ref,
   type VNodeChild,
@@ -21,8 +25,7 @@ import {
   NModal,
   NButtonGroup,
   NSpace,
-  useMessage,
-} from 'naive-ui/es'
+} from 'naive-ui'
 import {
   usePrintWatermark,
   printPresets,
@@ -30,9 +33,17 @@ import {
 } from './usePrintWatermark'
 import type { TableColumn, DataRecord } from '../types'
 import C_Icon from '../../C_Icon/index.vue'
+import {
+  useComponentFeedback,
+  useComponentLocale,
+  type ComponentFeedback,
+  type ComponentLocale,
+} from '../../../config'
 
 /* ================= 类型定义 ================= */
-export interface DynamicRowsOptions<T extends DataRecord = DataRecord> {
+export interface DynamicRowsOptions<T extends object = DataRecord> {
+  /** 总开关；关闭时公开方法保持安全 no-op */
+  enabled?: boolean
   /* 基础配置 */
   rowKey?: string | ((row: T) => DataTableRowKey)
   defaultRowData?: () => T
@@ -55,6 +66,8 @@ export interface DynamicRowsOptions<T extends DataRecord = DataRecord> {
   /* 交互配置 */
   confirmDelete?: boolean
   deleteConfirmText?: string
+  feedback?: ComponentFeedback
+  locale?: ComponentLocale
 
   /* 事件回调 */
   onRowChange?: (data: T[]) => void
@@ -68,7 +81,7 @@ export interface DynamicRowsOptions<T extends DataRecord = DataRecord> {
   onRowMove?: (row: T, fromIndex: number, toIndex: number) => void
 }
 
-export interface DynamicRowsReturn<T extends DataRecord = DataRecord> {
+export interface DynamicRowsReturn<T extends object = DataRecord> {
   /* 状态 */
   selectedRowKey: Ref<DataTableRowKey | null>
   selectedRowData: Ref<T | null>
@@ -104,7 +117,7 @@ export interface DynamicRowsReturn<T extends DataRecord = DataRecord> {
   enhanceColumns: (columns: TableColumn<T>[]) => TableColumn<T>[]
 
   /* 工具栏渲染 */
-  renderToolbar: () => VNodeChild
+  renderToolbar: (target?: HTMLElement) => VNodeChild
   renderConfirmModal: () => VNodeChild
 }
 
@@ -112,11 +125,17 @@ export interface DynamicRowsReturn<T extends DataRecord = DataRecord> {
 
 /** 生成唯一ID */
 function generateUniqueId(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return `row_${crypto.randomUUID()}`
+  }
   return `row_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
 /** 获取行键值 */
-function getRowKey<T extends DataRecord>(
+function getRowKey<T extends object>(
   row: T,
   rowKey: string | ((row: T) => DataTableRowKey)
 ): DataTableRowKey {
@@ -124,7 +143,7 @@ function getRowKey<T extends DataRecord>(
 }
 
 /** 创建新行数据 */
-function createNewRow<T extends DataRecord>(
+function createNewRow<T extends object>(
   defaultRowData: (() => T) | undefined,
   rowKey: string | ((row: T) => DataTableRowKey)
 ): T {
@@ -141,14 +160,13 @@ function createNewRow<T extends DataRecord>(
 /**
  * 表格动态行操作功能组合
  */
-export function useDynamicRows<T extends DataRecord = DataRecord>(
-  data: Ref<T[]>,
-  options: DynamicRowsOptions<T> = {}
+export function useDynamicRows<T extends object = DataRecord>(
+  data: Readonly<Ref<T[]>>,
+  options: MaybeRefOrGetter<DynamicRowsOptions<T>> = {}
 ): DynamicRowsReturn<T> {
-  const message = useMessage()
-
   /* 默认配置 */
-  const finalOptions = {
+  const defaults = {
+    enabled: true,
     rowKey: 'id',
     enableRadioSelection: true,
     enableAdd: true,
@@ -158,12 +176,27 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
     enableMove: true,
     enablePrint: true,
     confirmDelete: true,
-    deleteConfirmText: '确定要删除选中的行吗？此操作不可撤销。',
+    deleteConfirmText: '',
     printPreset: 'table' as const,
     printTargetSelector: '.c-table-wrapper',
     defaultRowData: () => ({}) as T,
-    ...options,
   }
+  const finalOptions = reactive({
+    ...defaults,
+    ...toValue(options),
+  }) as DynamicRowsOptions<T> & typeof defaults
+  watch(
+    () => toValue(options),
+    next => {
+      const target = finalOptions as unknown as Record<string, unknown>
+      Object.keys(target).forEach(key => delete target[key])
+      Object.assign(target, defaults, next)
+    },
+    { deep: true }
+  )
+  const feedback = useComponentFeedback(() => finalOptions.feedback)
+  const { t } = useComponentLocale(() => finalOptions.locale)
+  const radioGroupName = `c-table-radio-${generateUniqueId()}`
 
   /* 状态 */
   const selectedRowKey = ref<DataTableRowKey | null>(null)
@@ -223,13 +256,12 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
 
   /** 更新表格数据 */
   const updateData = (newData: T[]) => {
-    data.value = newData
     finalOptions.onRowChange?.(newData)
   }
 
   /** 添加新行到表格末尾 */
   const addRow = () => {
-    if (!finalOptions.enableAdd) return
+    if (!finalOptions.enabled || !finalOptions.enableAdd) return
 
     const newRow = createNewRow(
       finalOptions.defaultRowData,
@@ -238,13 +270,17 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
     const newData = [...data.value, newRow]
     updateData(newData)
     finalOptions.onRowAdd?.(newRow)
-    message.success('添加行成功')
+    feedback.success(t('table.addRowSuccess'))
   }
 
   /** 在选中行后插入新行 */
   const insertRow = () => {
-    if (!finalOptions.enableInsert || !selectedRowData.value) {
-      message.warning('请先选择一行数据')
+    if (
+      !finalOptions.enabled ||
+      !finalOptions.enableInsert ||
+      !selectedRowData.value
+    ) {
+      feedback.warning(t('table.selectRowFirst'))
       return
     }
 
@@ -256,13 +292,17 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
     newData.splice(selectedRowIndex.value + 1, 0, newRow)
     updateData(newData)
     finalOptions.onRowAdd?.(newRow)
-    message.success('插入行成功')
+    feedback.success(t('table.insertRowSuccess'))
   }
 
   /** 删除选中的行 */
   const deleteRow = () => {
-    if (!finalOptions.enableDelete || !selectedRowData.value) {
-      message.warning('请先选择要删除的行')
+    if (
+      !finalOptions.enabled ||
+      !finalOptions.enableDelete ||
+      !selectedRowData.value
+    ) {
+      feedback.warning(t('table.selectDeleteRowFirst'))
       return
     }
 
@@ -287,14 +327,18 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
     finalOptions.onSelectionChange?.(null, null)
     finalOptions.onRowDelete?.(deletedRow, deletedIndex)
 
-    message.success('删除行成功')
+    feedback.success(t('table.deleteRowSuccess'))
     deleteConfirmVisible.value = false
   }
 
   /** 复制选中的行 */
   const copyRow = () => {
-    if (!finalOptions.enableCopy || !selectedRowData.value) {
-      message.warning('请先选择要复制的行')
+    if (
+      !finalOptions.enabled ||
+      !finalOptions.enableCopy ||
+      !selectedRowData.value
+    ) {
+      feedback.warning(t('table.selectCopyRowFirst'))
       return
     }
 
@@ -315,12 +359,13 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
     const newData = [...data.value, newRow]
     updateData(newData)
     finalOptions.onRowCopy?.(originalRow, newRow)
-    message.success('复制行成功')
+    feedback.success(t('table.copyRowSuccess'))
   }
 
   /** 将选中行向上移动 */
   const moveRowUp = () => {
-    if (!finalOptions.enableMove || !canMoveUp.value) return
+    if (!finalOptions.enabled || !finalOptions.enableMove || !canMoveUp.value)
+      return
 
     const currentIndex = selectedRowIndex.value
     const newData = [...data.value]
@@ -333,12 +378,13 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
 
     updateData(newData)
     finalOptions.onRowMove?.(movingRow, currentIndex, currentIndex - 1)
-    message.success('行已上移')
+    feedback.success(t('table.moveUpSuccess'))
   }
 
   /** 将选中行向下移动 */
   const moveRowDown = () => {
-    if (!finalOptions.enableMove || !canMoveDown.value) return
+    if (!finalOptions.enabled || !finalOptions.enableMove || !canMoveDown.value)
+      return
 
     const currentIndex = selectedRowIndex.value
     const newData = [...data.value]
@@ -351,11 +397,12 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
 
     updateData(newData)
     finalOptions.onRowMove?.(movingRow, currentIndex, currentIndex + 1)
-    message.success('行已下移')
+    feedback.success(t('table.moveDownSuccess'))
   }
 
   /** 选中指定行 */
   const selectRow = (key: DataTableRowKey) => {
+    if (!finalOptions.enabled) return
     const row = data.value.find(
       row => getRowKey(row, finalOptions.rowKey) === key
     )
@@ -374,7 +421,7 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
   /** 处理打印操作 */
   const handlePrint = async (elementRef: Ref<HTMLElement | undefined>) => {
     if (!elementRef.value) {
-      message.error('打印元素未找到')
+      feedback.error(t('table.printTargetMissing'))
       return
     }
 
@@ -388,7 +435,7 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
     filename?: string
   ) => {
     if (!elementRef.value) {
-      message.error('下载元素未找到')
+      feedback.error(t('table.downloadTargetMissing'))
       return
     }
 
@@ -399,7 +446,7 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
   /** 处理快速打印操作 */
   const handleQuickPrint = async (elementRef: Ref<HTMLElement | undefined>) => {
     if (!elementRef.value) {
-      message.error('打印元素未找到')
+      feedback.error(t('table.printTargetMissing'))
       return
     }
 
@@ -409,12 +456,13 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
 
   /** 增强表格列配置，添加单选列 */
   const enhanceColumns = (columns: TableColumn<T>[]): TableColumn<T>[] => {
+    if (!finalOptions.enabled) return columns
     const enhancedColumns = [...columns]
 
-    if (finalOptions.enableRadioSelection) {
+    if (finalOptions.enabled && finalOptions.enableRadioSelection) {
       enhancedColumns.unshift({
         key: '_radio_selection',
-        title: '选择',
+        title: t('common.select'),
         width: 80,
         align: 'center',
         editable: false,
@@ -423,7 +471,8 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
           return h('div', { class: 'flex justify-center' }, [
             h('input', {
               type: 'radio',
-              name: 'table-radio-selection',
+              name: radioGroupName,
+              'aria-label': t('common.select'),
               checked: selectedRowKey.value === rowKeyVal,
               class: 'cursor-pointer accent-blue-500 scale-110',
               onChange: (e: Event) => {
@@ -441,7 +490,8 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
   }
 
   /** 渲染工具栏 */
-  const renderToolbar = (): VNodeChild => {
+  const renderToolbar = (target?: HTMLElement): VNodeChild => {
+    if (!finalOptions.enabled) return null
     const buttons: VNode[] = []
 
     if (finalOptions.enablePrint) {
@@ -454,9 +504,9 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
             ghost: true,
             onClick: async () => {
               try {
-                const tableElement = document.querySelector(
-                  finalOptions.printTargetSelector
-                )
+                const tableElement =
+                  target ??
+                  document.querySelector(finalOptions.printTargetSelector)
                 if (tableElement) {
                   await handlePrint(
                     shallowRef<HTMLElement | undefined>(
@@ -464,16 +514,17 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                     )
                   )
                 } else {
-                  console.warn('未找到表格容器元素')
+                  feedback.warning(t('table.printTargetMissing'))
                 }
               } catch (error) {
-                console.error('打印失败:', error)
+                feedback.error(t('table.printTargetMissing'), error)
               }
             },
           },
           {
-            icon: () => h(C_Icon, { name: 'mdi:printer', title: '打印' }),
-            default: () => '打印',
+            icon: () =>
+              h(C_Icon, { name: 'mdi:printer', title: t('common.print') }),
+            default: () => t('common.print'),
           }
         )
       )
@@ -490,8 +541,9 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
             type: 'primary',
           },
           {
-            icon: () => h(C_Icon, { name: 'mdi:plus', title: '增行' }),
-            default: () => '增行',
+            icon: () =>
+              h(C_Icon, { name: 'mdi:plus', title: t('table.addRow') }),
+            default: () => t('table.addRow'),
           }
         )
       )
@@ -518,12 +570,12 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                   icon: () =>
                     h(C_Icon, {
                       name: 'mdi:table-row-plus-after',
-                      title: '插行',
+                      title: t('table.insertRow'),
                     }),
-                  default: () => '插行',
+                  default: () => t('table.insertRow'),
                 }
               ),
-            default: () => '请先选择一行数据',
+            default: () => t('table.selectRowFirst'),
           }
         )
       )
@@ -548,11 +600,14 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                 },
                 {
                   icon: () =>
-                    h(C_Icon, { name: 'mdi:delete', title: '删除行' }),
-                  default: () => '删除行',
+                    h(C_Icon, {
+                      name: 'mdi:delete',
+                      title: t('table.deleteRow'),
+                    }),
+                  default: () => t('table.deleteRow'),
                 }
               ),
-            default: () => '请先选择要删除的行',
+            default: () => t('table.selectDeleteRowFirst'),
           }
         )
       )
@@ -577,11 +632,14 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                 },
                 {
                   icon: () =>
-                    h(C_Icon, { name: 'mdi:content-copy', title: '复制行' }),
-                  default: () => '复制行',
+                    h(C_Icon, {
+                      name: 'mdi:content-copy',
+                      title: t('table.copyRow'),
+                    }),
+                  default: () => t('table.copyRow'),
                 }
               ),
-            default: () => '请先选择要复制的行',
+            default: () => t('table.selectCopyRowFirst'),
           }
         )
       )
@@ -606,12 +664,17 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                 },
                 {
                   icon: () =>
-                    h(C_Icon, { name: 'mdi:arrow-up', title: '上移' }),
-                  default: () => '上移',
+                    h(C_Icon, {
+                      name: 'mdi:arrow-up',
+                      title: t('table.moveUp'),
+                    }),
+                  default: () => t('table.moveUp'),
                 }
               ),
             default: () =>
-              !selectedRowData.value ? '请先选择数据' : '已经是第一行',
+              !selectedRowData.value
+                ? t('table.selectRowFirst')
+                : t('table.firstRow'),
           }
         ),
         h(
@@ -631,12 +694,17 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
                 },
                 {
                   icon: () =>
-                    h(C_Icon, { name: 'mdi:arrow-down', title: '下移' }),
-                  default: () => '下移',
+                    h(C_Icon, {
+                      name: 'mdi:arrow-down',
+                      title: t('table.moveDown'),
+                    }),
+                  default: () => t('table.moveDown'),
                 }
               ),
             default: () =>
-              !selectedRowData.value ? '请先选择数据' : '已经是最后一行',
+              !selectedRowData.value
+                ? t('table.selectRowFirst')
+                : t('table.lastRow'),
           }
         )
       )
@@ -659,10 +727,10 @@ export function useDynamicRows<T extends DataRecord = DataRecord>(
         deleteConfirmVisible.value = show
       },
       preset: 'dialog',
-      title: '确认删除',
-      content: finalOptions.deleteConfirmText,
-      positiveText: '确认删除',
-      negativeText: '取消',
+      title: t('table.deleteTitle'),
+      content: finalOptions.deleteConfirmText || t('table.deleteRowContent'),
+      positiveText: t('table.confirmDeleteRow'),
+      negativeText: t('common.cancel'),
       onPositiveClick: confirmDeleteFn,
     })
   }

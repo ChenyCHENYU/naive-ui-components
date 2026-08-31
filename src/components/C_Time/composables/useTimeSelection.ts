@@ -1,7 +1,9 @@
 import { ref, computed, watch } from 'vue'
-import type { TimeProps } from '../types'
+import type { TimeModelValue, TimeProps } from '../types'
 
 type EmitFn = {
+  (event: 'update:modelValue', value: TimeModelValue): void
+  (event: 'change', value: TimeModelValue): void
   (
     event: 'change-range',
     startTime: number | null,
@@ -28,7 +30,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
   })
 
   const endTimeDisabled = computed(
-    () => props.mode === 'range' && !startTime.value
+    () => props.mode === 'range' && startTime.value === null
   )
 
   const mergedStartAttrs = computed(() => ({
@@ -43,9 +45,18 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
 
   const mergedAttrs = computed(() => ({ ...props.attrs }))
 
+  const emitModel = () => {
+    const value: TimeModelValue =
+      props.mode === 'range'
+        ? [startTime.value, endTime.value]
+        : singleTime.value
+    emit('update:modelValue', value)
+    emit('change', value)
+  }
+
   /* ==================== 时间限制函数 ==================== */
   const isEndHourDisabled = (hour: number): boolean => {
-    if (!startTime.value) return false
+    if (startTime.value === null) return false
     return hour < new Date(startTime.value).getHours()
   }
 
@@ -53,10 +64,13 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     minute: number,
     selectedHour: number | null
   ): boolean => {
-    if (!startTime.value || selectedHour === null) return false
+    if (startTime.value === null || selectedHour === null) return false
     const startDate = new Date(startTime.value)
     return (
-      selectedHour === startDate.getHours() && minute < startDate.getMinutes()
+      selectedHour === startDate.getHours() &&
+      (props.useSeconds
+        ? minute < startDate.getMinutes()
+        : minute <= startDate.getMinutes())
     )
   }
 
@@ -66,7 +80,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     selectedHour: number | null
   ): boolean => {
     if (
-      !startTime.value ||
+      startTime.value === null ||
       !props.useSeconds ||
       selectedHour === null ||
       selectedMinute === null
@@ -83,38 +97,62 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
   /* ==================== 事件处理 ==================== */
   const handleStartTimeChange = (value: number | null) => {
     startTime.value = value
-    if (!value) {
+    if (value === null) {
       endTime.value = null
     } else if (
       props.enableTimeRestriction &&
-      endTime.value &&
+      endTime.value !== null &&
       endTime.value <= value
     ) {
       endTime.value = null
     }
     emit('change-start', value)
     if (props.mode === 'range') emit('change-range', value, endTime.value)
+    emitModel()
   }
 
   const handleEndTimeChange = (value: number | null) => {
     endTime.value = value
     emit('change-end', value)
     if (props.mode === 'range') emit('change-range', startTime.value, value)
+    emitModel()
   }
 
   const handleSingleTimeChange = (value: number | null) => {
     singleTime.value = value
     emit('change-single', value)
+    emitModel()
   }
 
   /* ==================== 模式切换监听 ==================== */
   watch(
-    () => props.mode,
+    () =>
+      [
+        props.mode,
+        props.modelValue,
+        props.defaultStartTime,
+        props.defaultEndTime,
+        props.defaultSingleTime,
+      ] as const,
+    // eslint-disable-next-line complexity -- Compatibility sync handles two modes and legacy defaults atomically.
     () => {
+      if (props.modelValue !== undefined) {
+        if (props.mode === 'range' && Array.isArray(props.modelValue)) {
+          startTime.value = props.modelValue[0] ?? null
+          endTime.value = props.modelValue[1] ?? null
+        } else if (
+          props.mode === 'single' &&
+          !Array.isArray(props.modelValue)
+        ) {
+          singleTime.value = props.modelValue
+        }
+        return
+      }
       startTime.value = props.defaultStartTime ?? null
       endTime.value = props.defaultEndTime ?? null
       singleTime.value = props.defaultSingleTime ?? null
-    }
+    },
+    { immediate: true, deep: true }
   )
 
   /* ==================== 暴露方法 ==================== */
@@ -122,6 +160,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     startTime.value = null
     endTime.value = null
     singleTime.value = null
+    emitModel()
   }
 
   return {

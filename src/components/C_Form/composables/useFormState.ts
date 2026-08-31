@@ -29,6 +29,13 @@ import {
 } from '../utils/formModel'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { useFormDirty } from './useFormDirty'
+import {
+  deleteDataPath,
+  getDataPath,
+  hasDataPath,
+  setDataPath,
+} from '../../../utils/data'
+import { useComponentFeedback, useComponentLocale } from '../../../config'
 
 const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   input: '',
@@ -101,6 +108,8 @@ export function useFormState(
   let initialized = false
   let suppressModelEmit = false
   let suppressionVersion = 0
+  const feedback = useComponentFeedback(() => config.value.feedback)
+  const { t } = useComponentLocale(() => config.value.locale)
 
   const {
     isDirty,
@@ -108,14 +117,20 @@ export function useFormState(
     isFieldDirty,
     markAsClean,
     getCleanModel,
-  } = useFormDirty(formModel)
+  } = useFormDirty(formModel, () => options.value.map(item => item.prop))
 
   function reportError(
     error: unknown,
     source: Parameters<NonNullable<ResolvedFormConfig['onError']>>[1]['source'],
     field?: string
   ): void {
-    config.value.onError?.(error, { source, field })
+    if (config.value.onError) config.value.onError(error, { source, field })
+    else {
+      feedback.error(
+        error instanceof Error ? error.message : String(error),
+        error
+      )
+    }
   }
 
   const visibleOptions = computed(() =>
@@ -144,11 +159,12 @@ export function useFormState(
   }
 
   function createConfiguredModel(source?: FormModel): FormModel {
-    const model: FormModel = {}
+    const model: FormModel = source ? cloneFormValue(source) : {}
     options.value.forEach(item => {
-      model[item.prop] = getDefaultValue(item)
+      if (!hasDataPath(model, item.prop)) {
+        setDataPath(model, item.prop, getDefaultValue(item))
+      }
     })
-    if (source) Object.assign(model, cloneFormValue(source))
     return model
   }
 
@@ -161,7 +177,7 @@ export function useFormState(
       if (item.required && !rules.some(rule => rule.required)) {
         rules.unshift({
           required: true,
-          message: `${item.label || item.prop}不能为空`,
+          message: t('form.required', { label: item.label || item.prop }),
           trigger: ['input', 'change', 'blur'],
         })
       }
@@ -210,7 +226,7 @@ export function useFormState(
       requestControllers.delete(prop)
       requestVersions.delete(prop)
       asyncOptionLoaders.delete(prop)
-      if (!config.value.preserveRemovedFields) delete formModel[prop]
+      if (!config.value.preserveRemovedFields) deleteDataPath(formModel, prop)
     })
   }
 
@@ -221,8 +237,8 @@ export function useFormState(
       cleanupRemovedFields(nextProps)
 
       options.value.forEach(item => {
-        if (!Object.prototype.hasOwnProperty.call(formModel, item.prop)) {
-          formModel[item.prop] = getDefaultValue(item)
+        if (!hasDataPath(formModel, item.prop)) {
+          setDataPath(formModel, item.prop, getDefaultValue(item))
         }
         syncRulesForField(item)
         if (
@@ -316,9 +332,9 @@ export function useFormState(
           const nextValue = item.valueWhen?.(formModel)
           if (
             nextValue !== undefined &&
-            !isFormValueEqual(formModel[item.prop], nextValue)
+            !isFormValueEqual(getDataPath(formModel, item.prop), nextValue)
           ) {
-            formModel[item.prop] = cloneFormValue(nextValue)
+            setDataPath(formModel, item.prop, cloneFormValue(nextValue))
             changed = true
           }
         } catch (error) {
@@ -455,7 +471,7 @@ export function useFormState(
 
   function setFields(fields: FormModel): void {
     Object.entries(cloneFormValue(fields)).forEach(([field, value]) => {
-      formModel[field] = value
+      setDataPath(formModel, field, value)
     })
     handleFieldsChanged(Object.keys(fields))
   }
@@ -471,13 +487,13 @@ export function useFormState(
     value: unknown,
     shouldValidate = false
   ): Promise<void> {
-    formModel[field] = cloneFormValue(value)
+    setDataPath(formModel, field, cloneFormValue(value))
     handleFieldChange(field)
     if (shouldValidate) await validateField(field)
   }
 
   function getFieldValue(field: string): unknown {
-    return cloneFormValue(formModel[field])
+    return cloneFormValue(getDataPath(formModel, field))
   }
 
   async function setFieldsValue(

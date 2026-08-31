@@ -24,9 +24,7 @@
 <script setup lang="ts">
   import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
   import { NSpin } from 'naive-ui'
-  import L from 'leaflet'
-  import 'leaflet/dist/leaflet.css'
-  import { OSM_TILE_CONFIG, MAP_ICONS } from './data'
+  import { OSM_TILE_CONFIG } from './data'
   import { loadAMapApi } from './amapLoader'
 
   defineOptions({ name: 'C_Map' })
@@ -65,6 +63,7 @@
   const mapContainer = ref<HTMLElement>()
   const loading = ref(true)
   let map: any = null
+  let leaflet: typeof import('leaflet') | null = null
   let amapMarkers: any[] = []
   let initVersion = 0
   let disposed = false
@@ -82,6 +81,7 @@
     map = null
   }
 
+  // eslint-disable-next-line complexity -- async lifecycle guards prevent stale map instances.
   const initOSMMap = async () => {
     if (!mapContainer.value) return
     const version = ++initVersion
@@ -89,6 +89,9 @@
       destroyMap()
       initVersion = version
       mapContainer.value.replaceChildren()
+      leaflet ??= await import('leaflet')
+      if (disposed || version !== initVersion || !mapContainer.value) return
+      const L = leaflet
       map = L.map(mapContainer.value, {
         center: props.center,
         zoom: props.zoom,
@@ -150,7 +153,8 @@
   }
 
   const addMarkers = () => {
-    if (!map || props.mapType !== 'osm' || !props.markers) return
+    if (!map || !leaflet || props.mapType !== 'osm' || !props.markers) return
+    const L = leaflet
     map.eachLayer((layer: any) => {
       if (layer instanceof L.Marker) {
         map.removeLayer(layer)
@@ -158,9 +162,7 @@
     })
     props.markers.forEach(marker => {
       if (!Number.isFinite(marker.lat) || !Number.isFinite(marker.lng)) return
-      const leafletMarker = L.marker([marker.lat, marker.lng], {
-        icon: L.icon(MAP_ICONS),
-      })
+      const leafletMarker = L.marker([marker.lat, marker.lng])
       if (marker.popup) {
         const popup = document.createElement('span')
         popup.textContent = marker.popup

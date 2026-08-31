@@ -409,8 +409,9 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import { VueFlow } from '@vue-flow/core'
-  import { NButton, NDrawer, NDrawerContent, NTag, useMessage } from 'naive-ui'
+  import { NButton, NDrawer, NDrawerContent, NTag } from 'naive-ui'
   import { C_Icon } from '../C_Icon'
+  import { useComponentFeedback } from '../../config'
   import type { WorkflowProps, WorkflowEmits } from './types'
   import { NODE_TYPE_OPTIONS } from './data'
   import NodeConfigModal from './NodeConfigModal.vue'
@@ -430,7 +431,7 @@
   })
 
   const emit = defineEmits<WorkflowEmits>()
-  const message = useMessage()
+  const message = useComponentFeedback()
   const vueFlowRef = ref()
 
   /* ─── 节点管理 ──────────────────────────────────────────── */

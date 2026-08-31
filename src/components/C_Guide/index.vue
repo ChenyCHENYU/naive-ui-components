@@ -33,7 +33,6 @@
   import { NTooltip, NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import { driver } from 'driver.js'
-  import 'driver.js/dist/driver.css'
   import type { GuideProps, GuideStep } from './types'
 
   defineOptions({ name: 'C_Guide' })

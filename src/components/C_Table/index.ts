@@ -9,6 +9,17 @@ export { default as C_Table } from './index.vue'
 /* ================= 类型导出 ================= */
 export type {
   TableColumn,
+  TableInstance,
+  TableProps,
+  TableRowKey,
+  TableRowKeyIssue,
+  StrictTableColumn,
+  NormalTableColumn,
+  BuiltInTableColumn,
+  CustomAction,
+  ApiFunction,
+  RenderFunction,
+  RowAction,
   TableEmits,
   DataRecord,
   MaybeRefLike,
@@ -22,6 +33,12 @@ export type {
   SimpleTableActions,
   ColumnWithKey,
 } from './types'
+
+export {
+  defineTableColumns,
+  defineTableConfig,
+  validateTableRowKeys,
+} from './helpers'
 
 /* ================= 组合式函数导出 ================= */
 export { useTableColumns } from './composables/useTableColumns'
@@ -50,6 +67,11 @@ export type {
   TreeConfig,
   ErrorConfig,
   BatchActionsConfig,
+  EditConfig,
+  ExpandConfig,
+  SelectionConfig as TableSelectionConfig,
+  ToolbarConfig,
+  DisplayConfig,
 } from './composables/useTableConfig'
 export {
   usePrintWatermark,
@@ -87,3 +109,9 @@ export type {
 
 export { exportTableData } from './composables/useTableExport'
 export type { ExportConfig } from './composables/useTableExport'
+export { useTableQuery } from './composables/useTableQuery'
+export type {
+  TableQueryContext,
+  TableQueryResult,
+  UseTableQueryOptions,
+} from './composables/useTableQuery'

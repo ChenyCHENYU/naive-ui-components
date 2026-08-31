@@ -2,6 +2,89 @@ import { isProxy, toRaw } from 'vue'
 
 export type DataObject = Record<string, unknown>
 
+const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor'])
+
+/** Parse dot/bracket notation and reject prototype-polluting path segments. */
+export function parseDataPath(path: string): string[] {
+  const segments = path
+    .replace(/\[([^\]]+)\]/g, '.$1')
+    .split('.')
+    .map(segment => segment.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean)
+  if (segments.length === 0) throw new TypeError('Data path cannot be empty')
+  if (segments.some(segment => UNSAFE_PATH_SEGMENTS.has(segment))) {
+    throw new TypeError(`Unsafe data path: ${path}`)
+  }
+  return segments
+}
+
+/** Check a nested path while preserving legacy literal dotted keys. */
+export function hasDataPath(target: DataObject, path: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(target, path)) return true
+  let current: unknown = target
+  for (const segment of parseDataPath(path)) {
+    if (
+      current === null ||
+      typeof current !== 'object' ||
+      !Object.prototype.hasOwnProperty.call(current, segment)
+    ) {
+      return false
+    }
+    current = (current as DataObject)[segment]
+  }
+  return true
+}
+
+/** Read a nested path while preserving legacy literal dotted keys. */
+export function getDataPath(target: DataObject, path: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(target, path)) return target[path]
+  return parseDataPath(path).reduce<unknown>((current, segment) => {
+    if (current === null || typeof current !== 'object') return undefined
+    return (current as DataObject)[segment]
+  }, target)
+}
+
+/** Safely write a nested path, creating arrays and objects as needed. */
+export function setDataPath(
+  target: DataObject,
+  path: string,
+  value: unknown
+): void {
+  if (Object.prototype.hasOwnProperty.call(target, path)) {
+    target[path] = value
+    return
+  }
+  const segments = parseDataPath(path)
+  let current: DataObject = target
+  segments.forEach((segment, index) => {
+    if (index === segments.length - 1) {
+      current[segment] = value
+      return
+    }
+    const existing = current[segment]
+    if (existing === null || typeof existing !== 'object') {
+      current[segment] = /^\d+$/.test(segments[index + 1]) ? [] : {}
+    }
+    current = current[segment] as DataObject
+  })
+}
+
+/** Delete a nested path without traversing unsafe prototype segments. */
+export function deleteDataPath(target: DataObject, path: string): void {
+  if (Object.prototype.hasOwnProperty.call(target, path)) {
+    delete target[path]
+    return
+  }
+  const segments = parseDataPath(path)
+  const last = segments.pop()
+  if (!last) return
+  const parent = segments.reduce<unknown>((current, segment) => {
+    if (current === null || typeof current !== 'object') return undefined
+    return (current as DataObject)[segment]
+  }, target)
+  if (parent && typeof parent === 'object') delete (parent as DataObject)[last]
+}
+
 function unwrap<T>(value: T): T {
   return (isProxy(value) ? toRaw(value) : value) as T
 }

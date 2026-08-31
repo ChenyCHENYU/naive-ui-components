@@ -75,10 +75,12 @@ export default defineConfig({
   entry: buildEntryMap(),
   format: ['esm', 'cjs'],
   platform: 'neutral',
-  outputOptions: {
-    chunkFileNames: '[name].js',
+  outputOptions: (options, format) => ({
+    ...options,
+    // Never let CJS wrappers require ESM chunks in a type=module package.
+    chunkFileNames: format === 'cjs' ? '[name].cjs' : '[name].js',
     exports: 'named',
-  },
+  }),
   plugins: [
     // ⚠️ 插件顺序关键（unplugin-vue 7.1.x 兼容）：
     // 1. scssPrePlugin：编译 SCSS → CSS（在 Vue 之前，避免 PostCSS 解析 SCSS 报错）
@@ -108,7 +110,10 @@ export default defineConfig({
   // v0.20+ 自动外部化所有 node_modules 依赖（含 CSS 深层导入），
   // 无需手动维护 external 列表，新增依赖也自动生效
   skipNodeModulesBundle: true,
+  // All runtime packages stay external; disable the false-positive transitive warning.
+  inlineOnly: false,
   minify: true,
-  sourcemap: true,
+  // Published builds stay compact by default; opt in when debugging the library itself.
+  sourcemap: process.env.ROBOT_COMPONENTS_SOURCEMAP === 'true',
   clean: true,
 })

@@ -14,7 +14,7 @@ import {
   type VNodeChild,
   type Ref,
 } from 'vue'
-import { type DataTableRowKey, NSpin, NDataTable } from 'naive-ui/es'
+import { type DataTableRowKey, NSpin, NDataTable } from 'naive-ui'
 import type {
   TableColumn,
   UseTableExpandOptions,
@@ -24,7 +24,7 @@ import type {
 } from '../types'
 
 /* ================= 核心状态管理 ================= */
-const useExpandState = <T extends DataRecord, C>(
+const useExpandState = <T extends object, C>(
   options: UseTableExpandOptions<T, C>
 ) => {
   const expandedKeys = ref<DataTableRowKey[]>([
@@ -53,7 +53,7 @@ const useExpandState = <T extends DataRecord, C>(
 }
 
 /* ================= 数据工具函数 ================= */
-const useDataUtils = <T extends DataRecord, C>(
+const useDataUtils = <T extends object, C>(
   options: UseTableExpandOptions<T, C>
 ) => {
   const data = computed(() => unref(options.data))
@@ -84,70 +84,91 @@ const useDataUtils = <T extends DataRecord, C>(
 }
 
 /* ================= 展开逻辑 ================= */
-const useExpandLogic = <T extends DataRecord, C>(
+const useExpandLogic = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   utils: ReturnType<typeof useDataUtils<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
+  const pendingLoads = new Map<DataTableRowKey, Promise<C[]>>()
+  let transitionVersion = 0
+  let desiredExpandedKeys = new Set(options.defaultExpandedKeys || [])
+
   const loadData = async (row: T): Promise<C[]> => {
     if (!options.onLoadData) return []
 
     const key = utils.getRowKey(row)
     const existingData = state.expandDataMap.value.get(key)
     if (existingData) return existingData
+    const pending = pendingLoads.get(key)
+    if (pending) return pending
 
     state.loadingMap.value.set(key, true)
+    const request = (async () => {
+      try {
+        const data = await options.onLoadData!(row)
+        const result = data || []
+        state.expandDataMap.value.set(key, result as C[])
 
-    try {
-      const data = await options.onLoadData(row)
-      const result = data || []
-      state.expandDataMap.value.set(key, result as any)
+        if (
+          options.enableChildSelection &&
+          !state.childSelections.value.has(key)
+        ) {
+          state.childSelections.value.set(key, [])
+        }
 
-      if (
-        options.enableChildSelection &&
-        !state.childSelections.value.has(key)
-      ) {
-        state.childSelections.value.set(key, [])
+        return result
+      } catch (error) {
+        options.onError?.(error, row)
+        return []
+      } finally {
+        pendingLoads.delete(key)
+        state.loadingMap.value.set(key, false)
       }
-
-      return result
-    } catch (error) {
-      console.error('加载展开数据失败:', error)
-      return []
-    } finally {
-      state.loadingMap.value.set(key, false)
-    }
+    })()
+    pendingLoads.set(key, request)
+    return request
   }
 
   const handleRowExpand = async (row: T, expanded: boolean): Promise<void> => {
     const key = utils.getRowKey(row)
+    transitionVersion += 1
 
     if (expanded) {
+      desiredExpandedKeys.add(key)
       await loadData(row)
+      if (!desiredExpandedKeys.has(key)) return
       if (!state.expandedKeys.value.includes(key)) {
         state.expandedKeys.value = [...state.expandedKeys.value, key]
       }
     } else {
+      desiredExpandedKeys.delete(key)
       state.expandedKeys.value = state.expandedKeys.value.filter(k => k !== key)
     }
 
-    options.onExpandChange?.(state.expandedKeys.value)
+    options.onExpandChange?.(state.expandedKeys.value, row, expanded)
   }
 
   const expandAll = async (): Promise<void> => {
+    const version = ++transitionVersion
     const expandableRows = utils.data.value.filter(utils.isRowExpandable)
+    desiredExpandedKeys = new Set(expandableRows.map(utils.getRowKey))
     await Promise.allSettled(expandableRows.map(loadData))
+    if (version !== transitionVersion) return
     state.expandedKeys.value = expandableRows.map(utils.getRowKey)
     options.onExpandChange?.(state.expandedKeys.value)
   }
 
   const collapseAll = (): void => {
+    transitionVersion += 1
+    desiredExpandedKeys.clear()
     state.expandedKeys.value = []
     state.childSelections.value.clear()
     options.onExpandChange?.(state.expandedKeys.value)
   }
 
   const handleExpandChange = async (keys: DataTableRowKey[]): Promise<void> => {
+    const version = ++transitionVersion
+    desiredExpandedKeys = new Set(keys)
     const newExpandedKeys = keys.filter(
       key => !state.expandedKeys.value.includes(key)
     )
@@ -163,6 +184,7 @@ const useExpandLogic = <T extends DataRecord, C>(
         }
       })
     )
+    if (version !== transitionVersion) return
 
     for (const key of collapsedKeys) {
       state.childSelections.value.delete(key)
@@ -182,7 +204,7 @@ const useExpandLogic = <T extends DataRecord, C>(
 }
 
 /* ================= 选择逻辑 ================= */
-const useSelectionLogic = <T extends DataRecord, C>(
+const useSelectionLogic = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   utils: ReturnType<typeof useDataUtils<T, C>>,
   options: UseTableExpandOptions<T, C>
@@ -254,7 +276,7 @@ const useSelectionLogic = <T extends DataRecord, C>(
 }
 
 /* ================= 父子联动逻辑 ================= */
-const useParentChildLink = <T extends DataRecord, C>(
+const useParentChildLink = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
@@ -294,7 +316,7 @@ const useParentChildLink = <T extends DataRecord, C>(
 }
 
 /* ================= 子选择逻辑 ================= */
-const useChildSelectionLogic = <T extends DataRecord, C>(
+const useChildSelectionLogic = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   utils: ReturnType<typeof useDataUtils<T, C>>,
   parentChildLink: ReturnType<typeof useParentChildLink<T, C>>,
@@ -346,7 +368,7 @@ const useChildSelectionLogic = <T extends DataRecord, C>(
 }
 
 /* ================= 渲染辅助函数 ================= */
-const createChildSelectionState = <T extends DataRecord, C>(
+const createChildSelectionState = <T extends object, C>(
   parentKey: DataTableRowKey,
   state: ReturnType<typeof useExpandState<T, C>>,
   utils: ReturnType<typeof useDataUtils<T, C>>,
@@ -423,7 +445,7 @@ const createDefaultColumns = (expandData: DataRecord[]): DataRecord[] => {
   ]
 }
 
-const createDefaultTable = <T extends DataRecord, C>(
+const createDefaultTable = <T extends object, C>(
   key: DataTableRowKey,
   expandData: DataRecord[],
   childSelection: ChildSelectionState | undefined,
@@ -462,7 +484,7 @@ const createDefaultTable = <T extends DataRecord, C>(
 }
 
 /* ================= 渲染逻辑 ================= */
-const useRenderer = <T extends DataRecord, C>(
+const useRenderer = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   utils: ReturnType<typeof useDataUtils<T, C>>,
   childLogic: ReturnType<typeof useChildSelectionLogic<T, C>>,
@@ -548,10 +570,9 @@ const useRenderer = <T extends DataRecord, C>(
 /**
  *
  */
-export function useTableExpand<
-  T extends DataRecord = Record<string, any>,
-  C = any,
->(options: UseTableExpandOptions<T, C>): UseTableExpandReturn<T, C> {
+export function useTableExpand<T extends object = Record<string, any>, C = any>(
+  options: UseTableExpandOptions<T, C>
+): UseTableExpandReturn<T, C> {
   const state = useExpandState(options)
   const utils = useDataUtils(options)
   const expandLogic = useExpandLogic(state, utils, options)
@@ -592,9 +613,7 @@ export function useTableExpand<
     const row = utils.findRow(key)
     if (!row) return
 
-    await expandLogic.loadData(row)
-    state.expandedKeys.value = [...state.expandedKeys.value, key]
-    options.onExpandChange?.(state.expandedKeys.value, row, true)
+    await expandLogic.handleRowExpand(row, true)
   }
 
   const initializeData = async (): Promise<void> => {

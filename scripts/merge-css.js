@@ -17,23 +17,81 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distDir = path.resolve(__dirname, "../dist");
 
-// 1. 收集 SFC scoped CSS（tsdown 产出的 C_*.css 文件）
-// 注意：esm 和 cjs 格式各产出一份 CSS（内容相同，hash不同），需去重只取一份
-const allCssFiles = fs
+// 1. 收集 SFC scoped CSS。双格式产物内容相同，按组件名去重。
+// 共享 chunk 偶尔以 composable 命名，必须显式归属到公共组件样式入口。
+const cssChunkAliases = {
+  useTableQuery: 'C_Table',
+}
+const originalCssFiles = fs
   .readdirSync(distDir)
-  .filter(f => f.startsWith('C_') && f.endsWith('.css'))
+  .filter(f => f.endsWith('.css') && f !== 'global-scss.css')
   .sort()
+const getComponentName = filename => {
+  const base = filename.replace(/-[^.]+\.css$/, '')
+  if (base.startsWith('C_')) return base
+  return cssChunkAliases[base]
+}
+const componentCssSources = new Map()
+for (const filename of originalCssFiles) {
+  const componentName = getComponentName(filename)
+  if (!componentName || componentCssSources.has(componentName)) continue
+  componentCssSources.set(
+    componentName,
+    fs.readFileSync(path.join(distDir, filename), 'utf8')
+  )
+}
 
-// 按组件名去重：提取 "C_ActionBar" 部分，每个组件只取第一个
-const seen = new Set()
-const sfcCssFiles = allCssFiles
-  .filter(f => {
-    const compName = f.replace(/-[^.]+\.css$/, '')
-    if (seen.has(compName)) return false
-    seen.add(compName)
-    return true
-  })
-  .map(f => path.join(distDir, f))
+const vendorStyles = {
+  C_Captcha: ['vue3-puzzle-vcode/dist/main.css'],
+  C_Code: ['highlight.js/styles/github.css'],
+  C_Editor: ['@wangeditor-next/editor/dist/css/style.css'],
+  C_Guide: ['driver.js/dist/driver.css'],
+  C_Map: ['leaflet/dist/leaflet.css'],
+  C_Markdown: ['md-editor-v3/lib/style.css'],
+  C_VideoPlayer: ['xgplayer/dist/index.min.css'],
+}
+const componentStyleDependencies = {
+  C_Form: ['C_Editor'],
+  C_Table: ['C_Form'],
+}
+const readVendorStyle = packagePath => {
+  const filename = path.resolve(__dirname, '../node_modules', packagePath)
+  if (!fs.existsSync(filename)) {
+    throw new Error(`Missing vendor style: ${packagePath}`)
+  }
+  return fs.readFileSync(filename, 'utf8')
+}
+
+const leafletImageDir = path.resolve(
+  __dirname,
+  '../node_modules/leaflet/dist/images'
+)
+const outputImageDir = path.join(distDir, 'images')
+fs.mkdirSync(outputImageDir, { recursive: true })
+for (const filename of [
+  'marker-icon-2x.png',
+  'marker-icon.png',
+  'marker-shadow.png',
+]) {
+  fs.copyFileSync(
+    path.join(leafletImageDir, filename),
+    path.join(outputImageDir, filename)
+  )
+}
+const resolveComponentStyles = (componentName, visited = new Set()) => {
+  if (visited.has(componentName)) return []
+  visited.add(componentName)
+  const parts = []
+  for (const dependency of componentStyleDependencies[componentName] || []) {
+    parts.push(...resolveComponentStyles(dependency, visited))
+  }
+  for (const vendorStyle of vendorStyles[componentName] || []) {
+    parts.push(readVendorStyle(vendorStyle))
+  }
+  const ownStyle = componentCssSources.get(componentName)
+  if (ownStyle) parts.push(ownStyle)
+  return parts
+}
 
 // 2. 读取全局 SCSS 编译产物
 const globalScssFile = path.join(distDir, "global-scss.css");
@@ -41,12 +99,20 @@ const globalScss = fs.existsSync(globalScssFile)
   ? fs.readFileSync(globalScssFile, "utf-8")
   : "";
 
-// 3. 保留每个组件的独立 CSS（去 hash 重命名为 C_Table.css 等）
-for (const file of sfcCssFiles) {
-  const basename = path.basename(file); // C_Table-tbUx-R4H.css
-  const compName = basename.replace(/-[^.]+\.css$/, ".css"); // C_Table.css
-  const destFile = path.join(distDir, compName);
-  fs.copyFileSync(file, destFile);
+// 3. 为所有公共组件生成稳定 CSS 入口；无样式组件生成空入口，保证 resolver 可用。
+const componentNames = fs
+  .readdirSync(path.resolve(__dirname, '../src/components'), {
+    withFileTypes: true,
+  })
+  .filter(entry => entry.isDirectory() && entry.name.startsWith('C_'))
+  .map(entry => entry.name)
+  .sort()
+for (const componentName of componentNames) {
+  const content = resolveComponentStyles(componentName).join('\n')
+  fs.writeFileSync(
+    path.join(distDir, `${componentName}.css`),
+    content || `/* ${componentName} has no component-specific styles. */\n`
+  )
 }
 
 // 4. 合并全量：全局变量/样式在前，SFC scoped 在后
@@ -55,12 +121,18 @@ if (globalScss) {
   parts.push(`/* ========== Global SCSS Styles ========== */`);
   parts.push(globalScss);
 }
-if (sfcCssFiles.length > 0) {
+const globalVendorStyles = [...new Set(Object.values(vendorStyles).flat())]
+if (globalVendorStyles.length > 0) {
+  parts.push(`\n/* ========== Vendor Component Styles ========== */`)
+  globalVendorStyles.forEach(vendorStyle => {
+    parts.push(readVendorStyle(vendorStyle))
+  })
+}
+if (componentCssSources.size > 0) {
   parts.push(`\n/* ========== SFC Scoped Styles ========== */`);
-  for (const file of sfcCssFiles) {
-    const name = path.basename(file);
-    parts.push(`\n/* --- ${name} --- */`);
-    parts.push(fs.readFileSync(file, "utf-8"));
+  for (const [componentName, content] of componentCssSources) {
+    parts.push(`\n/* --- ${componentName} --- */`);
+    parts.push(content);
   }
 }
 
@@ -70,23 +142,15 @@ fs.writeFileSync(outFile, merged);
 
 // 5. 清理中间的 hash 文件（保留无 hash 的独立 CSS 和全量 style.css）
 fs.unlinkSync(globalScssFile);
-const allCssToClean = fs
-  .readdirSync(distDir)
-  .filter(
-    f =>
-      f.startsWith('C_') &&
-      f.endsWith('.css') &&
-      /-[a-zA-Z0-9_-]+\.css$/.test(f)
-  )
-  .map(f => path.join(distDir, f))
-for (const file of allCssToClean) {
-  fs.unlinkSync(file)
+for (const filename of originalCssFiles) {
+  const file = path.join(distDir, filename)
+  if (fs.existsSync(file)) fs.unlinkSync(file)
 }
 
 const sizeKB = (Buffer.byteLength(merged) / 1024).toFixed(1);
 console.log(
-  `✅ Merged ${sfcCssFiles.length} SFC CSS + global SCSS → dist/style.css (${sizeKB} KB)`,
+  `✅ Merged ${componentCssSources.size} SFC CSS + vendor/global styles → dist/style.css (${sizeKB} KB)`,
 );
 console.log(
-  `✅ Preserved ${sfcCssFiles.length} individual component CSS files for on-demand import`
+  `✅ Generated ${componentNames.length} stable component CSS entries for on-demand import`
 )

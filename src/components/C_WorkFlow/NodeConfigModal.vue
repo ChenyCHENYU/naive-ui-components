@@ -243,7 +243,6 @@
     NCard,
     NSelect,
     NButton,
-    useMessage,
   } from 'naive-ui'
   import { C_Icon } from '../C_Icon'
   import type { WorkflowNode, User, Department, Condition } from './types'
@@ -255,6 +254,7 @@
     getDefaultAvatar,
     createDefaultCondition,
   } from './data'
+  import { useComponentFeedback } from '../../config'
 
   interface Props {
     show: boolean
@@ -269,7 +269,7 @@
     departments: () => [],
   })
   const emit = defineEmits(['update:show', 'save', 'cancel'])
-  const message = useMessage()
+  const message = useComponentFeedback()
 
   const searchKeyword = ref('')
   const selectedUsers = ref<string[]>([])
@@ -440,8 +440,7 @@
       const success = saver ? await saver() : false
       return success
     } catch (error) {
-      message.error('保存配置失败')
-      console.error('Save node config error:', error)
+      message.error('保存配置失败', error)
       return false
     } finally {
       configLoading.value = false

@@ -3,19 +3,14 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { inject, type InjectionKey } from 'vue'
+import { getCurrentInstance, inject, type InjectionKey } from 'vue'
 import type { TableConfig, DisplayConfig } from './useTableConfig'
 import type { DataRecord } from '../types'
 
 /* ================= 内置格式化器 ================= */
 
 export type FormatterType =
-  | 'date'
-  | 'datetime'
-  | 'currency'
-  | 'percent'
-  | 'enum'
-  | 'number'
+  'date' | 'datetime' | 'currency' | 'percent' | 'enum' | 'number'
 
 export interface FormatterConfig {
   /** 日期格式 */
@@ -44,6 +39,8 @@ export interface ColumnFormatter {
 /* ================= 全局配置类型 ================= */
 
 export interface TableGlobalConfig {
+  /** 任意 C_Table 配置的应用级默认值。 */
+  defaults?: TableConfig
   /** 表格显示默认值 */
   display?: DisplayConfig
   /** 默认分页条数 */
@@ -156,7 +153,24 @@ export function applyFormatter(
 
 /** 在组件内获取全局配置（自动合并默认值） */
 export function useTableGlobalConfig(): TableGlobalConfig {
-  return inject(TABLE_GLOBAL_CONFIG_KEY, {})
+  return getCurrentInstance() ? inject(TABLE_GLOBAL_CONFIG_KEY, {}) : {}
+}
+
+const mergeSection = (globalValue: unknown, localValue: unknown) => {
+  if (localValue !== undefined) {
+    if (
+      localValue &&
+      globalValue &&
+      typeof localValue === 'object' &&
+      typeof globalValue === 'object' &&
+      !Array.isArray(localValue) &&
+      !Array.isArray(globalValue)
+    ) {
+      return { ...globalValue, ...localValue }
+    }
+    return localValue
+  }
+  return globalValue
 }
 
 /** 合并全局配置到 TableConfig（局部 > 全局 > 默认） */
@@ -164,16 +178,42 @@ export function mergeGlobalConfig(
   local: TableConfig,
   global: TableGlobalConfig
 ): TableConfig {
-  const merged = { ...local }
+  const defaults = global.defaults ?? {}
+  const merged: TableConfig = { ...defaults, ...local }
+  const sections: Array<keyof TableConfig> = [
+    'edit',
+    'pagination',
+    'expand',
+    'selection',
+    'dynamicRows',
+    'toolbar',
+    'display',
+    'virtualScroll',
+    'summary',
+    'columnDrag',
+    'tree',
+    'rowDrag',
+    'crossPageSelection',
+    'export',
+    'formatterConfig',
+    'error',
+    'batchActions',
+  ]
+  sections.forEach(key => {
+    const value = mergeSection(defaults[key], local[key])
+    if (value !== undefined) {
+      ;(merged as Record<string, unknown>)[key] = value
+    }
+  })
 
   if (global.display) {
-    merged.display = local.display
-      ? { ...global.display, ...local.display }
-      : global.display
+    const currentDisplay =
+      typeof merged.display === 'object' ? merged.display : {}
+    merged.display = { ...global.display, ...currentDisplay }
   }
 
-  if (global.pageSize && local.pagination !== false) {
-    const cur = typeof local.pagination === 'object' ? local.pagination : {}
+  if (global.pageSize && merged.pagination !== false) {
+    const cur = typeof merged.pagination === 'object' ? merged.pagination : {}
     if (!cur.pageSize) {
       merged.pagination = { ...cur, pageSize: global.pageSize }
     }

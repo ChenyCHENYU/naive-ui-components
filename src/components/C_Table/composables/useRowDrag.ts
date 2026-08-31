@@ -30,7 +30,7 @@ export interface RowDragConfig {
   chosenClass?: string
 }
 
-export interface UseRowDragOptions<T extends DataRecord = DataRecord> {
+export interface UseRowDragOptions<T extends object = DataRecord> {
   /** 数据源（只读即可） */
   data: Ref<T[]> | ComputedRef<T[]>
   /** 获取行键 */
@@ -55,7 +55,7 @@ export interface UseRowDragReturn {
 /* ================= 实现 ================= */
 
 /** 行拖拽排序组合式函数 */
-export function useRowDrag<T extends DataRecord = DataRecord>(
+export function useRowDrag<T extends object = DataRecord>(
   options: UseRowDragOptions<T>
 ): UseRowDragReturn {
   const { data, onReorder, onSort } = options

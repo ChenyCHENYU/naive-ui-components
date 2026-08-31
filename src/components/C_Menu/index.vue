@@ -45,90 +45,44 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, onMounted } from 'vue'
-  import {
-    type MenuOption,
-    type MenuInst,
-    type DropdownProps,
-  } from 'naive-ui/es'
-  import {
-    createMenuOptions,
-    type RouteItem,
-    type MenuAdapterConfig,
-  } from '../_shared'
+  import { ref, computed, watch, nextTick } from 'vue'
+  import { type MenuOption, type MenuInst } from 'naive-ui'
+  import { createMenuOptions, type MenuAdapterConfig } from '../_shared'
+  import type { MenuEmits, MenuProps } from './types'
 
   defineOptions({ name: 'C_Menu' })
 
-  const props = withDefaults(
-    defineProps<{
-      /**
-       * 模式一：直传 NMenu 原生 MenuOption[]
-       * 与 `routes` 二选一，`options` 优先级更高
-       */
-      options?: MenuOption[]
-      /**
-       * 模式二：传入路由数据，自动转换为 MenuOption[]
-       * 兼容 Vue Router RouteRecordRaw / 后端 JSON 路由表
-       */
-      routes?: RouteItem[]
-      /**
-       * 适配器配置（仅 routes 模式生效）
-       * 可自定义 key/label/icon 取值、过滤逻辑等
-       */
-      adapterConfig?: MenuAdapterConfig
-      /**
-       * 标签文本格式化函数（routes 模式的快捷方式）
-       * 等同于 `adapterConfig.labelFormatter`，但优先级更高
-       */
-      labelFormatter?: (label: string) => string
-      /** 当前激活的菜单 key */
-      value?: string
-      /** 菜单模式 */
-      mode?: 'vertical' | 'horizontal'
-      /** 是否折叠 */
-      collapsed?: boolean
-      /** 折叠宽度 */
-      collapsedWidth?: number
-      /** 折叠图标大小 */
-      collapsedIconSize?: number
-      /** 是否反色 */
-      inverted?: boolean
-      /** 主题覆盖 */
-      themeOverrides?: Record<string, any>
-      /** 缩进像素 */
-      indent?: number
-      /** 根缩进像素 */
-      rootIndent?: number
-      /** 下拉菜单属性（折叠模式） */
-      dropdownProps?: DropdownProps
-    }>(),
-    {
-      mode: 'vertical',
-      collapsed: false,
-      collapsedWidth: 64,
-      collapsedIconSize: 22,
-      inverted: false,
-      indent: 24,
-      rootIndent: 16,
-      dropdownProps: () => ({
-        placement: 'right-start' as const,
-        trigger: 'hover' as const,
-        arrowStyle: { color: 'var(--n-color)' },
-      }),
-    }
-  )
+  const props = withDefaults(defineProps<MenuProps>(), {
+    mode: 'vertical',
+    collapsed: false,
+    collapsedWidth: 64,
+    collapsedIconSize: 22,
+    inverted: false,
+    indent: 24,
+    rootIndent: 16,
+    dropdownProps: () => ({
+      placement: 'right-start' as const,
+      trigger: 'hover' as const,
+      arrowStyle: { color: 'var(--n-color)' },
+    }),
+    defaultExpandedKeys: () => [],
+  })
 
-  const emit = defineEmits<{
-    /** 菜单项被选中 */
-    select: [key: string]
-    /** 展开项变化 */
-    'update:expandedKeys': [keys: string[]]
-  }>()
+  const emit = defineEmits<MenuEmits>()
 
   const menuRef = ref<MenuInst | null>(null)
-  const expandedKeys = ref<string[]>([])
+  const internalExpandedKeys = ref<string[]>([...props.defaultExpandedKeys])
+  const expandedKeys = computed({
+    get: () => props.expandedKeys ?? internalExpandedKeys.value,
+    set: (keys: string[]) => {
+      internalExpandedKeys.value = keys
+      emit('update:expandedKeys', keys)
+    },
+  })
 
-  const activeKey = computed(() => props.value ?? '')
+  const activeKey = computed(() =>
+    props.modelValue !== undefined ? props.modelValue : (props.value ?? null)
+  )
 
   // ====== 数据合成 ======
 
@@ -187,14 +141,16 @@
   // ====== 事件处理 ======
 
   const handleMenuClick = (key: string) => {
-    if (key && key !== activeKey.value) {
-      emit('select', key)
+    if (!key) return
+    if (key !== activeKey.value) {
+      emit('update:modelValue', key)
+      emit('update:value', key)
     }
+    emit('select', key)
   }
 
   const onExpandedKeysChange = (keys: string[]) => {
     expandedKeys.value = keys
-    emit('update:expandedKeys', keys)
   }
 
   // ====== 暴露方法 ======
@@ -215,13 +171,4 @@
     },
     { immediate: true }
   )
-
-  onMounted(() => {
-    nextTick(() => {
-      if (activeKey.value) {
-        expandedKeys.value = Array.from(computeExpandedKeys(activeKey.value))
-        menuRef.value?.showOption(activeKey.value)
-      }
-    })
-  })
 </script>

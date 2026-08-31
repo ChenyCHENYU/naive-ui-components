@@ -4,7 +4,7 @@
  */
 
 import { ref, type Ref } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useComponentFeedback } from '../../../config'
 import type { WorkflowNode, WorkflowEdge, ValidationError } from '../types'
 import { FIELD_DISPLAY_NAMES, ERROR_TYPE_TEXTS } from '../data'
 
@@ -22,7 +22,7 @@ export function useWorkflowValidation(
   vueFlowRef: Ref,
   options?: WorkflowValidationOptions
 ) {
-  const message = useMessage()
+  const message = useComponentFeedback()
 
   /* ─── 响应式状态 ────────────────────────────────────────── */
   const validationErrors = ref<ValidationError[]>([])

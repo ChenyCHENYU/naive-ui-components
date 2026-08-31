@@ -18,6 +18,7 @@ import type { RowDragConfig } from './useRowDrag'
 import type { CrossPageSelectionConfig } from './useCrossPageSelection'
 import type { ExportConfig } from './useTableExport'
 import type { FormatterConfig } from './useTableGlobalConfig'
+import type { ComponentFeedback, ComponentLocale } from '../../../config'
 
 /* ================= CRUD 绑定类型 ================= */
 
@@ -28,15 +29,15 @@ import type { FormatterConfig } from './useTableGlobalConfig'
  * 此接口对 columns/actions 使用 any[] 避免 TableColumn<any> 结构展开异常，
  * 同时允许 useTableCrud<T>() 任意子类型直接传入而无需类型断言。
  */
-export interface CrudBinding {
-  data: Ref<any[]>
+export interface CrudBinding<T extends object = DataRecord> {
+  data: Ref<T[]>
   loading: Ref<boolean>
 
-  columns: ComputedRef<any[]>
+  columns: ComputedRef<TableColumn<T>[]>
 
-  actions?: ComputedRef<any>
+  actions?: ComputedRef<SimpleTableActions<T>>
 
-  pagination?: ComputedRef<any>
+  pagination?: ComputedRef<PaginationConfig | boolean | undefined>
 
   tableRef?: Ref<any>
 
@@ -52,9 +53,15 @@ export interface CrudBinding {
 /* ================= 使用侧配置类型（对外 API） ================= */
 
 /** C_Table :config prop 的类型 — 所有功能配置收拢在此 */
-export interface TableConfig<T extends DataRecord = DataRecord> {
+export interface TableConfig<T extends object = DataRecord> {
+  /** 组件级反馈适配器；未提供时尝试复用 Naive Provider，再安全降级 */
+  feedback?: ComponentFeedback
+  /** 组件级文案与语言覆盖 */
+  locale?: ComponentLocale
+  /** 校验缺失/重复行键；默认开启，超大或无状态表格可关闭。 */
+  validateRowKeys?: boolean
   /** 编辑配置 */
-  edit?: EditConfig | boolean
+  edit?: EditConfig<T> | boolean
   /** 操作按钮 */
   actions?: SimpleTableActions<T>
   /** 分页配置 */
@@ -90,10 +97,10 @@ export interface TableConfig<T extends DataRecord = DataRecord> {
   /** 错误状态配置 */
   error?: ErrorConfig
   /** 批量操作配置 */
-  batchActions?: BatchActionsConfig
+  batchActions?: BatchActionsConfig<T>
 }
 
-export interface EditConfig {
+export interface EditConfig<T extends object = DataRecord> {
   enabled?: boolean
   mode?: 'row' | 'cell' | 'modal' | 'both' | 'none'
   showRowActions?: boolean
@@ -101,20 +108,22 @@ export interface EditConfig {
   modalWidth?: number
   /** 保存前回调；抛出异常会保留编辑态，便于修正或重试 */
   onSave?: (
-    rowData: DataRecord,
+    rowData: T,
     rowIndex: number,
     columnKey?: string
   ) => void | Promise<void>
   /** 取消编辑回调 */
-  onCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
+  onCancel?: (rowData: T, rowIndex: number) => void | Promise<void>
   /** 编辑或保存失败回调 */
   onError?: (error: unknown) => void
 }
 
-export interface ExpandConfig<T extends DataRecord = DataRecord> {
+export interface ExpandConfig<T extends object = DataRecord> {
   enabled?: boolean
   defaultExpandedKeys?: DataTableRowKey[]
   onLoadData?: (row: T) => Promise<unknown[]> | unknown[]
+  /** 展开数据加载失败回调 */
+  onError?: (error: unknown, row: T) => void
   renderContent?: (
     row: T,
     expandData: unknown[],
@@ -124,7 +133,7 @@ export interface ExpandConfig<T extends DataRecord = DataRecord> {
   rowExpandable?: (row: T) => boolean
 }
 
-export interface SelectionConfig<T extends DataRecord = DataRecord> {
+export interface SelectionConfig<T extends object = DataRecord> {
   enabled?: boolean
   defaultCheckedKeys?: import('naive-ui/es').DataTableRowKey[]
   rowCheckable?: (row: T) => boolean
@@ -166,7 +175,7 @@ export interface VirtualScrollConfig {
 }
 
 /** 合计行配置 */
-export interface SummaryConfig<T extends DataRecord = DataRecord> {
+export interface SummaryConfig<T extends object = DataRecord> {
   /** 合计行位置 */
   position?: 'top' | 'bottom'
   /** 自定义合计函数，每列返回 { value, colSpan? } */
@@ -206,7 +215,7 @@ export interface ErrorConfig {
 }
 
 /** 批量操作配置 */
-export interface BatchActionsConfig {
+export interface BatchActionsConfig<T extends object = DataRecord> {
   enabled?: boolean
   /** 操作成功后清空选择，默认不清空 */
   clearSelectionOnSuccess?: boolean
@@ -220,7 +229,7 @@ export interface BatchActionsConfig {
     type?: string
     onClick: (
       selectedKeys: DataTableRowKey[],
-      selectedRows: DataRecord[]
+      selectedRows: T[]
     ) => void | Promise<void>
   }>
 }
@@ -228,6 +237,8 @@ export interface BatchActionsConfig {
 /* ================= 内部解析后的扁平配置 ================= */
 
 export interface ResolvedConfig {
+  feedback: ComponentFeedback | undefined
+  locale: ComponentLocale | undefined
   editable: boolean
   editMode: string
   showRowActions: boolean
@@ -240,6 +251,7 @@ export interface ResolvedConfig {
   defaultExpandedKeys: DataTableRowKey[] | undefined
   onLoadExpandData:
     ((row: DataRecord) => Promise<unknown[]> | unknown[]) | undefined
+  onExpandError: ((error: unknown, row: DataRecord) => void) | undefined
   renderExpandContent:
     | ((
         row: DataRecord,
@@ -371,6 +383,7 @@ const resolveExpand = (expand: ExpandConfig | boolean | undefined) => {
       expandable: false,
       defaultExpandedKeys: undefined,
       onLoadExpandData: undefined,
+      onExpandError: undefined,
       renderExpandContent: undefined,
       rowExpandable: undefined,
     }
@@ -379,6 +392,7 @@ const resolveExpand = (expand: ExpandConfig | boolean | undefined) => {
       expandable: true,
       defaultExpandedKeys: undefined,
       onLoadExpandData: undefined,
+      onExpandError: undefined,
       renderExpandContent: undefined,
       rowExpandable: undefined,
     }
@@ -386,6 +400,7 @@ const resolveExpand = (expand: ExpandConfig | boolean | undefined) => {
     expandable: expand.enabled !== false,
     defaultExpandedKeys: expand.defaultExpandedKeys,
     onLoadExpandData: expand.onLoadData,
+    onExpandError: expand.onError,
     renderExpandContent: expand.renderContent,
     rowExpandable: expand.rowExpandable,
   }
@@ -598,6 +613,8 @@ const resolveCrossPageSelection = (
  */
 export function resolveConfig(config: TableConfig = {}): ResolvedConfig {
   return {
+    feedback: config.feedback,
+    locale: config.locale,
     ...resolveEdit(config.edit),
     ...resolveExpand(config.expand),
     ...resolveSelection(config.selection),

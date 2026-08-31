@@ -23,6 +23,8 @@ export interface ExportConfig {
   preventFormulaInjection?: boolean
   /** 全局格式化配置（用于 formatter） */
   formatterConfig?: FormatterConfig
+  /** 请求格式不可用并自动降级时的通知。 */
+  onFallback?: (requested: 'xlsx', actual: 'csv', cause: unknown) => void
 }
 
 /* ================= 内部辅助 ================= */
@@ -140,9 +142,9 @@ async function exportXLSX(
   let XLSX: typeof import('xlsx')
   try {
     XLSX = await import('xlsx')
-  } catch {
+  } catch (error) {
     // xlsx 未安装时降级到 CSV
-    console.warn('[C_Table] xlsx 库未安装，已自动降级为 CSV 导出')
+    config.onFallback?.('xlsx', 'csv', error)
     exportCSV(data, columns, { ...config, format: 'csv' })
     return
   }

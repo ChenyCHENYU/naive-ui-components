@@ -8,6 +8,7 @@ import type { MaybeRef, VNodeChild, Ref, ComputedRef } from 'vue'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import type { FormItemRule } from 'naive-ui/es/form'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
+import type { ComponentFeedback, ComponentLocale } from '../../config'
 
 /* 宽松的 Ref-like 类型，支持跨 Vue 实例的 Ref 传递 */
 type RefLike<T> = { value: T } | T
@@ -15,6 +16,16 @@ type MaybeRefLike<T> = RefLike<T> | MaybeRef<T>
 
 /* ================= 核心类型定义 ================= */
 export type DataRecord = Record<string, unknown>
+export type TableRowKey<T extends object = DataRecord> =
+  Extract<keyof T, string> | ((row: T) => DataTableRowKey)
+export interface TableRowKeyIssue<T extends object = DataRecord> {
+  type: 'missing' | 'duplicate' | 'error'
+  row: T
+  index: number
+  key?: DataTableRowKey
+  firstIndex?: number
+  cause?: unknown
+}
 export type EditMode = 'row' | 'cell' | 'both' | 'modal' | 'none'
 export type EditType =
   | 'input'
@@ -45,19 +56,19 @@ export interface PaginationConfig {
 
 /* ================= Actions 配置类型 ================= */
 /** API 函数类型 */
-export type ApiFunction<T extends DataRecord = DataRecord> = (
+export type ApiFunction<T extends object = DataRecord> = (
   row: T,
   index: number
 ) => Promise<any> | any
 
 /** 渲染函数类型 */
-export type RenderFunction<T extends DataRecord = DataRecord> = (
+export type RenderFunction<T extends object = DataRecord> = (
   row: T,
   index: number
 ) => VNodeChild
 
 /** 自定义操作按钮配置 */
-export interface CustomAction<T extends DataRecord = DataRecord> {
+export interface CustomAction<T extends object = DataRecord> {
   /** 按钮唯一键 */
   key: string
   /** 按钮显示文本 */
@@ -77,7 +88,7 @@ export interface CustomAction<T extends DataRecord = DataRecord> {
 }
 
 /** 简化的操作配置 - 二元法则 */
-export interface SimpleTableActions<T extends DataRecord = DataRecord> {
+export interface SimpleTableActions<T extends object = DataRecord> {
   /** 编辑操作 - 直接传入函数 */
   edit?: false | ApiFunction<T>
   /** 删除操作 - 直接传入函数 */
@@ -91,23 +102,36 @@ export interface SimpleTableActions<T extends DataRecord = DataRecord> {
 }
 
 /** useTableActions Hook 选项类型 */
-export interface UseTableActionsOptions<T extends DataRecord = DataRecord> {
+export interface UseTableActionsOptions<T extends object = DataRecord> {
   /** 操作配置 */
   actions: Ref<SimpleTableActions<T>> | ComputedRef<SimpleTableActions<T>>
   /** 表格配置 */
-  config: Ref<any> | ComputedRef<any>
+  config:
+    | Ref<{
+        editable: boolean
+        editMode: string
+        feedback?: ComponentFeedback
+        locale?: ComponentLocale
+      }>
+    | ComputedRef<{
+        editable: boolean
+        editMode: string
+        feedback?: ComponentFeedback
+        locale?: ComponentLocale
+      }>
   /** 表格管理器 */
   tableManager: any
   /** 行键获取函数 */
   rowKey: (row: T) => DataTableRowKey
   /** 事件发射器 */
-  emit: any
+  /** Deletion action completion notification; kept separate from CRUD data mutation. */
+  onRowDeleted?: (row: T, index: number) => void
   /** 查看详情回调 */
   onViewDetail?: (data: T) => void
 }
 
 /** useTableActions Hook 返回类型 */
-export interface UseTableActionsReturn<T extends DataRecord = DataRecord> {
+export interface UseTableActionsReturn<T extends object = DataRecord> {
   /** 渲染操作列 */
   renderActions: (rowData: T, rowIndex: number) => VNodeChild
   /** 检查操作是否启用 */
@@ -134,7 +158,7 @@ export interface BaseOption {
 }
 
 /* 基础配置接口 */
-export interface BaseConfig<T extends DataRecord = DataRecord> {
+export interface BaseConfig<T extends object = DataRecord> {
   enabled?: boolean
   rowCheckable?: (row: T) => boolean
 }
@@ -168,7 +192,7 @@ export interface EditProps {
  * - BuiltInTableColumn：内置列（selection/expand），不需要 key/title
  * - TableColumn：以上二者联合
  */
-interface BaseTableColumn<T extends DataRecord = DataRecord> extends Omit<
+interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   DataTableColumns<T>[number],
   'key' | 'title' | 'render' | 'type'
 > {
@@ -189,15 +213,15 @@ interface BaseTableColumn<T extends DataRecord = DataRecord> extends Omit<
   maxWidth?: number
 }
 
-interface NormalTableColumn<
-  T extends DataRecord = DataRecord,
+export interface NormalTableColumn<
+  T extends object = DataRecord,
 > extends BaseTableColumn<T> {
   key: keyof T | string
   title: string
 }
 
-interface BuiltInTableColumn<
-  T extends DataRecord = DataRecord,
+export interface BuiltInTableColumn<
+  T extends object = DataRecord,
 > extends BaseTableColumn<T> {
   /** 内置列类型：无需 key / title */
   type: 'selection' | 'expand' | 'index'
@@ -205,8 +229,14 @@ interface BuiltInTableColumn<
   renderExpand?: (rowData: T, rowIndex: number) => VNodeChild
 }
 
-export type TableColumn<T extends DataRecord = DataRecord> =
+export type TableColumn<T extends object = DataRecord> =
   NormalTableColumn<T> | BuiltInTableColumn<T>
+
+export type StrictTableColumn<T extends object> =
+  | (Omit<NormalTableColumn<T>, 'key'> & {
+      key: Extract<keyof T, string>
+    })
+  | BuiltInTableColumn<T>
 
 /* ================= 选择和展开功能类型 ================= */
 export interface ChildSelectionState {
@@ -216,8 +246,9 @@ export interface ChildSelectionState {
   clearAll: () => void
 }
 
-export interface ExpandConfig<T extends DataRecord = DataRecord, C = any> {
+export interface ExpandConfig<T extends object = DataRecord, C = any> {
   onLoadData?: (row: T) => Promise<C[]> | C[]
+  onError?: (error: unknown, row: T) => void
   renderContent?: (
     row: T,
     expandData: C[],
@@ -228,7 +259,7 @@ export interface ExpandConfig<T extends DataRecord = DataRecord, C = any> {
 }
 
 export interface SelectionConfig<
-  T extends DataRecord = DataRecord,
+  T extends object = DataRecord,
 > extends BaseConfig<T> {
   enableSelection?: boolean
   defaultCheckedKeys?: DataTableRowKey[]
@@ -240,10 +271,10 @@ export interface SelectionConfig<
 }
 
 /* ================= 表格组件核心类型 ================= */
-export interface TableBaseProps<T extends DataRecord = DataRecord> {
+export interface TableBaseProps<T extends object = DataRecord> {
   columns: TableColumn<T>[]
   data: MaybeRefLike<T[]>
-  rowKey?: (row: T) => DataTableRowKey
+  rowKey?: TableRowKey<T>
   loading?: MaybeRefLike<boolean>
 }
 
@@ -257,7 +288,7 @@ export interface TableDisplayProps {
   size?: 'small' | 'medium' | 'large'
 }
 
-export interface TableEditProps<T extends DataRecord = DataRecord> {
+export interface TableEditProps<T extends object = DataRecord> {
   editable?: boolean
   editMode?: EditMode
   onSave?: (
@@ -272,7 +303,7 @@ export interface TableEditProps<T extends DataRecord = DataRecord> {
   columnWidth?: number
 }
 
-export interface TableExpandProps<T extends DataRecord = DataRecord> {
+export interface TableExpandProps<T extends object = DataRecord> {
   expandable?: boolean
   onLoadExpandData?: (row: T) => Promise<any[]> | any[]
   renderExpandContent?: (
@@ -286,7 +317,7 @@ export interface TableExpandProps<T extends DataRecord = DataRecord> {
 }
 
 export interface TableSelectionProps<
-  T extends DataRecord = DataRecord,
+  T extends object = DataRecord,
 > extends BaseConfig<T> {
   enableSelection?: boolean
   defaultCheckedKeys?: DataTableRowKey[]
@@ -298,7 +329,7 @@ export interface TableSelectionProps<
 }
 
 /* 组合所有属性的完整表格属性接口 */
-export interface TableProps<T extends DataRecord = DataRecord>
+export interface TableProps<T extends object = DataRecord>
   extends
     TableBaseProps<T>,
     TableDisplayProps,
@@ -310,7 +341,7 @@ export interface TableProps<T extends DataRecord = DataRecord>
 }
 
 /* ================= 事件系统 ================= */
-export interface TableExpandEvents<T extends DataRecord = DataRecord> {
+export interface TableExpandEvents<T extends object = DataRecord> {
   'expand-change': [
     expandedKeys: DataTableRowKey[],
     row?: T,
@@ -318,7 +349,7 @@ export interface TableExpandEvents<T extends DataRecord = DataRecord> {
   ]
 }
 
-export interface TableSelectionEvents<T extends DataRecord = DataRecord> {
+export interface TableSelectionEvents<T extends object = DataRecord> {
   'selection-change': [
     checkedKeys: DataTableRowKey[],
     checkedRows: T[],
@@ -335,18 +366,19 @@ export interface TableSelectionEvents<T extends DataRecord = DataRecord> {
   ]
 }
 
-export interface TableEditEvents<T extends DataRecord = DataRecord> {
+export interface TableEditEvents<T extends object = DataRecord> {
   'update:data': [data: T[]]
   save: [rowData: T, rowIndex: number, columnKey?: string]
   cancel: [rowData: T, rowIndex: number]
   'edit-error': [error: unknown]
 }
 
-export interface TableEmits<T extends DataRecord = DataRecord>
+export interface TableEmits<T extends object = DataRecord>
   extends TableExpandEvents<T>, TableSelectionEvents<T>, TableEditEvents<T> {
   'pagination-change': [page: number, pageSize: number]
   'row-delete': [deletedRow: T, index: number]
   'batch-action-error': [error: unknown, actionKey: string]
+  'row-key-error': [issues: TableRowKeyIssue<T>[]]
 }
 
 /* ================= 实例方法系统 ================= */
@@ -367,7 +399,7 @@ export interface TableExpandMethods {
   isExpanded: (rowKey: DataTableRowKey) => boolean
 }
 
-export interface TableSelectionMethods<T extends DataRecord = DataRecord> {
+export interface TableSelectionMethods<T extends object = DataRecord> {
   selectRow: (rowKey: DataTableRowKey) => boolean | void
   unselectRow: (rowKey: DataTableRowKey) => void
   selectAll: () => void
@@ -388,7 +420,7 @@ export interface TableSelectionMethods<T extends DataRecord = DataRecord> {
   clearAllSelections: () => void
 }
 
-export interface TableDynamicRowsMethods<T extends DataRecord = DataRecord> {
+export interface TableDynamicRowsMethods<T extends object = DataRecord> {
   addRow: () => void
   insertRow: () => void
   deleteRow: () => void
@@ -409,7 +441,7 @@ export interface TablePaginationMethods {
   getTotalPages: () => number
 }
 
-export interface TableInstance<T extends DataRecord = DataRecord>
+export interface TableInstance<T extends object = DataRecord>
   extends
     TableEditMethods,
     TableExpandMethods,
@@ -418,10 +450,7 @@ export interface TableInstance<T extends DataRecord = DataRecord>
     TablePaginationMethods {}
 
 /* ================= useTableExpand Hook类型 ================= */
-export interface UseTableExpandOptions<
-  T extends DataRecord = DataRecord,
-  C = any,
->
+export interface UseTableExpandOptions<T extends object = DataRecord, C = any>
   extends ExpandConfig<T, C>, SelectionConfig<T> {
   data: Ref<T[]> | ComputedRef<T[]>
   rowKey: (row: T) => DataTableRowKey
@@ -444,10 +473,7 @@ export interface UseTableExpandOptions<
   ) => void
 }
 
-export interface UseTableExpandReturn<
-  T extends DataRecord = DataRecord,
-  C = any,
-> {
+export interface UseTableExpandReturn<T extends object = DataRecord, C = any> {
   expandedKeys: Ref<DataTableRowKey[]>
   checkedKeys: Ref<DataTableRowKey[]>
   childSelections: Ref<Map<DataTableRowKey, DataTableRowKey[]>>
@@ -467,7 +493,7 @@ export interface UseTableExpandReturn<
 }
 
 /** 行操作按钮配置 */
-export interface RowAction<T extends DataRecord = DataRecord> {
+export interface RowAction<T extends object = DataRecord> {
   label: string
   icon?: string
   type?: ButtonType

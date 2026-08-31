@@ -36,17 +36,13 @@
   import {
     ref,
     computed,
+    defineAsyncComponent,
     watch,
     onBeforeUnmount,
     readonly as readonlyRef,
     shallowRef,
     type Component,
   } from 'vue'
-  import {
-    Editor as EditorRuntime,
-    Toolbar as ToolbarRuntime,
-  } from '@wangeditor-next/editor-for-vue'
-  import '@wangeditor-next/editor/dist/css/style.css'
   import { sanitizeRichHtml } from '../../utils/html'
 
   defineOptions({ name: 'C_Editor' })
@@ -60,8 +56,14 @@
     isDestroyed: boolean
   }
 
-  const Editor = EditorRuntime as unknown as Component
-  const Toolbar = ToolbarRuntime as unknown as Component
+  const createEditorRuntime = (name: 'Editor' | 'Toolbar'): Component => {
+    if (typeof window === 'undefined') return (() => null) as Component
+    return defineAsyncComponent(() =>
+      import('@wangeditor-next/editor-for-vue').then(module => module[name])
+    ) as Component
+  }
+  const Editor = createEditorRuntime('Editor')
+  const Toolbar = createEditorRuntime('Toolbar')
 
   interface Props {
     editorId: string

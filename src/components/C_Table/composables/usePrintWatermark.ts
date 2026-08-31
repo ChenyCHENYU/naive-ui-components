@@ -5,16 +5,14 @@
  */
 
 import { ref, nextTick } from 'vue'
-import { useMessage as _useNaiveMessage } from 'naive-ui'
-import html2canvas from 'html2canvas'
-import printJS from 'print-js'
+import { useComponentFeedback } from '../../../config'
 
 /* ================= 类型定义 ================= */
 
 /** 消息提示 API 接口 */
 interface MessageApi {
   success: (msg: string) => void
-  error: (msg: string) => void
+  error: (msg: string, cause?: unknown) => void
   warning: (msg: string) => void
 }
 
@@ -242,7 +240,11 @@ async function captureElement(
   element: HTMLElement,
   config: CaptureConfig = {}
 ): Promise<HTMLCanvasElement> {
+  if (typeof window === 'undefined') {
+    throw new Error('截图功能仅支持浏览器环境')
+  }
   const finalConfig = { ...DEFAULT_CAPTURE, ...config }
+  const { default: html2canvas } = await import('html2canvas')
 
   return await html2canvas(element, {
     logging: finalConfig.logging,
@@ -293,11 +295,15 @@ function downloadCanvas(
 /**
  *
  */
-function printImage(
+async function printImage(
   imageDataURL: string,
   config: PrintConfig = {}
 ): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('打印功能仅支持浏览器环境')
+  }
   const finalConfig = { ...DEFAULT_PRINT, ...config }
+  const { default: printJS } = await import('print-js')
 
   return new Promise<void>((resolve, reject) => {
     try {
@@ -493,17 +499,7 @@ async function addWatermarkAndPrint(
  *
  */
 export function usePrintWatermark() {
-  /* NOTE: useMessage() requires naive-ui provider context; caller must ensure NMessageProvider is present */
-  let message: MessageApi
-  try {
-    message = _useNaiveMessage()
-  } catch {
-    message = {
-      success: (msg: string) => console.log('[PrintWatermark]', msg),
-      error: (msg: string) => console.error('[PrintWatermark]', msg),
-      warning: (msg: string) => console.warn('[PrintWatermark]', msg),
-    }
-  }
+  const message = useComponentFeedback()
   const loading = ref(false)
   const progress = ref(0)
 
@@ -533,7 +529,6 @@ export function usePrintWatermark() {
       updateProgress(100)
       return dataURL
     } catch (error) {
-      console.error('截图失败:', error)
       throw new Error(
         `截图失败: ${error instanceof Error ? error.message : '未知错误'}`
       )
@@ -555,9 +550,9 @@ export function usePrintWatermark() {
       updateProgress(100)
       message.success('打印完成')
     } catch (error) {
-      console.error('打印失败:', error)
       message.error(
-        `打印失败: ${error instanceof Error ? error.message : '未知错误'}`
+        `打印失败: ${error instanceof Error ? error.message : '未知错误'}`,
+        error
       )
       throw error
     } finally {
@@ -590,8 +585,7 @@ export function usePrintWatermark() {
       downloadCanvas(canvas, filename || defaultFilename, format)
       message.success('下载完成')
     } catch (error) {
-      console.error('下载失败:', error)
-      message.error('下载失败')
+      message.error('下载失败', error)
       throw error
     } finally {
       loading.value = false
@@ -662,8 +656,7 @@ export function usePrintWatermark() {
       updateProgress(100)
       message.success(`批量打印完成，共 ${elements.length} 个元素`)
     } catch (error) {
-      console.error('批量打印失败:', error)
-      message.error('批量打印失败')
+      message.error('批量打印失败', error)
       throw error
     } finally {
       loading.value = false
@@ -704,8 +697,7 @@ export function usePrintWatermark() {
         message
       )
     } catch (error) {
-      console.error('合并打印失败:', error)
-      message.error('合并打印失败')
+      message.error('合并打印失败', error)
       throw error
     } finally {
       loading.value = false

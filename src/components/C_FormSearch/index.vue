@@ -19,12 +19,13 @@
       <div
         class="form-search-item-box"
         v-for="(item, index) of visibleFields"
-        :key="index"
+        :key="item.prop || index"
       >
         <NFormItem
           class="form-item-input"
           v-if="item.type !== 'spacer'"
           :path="item.prop"
+          :rule="item.rules"
           :show-feedback="false"
           :show-label="false"
         >
@@ -33,6 +34,7 @@
             clearable
             v-model:value="formParams[item.prop]"
             :placeholder="item.placeholder"
+            v-bind="item.attrs"
             @focus="history.handleFocus(item.prop)"
             @blur="history.closeAllPanels"
           />
@@ -76,6 +78,7 @@
             :placeholder="item.placeholder || '请选择'"
             clearable
             :options="normalizeOptions(item.list) as any"
+            v-bind="item.attrs"
           />
 
           <NDatePicker
@@ -87,6 +90,7 @@
             start-placeholder="开始时间"
             end-placeholder="结束时间"
             clearable
+            v-bind="item.attrs"
           />
         </NFormItem>
       </div>
@@ -100,7 +104,7 @@
                 <NButton
                   type="primary"
                   @click="searchFn"
-                  :loading="searching"
+                  :loading="loading || searching"
                 >
                   <template #icon>
                     <div class="i-mdi:search w-4 h-4" />
@@ -163,34 +167,22 @@
   } from 'naive-ui'
   import { useSearchState } from './composables/useSearchState'
   import type {
-    SearchFormItem,
-    SearchFormParams,
     SearchOptionItem,
-    SearchConfig,
+    FormSearchEmits,
+    FormSearchProps,
   } from './types'
 
   defineOptions({ name: 'C_FormSearch' })
 
-  interface Props {
-    bordered?: boolean
-    formItemList: SearchFormItem[]
-    formParams: SearchFormParams
-    formSearchInputHistoryString?: string
-    size?: 'small' | 'medium' | 'large'
-    config?: SearchConfig
-  }
-
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<FormSearchProps>(), {
     bordered: true,
     formItemList: () => [],
+    formParams: () => ({}),
     size: 'medium',
+    loading: false,
   })
 
-  const emits = defineEmits<{
-    search: [params: SearchFormParams]
-    reset: []
-    'change-params': [params: SearchFormParams]
-  }>()
+  const emits = defineEmits<FormSearchEmits>()
 
   const {
     formRef,
@@ -206,24 +198,32 @@
     syncFromProps,
   } = useSearchState(emits, {
     formItemList: props.formItemList,
-    formParams: props.formParams,
-    config: props.config,
-    historyOptions: {
+    formParams: props.modelValue ?? props.formParams,
+    config: () => props.config,
+    historyOptions: () => ({
       storageKey: props.formSearchInputHistoryString,
       maxItems: props.config?.historyMaxItems,
-    },
+    }),
   })
 
   const normalizeOptions = (list?: SearchOptionItem[]) =>
     list?.map(opt => ({
-      label: opt.label || opt.labelDefault || '',
+      ...opt,
+      label: opt.label ?? opt.labelDefault ?? '',
       value:
-        opt.value !== undefined ? opt.value : opt.label || opt.labelDefault,
+        opt.value !== undefined ? opt.value : (opt.label ?? opt.labelDefault),
     }))
 
   watch(
-    () => props.formItemList,
-    newItems => syncFromProps(newItems, props.formParams),
+    () =>
+      [
+        props.formItemList,
+        props.modelValue,
+        props.formParams,
+        props.config,
+      ] as const,
+    ([newItems, modelValue, formParams]) =>
+      syncFromProps(newItems, modelValue ?? formParams),
     { deep: true }
   )
 
