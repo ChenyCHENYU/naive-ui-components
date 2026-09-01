@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.11.3
+
+### Patch Changes
+
+- 27b8dfa: Preserve the form model generic across `C_Form` model, options, config, validation, and submit bindings for fully typed Vue template consumers.
+
 ## 0.11.2
 
 ### Patch Changes
