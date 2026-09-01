@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.11.2
+
+### Patch Changes
+
+- a8ddc1e: Allow `C_Table` CRUD bindings to accept column refs produced by external data packages without requiring both packages to share an identical `TableColumn<T>` declaration.
+
 ## 0.11.1
 
 ### Patch Changes
