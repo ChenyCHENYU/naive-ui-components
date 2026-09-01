@@ -25,15 +25,15 @@ import type { ComponentFeedback, ComponentLocale } from '../../../config'
 /**
  * 可绑定到 C_Table 的 CRUD 对象接口（桥接类型）
  *
- * C_Table 内部已将 data/columns 规范化为 DataRecord/TableColumn，
- * 此接口对 columns/actions 使用 any[] 避免 TableColumn<any> 结构展开异常，
- * 同时允许 useTableCrud<T>() 任意子类型直接传入而无需类型断言。
+ * C_Table 内部会将外部 columns 规范化为自己的 TableColumn。
+ * columns 刻意使用 unknown[] 作为跨包边界，避免要求 CRUD 数据源与组件库
+ * 共享同一份 TableColumn 声明；直接使用 columns prop 时仍保留完整的强类型校验。
  */
 export interface CrudBinding<T extends object = DataRecord> {
   data: Ref<T[]>
   loading: Ref<boolean>
 
-  columns: ComputedRef<TableColumn<T>[]>
+  columns: ComputedRef<readonly unknown[]>
 
   actions?: ComputedRef<SimpleTableActions<T>>
 
