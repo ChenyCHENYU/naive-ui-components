@@ -26,7 +26,7 @@ bun add @robot-admin/naive-ui-components
 Required peer dependencies:
 
 ```bash
-bun add vue@^3.5.0 naive-ui@^2.35.0 @robot-admin/form-validate@^2.0.0
+bun add vue@^3.5.0 naive-ui@^2.35.0
 ```
 
 ### 🚀 Quick Start
@@ -91,7 +91,15 @@ Components({
 })
 ```
 
-Set `importOnDemand: false` explicitly when a legacy project still requires imports from the package root.
+`importStyle: true` (an alias of `'full'`) preserves the existing complete style behavior. When C_Form/C_Table only use base fields and no built-in rich-text editor, set `importStyle: 'base'` to avoid editor CSS; other components safely fall back to their standard style entry. Set `importOnDemand: false` only when a legacy project still requires the package root.
+
+The style tiers can also be imported explicitly:
+
+```typescript
+import '@robot-admin/naive-ui-components/C_Form/base.css'
+import '@robot-admin/naive-ui-components/C_Table/base.css'
+// Full mode is also available as C_Form/full.css and C_Table/full.css.
+```
 
 ### Recommended C_Form / C_Table setup
 
@@ -147,6 +155,33 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
 
 `C_Date`, `C_Time`, `C_Menu`, and `C_FormSearch` support standard `v-model`. Message/dialog providers are optional; application-wide feedback, locale, form defaults, and `table.defaults` can be supplied through plugin options.
 
+### C_Captcha Server Verification
+
+The default local mode only proves that the browser-side puzzle interaction completed. It is not a security credential for login, payment, or other sensitive actions. In production, provide a `verifier` and enable `require-server-verification`. Timeout, cancellation, and stale attempts are handled by the component, and `success` is emitted only after approval by an independent server/provider challenge. Request `token` and `timestamp` values are client-generated telemetry and must never be trusted as proof by the server.
+
+```vue
+<C_Captcha
+  require-server-verification
+  :verification-timeout="8000"
+  :verifier="
+    async ({ signal }) => {
+      // This proof must come from a trusted server/provider challenge.
+      const providerProof = await obtainTrustedCaptchaProof({ signal })
+      const response = await fetch('/api/captcha/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ providerProof }),
+        signal,
+      })
+      return response.json() // { valid: boolean, token: 'server-issued-token' }
+    }
+  "
+  @verify-error="reportError"
+/>
+```
+
+With `require-server-verification`, a successful response must include a server token. Server tokens should be short-lived, single-use, and bound to the current session or operation. `C_Login` forwards the same policy through `captchaVerifier`, `requireCaptchaServerVerification`, and `captchaVerificationTimeout`, and its `submit` payload identifies the result through `captchaVerifiedBy`. See [SECURITY.md](./SECURITY.md) for trust-boundary details.
+
 ### 📋 Component List (51 Components)
 
 > 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).
@@ -189,32 +224,32 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
 
 #### Data Display Components
 
-| Component        | Description                                  | External Deps                        |
-| ---------------- | -------------------------------------------- | ------------------------------------ |
-| `C_Table`        | Advanced data table (CRUD/inline edit/print) | `print-js`, `html2canvas`            |
-| `C_Map`          | Map component (OSM/AMap)                     | `leaflet`                            |
-| `C_VtableGantt`  | Gantt chart                                  | `@visactor/vtable-gantt`             |
-| `C_AntV`         | Graph editor (ER/BPMN/UML)                   | `@antv/x6`, `html2canvas`            |
-| `C_WaterFall`    | Waterfall layout                             | -                                    |
-| `C_FullCalendar` | Calendar events                              | `@fullcalendar/*`                    |
-| `C_VideoPlayer`  | Video player (HLS/subtitles/bookmarks)       | `xgplayer`, `xgplayer-hls`           |
-| `C_AudioPlayer`  | Audio player (waveform/progress/playlist)    | -                                    |
-| `C_FilePreview`  | File preview (PDF/Word/Excel)                | `xlsx`, `mammoth`, `@tato30/vue-pdf` |
-| `C_Timeline`     | Timeline (vertical/horizontal/collapsible)   | -                                    |
+| Component        | Description                                  | External Deps              |
+| ---------------- | -------------------------------------------- | -------------------------- |
+| `C_Table`        | Advanced data table (CRUD/inline edit/print) | `print-js`, `html2canvas`  |
+| `C_Map`          | Map component (OSM/AMap)                     | `leaflet`                  |
+| `C_VtableGantt`  | Gantt chart                                  | `@visactor/vtable-gantt`   |
+| `C_AntV`         | Graph editor (ER/BPMN/UML)                   | `@antv/x6`, `html2canvas`  |
+| `C_WaterFall`    | Waterfall layout                             | -                          |
+| `C_FullCalendar` | Calendar events                              | `@fullcalendar/*`          |
+| `C_VideoPlayer`  | Video player (HLS/subtitles/bookmarks)       | `xgplayer`, `xgplayer-hls` |
+| `C_AudioPlayer`  | Audio player (waveform/progress/playlist)    | -                          |
+| `C_FilePreview`  | File preview (PDF/Word/Excel)                | `xlsx`, `mammoth`          |
+| `C_Timeline`     | Timeline (vertical/horizontal/collapsible)   | -                          |
 
 #### Form & Layout Components
 
-| Component         | Description                                       | External Deps                |
-| ----------------- | ------------------------------------------------- | ---------------------------- |
-| `C_Form`          | Dynamic form engine (Grid/Tabs/Steps/Card layout) | `@robot-admin/form-validate` |
-| `C_FormSearch`    | Search form                                       | -                            |
-| `C_CollapsePanel` | Collapse panel                                    | -                            |
-| `C_SplitPane`     | Split pane                                        | -                            |
-| `C_Draggable`     | Drag & drop sorting                               | `vue-draggable-plus`         |
-| `C_Tree`          | Advanced tree control                             | -                            |
-| `C_Time`          | Enhanced time picker                              | -                            |
-| `C_Cron`          | Cron expression editor                            | -                            |
-| `C_Transfer`      | Transfer / shuttle box                            | -                            |
+| Component         | Description                                       | External Deps        |
+| ----------------- | ------------------------------------------------- | -------------------- |
+| `C_Form`          | Dynamic form engine (Grid/Tabs/Steps/Card layout) | -                    |
+| `C_FormSearch`    | Search form                                       | -                    |
+| `C_CollapsePanel` | Collapse panel                                    | -                    |
+| `C_SplitPane`     | Split pane                                        | -                    |
+| `C_Draggable`     | Drag & drop sorting                               | `vue-draggable-plus` |
+| `C_Tree`          | Advanced tree control                             | -                    |
+| `C_Time`          | Enhanced time picker                              | -                    |
+| `C_Cron`          | Cron expression editor                            | -                    |
+| `C_Transfer`      | Transfer / shuttle box                            | -                    |
 
 #### Interactive & Business Components
 
@@ -234,17 +269,17 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
 
 ### 🔌 Dependency Notes
 
-Runtime component dependencies are declared by this package and are resolved automatically. Consumers only need to provide the peer dependencies:
+Runtime component dependencies are declared by this package and resolved automatically. Every consumer needs:
 
 ```bash
-bun add vue naive-ui vue-router @robot-admin/form-validate
+bun add vue naive-ui
 ```
 
-If optional dependencies are explicitly skipped during deployment and table row/column dragging is enabled, make sure `sortablejs` is available. The formula editor now uses a bounded built-in parser, does not execute dynamic JavaScript, and no longer needs `expr-eval`.
+Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`, and `sortablejs` for C_Table row/column dragging. Subpath imports do not require unrelated optional peers. The formula editor uses a bounded built-in parser and does not execute dynamic JavaScript.
 
 ### 🏗️ Build Architecture
 
-#### Five-stage Build Pipeline
+#### Six-stage Build Pipeline
 
 ```
 bun run build
@@ -252,7 +287,8 @@ bun run build
   ├── 2. sass CLI        → Compile global.scss → global-scss.css
   ├── 3. merge-css.js    → Merge SFC CSS + global SCSS → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
-  └── 5. check:dist      → Validate root, subpath, and DTS public exports
+  ├── 5. check:dist      → Validate root, subpath, SSR, and DTS public exports
+  └── 6. check:size      → Enforce full/base CSS and package-size budgets
 ```
 
 #### Key Technical Details
@@ -264,6 +300,8 @@ bun run build
 - **Subpath exports**: `gen-exports.js` auto-scans `dist/` and writes the `exports` field in `package.json`
 - **Export conflict detection**: `check-export-conflicts.js` ensures no naming collisions between components
 - **Artifact entry validation**: `check-dist-entries.js` prevents internal chunks from replacing root declarations and verifies component utility subpath types
+- **Package contract validation**: blocks Naive UI internal type paths, hidden optional installs, and plugin console side effects
+- **Size budgets**: `check-size-budget.js` prevents accidental growth of global, C_Form/C_Table, and total dist output
 
 #### Build Output
 
@@ -271,21 +309,29 @@ bun run build
 dist/
 ├── index.js / index.cjs / index.d.ts     # Main entry
 ├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (51 components)
+├── C_Form.base.css / C_Form.full.css      # Base/full style tiers
+├── C_Table.base.css / C_Table.full.css    # Base/full style tiers
 ├── style.css                              # Merged full styles
 └── [chunk].js                             # Shared code chunks
 ```
 
 ### 🔧 Development
 
+The environment baseline is Node.js 20.19.0+ and Bun 1.3.14. `.node-version`, `packageManager`, `engines`, and the frozen lockfile keep local and CI installs aligned.
+
 ```bash
-bun install              # Install dependencies
+bun install --frozen-lockfile # Install exactly from the lockfile
 bun run dev              # Dev mode (SCSS watch + tsdown watch)
 bun run build            # Full build
 bun run build:scss       # Compile global SCSS only
-bun run build:css        # Merge CSS only
+bun run build:css        # Merge fresh tsdown CSS chunks; safely skips a finalized dist
 bun run build:exports    # Generate exports map only
 bun run check:exports    # Check export naming conflicts
 bun run check:dist       # Validate built JS / DTS public entries
+bun run check:package    # Validate dependencies, exports, and public source boundaries
+bun run check:quality    # Prevent any, console, and type-suppression debt regressions
+bun run check:audit      # Audit direct and transitive dependency vulnerabilities
+bun run check:size       # Enforce publish artifact size budgets
 bun run type-check       # TypeScript type checking
 bun run test             # Run Bun unit tests
 bun run lint:check       # Required Oxlint correctness checks

@@ -71,7 +71,7 @@
   import { computed } from 'vue'
   import { useRoute } from 'vue-router'
   import { C_Icon } from '../C_Icon'
-  import type { BreadcrumbItem } from '../_shared'
+  import type { BreadcrumbItem } from '../_shared/public'
 
   defineOptions({ name: 'C_Breadcrumb' })
 

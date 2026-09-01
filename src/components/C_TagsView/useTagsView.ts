@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import type { TagItem } from '../_shared'
+import type { TagItem } from '../_shared/public'
 
 export interface UseTagsViewOptions {
   /** localStorage 持久化 key，传空字符串则不持久化 */

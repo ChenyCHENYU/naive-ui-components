@@ -5,11 +5,11 @@
  */
 
 import { h, type VNodeChild } from 'vue'
-import { NButton, NSpace, NDropdown } from 'naive-ui'
-import type { DataTableRowKey } from 'naive-ui/es'
+import { NButton, NSpace, NDropdown, type DataTableRowKey } from 'naive-ui'
 import type {
   DataRecord,
   ApiFunction,
+  ButtonType,
   UseTableActionsOptions,
   UseTableActionsReturn,
 } from '../types'
@@ -54,29 +54,34 @@ export function useTableActions<T extends object = DataRecord>(
   const createButton = (
     icon: string,
     title: string,
-    type = 'primary',
+    type: ButtonType = 'primary',
     onClick: () => void
   ) =>
-    h(
-      NButton,
-      { size: 'small', type: type as any, quaternary: true, onClick },
-      () => [h(C_Icon, { name: icon, size: 14, title })]
-    )
+    h(NButton, { size: 'small', type, quaternary: true, onClick }, () => [
+      h(C_Icon, { name: icon, size: 14, title }),
+    ])
 
   /* 处理编辑操作 */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleEdit = (row: T, _index?: number) => {
+  const handleEdit = async (row: T, index: number) => {
     const rowKeyValue = rowKey(row)
     const editAction = actions.value?.edit
 
+    if (isValidApiFunction(editAction)) {
+      try {
+        await editAction(row, index)
+      } catch (error) {
+        feedback.error(
+          t('table.actionFailed', { action: t('common.edit') }),
+          error
+        )
+      }
+      return
+    }
+
     if (config.value.editMode === 'modal') {
-      tableManager.editStates.modalEdit.startEdit(
-        rowKeyValue,
-        { ...row },
-        editAction
-      )
+      tableManager.editStates.modalEdit.startEdit(rowKeyValue, { ...row })
     } else {
-      tableManager.editStates.rowEdit.startEditRow(rowKeyValue, editAction)
+      tableManager.editStates.rowEdit.startEditRow(rowKeyValue)
     }
   }
 
@@ -181,10 +186,17 @@ export function useTableActions<T extends object = DataRecord>(
       )
     }
 
-    if (config.value.editMode === 'modal' && isActionEnabled('edit')) {
+    if (
+      isActionEnabled('edit') &&
+      (config.value.editMode === 'modal' ||
+        isValidApiFunction(actions.value?.edit))
+    ) {
       buttons.push(
-        createButton('mdi:pencil', t('common.edit'), 'warning', () =>
-          handleEdit(row, index)
+        createButton(
+          'mdi:pencil',
+          t('common.edit'),
+          'warning',
+          () => void handleEdit(row, index)
         )
       )
     }
@@ -279,8 +291,11 @@ export function useTableActions<T extends object = DataRecord>(
       )
     }
 
+    const hasCustomEditAction = isValidApiFunction(actions.value?.edit)
     const allButtons = [
-      ...(isRowEditMode ? renderRowEditButtons(rowKeyValue) : []),
+      ...(isRowEditMode && !hasCustomEditAction
+        ? renderRowEditButtons(rowKeyValue)
+        : []),
       ...renderBasicActions(row, index),
     ]
 

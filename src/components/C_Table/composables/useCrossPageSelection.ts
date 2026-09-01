@@ -12,7 +12,7 @@ import {
   type ComputedRef,
   type MaybeRefOrGetter,
 } from 'vue'
-import type { DataTableRowKey } from 'naive-ui/es'
+import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord } from '../types'
 
 /* ================= 类型定义 ================= */

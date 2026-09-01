@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { createMenuOptions } from '../src/components/_shared'
+import { createMenuOptions } from '../src/components/_shared/public'
 
 const menuEntryPath = new URL(
   '../src/components/C_Menu/index.ts',
@@ -10,7 +10,7 @@ describe('C_Menu subpath entry', () => {
   test('菜单工具由组件子路径公开导出', async () => {
     const entry = await Bun.file(menuEntryPath).text()
     expect(entry).toContain('createMenuOptions')
-    expect(entry).toContain("from '../_shared'")
+    expect(entry).toContain("from '../_shared/public'")
   })
 
   test('内部共享目录不在包导出映射中公开', async () => {

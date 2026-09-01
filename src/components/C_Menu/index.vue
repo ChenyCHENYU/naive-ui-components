@@ -47,7 +47,7 @@
 <script setup lang="ts">
   import { ref, computed, watch, nextTick } from 'vue'
   import { type MenuOption, type MenuInst } from 'naive-ui'
-  import { createMenuOptions, type MenuAdapterConfig } from '../_shared'
+  import { createMenuOptions, type MenuAdapterConfig } from '../_shared/public'
   import type { MenuEmits, MenuProps } from './types'
 
   defineOptions({ name: 'C_Menu' })

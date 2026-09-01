@@ -12,7 +12,8 @@
     ></div>
 
     <!-- 删除按钮 -->
-    <div
+    <button
+      type="button"
       class="delete-btn"
       @click="handleDelete"
       title="删除节点"
@@ -21,12 +22,9 @@
         name="mdi:close"
         :size="12"
       />
-    </div>
+    </button>
 
-    <div
-      class="node-card"
-      @click="handleNodeClick"
-    >
+    <div class="node-card">
       <div class="node-header">
         <div class="node-icon">
           <C_Icon
@@ -95,7 +93,8 @@
       </div>
     </div>
 
-    <div
+    <button
+      type="button"
       class="add-node-btn"
       @click="showAddMenu"
       title="添加下一个节点"
@@ -104,7 +103,7 @@
         name="mdi:plus"
         :size="16"
       />
-    </div>
+    </button>
   </div>
 </template>
 
@@ -158,10 +157,6 @@
     return modeMap[mode as keyof typeof modeMap] || ''
   }
 
-  const handleNodeClick = () => {
-    /* 不阻止事件冒泡，让 VueFlow 的 node-click 事件自然触发 */
-  }
-
   const showAddMenu = (event: MouseEvent) => {
     event.stopPropagation()
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
@@ -213,6 +208,8 @@
   }
 
   .delete-btn {
+    appearance: none;
+    padding: 0;
     position: absolute;
     top: -10px;
     right: -10px;
@@ -243,7 +240,8 @@
     }
   }
 
-  .approval-node:hover .delete-btn {
+  .approval-node:hover .delete-btn,
+  .approval-node:focus-within .delete-btn {
     opacity: 1;
     transform: scale(1);
   }
@@ -404,6 +402,9 @@
   }
 
   .add-node-btn {
+    appearance: none;
+    border: 0;
+    padding: 0;
     position: absolute;
     left: 50%;
     bottom: -20px;
@@ -425,5 +426,15 @@
       transform: translateX(-50%) scale(1.1);
       box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
     }
+    &:focus-visible {
+      outline: 2px solid #1890ff;
+      outline-offset: 2px;
+    }
+  }
+
+  .delete-btn:focus-visible {
+    opacity: 1;
+    outline: 2px solid #1890ff;
+    outline-offset: 2px;
   }
 </style>

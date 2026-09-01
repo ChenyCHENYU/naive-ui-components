@@ -39,10 +39,18 @@ const OPTIONAL_LANGUAGES: Record<
 export interface HighlightPluginOptions {
   autoDetect?: boolean
   extraLanguages?: string[]
+  /** Enable lifecycle diagnostics through the supplied logger. */
+  debug?: boolean
+  logger?: Pick<Console, 'info' | 'warn' | 'error'>
+  onError?: (
+    error: unknown,
+    context: { source: 'language-loader'; language: string }
+  ) => void
 }
 
 // 状态管理
 const loadedLanguages = new Set<string>()
+const pendingLanguageLoads = new Map<string, Promise<boolean>>()
 const hlJsInstance: HLJSApi = hljs
 
 /**
@@ -93,7 +101,7 @@ function initializeCore(options: HighlightPluginOptions): void {
 
   // 预加载额外语言
   if (options.extraLanguages?.length) {
-    loadLanguages(options.extraLanguages)
+    void loadLanguages(options.extraLanguages, options)
   }
 }
 
@@ -102,13 +110,16 @@ function initializeCore(options: HighlightPluginOptions): void {
  * ? @param languages - 要加载的语言名称数组
  * ! @return Promise<string[]> 成功加载的语言名称数组
  */
-async function loadLanguages(languages: string[]): Promise<string[]> {
-  const loadPromises = languages.map(lang => loadLanguage(lang))
+async function loadLanguages(
+  languages: string[],
+  options: HighlightPluginOptions = {}
+): Promise<string[]> {
+  const loadPromises = languages.map(lang => loadLanguage(lang, options))
   const results = await Promise.allSettled(loadPromises)
 
   return results
     .map((result, index) =>
-      result.status === 'fulfilled' ? languages[index] : null
+      result.status === 'fulfilled' && result.value ? languages[index] : null
     )
     .filter(Boolean) as string[]
 }
@@ -118,43 +129,66 @@ async function loadLanguages(languages: string[]): Promise<string[]> {
  * ? @param language - 要加载的语言名称
  * ! @return Promise<boolean> 是否加载成功
  */
-async function loadLanguage(language: string): Promise<boolean> {
-  if (loadedLanguages.has(language)) {
+async function loadLanguage(
+  language: string,
+  options: HighlightPluginOptions = {}
+): Promise<boolean> {
+  const normalizedLanguage = language.toLowerCase()
+  if (loadedLanguages.has(normalizedLanguage)) {
     return true
   }
 
-  const loader = OPTIONAL_LANGUAGES[language.toLowerCase()]
+  const pendingLoad = pendingLanguageLoads.get(normalizedLanguage)
+  if (pendingLoad) return pendingLoad
+
+  const loader = OPTIONAL_LANGUAGES[normalizedLanguage]
   if (!loader) {
-    console.warn(`[HighlightPlugin] Language '${language}' not supported`)
-    return false
-  }
-
-  try {
-    const languageModule = await loader()
-    registerLanguage(language, languageModule.default)
-    console.log(`[HighlightPlugin] Language '${language}' loaded successfully`)
-    return true
-  } catch (error) {
-    console.error(
-      `[HighlightPlugin] Failed to load language '${language}':`,
-      error
+    options.logger?.warn(
+      `[HighlightPlugin] Language '${language}' not supported`
     )
     return false
   }
+
+  const request = (async () => {
+    try {
+      const languageModule = await loader()
+      registerLanguage(normalizedLanguage, languageModule.default)
+      if (options.debug) {
+        options.logger?.info(
+          `[HighlightPlugin] Language '${normalizedLanguage}' loaded successfully`
+        )
+      }
+      return true
+    } catch (error) {
+      options.logger?.error(
+        `[HighlightPlugin] Failed to load language '${normalizedLanguage}'`,
+        error
+      )
+      options.onError?.(error, {
+        source: 'language-loader',
+        language: normalizedLanguage,
+      })
+      return false
+    } finally {
+      pendingLanguageLoads.delete(normalizedLanguage)
+    }
+  })()
+  pendingLanguageLoads.set(normalizedLanguage, request)
+  return request
 }
 
 /**
  * * @description 获取 highlight 功能的 API 接口
  * ! @return highlight API 对象，包含所有可用方法
  */
-export const useHighlight = () => {
+export const useHighlight = (options: HighlightPluginOptions = {}) => {
   return {
     // 核心方法
     getHljs: () => hlJsInstance,
 
     // 语言管理
-    loadLanguage: (language: string) => loadLanguage(language),
-    loadLanguages: (languages: string[]) => loadLanguages(languages),
+    loadLanguage: (language: string) => loadLanguage(language, options),
+    loadLanguages: (languages: string[]) => loadLanguages(languages, options),
     getLoadedLanguages: () => Array.from(loadedLanguages),
   }
 }
@@ -171,7 +205,6 @@ export function setupHighlight(app: App, options: HighlightPluginOptions = {}) {
     extraLanguages: [],
     ...options,
   }
-
   // 初始化核心配置
   initializeCore(pluginOptions)
 
@@ -181,17 +214,22 @@ export function setupHighlight(app: App, options: HighlightPluginOptions = {}) {
   }
 
   // 提供给 Vue 应用
-  const highlightAPI = useHighlight()
+  const highlightAPI = useHighlight(pluginOptions)
   app.provide('highlightManager', highlightAPI)
   app.config.globalProperties.$highlight = highlightAPI
 
-  console.log('[HighlightPlugin] 🎨 highlight.js plugin installed successfully')
+  if (pluginOptions.debug) {
+    pluginOptions.logger?.info(
+      '[HighlightPlugin] highlight.js plugin installed'
+    )
+  }
 }
 
 // 导出默认配置
 export const defaultHighlightOptions: HighlightPluginOptions = {
   autoDetect: false,
   extraLanguages: [],
+  debug: false,
 }
 
 // 类型声明

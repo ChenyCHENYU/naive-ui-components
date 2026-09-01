@@ -1,11 +1,11 @@
 import type { Ref } from 'vue'
 import type { Graph } from '@antv/x6'
-import type { DropdownMixedOption } from 'naive-ui/es/dropdown/src/interface'
+import type { DropdownOption } from 'naive-ui'
 import { useComponentFeedback } from '../../../config'
 import { exportJSON, exportPNG, exportSVG } from '../utils/exportUtils'
 
 /** 导出下拉菜单选项（三个布局共享） */
-export const EXPORT_OPTIONS: DropdownMixedOption[] = [
+export const EXPORT_OPTIONS: DropdownOption[] = [
   { label: '导出PNG', key: 'png' },
   { label: '导出SVG', key: 'svg' },
   { label: '导出JSON', key: 'json' },
@@ -26,7 +26,7 @@ export function useGraphExport(
    * @param key - 导出格式 'png' | 'svg' | 'json'
    * @param getData - 获取当前图表数据的函数（用于 JSON 导出）
    */
-  const handleExport = async (key: string, getData?: () => any) => {
+  const handleExport = async (key: string, getData?: () => unknown) => {
     if (!graph.value) return
 
     try {

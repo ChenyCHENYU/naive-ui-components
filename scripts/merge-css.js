@@ -16,6 +16,19 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distDir = path.resolve(__dirname, "../dist");
+const componentsDir = path.resolve(__dirname, '../src/components')
+const componentNames = fs
+  .readdirSync(componentsDir, { withFileTypes: true })
+  .filter(entry => entry.isDirectory() && entry.name.startsWith('C_'))
+  .map(entry => entry.name)
+  .sort()
+const stableCssEntries = new Set(
+  componentNames.flatMap(componentName => [
+    `${componentName}.css`,
+    `${componentName}.base.css`,
+    `${componentName}.full.css`,
+  ])
+)
 
 // 1. 收集 SFC scoped CSS。双格式产物内容相同，按组件名去重。
 // 共享 chunk 偶尔以 composable 命名，必须显式归属到公共组件样式入口。
@@ -24,8 +37,24 @@ const cssChunkAliases = {
 }
 const originalCssFiles = fs
   .readdirSync(distDir)
-  .filter(f => f.endsWith('.css') && f !== 'global-scss.css')
+  .filter(
+    filename =>
+      filename.endsWith('.css') &&
+      filename !== 'global-scss.css' &&
+      filename !== 'style.css' &&
+      !stableCssEntries.has(filename)
+  )
   .sort()
+if (originalCssFiles.length === 0) {
+  const intermediateGlobalStyle = path.join(distDir, 'global-scss.css')
+  if (fs.existsSync(intermediateGlobalStyle)) {
+    fs.unlinkSync(intermediateGlobalStyle)
+  }
+  console.log(
+    'No fresh bundled CSS chunks found; kept the finalized dist entries unchanged.'
+  )
+  process.exit(0)
+}
 const getComponentName = filename => {
   const base = filename.replace(/-[^.]+\.css$/, '')
   if (base.startsWith('C_')) return base
@@ -50,8 +79,11 @@ const vendorStyles = {
   C_Markdown: ['md-editor-v3/lib/style.css'],
   C_VideoPlayer: ['xgplayer/dist/index.min.css'],
 }
-const componentStyleDependencies = {
+const fullStyleDependencies = {
   C_Form: ['C_Editor'],
+  C_Table: ['C_Form'],
+}
+const baseStyleDependencies = {
   C_Table: ['C_Form'],
 }
 const readVendorStyle = packagePath => {
@@ -78,12 +110,16 @@ for (const filename of [
     path.join(outputImageDir, filename)
   )
 }
-const resolveComponentStyles = (componentName, visited = new Set()) => {
+const resolveComponentStyles = (
+  componentName,
+  dependencies = fullStyleDependencies,
+  visited = new Set()
+) => {
   if (visited.has(componentName)) return []
   visited.add(componentName)
   const parts = []
-  for (const dependency of componentStyleDependencies[componentName] || []) {
-    parts.push(...resolveComponentStyles(dependency, visited))
+  for (const dependency of dependencies[componentName] || []) {
+    parts.push(...resolveComponentStyles(dependency, dependencies, visited))
   }
   for (const vendorStyle of vendorStyles[componentName] || []) {
     parts.push(readVendorStyle(vendorStyle))
@@ -100,19 +136,25 @@ const globalScss = fs.existsSync(globalScssFile)
   : "";
 
 // 3. 为所有公共组件生成稳定 CSS 入口；无样式组件生成空入口，保证 resolver 可用。
-const componentNames = fs
-  .readdirSync(path.resolve(__dirname, '../src/components'), {
-    withFileTypes: true,
-  })
-  .filter(entry => entry.isDirectory() && entry.name.startsWith('C_'))
-  .map(entry => entry.name)
-  .sort()
 for (const componentName of componentNames) {
   const content = resolveComponentStyles(componentName).join('\n')
   fs.writeFileSync(
     path.join(distDir, `${componentName}.css`),
     content || `/* ${componentName} has no component-specific styles. */\n`
   )
+}
+
+// Form and Table historically bundle transitive editor styles. Keep that
+// compatible entry, while exposing a smaller opt-in entry for consumers that
+// render custom fields/editors and already own those styles.
+for (const componentName of ['C_Form', 'C_Table']) {
+  const baseContent = resolveComponentStyles(
+    componentName,
+    baseStyleDependencies
+  ).join('\n')
+  fs.writeFileSync(path.join(distDir, `${componentName}.base.css`), baseContent)
+  const staleFullEntry = path.join(distDir, `${componentName}.full.css`)
+  if (fs.existsSync(staleFullEntry)) fs.unlinkSync(staleFullEntry)
 }
 
 // 4. 合并全量：全局变量/样式在前，SFC scoped 在后

@@ -5,7 +5,7 @@
  */
 
 import type { VNodeChild, Ref, ComputedRef } from 'vue'
-import type { DataTableRowKey } from 'naive-ui/es'
+import type { DataTableRowKey } from 'naive-ui'
 import type {
   DataRecord,
   PaginationConfig,
@@ -135,7 +135,7 @@ export interface ExpandConfig<T extends object = DataRecord> {
 
 export interface SelectionConfig<T extends object = DataRecord> {
   enabled?: boolean
-  defaultCheckedKeys?: import('naive-ui/es').DataTableRowKey[]
+  defaultCheckedKeys?: DataTableRowKey[]
   rowCheckable?: (row: T) => boolean
   maxSelection?: number
   childSelection?: {

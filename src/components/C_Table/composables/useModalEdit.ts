@@ -5,7 +5,7 @@
  */
 
 import { computed, ref } from 'vue'
-import type { DataTableRowKey } from 'naive-ui/es'
+import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord } from '../types'
 import { cloneData } from '../../../utils/data'
 

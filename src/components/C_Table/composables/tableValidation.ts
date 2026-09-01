@@ -1,4 +1,4 @@
-import type { FormItemRule } from 'naive-ui/es/form'
+import type { FormItemRule } from 'naive-ui'
 import type { DataRecord } from '../types'
 
 function getRuleMessage(rule: FormItemRule, fallback: string): string {

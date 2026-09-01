@@ -1,5 +1,5 @@
 import type { TableConfig } from './composables/useTableConfig'
-import type { DataTableRowKey } from 'naive-ui/es'
+import type { DataTableRowKey } from 'naive-ui'
 import type { StrictTableColumn, TableRowKeyIssue } from './types'
 
 /** Type-safe identity helper that rejects misspelled business field keys. */

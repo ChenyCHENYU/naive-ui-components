@@ -89,7 +89,7 @@
       :fit-view-on-init="true"
       :nodes-draggable="true"
       :elements-selectable="true"
-      @node-click="onNodeClick as any"
+      @node-click="onNodeClick"
       @pane-click="closeAddMenu"
     />
 
@@ -101,9 +101,10 @@
         :style="{ left: menuPosition.x + 'px', top: menuPosition.y + 'px' }"
       >
         <div class="add-menu-content">
-          <div
+          <button
             v-for="nodeType in NODE_TYPE_OPTIONS"
             :key="nodeType.type"
+            type="button"
             class="add-menu-item"
             @click="addNode(nodeType.type)"
           >
@@ -117,7 +118,7 @@
               />
             </div>
             <span class="menu-text">{{ nodeType.label }}</span>
-          </div>
+          </button>
         </div>
       </div>
     </Teleport>
@@ -452,7 +453,7 @@
     getCurrentWorkflowData,
     fitView,
     deleteNode,
-  } = useWorkflowNodes(props, emit as any, vueFlowRef)
+  } = useWorkflowNodes(props, emit, vueFlowRef)
 
   /* ─── 流程验证 ──────────────────────────────────────────── */
   const {

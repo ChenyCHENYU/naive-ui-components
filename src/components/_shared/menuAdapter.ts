@@ -31,7 +31,7 @@
 
 import { h, type VNode } from 'vue'
 import { Icon } from '@iconify/vue'
-import type { MenuOption } from 'naive-ui/es'
+import type { MenuOption } from 'naive-ui'
 import type { RouteItem } from './types'
 
 /**

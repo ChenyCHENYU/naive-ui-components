@@ -30,7 +30,7 @@ const useExpandState = <T extends object, C>(
   const expandedKeys = ref<DataTableRowKey[]>([
     ...(options.defaultExpandedKeys || []),
   ])
-  const expandDataMap = ref(new Map<DataTableRowKey, any>()) as Ref<
+  const expandDataMap = ref(new Map<DataTableRowKey, C[]>()) as Ref<
     Map<DataTableRowKey, C[]>
   >
   const loadingMap = ref(new Map<DataTableRowKey, boolean>())
@@ -570,7 +570,7 @@ const useRenderer = <T extends object, C>(
 /**
  *
  */
-export function useTableExpand<T extends object = Record<string, any>, C = any>(
+export function useTableExpand<T extends object = DataRecord, C = DataRecord>(
   options: UseTableExpandOptions<T, C>
 ): UseTableExpandReturn<T, C> {
   const state = useExpandState(options)

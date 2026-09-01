@@ -200,6 +200,9 @@
         ref="captchaRef"
         trigger-text=""
         theme="dark"
+        :verifier="props.captchaVerifier"
+        :require-server-verification="props.requireCaptchaServerVerification"
+        :verification-timeout="props.captchaVerificationTimeout"
         @success="handleCaptchaSuccess"
         @fail="handleCaptchaFail"
         @change="handleCaptchaChange"
@@ -481,12 +484,12 @@
 
 <script setup lang="ts">
   import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-  import type { FormInst, FormRules } from 'naive-ui/es'
+  import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import C_Captcha from '../C_Captcha/index.vue'
+  import type { CaptchaSuccessPayload } from '../C_Captcha/types'
   import C_QRCode from '../C_QRCode/index.vue'
   import { getItem, removeItem, setItem } from '../../utils/storage'
-  import { RULE_COMBOS } from '@robot-admin/form-validate'
   import {
     DEFAULT_FEATURES,
     DEFAULT_SOCIAL_PROVIDERS,
@@ -497,10 +500,37 @@
   } from './types'
 
   // ===== i18n helper =====
-  const t = (key: string, fallback: string) =>
-    typeof (globalThis as any).$t === 'function'
-      ? (globalThis as any).$t(key, fallback, 'robot_admin')
-      : fallback
+  type GlobalTranslator = (
+    key: string,
+    fallback: string,
+    namespace: string
+  ) => string
+  const t = (key: string, fallback: string) => {
+    const translator = (globalThis as { $t?: GlobalTranslator }).$t
+    return translator?.(key, fallback, 'robot_admin') ?? fallback
+  }
+
+  const createLoginRules = (
+    field: string,
+    pattern: RegExp,
+    patternMessage: string
+  ): FormItemRule[] => [
+    {
+      required: true,
+      message: `${field}不能为空`,
+      trigger: 'blur',
+    },
+    {
+      validator: (_rule, value: unknown) =>
+        !value || (typeof value === 'string' && pattern.test(value)),
+      message: patternMessage,
+      trigger: 'blur',
+    },
+  ]
+
+  const MOBILE_PATTERN = /^(?:(?:\+|00)86)?1[3-9]\d{9}$/
+  const PASSWORD_PATTERN =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,20}$/
 
   // ===== Props & Emits =====
   const props = withDefaults(defineProps<LoginProps>(), {
@@ -509,6 +539,8 @@
     storageKey: 'c_login_remember',
     defaultUsername: '',
     defaultPassword: '',
+    requireCaptchaServerVerification: false,
+    captchaVerificationTimeout: 10_000,
   })
 
   const emit = defineEmits<{
@@ -517,6 +549,7 @@
       data: PasswordFormData & {
         captchaToken?: string
         captchaTimestamp?: number
+        captchaVerifiedBy?: CaptchaSuccessPayload['verifiedBy']
       }
     ): void
     (e: 'captcha-submit', data: CaptchaFormData): void
@@ -601,6 +634,7 @@
         ? {
             captchaToken: captchaToken.value,
             captchaTimestamp: captchaTimestamp.value,
+            captchaVerifiedBy: captchaVerifiedBy.value,
           }
         : {}),
     })
@@ -613,7 +647,7 @@
   let countdownTimer: ReturnType<typeof setInterval> | null = null
 
   const captchaRules: FormRules = {
-    account: RULE_COMBOS.mobile('手机号') as FormRules['account'],
+    account: createLoginRules('手机号', MOBILE_PATTERN, '手机号格式错误'),
     code: [
       {
         required: true,
@@ -628,11 +662,13 @@
   const captchaValid = ref(false)
   const captchaToken = ref('')
   const captchaTimestamp = ref(0)
+  const captchaVerifiedBy = ref<CaptchaSuccessPayload['verifiedBy']>()
 
-  const handleCaptchaSuccess = (data: { token: string; timestamp: number }) => {
+  const handleCaptchaSuccess = (data: CaptchaSuccessPayload) => {
     captchaValid.value = true
     captchaToken.value = data.token
     captchaTimestamp.value = data.timestamp
+    captchaVerifiedBy.value = data.verifiedBy
   }
   const handleCaptchaFail = () => {
     captchaValid.value = false
@@ -642,6 +678,7 @@
     if (!valid) {
       captchaToken.value = ''
       captchaTimestamp.value = 0
+      captchaVerifiedBy.value = undefined
     }
   }
 
@@ -649,6 +686,7 @@
     captchaValid.value = false
     captchaToken.value = ''
     captchaTimestamp.value = 0
+    captchaVerifiedBy.value = undefined
     captchaRef.value?.reset()
   }
 
@@ -699,7 +737,7 @@
   let regCountdownTimer: ReturnType<typeof setInterval> | null = null
 
   const registerRules: FormRules = {
-    phone: RULE_COMBOS.mobile('手机号') as FormRules['phone'],
+    phone: createLoginRules('手机号', MOBILE_PATTERN, '手机号格式错误'),
     code: [
       {
         required: true,
@@ -707,7 +745,11 @@
         trigger: 'blur',
       },
     ],
-    password: RULE_COMBOS.password('密码') as FormRules['password'],
+    password: createLoginRules(
+      '密码',
+      PASSWORD_PATTERN,
+      '密码必须包含大小写字母和数字，长度6-20位'
+    ),
     confirmPassword: [
       {
         required: true,
@@ -715,7 +757,7 @@
         trigger: 'blur',
       },
       {
-        validator: (_rule: any, value: string) => {
+        validator: (_rule: FormItemRule, value: string) => {
           if (value !== registerForm.password) {
             return new Error(t('cl_pw_mismatch', '两次密码输入不一致'))
           }

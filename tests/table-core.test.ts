@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { computed, effectScope, nextTick, ref } from 'vue'
+import { computed, effectScope, nextTick, ref, type VNode } from 'vue'
 import { useCellEdit } from '../src/components/C_Table/composables/useCellEdit'
 import { useCrossPageSelection } from '../src/components/C_Table/composables/useCrossPageSelection'
 import { useModalEdit } from '../src/components/C_Table/composables/useModalEdit'
@@ -7,6 +7,7 @@ import { usePagination } from '../src/components/C_Table/composables/usePaginati
 import { useRowEdit } from '../src/components/C_Table/composables/useRowEdit'
 import { useTableQuery } from '../src/components/C_Table/composables/useTableQuery'
 import { useTableExpand } from '../src/components/C_Table/composables/useTableExpand'
+import { useTableActions } from '../src/components/C_Table/composables/useTableActions'
 import { validateTableRowKeys } from '../src/components/C_Table/helpers'
 import { mergeGlobalConfig } from '../src/components/C_Table/composables/useTableGlobalConfig'
 import type {
@@ -191,6 +192,47 @@ describe('C_Table pagination', () => {
 })
 
 describe('C_Table editing', () => {
+  test('custom row edit actions replace the internal editor and receive row context', async () => {
+    const row = { id: 7, name: 'custom' }
+    const calls: Array<[typeof row, number]> = []
+    let internalEditCalls = 0
+    const actions = useTableActions({
+      actions: computed(() => ({
+        edit: async (currentRow: typeof row, index: number) => {
+          calls.push([currentRow, index])
+        },
+      })),
+      config: ref({ editable: true, editMode: 'row' }),
+      tableManager: {
+        editStates: {
+          modalEdit: {
+            startEdit: () => {
+              internalEditCalls += 1
+            },
+          },
+          rowEdit: {
+            isEditingRow: () => false,
+            startEditRow: () => {
+              internalEditCalls += 1
+            },
+            cancelEditRow: () => undefined,
+            saveEditRow: async () => undefined,
+          },
+        },
+      },
+      rowKey: currentRow => currentRow.id,
+    })
+
+    const container = actions.renderActions(row, 3) as VNode
+    const buttons = (container.children as { default: () => VNode[] }).default()
+    expect(buttons).toHaveLength(1)
+    buttons[0]?.props?.onClick()
+    await Promise.resolve()
+
+    expect(calls).toEqual([[row, 3]])
+    expect(internalEditCalls).toBe(0)
+  })
+
   test('row editing supports key 0 and preserves structured values', async () => {
     const source = [
       {

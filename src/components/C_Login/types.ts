@@ -2,6 +2,8 @@
  * @Description: C_Login 通用登录组件 - 类型定义
  */
 
+import type { CaptchaVerifier } from '../C_Captcha/types'
+
 // ================= 功能开关 =================
 export interface LoginFeatures {
   /** 是否显示密码登录（默认 true） */
@@ -70,6 +72,12 @@ export interface LoginProps {
   defaultUsername?: string
   /** 表单默认密码（Demo / 预填场景） */
   defaultPassword?: string
+  /** 人机验证的应用服务端校验适配器 */
+  captchaVerifier?: CaptchaVerifier
+  /** 未配置服务端校验器时是否拒绝登录验证 */
+  requireCaptchaServerVerification?: boolean
+  /** 服务端人机验证超时（毫秒） */
+  captchaVerificationTimeout?: number
 }
 
 // ================= 默认社交登录配置 =================

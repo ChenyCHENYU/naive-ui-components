@@ -13,7 +13,7 @@ import {
   type VNodeChild,
   type ComputedRef,
 } from 'vue'
-import type { DataTableRowKey, DataTableColumn } from 'naive-ui/es'
+import type { DataTableRowKey, DataTableColumn } from 'naive-ui'
 import type { TableColumn, DataRecord, ColumnWithKey } from '../types'
 import type { ResolvedConfig } from './useTableConfig'
 import { applyFormatter } from './useTableGlobalConfig'

@@ -88,6 +88,9 @@ export const componentNames = [
 /** 组件名称类型 */
 export type ComponentName = (typeof componentNames)[number]
 
+/** Component style loading strategy. `true` is kept as an alias of `full`. */
+export type ComponentStyleMode = boolean | 'base' | 'full'
+
 /** 组件名称集合（快速查找） */
 const componentSet = new Set<string>(componentNames)
 
@@ -101,9 +104,10 @@ export interface RobotNaiveUiResolverOptions {
   /**
    * 按需导入组件样式（仅在 importOnDemand 为 true 时生效）
    * - false (默认): 需手动导入 style.css 全量样式
-   * - true: 自动导入对应组件的独立样式 `@robot-admin/naive-ui-components/C_Form/style.css`
+   * - true / 'full': 自动导入兼容的完整组件样式
+   * - 'base': C_Form/C_Table 使用轻量基础样式，其他组件回退到完整样式
    */
-  importStyle?: boolean
+  importStyle?: ComponentStyleMode
 }
 
 /**
@@ -122,9 +126,13 @@ export function RobotNaiveUiResolver(
     resolve: (name: string) => {
       if (componentSet.has(name)) {
         const from = importOnDemand ? `${PKG_NAME}/${name}` : PKG_NAME
+        const styleMode = importStyle === true ? 'full' : importStyle
+        const supportsBaseStyle = name === 'C_Form' || name === 'C_Table'
+        const styleEntry =
+          styleMode === 'base' && supportsBaseStyle ? 'base.css' : 'style.css'
         const sideEffects =
-          importOnDemand && importStyle
-            ? `${PKG_NAME}/${name}/style.css`
+          importOnDemand && styleMode
+            ? `${PKG_NAME}/${name}/${styleEntry}`
             : undefined
         return {
           name,

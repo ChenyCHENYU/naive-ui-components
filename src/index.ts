@@ -211,8 +211,14 @@ export type { HighlightPluginOptions } from './plugins/highlight'
 // ====== 全量安装 ======
 const install = (app: App, options: ComponentLibOptions = {}) => {
   components.forEach(component => {
+    const registeredComponent = component as Component & {
+      __name?: string
+      name?: string
+    }
     const name =
-      (component as any).__name || (component as any).name || 'UnknownComponent'
+      registeredComponent.__name ||
+      registeredComponent.name ||
+      'UnknownComponent'
     app.component(name, component)
   })
 

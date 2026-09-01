@@ -56,15 +56,6 @@
     isDestroyed: boolean
   }
 
-  const createEditorRuntime = (name: 'Editor' | 'Toolbar'): Component => {
-    if (typeof window === 'undefined') return (() => null) as Component
-    return defineAsyncComponent(() =>
-      import('@wangeditor-next/editor-for-vue').then(module => module[name])
-    ) as Component
-  }
-  const Editor = createEditorRuntime('Editor')
-  const Toolbar = createEditorRuntime('Toolbar')
-
   interface Props {
     editorId: string
     modelValue?: string
@@ -116,6 +107,20 @@
   const reportError = (error: unknown): void => {
     emit('error', error instanceof Error ? error : new Error(String(error)))
   }
+
+  const createEditorRuntime = (name: 'Editor' | 'Toolbar'): Component => {
+    if (typeof window === 'undefined') return (() => null) as Component
+    return defineAsyncComponent({
+      loader: () =>
+        import('@wangeditor-next/editor-for-vue').then(module => module[name]),
+      onError(error, _retry, fail) {
+        reportError(error)
+        fail()
+      },
+    }) as Component
+  }
+  const Editor = createEditorRuntime('Editor')
+  const Toolbar = createEditorRuntime('Toolbar')
 
   const handleCreated = (editor: EditorInstance): void => {
     editorInstance.value = editor

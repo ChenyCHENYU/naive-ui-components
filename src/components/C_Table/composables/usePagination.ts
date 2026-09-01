@@ -5,7 +5,7 @@
  */
 
 import { computed, ref, unref, watch, type ComputedRef, type Ref } from 'vue'
-import type { PaginationProps } from 'naive-ui/es'
+import type { PaginationProps } from 'naive-ui'
 import type { DataRecord, PaginationConfig } from '../types'
 
 interface PaginationRenderInfo {

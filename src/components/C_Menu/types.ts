@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { DropdownProps, MenuInst, MenuOption } from 'naive-ui/es'
-import type { MenuAdapterConfig, RouteItem } from '../_shared'
+import type { DropdownProps, MenuInst, MenuOption } from 'naive-ui'
+import type { MenuAdapterConfig, RouteItem } from '../_shared/public'
 
 export type MenuValue = string | null
 

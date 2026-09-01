@@ -55,5 +55,5 @@ export interface FormSearchEmits {
   'change-params': [params: SearchFormParams]
   'update:modelValue': [params: SearchFormParams]
 }
-import type { FormItemRule } from 'naive-ui/es'
+import type { FormItemRule } from 'naive-ui'
 import type { ComponentFeedback, ComponentLocale } from '../../config'

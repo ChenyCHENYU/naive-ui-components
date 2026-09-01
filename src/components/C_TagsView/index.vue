@@ -76,7 +76,7 @@
   import { ref, computed, watch, nextTick, h } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { C_Icon } from '../C_Icon'
-  import type { TagItem } from '../_shared'
+  import type { TagItem } from '../_shared/public'
   import { useTagsView, type UseTagsViewOptions } from './useTagsView'
   import type { ContextMenuLabels } from './types'
 

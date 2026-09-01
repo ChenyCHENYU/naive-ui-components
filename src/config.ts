@@ -88,6 +88,14 @@ const ZH_CN_MESSAGES: Record<string, string> = {
   'form.required': '{label}不能为空',
   'search.valueRequired': '请输入搜索内容，或选择筛选条件',
   'search.failed': '搜索失败',
+  'captcha.trigger': '点击进行人机验证',
+  'captcha.verifying': '正在验证…',
+  'captcha.success': '验证成功',
+  'captcha.failed': '验证失败，请重试',
+  'captcha.reset': '重新验证',
+  'captcha.puzzleFailed': '拼图验证失败',
+  'captcha.verifyFailed': '服务端验证失败',
+  'captcha.loadFailed': '验证码加载失败',
 }
 
 const EN_US_MESSAGES: Record<string, string> = {
@@ -141,6 +149,14 @@ const EN_US_MESSAGES: Record<string, string> = {
   'form.required': '{label} is required',
   'search.valueRequired': 'Enter a search term or choose a filter',
   'search.failed': 'Search failed',
+  'captcha.trigger': 'Click to verify',
+  'captcha.verifying': 'Verifying…',
+  'captcha.success': 'Verified',
+  'captcha.failed': 'Verification failed. Try again.',
+  'captcha.reset': 'Verify again',
+  'captcha.puzzleFailed': 'Puzzle verification failed',
+  'captcha.verifyFailed': 'Server verification failed',
+  'captcha.loadFailed': 'Failed to load captcha',
 }
 
 const interpolate = (

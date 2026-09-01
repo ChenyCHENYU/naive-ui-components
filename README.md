@@ -26,7 +26,7 @@ bun add @robot-admin/naive-ui-components
 必需的对等依赖：
 
 ```bash
-bun add vue@^3.5.0 naive-ui@^2.35.0 @robot-admin/form-validate@^2.0.0
+bun add vue@^3.5.0 naive-ui@^2.35.0
 ```
 
 ### 🚀 快速开始
@@ -91,7 +91,15 @@ Components({
 })
 ```
 
-如需兼容旧项目的主入口导入，可显式设置 `importOnDemand: false`。
+`importStyle: true`（等价于 `'full'`）保持原有完整样式行为。只使用 C_Form/C_Table 基础字段、不使用内置富文本编辑器时，可设置 `importStyle: 'base'`，避免带入编辑器样式；其他组件会安全回退到标准样式入口。如需兼容旧项目的主入口导入，可显式设置 `importOnDemand: false`。
+
+也可以手动选择样式层级：
+
+```typescript
+import '@robot-admin/naive-ui-components/C_Form/base.css'
+import '@robot-admin/naive-ui-components/C_Table/base.css'
+// 完整模式也可显式使用 C_Form/full.css、C_Table/full.css
+```
 
 ### C_Form / C_Table 推荐用法
 
@@ -206,6 +214,33 @@ Components({
 
 `C_Date`、`C_Time`、`C_Menu`、`C_FormSearch` 均支持标准 `v-model`。组件可直接放在没有 `NMessageProvider` / `NDialogProvider` 的页面；如需统一提示、确认和文案，可在安装时传入 `feedback`、`locale`、`form` 与 `table.defaults`。
 
+### C_Captcha 服务端校验
+
+默认本地模式仅证明浏览器内的拼图交互已经完成，不能作为登录、支付等敏感操作的安全凭证。生产场景应传入 `verifier`，并开启 `require-server-verification`；组件会处理超时、取消和竞态，只在独立的服务端/验证码提供商确认后发出 `success`。请求中的 `token`、`timestamp` 都由客户端生成，只能用于关联和日志，服务端绝不能把它们本身当作可信证明。
+
+```vue
+<C_Captcha
+  require-server-verification
+  :verification-timeout="8000"
+  :verifier="
+    async ({ signal }) => {
+      // providerProof 必须来自服务端或可信验证码提供商，不能由本地拼图结果伪造。
+      const providerProof = await obtainTrustedCaptchaProof({ signal })
+      const response = await fetch('/api/captcha/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ providerProof }),
+        signal,
+      })
+      return response.json() // { valid: boolean, token: 'server-issued-token' }
+    }
+  "
+  @verify-error="reportError"
+/>
+```
+
+开启 `require-server-verification` 后，成功响应必须包含服务端 token。该 token 应短期、一次性使用，并绑定当前会话或业务请求。`C_Login` 可通过 `captchaVerifier`、`requireCaptchaServerVerification` 和 `captchaVerificationTimeout` 透传同一安全策略，并在 `submit` 数据中通过 `captchaVerifiedBy` 标识验证来源。更多边界说明见 [SECURITY.md](./SECURITY.md)。
+
 ### 📋 组件清单（51 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
@@ -248,32 +283,32 @@ Components({
 
 #### 数据展示组件
 
-| 组件             | 说明                                      | 外部依赖                             |
-| ---------------- | ----------------------------------------- | ------------------------------------ |
-| `C_Table`        | 高级数据表格（CRUD/行列编辑/动态行/打印） | `print-js`、`html2canvas`            |
-| `C_Map`          | 地图组件（OSM/高德）                      | `leaflet`                            |
-| `C_VtableGantt`  | 甘特图                                    | `@visactor/vtable-gantt`             |
-| `C_AntV`         | 图编辑器（ER/BPMN/UML）                   | `@antv/x6`、`html2canvas`            |
-| `C_WaterFall`    | 瀑布流布局                                | -                                    |
-| `C_FullCalendar` | 日历事件                                  | `@fullcalendar/*`                    |
-| `C_VideoPlayer`  | 视频播放器（HLS/字幕/书签/章节）          | `xgplayer`、`xgplayer-hls`           |
-| `C_AudioPlayer`  | 音频播放器（波形/进度/播放列表）          | -                                    |
-| `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`、`@tato30/vue-pdf` |
-| `C_Timeline`     | 时间线（垂直/水平/可折叠）                | -                                    |
+| 组件             | 说明                                      | 外部依赖                   |
+| ---------------- | ----------------------------------------- | -------------------------- |
+| `C_Table`        | 高级数据表格（CRUD/行列编辑/动态行/打印） | `print-js`、`html2canvas`  |
+| `C_Map`          | 地图组件（OSM/高德）                      | `leaflet`                  |
+| `C_VtableGantt`  | 甘特图                                    | `@visactor/vtable-gantt`   |
+| `C_AntV`         | 图编辑器（ER/BPMN/UML）                   | `@antv/x6`、`html2canvas`  |
+| `C_WaterFall`    | 瀑布流布局                                | -                          |
+| `C_FullCalendar` | 日历事件                                  | `@fullcalendar/*`          |
+| `C_VideoPlayer`  | 视频播放器（HLS/字幕/书签/章节）          | `xgplayer`、`xgplayer-hls` |
+| `C_AudioPlayer`  | 音频播放器（波形/进度/播放列表）          | -                          |
+| `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`          |
+| `C_Timeline`     | 时间线（垂直/水平/可折叠）                | -                          |
 
 #### 表单 & 布局组件
 
-| 组件              | 说明                                              | 外部依赖                     |
-| ----------------- | ------------------------------------------------- | ---------------------------- |
-| `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | `@robot-admin/form-validate` |
-| `C_FormSearch`    | 搜索表单                                          | -                            |
-| `C_CollapsePanel` | 折叠面板                                          | -                            |
-| `C_SplitPane`     | 分割面板                                          | -                            |
-| `C_Draggable`     | 拖拽排序                                          | `vue-draggable-plus`         |
-| `C_Tree`          | 高级树形控件                                      | -                            |
-| `C_Time`          | 时间选择器增强                                    | -                            |
-| `C_Cron`          | Cron 表达式编辑器                                 | -                            |
-| `C_Transfer`      | 穿梭框（搜索/全选/批量操作）                      | -                            |
+| 组件              | 说明                                              | 外部依赖             |
+| ----------------- | ------------------------------------------------- | -------------------- |
+| `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | -                    |
+| `C_FormSearch`    | 搜索表单                                          | -                    |
+| `C_CollapsePanel` | 折叠面板                                          | -                    |
+| `C_SplitPane`     | 分割面板                                          | -                    |
+| `C_Draggable`     | 拖拽排序                                          | `vue-draggable-plus` |
+| `C_Tree`          | 高级树形控件                                      | -                    |
+| `C_Time`          | 时间选择器增强                                    | -                    |
+| `C_Cron`          | Cron 表达式编辑器                                 | -                    |
+| `C_Transfer`      | 穿梭框（搜索/全选/批量操作）                      | -                    |
 
 #### 交互 & 业务组件
 
@@ -293,17 +328,17 @@ Components({
 
 ### 🔌 依赖说明
 
-组件运行依赖已由本包声明，安装组件库时会自动解析，一般不需要逐项安装。使用侧只需确保以下 peer dependencies 已安装：
+组件运行依赖已由本包声明，安装组件库时会自动解析。所有场景都需要：
 
 ```bash
-bun add vue naive-ui vue-router @robot-admin/form-validate
+bun add vue naive-ui
 ```
 
-若部署时显式跳过了可选依赖，同时启用了表格行/列拖拽，请额外确保 `sortablejs` 可用。公式编辑器使用组件库内置的受限表达式解析器，不执行动态 JavaScript，也无需安装 `expr-eval`。
+按功能安装可选 peer：使用 `C_Breadcrumb`/`C_TagsView` 时安装 `vue-router`；启用 C_Table 行/列拖拽时安装 `sortablejs`。子路径导入不会要求无关的可选 peer。公式编辑器使用组件库内置的受限表达式解析器，不执行动态 JavaScript。
 
 ### 🏗️ 构建架构
 
-#### 五阶段构建流水线
+#### 六阶段构建流水线
 
 ```
 bun run build
@@ -311,7 +346,8 @@ bun run build
   ├── 2. sass CLI        → 编译 global.scss → global-scss.css
   ├── 3. merge-css.js    → 合并 SFC CSS + global SCSS → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
-  └── 5. check:dist      → 校验根入口、子路径及 DTS 公共导出
+  ├── 5. check:dist      → 校验根入口、子路径、SSR 及 DTS 公共导出
+  └── 6. check:size      → 校验全量/基础样式与发布包体积预算
 ```
 
 #### 技术要点
@@ -323,6 +359,8 @@ bun run build
 - **子路径导出**：`gen-exports.js` 自动扫描 `dist/` 并写入 `package.json` 的 `exports` 字段
 - **导出冲突检测**：`check-export-conflicts.js` 确保组件间无命名冲突
 - **产物入口校验**：`check-dist-entries.js` 防止内部 chunk 覆盖根声明，并保证组件工具的子路径类型完整
+- **包契约校验**：禁止 Naive UI 内部类型路径、隐式可选依赖和插件控制台副作用
+- **体积预算**：`check-size-budget.js` 阻止全量样式、C_Form/C_Table 样式和 dist 总量意外膨胀
 
 #### 输出产物
 
@@ -330,21 +368,29 @@ bun run build
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
 ├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（51 组件）
+├── C_Form.base.css / C_Form.full.css      # 基础/完整样式层级
+├── C_Table.base.css / C_Table.full.css    # 基础/完整样式层级
 ├── style.css                              # 合并后的全量样式
 └── [chunk].js                             # 共享代码块
 ```
 
 ### 🔧 开发
 
+环境基线为 Node.js 20.19.0+ 与 Bun 1.3.14；仓库通过 `.node-version`、`packageManager`、`engines` 和冻结锁文件保持本地/CI 一致。
+
 ```bash
-bun install              # 安装依赖
+bun install --frozen-lockfile # 严格按锁文件安装依赖
 bun run dev              # 开发模式（SCSS watch + tsdown watch）
 bun run build            # 完整构建
 bun run build:scss       # 仅编译全局 SCSS
-bun run build:css        # 仅合并 CSS
+bun run build:css        # 合并 tsdown 刚生成的 CSS chunk；已完成的 dist 会安全跳过
 bun run build:exports    # 仅生成 exports 映射
 bun run check:exports    # 检测导出命名冲突
 bun run check:dist       # 校验构建后的 JS / DTS 公共入口
+bun run check:package    # 校验依赖、导出和源码公共边界
+bun run check:quality    # 防止 any、console 与类型抑制债务反弹
+bun run check:audit      # 审计直接与传递依赖漏洞
+bun run check:size       # 校验发布产物体积预算
 bun run type-check       # TypeScript 类型检查
 bun run test             # 运行 Bun 单元测试
 bun run lint:check       # 强制 Oxlint 正确性检查

@@ -8,7 +8,7 @@ import {
   type MaybeRefOrGetter,
 } from 'vue'
 import type { SearchFormItem, SearchFormParams, SearchConfig } from '../types'
-import type { FormInst } from 'naive-ui/es'
+import type { FormInst } from 'naive-ui'
 import { useSearchHistory, type SearchHistoryOptions } from './useSearchHistory'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
 import { cloneData } from '../../../utils/data'

@@ -22,6 +22,7 @@ import type {
   WorkflowProps,
   NodeType,
   MenuPosition,
+  WorkflowEmits,
 } from '../types'
 import { NODE_TITLES, INITIAL_NODE, NODE_Y_GAP, generateEdgeId } from '../data'
 
@@ -38,7 +39,10 @@ const NODE_COMPONENT_MAP: Record<string, Component> = {
   condition: markRaw(ConditionNode),
 }
 
-type EmitFn = (event: string, ...args: any[]) => void
+type EmitFn = <Event extends keyof WorkflowEmits>(
+  event: Event,
+  ...args: WorkflowEmits[Event]
+) => void
 
 /** 工作流节点管理 —— 封装节点 CRUD、provide/inject、边重连、画布操作等逻辑 */
 export function useWorkflowNodes(

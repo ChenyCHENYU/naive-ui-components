@@ -95,8 +95,8 @@
     getCurrentInstance,
     type Component,
   } from 'vue'
-  import type { FormInst } from 'naive-ui/es/form'
   import {
+    type FormInst,
     NForm,
     NFormItem,
     NButton,

@@ -14,7 +14,7 @@ import {
   type Ref,
   type Slots,
 } from 'vue'
-import type { FormItemInst } from 'naive-ui/es/form'
+import type { FormItemInst } from 'naive-ui'
 
 import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'

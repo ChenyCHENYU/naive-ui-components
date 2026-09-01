@@ -14,7 +14,7 @@ import type {
   DeepReadonly,
   Ref,
 } from 'vue'
-import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui/es'
+import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui'
 
 export type MaybePromise<T> = T | Promise<T>
 

@@ -31,16 +31,23 @@
       "import": "./dist/C_*.js",
       "require": "./dist/C_*.cjs"
     },
-    "./C_*/style.css": "./dist/C_*.css"
+    "./C_*/style.css": "./dist/C_*.css",
+    "./C_Form/base.css": "./dist/C_Form.base.css",
+    "./C_Form/full.css": "./dist/C_Form.css",
+    "./C_Table/base.css": "./dist/C_Table.base.css",
+    "./C_Table/full.css": "./dist/C_Table.css"
   },
   "sideEffects": [
     "dist/style.css",
-    "dist/C_*.css"
+    "dist/C_*.css",
+    "dist/C_*.base.css"
   ],
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "README_EN.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
   ],
   "keywords": [
     "vue",
@@ -65,12 +72,16 @@
     "build:scss": "node scripts/gen-global-scss.js && sass src/styles/global.scss dist/global-scss.css --style=compressed --no-source-map --load-path=src --silence-deprecation=legacy-js-api",
     "build:css": "node scripts/merge-css.js",
     "build:exports": "node scripts/gen-exports.js",
-    "build": "tsdown && bun run build:scss && bun run build:css && bun run build:exports && bun run check:dist",
+    "build": "tsdown && bun run build:scss && bun run build:css && bun run build:exports && bun run check:dist && bun run check:size",
     "type-check": "tsc --noEmit",
     "test": "bun test tests",
     "check:exports": "node scripts/check-export-conflicts.js",
     "check:dist": "node scripts/check-dist-entries.js",
-    "verify": "bun run lint:check && bun run type-check && bun run test && bun run check:exports && bun run build",
+    "check:size": "node scripts/check-size-budget.js",
+    "check:audit": "bun audit",
+    "check:package": "node scripts/check-package-contract.js",
+    "check:quality": "node scripts/check-source-quality.js",
+    "verify": "bun run lint:check && bun run type-check && bun run test && bun run check:exports && bun run check:package && bun run check:quality && bun run build",
     "prepublishOnly": "bun run verify",
     "release": "changeset publish",
     "changeset": "changeset",
@@ -85,13 +96,18 @@
     "format": "prettier --write src/"
   },
   "peerDependencies": {
-    "@robot-admin/form-validate": ">=2.0.0 <4.0.0",
     "vue": "^3.5.0",
     "naive-ui": "^2.35.0",
-    "vue-router": "^4.6.4"
-  },
-  "optionalDependencies": {
+    "vue-router": "^4.6.4",
     "sortablejs": "^1.15.7"
+  },
+  "peerDependenciesMeta": {
+    "vue-router": {
+      "optional": true
+    },
+    "sortablejs": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@antv/x6": "^2.19.2",
@@ -102,11 +118,9 @@
     "@fullcalendar/list": "^6.1.21",
     "@fullcalendar/vue3": "^6.1.21",
     "@iconify/vue": "^5.0.1",
-    "@tato30/vue-pdf": "^1.11.5",
     "@visactor/vtable": "^1.26.7",
     "@visactor/vtable-gantt": "^1.26.7",
     "@vue-flow/core": "^1.48.2",
-    "@vueuse/core": "^13.9.0",
     "@wangeditor-next/editor": "6.2.0",
     "@wangeditor-next/editor-for-vue": "6.2.0",
     "dompurify": "^3.4.14",
@@ -131,13 +145,12 @@
     "@changesets/cli": "^2.31.1",
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
-    "@robot-admin/form-validate": "2.0.0",
     "@robot-admin/git-standards": "1.0.3",
     "@types/node": "^24.13.3",
     "@types/sortablejs": "^1.15.9",
     "@types/spark-md5": "^3.0.5",
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
-    "@typescript-eslint/parser": "^8.68.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.69.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/compiler-sfc": "^3.5.42",
     "@vue/eslint-config-prettier": "^10.2.0",
@@ -172,6 +185,7 @@
     "lodash-es": "4.18.1",
     "minimist": "1.2.8",
     "protocol-buffers-schema": "3.6.1",
+    "tmp": "0.2.7",
     "yaml": "2.9.0"
   },
   "config": {

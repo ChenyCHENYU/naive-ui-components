@@ -18,6 +18,7 @@ function buildEntryMap(): Record<string, string> {
     resolver: 'src/resolver.ts',
   }
   for (const dir of fs.readdirSync(componentsDir)) {
+    if (!dir.startsWith('C_')) continue
     const fullDir = path.join(componentsDir, dir)
     if (!fs.statSync(fullDir).isDirectory()) continue
     const tsEntry = path.join(fullDir, 'index.ts')

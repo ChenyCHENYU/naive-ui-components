@@ -30,21 +30,38 @@
       style="max-height: 300px; overflow-y: auto"
     >
       <template #trigger>
-        <NBadge :value="bookmarks.length" :max="99" type="info">
-          <NButton quaternary size="small" class="vp-bookmark-list-btn">
+        <NBadge
+          :value="bookmarks.length"
+          :max="99"
+          type="info"
+        >
+          <NButton
+            quaternary
+            size="small"
+            class="vp-bookmark-list-btn"
+          >
             列表
           </NButton>
         </NBadge>
       </template>
 
       <div class="vp-bookmark-list">
-        <div v-for="bm in bookmarks" :key="bm.id" class="vp-bookmark-item">
-          <span class="vp-bookmark-time" @click="$emit('goTo', bm.id)">
+        <div
+          v-for="bm in bookmarks"
+          :key="bm.id"
+          class="vp-bookmark-item"
+        >
+          <button
+            type="button"
+            class="vp-bookmark-time"
+            :aria-label="`跳转到 ${formatTime(bm.time)}`"
+            @click="$emit('goTo', bm.id)"
+          >
             {{ formatTime(bm.time) }}
-          </span>
+          </button>
 
           <span class="vp-bookmark-note">
-            {{ bm.note || "无备注" }}
+            {{ bm.note || '无备注' }}
           </span>
 
           <NButton
@@ -62,82 +79,92 @@
 </template>
 
 <script setup lang="ts">
-import type { Bookmark } from "../types";
+  import type { Bookmark } from '../types'
 
-interface Props {
-  bookmarks: Bookmark[];
-}
+  interface Props {
+    bookmarks: Bookmark[]
+  }
 
-defineProps<Props>();
+  defineProps<Props>()
 
-const emit = defineEmits<{
-  add: [note: string];
-  remove: [id: string];
-  goTo: [id: string];
-}>();
+  const emit = defineEmits<{
+    add: [note: string]
+    remove: [id: string]
+    goTo: [id: string]
+  }>()
 
-/** 添加书签 */
-function handleAdd() {
-  emit("add", "");
-}
+  /** 添加书签 */
+  function handleAdd() {
+    emit('add', '')
+  }
 
-/** 格式化时间为 mm:ss */
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
+  /** 格式化时间为 mm:ss */
+  function formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60)
+    const s = Math.floor(seconds % 60)
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
 </script>
 
 <style scoped lang="scss">
-.vp-bookmark-panel {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.vp-bookmark-add-btn,
-.vp-bookmark-list-btn {
-  color: #fff;
-  font-size: 12px;
-}
-
-.vp-bookmark-list {
-  display: flex;
-  flex-direction: column;
-  min-width: 220px;
-  gap: 2px;
-}
-
-.vp-bookmark-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 13px;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+  .vp-bookmark-panel {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
-}
 
-.vp-bookmark-time {
-  color: var(--c-primary, #18a058);
-  cursor: pointer;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-
-  &:hover {
-    text-decoration: underline;
+  .vp-bookmark-add-btn,
+  .vp-bookmark-list-btn {
+    color: #fff;
+    font-size: 12px;
   }
-}
 
-.vp-bookmark-note {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.7;
-}
+  .vp-bookmark-list {
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    gap: 2px;
+  }
+
+  .vp-bookmark-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+  }
+
+  .vp-bookmark-time {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    font: inherit;
+    color: var(--c-primary, #18a058);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+  }
+
+  .vp-bookmark-note {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.7;
+  }
 </style>

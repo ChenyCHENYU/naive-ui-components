@@ -1,6 +1,6 @@
-// 共享类型
+// Shared navigation types.
 export type { RouteItem, RouteMeta, TagItem, BreadcrumbItem } from './types'
 
-// 菜单适配器
+// Shared menu adapters.
 export { createMenuOptions, flattenRoutes } from './menuAdapter'
 export type { MenuAdapterConfig } from './menuAdapter'

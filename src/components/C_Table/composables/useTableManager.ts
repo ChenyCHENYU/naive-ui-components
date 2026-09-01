@@ -5,7 +5,7 @@
  */
 
 import { shallowRef, computed, toValue, type MaybeRefOrGetter } from 'vue'
-import type { DataTableRowKey } from 'naive-ui/es'
+import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, ParentChildLinkMode } from '../types'
 import { useRowEdit } from './useRowEdit'
 import { useCellEdit } from './useCellEdit'

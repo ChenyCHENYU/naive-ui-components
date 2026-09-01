@@ -5,8 +5,7 @@
  */
 
 import type { MaybeRef, VNodeChild, Ref, ComputedRef } from 'vue'
-import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
-import type { FormItemRule } from 'naive-ui/es/form'
+import type { DataTableColumns, DataTableRowKey, FormItemRule } from 'naive-ui'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
 
@@ -59,7 +58,7 @@ export interface PaginationConfig {
 export type ApiFunction<T extends object = DataRecord> = (
   row: T,
   index: number
-) => Promise<any> | any
+) => unknown | Promise<unknown>
 
 /** 渲染函数类型 */
 export type RenderFunction<T extends object = DataRecord> = (
@@ -101,6 +100,21 @@ export interface SimpleTableActions<T extends object = DataRecord> {
   render?: RenderFunction<T>
 }
 
+/** Minimal edit-state contract consumed by the action renderer. */
+export interface TableActionsManager<T extends object = DataRecord> {
+  editStates: {
+    modalEdit: {
+      startEdit: (rowKey: DataTableRowKey, sourceData?: T) => boolean | void
+    }
+    rowEdit: {
+      isEditingRow: (rowKey: DataTableRowKey) => boolean
+      startEditRow: (rowKey: DataTableRowKey) => boolean | void
+      cancelEditRow: () => void | Promise<void>
+      saveEditRow: () => Promise<unknown>
+    }
+  }
+}
+
 /** useTableActions Hook 选项类型 */
 export interface UseTableActionsOptions<T extends object = DataRecord> {
   /** 操作配置 */
@@ -120,7 +134,7 @@ export interface UseTableActionsOptions<T extends object = DataRecord> {
         locale?: ComponentLocale
       }>
   /** 表格管理器 */
-  tableManager: any
+  tableManager: TableActionsManager<T>
   /** 行键获取函数 */
   rowKey: (row: T) => DataTableRowKey
   /** 事件发射器 */
@@ -196,14 +210,14 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   DataTableColumns<T>[number],
   'key' | 'title' | 'render' | 'type'
 > {
-  key?: any
+  key?: DataTableRowKey
   title?: string
   visible?: boolean
   editable?: boolean
   required?: boolean
   editType?: EditType
   editProps?: EditProps
-  editRender?: (value: any, rowData: T, rowIndex: number) => VNodeChild
+  editRender?: (value: unknown, rowData: T, rowIndex: number) => VNodeChild
   render?: (rowData: T, rowIndex: number) => VNodeChild
   /** 声明式格式化器（优先级低于 render） */
   formatter?: ColumnFormatter
@@ -216,7 +230,7 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
 export interface NormalTableColumn<
   T extends object = DataRecord,
 > extends BaseTableColumn<T> {
-  key: keyof T | string
+  key: Extract<keyof T, DataTableRowKey> | DataTableRowKey
   title: string
 }
 
@@ -246,7 +260,7 @@ export interface ChildSelectionState {
   clearAll: () => void
 }
 
-export interface ExpandConfig<T extends object = DataRecord, C = any> {
+export interface ExpandConfig<T extends object = DataRecord, C = DataRecord> {
   onLoadData?: (row: T) => Promise<C[]> | C[]
   onError?: (error: unknown, row: T) => void
   renderContent?: (
@@ -260,12 +274,13 @@ export interface ExpandConfig<T extends object = DataRecord, C = any> {
 
 export interface SelectionConfig<
   T extends object = DataRecord,
+  C = DataRecord,
 > extends BaseConfig<T> {
   enableSelection?: boolean
   defaultCheckedKeys?: DataTableRowKey[]
   maxSelection?: number
   enableChildSelection?: boolean
-  childRowCheckable?: (childRow: any, parentRow: T) => boolean
+  childRowCheckable?: (childRow: C, parentRow: T) => boolean
   enableParentChildLink?: boolean
   parentChildLinkMode?: ParentChildLinkMode
 }
@@ -303,12 +318,15 @@ export interface TableEditProps<T extends object = DataRecord> {
   columnWidth?: number
 }
 
-export interface TableExpandProps<T extends object = DataRecord> {
+export interface TableExpandProps<
+  T extends object = DataRecord,
+  C = DataRecord,
+> {
   expandable?: boolean
-  onLoadExpandData?: (row: T) => Promise<any[]> | any[]
+  onLoadExpandData?: (row: T) => Promise<C[]> | C[]
   renderExpandContent?: (
     row: T,
-    expandData: any[],
+    expandData: C[],
     loading: boolean,
     childSelection?: ChildSelectionState
   ) => VNodeChild
@@ -318,24 +336,25 @@ export interface TableExpandProps<T extends object = DataRecord> {
 
 export interface TableSelectionProps<
   T extends object = DataRecord,
+  C = DataRecord,
 > extends BaseConfig<T> {
   enableSelection?: boolean
   defaultCheckedKeys?: DataTableRowKey[]
   maxSelection?: number
   enableChildSelection?: boolean
-  childRowCheckable?: (childRow: any, parentRow: T) => boolean
+  childRowCheckable?: (childRow: C, parentRow: T) => boolean
   enableParentChildLink?: boolean
   parentChildLinkMode?: ParentChildLinkMode
 }
 
 /* 组合所有属性的完整表格属性接口 */
-export interface TableProps<T extends object = DataRecord>
+export interface TableProps<T extends object = DataRecord, C = DataRecord>
   extends
     TableBaseProps<T>,
     TableDisplayProps,
     TableEditProps<T>,
-    TableExpandProps<T>,
-    TableSelectionProps<T> {
+    TableExpandProps<T, C>,
+    TableSelectionProps<T, C> {
   pagination?: PaginationConfig | boolean
   actions?: SimpleTableActions<T>
 }
@@ -349,7 +368,10 @@ export interface TableExpandEvents<T extends object = DataRecord> {
   ]
 }
 
-export interface TableSelectionEvents<T extends object = DataRecord> {
+export interface TableSelectionEvents<
+  T extends object = DataRecord,
+  C = DataRecord,
+> {
   'selection-change': [
     checkedKeys: DataTableRowKey[],
     checkedRows: T[],
@@ -358,7 +380,7 @@ export interface TableSelectionEvents<T extends object = DataRecord> {
   'child-selection-change': [
     parentKey: DataTableRowKey,
     childKeys: DataTableRowKey[],
-    childRows: any[],
+    childRows: C[],
   ]
   'parent-child-link-change': [
     parentKey: DataTableRowKey,
@@ -373,8 +395,8 @@ export interface TableEditEvents<T extends object = DataRecord> {
   'edit-error': [error: unknown]
 }
 
-export interface TableEmits<T extends object = DataRecord>
-  extends TableExpandEvents<T>, TableSelectionEvents<T>, TableEditEvents<T> {
+export interface TableEmits<T extends object = DataRecord, C = DataRecord>
+  extends TableExpandEvents<T>, TableSelectionEvents<T, C>, TableEditEvents<T> {
   'pagination-change': [page: number, pageSize: number]
   'row-delete': [deletedRow: T, index: number]
   'batch-action-error': [error: unknown, actionKey: string]
@@ -382,12 +404,12 @@ export interface TableEmits<T extends object = DataRecord>
 }
 
 /* ================= 实例方法系统 ================= */
-export interface TableEditMethods {
+export interface TableEditMethods<T extends object = DataRecord> {
   startEdit: (rowKey: DataTableRowKey, columnKey?: string) => void
   cancelEdit: () => void
   saveEdit: () => Promise<void>
   isEditing: (rowKey: DataTableRowKey, columnKey?: string) => boolean
-  getEditingData: () => any
+  getEditingData: () => T | null
 }
 
 export interface TableExpandMethods {
@@ -399,7 +421,10 @@ export interface TableExpandMethods {
   isExpanded: (rowKey: DataTableRowKey) => boolean
 }
 
-export interface TableSelectionMethods<T extends object = DataRecord> {
+export interface TableSelectionMethods<
+  T extends object = DataRecord,
+  C = DataRecord,
+> {
   selectRow: (rowKey: DataTableRowKey) => boolean | void
   unselectRow: (rowKey: DataTableRowKey) => void
   selectAll: () => void
@@ -416,7 +441,7 @@ export interface TableSelectionMethods<T extends object = DataRecord> {
   ) => void
   selectAllChildren: (parentKey: DataTableRowKey) => void
   clearChildrenSelection: (parentKey: DataTableRowKey) => void
-  getChildSelectedRows: (parentKey: DataTableRowKey) => any[]
+  getChildSelectedRows: (parentKey: DataTableRowKey) => C[]
   clearAllSelections: () => void
 }
 
@@ -441,17 +466,20 @@ export interface TablePaginationMethods {
   getTotalPages: () => number
 }
 
-export interface TableInstance<T extends object = DataRecord>
+export interface TableInstance<T extends object = DataRecord, C = DataRecord>
   extends
-    TableEditMethods,
+    TableEditMethods<T>,
     TableExpandMethods,
-    TableSelectionMethods<T>,
+    TableSelectionMethods<T, C>,
     TableDynamicRowsMethods<T>,
     TablePaginationMethods {}
 
 /* ================= useTableExpand Hook类型 ================= */
-export interface UseTableExpandOptions<T extends object = DataRecord, C = any>
-  extends ExpandConfig<T, C>, SelectionConfig<T> {
+export interface UseTableExpandOptions<
+  T extends object = DataRecord,
+  C = DataRecord,
+>
+  extends ExpandConfig<T, C>, SelectionConfig<T, C> {
   data: Ref<T[]> | ComputedRef<T[]>
   rowKey: (row: T) => DataTableRowKey
   childRowKey?: (child: C) => DataTableRowKey
@@ -473,7 +501,10 @@ export interface UseTableExpandOptions<T extends object = DataRecord, C = any>
   ) => void
 }
 
-export interface UseTableExpandReturn<T extends object = DataRecord, C = any> {
+export interface UseTableExpandReturn<
+  T extends object = DataRecord,
+  C = DataRecord,
+> {
   expandedKeys: Ref<DataTableRowKey[]>
   checkedKeys: Ref<DataTableRowKey[]>
   childSelections: Ref<Map<DataTableRowKey, DataTableRowKey[]>>
@@ -489,7 +520,7 @@ export interface UseTableExpandReturn<T extends object = DataRecord, C = any> {
   clearSelection: () => void
   clearAllSelections: () => void
   handleSelectionChange: (keys: DataTableRowKey[]) => void
-  getTableColumns: (originalColumns: TableColumn<T>[]) => any[]
+  getTableColumns: (originalColumns: TableColumn<T>[]) => unknown[]
 }
 
 /** 行操作按钮配置 */

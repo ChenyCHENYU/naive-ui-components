@@ -41,9 +41,17 @@ pkg.exports = {
     require: './dist/C_*.cjs',
   },
   './C_*/style.css': './dist/C_*.css',
+  './C_Form/base.css': './dist/C_Form.base.css',
+  './C_Form/full.css': './dist/C_Form.css',
+  './C_Table/base.css': './dist/C_Table.base.css',
+  './C_Table/full.css': './dist/C_Table.css',
 }
 
-pkg.sideEffects = ['dist/style.css', 'dist/C_*.css']
+pkg.sideEffects = [
+  'dist/style.css',
+  'dist/C_*.css',
+  'dist/C_*.base.css',
+]
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 console.log(

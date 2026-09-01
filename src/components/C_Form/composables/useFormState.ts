@@ -8,12 +8,7 @@ import {
   type ComputedRef,
   type Ref,
 } from 'vue'
-import type {
-  FormInst,
-  FormItemInst,
-  FormItemRule,
-  FormRules,
-} from 'naive-ui/es/form'
+import type { FormInst, FormItemInst, FormItemRule, FormRules } from 'naive-ui'
 import type {
   AsyncOptionsContext,
   ComponentType,

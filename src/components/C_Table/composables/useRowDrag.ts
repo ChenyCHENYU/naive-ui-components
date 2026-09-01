@@ -11,7 +11,7 @@ import {
   type Ref,
   type ComputedRef,
 } from 'vue'
-import type { DataTableRowKey } from 'naive-ui/es'
+import type { DataTableRowKey } from 'naive-ui'
 import type Sortable from 'sortablejs'
 import type { SortableEvent } from 'sortablejs'
 import type { DataRecord } from '../types'
