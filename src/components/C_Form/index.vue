@@ -44,8 +44,8 @@
           handleLayoutEvent('onGroupToggle', key, collapsed)
       "
       @group-reset="handleLayoutEvent('onGroupReset', $event)"
-      @validate-success="(model: FormModel) => emit('validate-success', model)"
-      @validate-error="(errors: unknown) => emit('validate-error', errors)"
+      @validate-success="forwardValidateSuccess"
+      @validate-error="forwardValidateError"
       @fields-change="handleFieldsChange"
     />
 
@@ -87,13 +87,14 @@
   </NForm>
 </template>
 
-<script lang="ts" setup>
+<script lang="ts" setup generic="T extends object = FormRecord">
   import {
     computed,
     defineAsyncComponent,
     ref,
     getCurrentInstance,
     type Component,
+    type ComputedRef,
   } from 'vue'
   import {
     type FormInst,
@@ -125,6 +126,7 @@
     LayoutConfig,
     SubmitEventPayload,
     FormModel,
+    FormRecord,
   } from './types'
   import {
     type FormConfig,
@@ -198,27 +200,28 @@
 
   /* ================= 组件属性定义 ================= */
 
-  interface CFormProps {
-    /** 字段配置数组 */
-    options: FormOption[]
-    /** 双向绑定表单数据 */
-    modelValue?: FormModel
-    /** 统一配置对象（收拢原先 13 个分散 Props） */
-    config?: FormConfig
-    /** 当前表单实例的自定义渲染器，不污染全局注册表 */
-    renderers?: Record<string, FormRenderer>
-  }
-
-  const props = withDefaults(defineProps<CFormProps>(), {
-    config: () => ({}),
-  })
+  const props = withDefaults(
+    defineProps<{
+      /** 字段配置数组 */
+      options: FormOption<T>[]
+      /** 双向绑定表单数据 */
+      modelValue?: FormModel<T>
+      /** 统一配置对象（收拢原先 13 个分散 Props） */
+      config?: FormConfig<T>
+      /** 当前表单实例的自定义渲染器，不污染全局注册表 */
+      renderers?: Record<string, FormRenderer>
+    }>(),
+    {
+      config: () => ({}) as FormConfig<T>,
+    }
+  )
 
   /* ================= 组件事件定义（从 16 个精简到 4 个） ================= */
 
   const emit = defineEmits<{
-    submit: [payload: SubmitEventPayload]
-    'update:modelValue': [model: FormModel]
-    'validate-success': [model: FormModel]
+    submit: [payload: SubmitEventPayload<T>]
+    'update:modelValue': [model: FormModel<T>]
+    'validate-success': [model: FormModel<T>]
     'validate-error': [errors: unknown]
   }>()
 
@@ -226,15 +229,19 @@
 
   const globalConfig = useFormGlobalConfig()
   const resolved = computed(() =>
-    resolveFormConfig(mergeFormConfig(props.config, globalConfig))
+    resolveFormConfig(
+      mergeFormConfig(props.config as unknown as FormConfig, globalConfig)
+    )
   )
   const { t } = useComponentLocale(() => resolved.value.locale)
 
   /* ================= 响应式状态 ================= */
 
   const formRef = ref<FormInst | null>(null)
-  const optionsRef = computed(() => props.options)
-  const modelValueRef = computed(() => props.modelValue)
+  const optionsRef = computed(() => props.options as unknown as FormOption[])
+  const modelValueRef = computed(
+    () => props.modelValue as unknown as FormModel | undefined
+  )
 
   /* ===== 状态引擎 ===== */
   const {
@@ -270,7 +277,13 @@
     setFormItemRef,
     isSubmitting,
     submit,
-  } = useFormState(optionsRef, resolved, formRef, emit, modelValueRef)
+  } = useFormState(
+    optionsRef,
+    resolved,
+    formRef,
+    emit as unknown as Parameters<typeof useFormState>[3],
+    modelValueRef as ComputedRef<FormModel | undefined>
+  )
 
   /* ===== 渲染引擎 ===== */
   const currentInstance = getCurrentInstance()
@@ -346,6 +359,16 @@
   /** 字段变化事件（保留回调通道） */
   const handleFieldsChange = (fields: FormOption[]): void => {
     resolved.value.onFieldsChange?.(fields)
+  }
+
+  /** 将内部标准模型安全桥接回消费端泛型模型。 */
+  const forwardValidateSuccess = (model: FormModel): void => {
+    emit('validate-success', model as FormModel<T>)
+  }
+
+  /** 转发验证错误。 */
+  const forwardValidateError = (errors: unknown): void => {
+    emit('validate-error', errors)
   }
 
   const handleTabBeforeChange = async (
