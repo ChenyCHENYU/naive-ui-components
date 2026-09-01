@@ -23,19 +23,6 @@ declare module "wangeditor" {
   export default E;
 }
 
-declare module "leaflet" {
-  const L: any;
-  export default L;
-  export const map: any;
-  export const tileLayer: any;
-  export const marker: any;
-  export const icon: any;
-  export const latLng: any;
-  export const divIcon: any;
-  export const control: any;
-  export const layerGroup: any;
-}
-
 declare module "@kangc/v-md-editor" {
   import type { Plugin } from "vue";
   const VMdEditor: Plugin & any;
@@ -54,5 +41,3 @@ declare module "qrcode" {
   };
   export default QRCode;
 }
-
-

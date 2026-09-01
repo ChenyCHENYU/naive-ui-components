@@ -119,6 +119,7 @@
     "@fullcalendar/list": "^6.1.21",
     "@fullcalendar/vue3": "^6.1.21",
     "@iconify/vue": "^5.0.1",
+    "@types/leaflet": "^1.9.22",
     "@visactor/vtable": "^1.26.7",
     "@visactor/vtable-gantt": "^1.26.7",
     "@vue-flow/core": "^1.48.2",

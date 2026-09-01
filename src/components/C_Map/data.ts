@@ -1,27 +1,21 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2025-12-02
+ * @LastEditTime: 2026-09-02
+ * @FilePath: \naive-ui-components\src\components\C_Map\data.ts
+ * @Description: 地图组件静态配置
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+
+import type { MapConfig } from './types'
+
 export const MAP_TYPES = [
   { label: 'OpenStreetMap', value: 'osm' },
   { label: '高德地图', value: 'amap' },
 ] as const
 
-export type MapType = (typeof MAP_TYPES)[number]['value']
-
-export interface MapMarker {
-  lat: number
-  lng: number
-  popup?: string
-}
-
-export interface MapConfig {
-  height?: string
-  center?: [number, number]
-  zoom?: number
-  markers?: MapMarker[]
-  mapType?: MapType
-  amapKey?: string
-}
-
 export const DEFAULT_MAP_CONFIG: Required<
-  Omit<MapConfig, 'markers' | 'amapKey'>
+  Pick<MapConfig, 'height' | 'center' | 'zoom' | 'mapType'>
 > = {
   height: '400px',
   center: [39.9042, 116.4074],

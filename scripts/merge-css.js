@@ -12,6 +12,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from "./leaflet-assets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,11 +101,17 @@ const leafletImageDir = path.resolve(
 )
 const outputImageDir = path.join(distDir, 'images')
 fs.mkdirSync(outputImageDir, { recursive: true })
-for (const filename of [
-  'marker-icon-2x.png',
-  'marker-icon.png',
-  'marker-shadow.png',
-]) {
+const leafletCss = readVendorStyle('leaflet/dist/leaflet.css')
+const untrackedLeafletAssets = getRelativeCssAssets(leafletCss)
+  .filter(asset => asset.startsWith('images/'))
+  .map(asset => path.basename(asset))
+  .filter(filename => !LEAFLET_IMAGE_FILES.includes(filename))
+if (untrackedLeafletAssets.length > 0) {
+  throw new Error(
+    `Untracked Leaflet assets: ${[...new Set(untrackedLeafletAssets)].join(', ')}`
+  )
+}
+for (const filename of LEAFLET_IMAGE_FILES) {
   fs.copyFileSync(
     path.join(leafletImageDir, filename),
     path.join(outputImageDir, filename)

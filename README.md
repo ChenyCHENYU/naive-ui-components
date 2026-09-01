@@ -212,6 +212,40 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
+### C_Map 推荐用法
+
+`C_Map` 统一以 `[纬度, 经度]` 接收中心点和标记坐标；切换高德地图时会在组件内部转换为其要求的 `[经度, 纬度]`，使用侧无需维护两套数据。非法标记会被隔离，组件只清理自己创建的 Marker，不会误删通过 `ready` 事件添加的业务图层。
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_Map,
+    type MapExpose,
+    type MapMarker,
+  } from '@robot-admin/naive-ui-components/C_Map'
+  import '@robot-admin/naive-ui-components/C_Map/style.css'
+
+  const mapRef = ref<MapExpose>()
+  const markers: MapMarker[] = [
+    { id: 'beijing', lat: 39.9042, lng: 116.4074, popup: '北京' },
+  ]
+</script>
+
+<template>
+  <C_Map
+    ref="mapRef"
+    :markers="markers"
+    fit-markers-on-init
+    :tile-config="{ maxZoom: 18 }"
+    @error="reportError"
+  />
+  <button @click="mapRef?.fitToMarkers({ maxZoom: 14 })">定位全部标记</button>
+</template>
+```
+
+组件实例提供 `getMap()`、`refresh()` 和 `fitToMarkers()`，适合标签页显示、容器尺寸变化和业务图层扩展。使用 `map-type="amap"` 时必须提供 `amap-key`；宿主应用还需在 CSP 的 `script-src` 中允许 `https://webapi.amap.com`。API Key 是公开的客户端标识，域名白名单和配额限制必须在高德控制台配置，不能把它当作服务端密钥。
+
 `C_Date`、`C_Time`、`C_Menu`、`C_FormSearch` 均支持标准 `v-model`。组件可直接放在没有 `NMessageProvider` / `NDialogProvider` 的页面；如需统一提示、确认和文案，可在安装时传入 `feedback`、`locale`、`form` 与 `table.defaults`。
 
 ### C_Captcha 服务端校验
@@ -371,6 +405,7 @@ dist/
 ├── C_Form.base.css / C_Form.full.css      # 基础/完整样式层级
 ├── C_Table.base.css / C_Table.full.css    # 基础/完整样式层级
 ├── style.css                              # 合并后的全量样式
+├── images/                                # Leaflet Marker/图层控件资源
 └── [chunk].js                             # 共享代码块
 ```
 

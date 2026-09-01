@@ -153,6 +153,40 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
 })
 ```
 
+### Recommended C_Map setup
+
+`C_Map` consistently accepts `[latitude, longitude]` for centers and markers. It converts coordinates to AMap's `[longitude, latitude]` order internally, filters invalid markers, and only removes markers owned by the component.
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_Map,
+    type MapExpose,
+    type MapMarker,
+  } from '@robot-admin/naive-ui-components/C_Map'
+  import '@robot-admin/naive-ui-components/C_Map/style.css'
+
+  const mapRef = ref<MapExpose>()
+  const markers: MapMarker[] = [
+    { id: 'beijing', lat: 39.9042, lng: 116.4074, popup: 'Beijing' },
+  ]
+</script>
+
+<template>
+  <C_Map
+    ref="mapRef"
+    :markers="markers"
+    fit-markers-on-init
+    :tile-config="{ maxZoom: 18 }"
+    @error="reportError"
+  />
+  <button @click="mapRef?.fitToMarkers({ maxZoom: 14 })">Fit markers</button>
+</template>
+```
+
+The exposed instance provides `getMap()`, `refresh()`, and `fitToMarkers()` for tab visibility changes, container resizes, and custom business layers. `map-type="amap"` requires `amap-key`, and the host CSP must allow `https://webapi.amap.com` in `script-src`. Treat the browser API key as a public identifier and enforce domain allowlists and quotas in the AMap console.
+
 `C_Date`, `C_Time`, `C_Menu`, and `C_FormSearch` support standard `v-model`. Message/dialog providers are optional; application-wide feedback, locale, form defaults, and `table.defaults` can be supplied through plugin options.
 
 ### C_Captcha Server Verification

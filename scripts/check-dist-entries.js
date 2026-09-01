@@ -8,6 +8,7 @@ import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(
@@ -50,18 +51,11 @@ const missingEntries = componentNames.flatMap(name =>
     .map(extension => path.join(distDir, `${name}.${extension}`))
     .filter(file => !fs.existsSync(file))
 )
-for (const asset of [
-  'C_Form.base.css',
-  'C_Table.base.css',
-]) {
+for (const asset of ['C_Form.base.css', 'C_Table.base.css']) {
   const filename = path.join(distDir, asset)
   if (!fs.existsSync(filename)) missingEntries.push(filename)
 }
-for (const asset of [
-  'images/marker-icon-2x.png',
-  'images/marker-icon.png',
-  'images/marker-shadow.png',
-]) {
+for (const asset of LEAFLET_IMAGE_FILES.map(filename => `images/${filename}`)) {
   const filename = path.join(distDir, asset)
   if (!fs.existsSync(filename)) missingEntries.push(filename)
 }
@@ -71,13 +65,18 @@ if (missingEntries.length > 0) {
 }
 
 for (const name of componentNames) {
-  const declaration = fs.readFileSync(path.join(distDir, `${name}.d.ts`), 'utf8')
+  const declaration = fs.readFileSync(
+    path.join(distDir, `${name}.d.ts`),
+    'utf8'
+  )
   if (!declaration.includes(name)) {
     console.error(`❌ ${name} 子路径声明未导出同名组件`)
     process.exit(1)
   }
   if (declaration.includes('naive-ui/es')) {
-    console.error(`Published declaration ${name}.d.ts uses a Naive UI internal path`)
+    console.error(
+      `Published declaration ${name}.d.ts uses a Naive UI internal path`
+    )
     process.exit(1)
   }
 }
@@ -86,9 +85,27 @@ for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
   const filename = path.join(distDir, styleEntry)
   const css = fs.readFileSync(filename, 'utf8')
   if (css.includes(':deep(') || /\.n-steps--vertical\)\s*(?:\{|\.)/.test(css)) {
-    console.error(`❌ Published stylesheet ${styleEntry} contains an invalid scoped selector`)
+    console.error(
+      `❌ Published stylesheet ${styleEntry} contains an invalid scoped selector`
+    )
     process.exit(1)
   }
+}
+
+const mapCss = fs.readFileSync(path.join(distDir, 'C_Map.css'), 'utf8')
+const missingMapAssets = getRelativeCssAssets(mapCss)
+  .map(asset => path.resolve(distDir, asset))
+  .filter(filename => {
+    const relativePath = path.relative(distDir, filename)
+    const escapesDist =
+      relativePath.startsWith('..') || path.isAbsolute(relativePath)
+    return escapesDist || !fs.existsSync(filename)
+  })
+if (missingMapAssets.length > 0) {
+  console.error(
+    `❌ C_Map 样式引用了未发布资源:\n${missingMapAssets.join('\n')}`
+  )
+  process.exit(1)
 }
 
 if (Object.keys(packageJson.exports).some(key => key.startsWith('./_'))) {
@@ -100,21 +117,28 @@ if (
     fs.existsSync(path.join(distDir, `_shared.${extension}`))
   )
 ) {
-  console.error('❌ Internal _shared modules must not be emitted as package entries')
+  console.error(
+    '❌ Internal _shared modules must not be emitted as package entries'
+  )
   process.exit(1)
 }
 
 const require = createRequire(import.meta.url)
 // Use leaf components for Node runtime smoke tests. Browser-only editor CSS is
 // intentionally validated by the bundler build, not imported by plain Node.
-const esmDate = await import(pathToFileURL(path.join(distDir, 'C_Date.js')).href)
-const esmForm = await import(pathToFileURL(path.join(distDir, 'C_Form.js')).href)
+const esmDate = await import(
+  pathToFileURL(path.join(distDir, 'C_Date.js')).href
+)
+const esmForm = await import(
+  pathToFileURL(path.join(distDir, 'C_Form.js')).href
+)
 const esmEditor = await import(
   pathToFileURL(path.join(distDir, 'C_Editor.js')).href
 )
 const esmCaptcha = await import(
   pathToFileURL(path.join(distDir, 'C_Captcha.js')).href
 )
+const esmMap = await import(pathToFileURL(path.join(distDir, 'C_Map.js')).href)
 const cjsTime = require(path.join(distDir, 'C_Time.cjs'))
 const cjsTable = require(path.join(distDir, 'C_Table.cjs'))
 const cjsMarkdown = require(path.join(distDir, 'C_Markdown.cjs'))
@@ -125,6 +149,7 @@ if (
   !esmForm.C_Form ||
   !esmEditor.C_Editor ||
   !esmCaptcha.C_Captcha ||
+  !esmMap.C_Map ||
   !cjsTime.C_Time ||
   !cjsTable.C_Table ||
   !cjsMarkdown.C_Markdown ||
@@ -149,4 +174,19 @@ if (
   process.exit(1)
 }
 
-console.log(`✅ ${componentNames.length} component JS / CJS / DTS entries are valid.`)
+const mapHtml = await renderToString(
+  createSSRApp({ render: () => h(esmMap.C_Map) })
+)
+if (
+  !mapHtml.includes('role="region"') ||
+  !mapHtml.includes('aria-label="地图"') ||
+  !mapHtml.includes('aria-busy="true"') ||
+  !mapHtml.includes('role="status"')
+) {
+  console.error('❌ Map SSR/accessibility consumer smoke test failed')
+  process.exit(1)
+}
+
+console.log(
+  `✅ ${componentNames.length} component JS / CJS / DTS entries are valid.`
+)

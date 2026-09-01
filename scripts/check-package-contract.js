@@ -17,6 +17,10 @@ requireCondition(!pkg.optionalDependencies, 'Use optional peer dependencies, not
 requireCondition(pkg.scripts?.['check:audit'] === 'bun audit', 'Dependency audit gate is missing')
 requireCondition(pkg.overrides?.tmp === '0.2.7', 'Secure tmp override changed')
 requireCondition(
+  Boolean(pkg.dependencies?.['@types/leaflet']),
+  '@types/leaflet must remain a dependency because C_Map publishes Leaflet types'
+)
+requireCondition(
   fs.readFileSync(path.join(root, '.node-version'), 'utf8').trim() === '20.19.0',
   '.node-version must match the Node engine baseline'
 )

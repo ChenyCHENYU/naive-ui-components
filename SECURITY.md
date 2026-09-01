@@ -15,6 +15,7 @@ Please use GitHub's private security-advisory flow for the repository. Include t
 - Formula evaluation uses a bounded parser and does not execute arbitrary JavaScript. Do not replace it with `eval` or `Function` for untrusted input.
 - Upload type, size, hashing, and chunk checks improve UX and integrity but do not replace server-side content validation, malware scanning, quotas, or access control.
 - Spreadsheet, document, image, audio, video, and map sources remain untrusted external content. Apply suitable origin, CSP, download, and privacy policies in the host application.
+- `C_Map` loads AMap only when explicitly selected. AMap consumers must allow `https://webapi.amap.com` in `script-src`, configure domain allowlists and quotas at the provider, and treat the browser API key as public metadata rather than a server secret. OSM tile URLs and custom tile sources should be restricted by the host application's `img-src` and privacy policy.
 
 ## Dependency and release controls
 
