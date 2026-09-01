@@ -325,3 +325,7 @@
     transform: translateY(-8px);
   }
 </style>
+
+<style lang="scss">
+  @use './index.scss';
+</style>

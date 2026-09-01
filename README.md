@@ -343,8 +343,8 @@ bun add vue naive-ui
 ```
 bun run build
   ├── 1. tsdown          → 多入口打包（51 组件 ESM/CJS/DTS）
-  ├── 2. sass CLI        → 编译 global.scss → global-scss.css
-  ├── 3. merge-css.js    → 合并 SFC CSS + global SCSS → style.css
+  ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
+  ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
   ├── 5. check:dist      → 校验根入口、子路径、SSR 及 DTS 公共导出
   └── 6. check:size      → 校验全量/基础样式与发布包体积预算
@@ -353,8 +353,8 @@ bun run build
 #### 技术要点
 
 - **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），51 个独立入口并行编译
-- **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 编译全局样式
-- **CSS 合并**：构建后将分散的 per-chunk CSS 与 `global-scss.css` 合并为单一 `style.css`
+- **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 仅编译共享变量入口
+- **CSS 合并**：构建后将 Vue 已完成 scoped 转换的 per-chunk CSS 与共享变量合并为单一 `style.css`，避免重复样式和原始 `:deep()` 选择器泄漏
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
 - **子路径导出**：`gen-exports.js` 自动扫描 `dist/` 并写入 `package.json` 的 `exports` 字段
 - **导出冲突检测**：`check-export-conflicts.js` 确保组件间无命名冲突
@@ -406,7 +406,7 @@ naive-ui-components/
 │   ├── index.ts                     # 库入口（全量注册 + export * barrel）
 │   ├── styles/
 │   │   ├── variables.scss           # CSS 变量 (--c-*)
-│   │   └── global.scss              # 自动生成的全局样式聚合（@forward barrel）
+│   │   └── global.scss              # 自动生成的共享变量入口
 │   ├── components/
 │   │   └── C_[Name]/
 │   │       ├── index.vue            # 组件主文件
@@ -421,7 +421,7 @@ naive-ui-components/
 │   ├── plugins/                     # highlight.js 等插件
 │   └── utils/                       # 工具函数
 ├── scripts/
-│   ├── gen-global-scss.js           # 生成 global.scss（@forward barrel）
+│   ├── gen-global-scss.js           # 生成 global.scss（仅共享变量）
 │   ├── watch-global-scss.js         # 开发模式 SCSS 监听
 │   ├── merge-css.js                 # 合并 CSS 产物
 │   ├── gen-exports.js               # 自动生成 package.json exports

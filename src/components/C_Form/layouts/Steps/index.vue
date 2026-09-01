@@ -24,6 +24,7 @@
     <div
       v-else
       class="steps-container"
+      :class="{ 'is-vertical': stepsConfig.vertical }"
     >
       <!-- 步骤指示器 -->
       <NSteps

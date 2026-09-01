@@ -284,8 +284,8 @@ Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`
 ```
 bun run build
   ├── 1. tsdown          → Multi-entry bundling (51 components ESM/CJS/DTS)
-  ├── 2. sass CLI        → Compile global.scss → global-scss.css
-  ├── 3. merge-css.js    → Merge SFC CSS + global SCSS → style.css
+  ├── 2. sass CLI        → Compile the shared-variable entry → global-scss.css
+  ├── 3. merge-css.js    → Merge Vue-compiled SFC CSS + global variables → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
   ├── 5. check:dist      → Validate root, subpath, SSR, and DTS public exports
   └── 6. check:size      → Enforce full/base CSS and package-size budgets
@@ -294,8 +294,8 @@ bun run build
 #### Key Technical Details
 
 - **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 51 independent entries compiled in parallel
-- **SCSS processing**: Custom `scssTransformPlugin` compiles SFC SCSS within the Rolldown pipeline; standalone Sass CLI for global styles
-- **CSS merging**: Post-build merges per-chunk CSS with `global-scss.css` into a single `style.css`
+- **SCSS processing**: Custom `scssTransformPlugin` compiles SFC SCSS within the Rolldown pipeline; standalone Sass CLI only compiles the shared-variable entry
+- **CSS merging**: Post-build merges Vue scoped-compiled per-chunk CSS with shared variables into a single `style.css`, avoiding duplicate styles and leaked raw `:deep()` selectors
 - **Type exports**: Unified `export *` barrel pattern with auto-generated `.d.ts`
 - **Subpath exports**: `gen-exports.js` auto-scans `dist/` and writes the `exports` field in `package.json`
 - **Export conflict detection**: `check-export-conflicts.js` ensures no naming collisions between components
@@ -347,7 +347,7 @@ naive-ui-components/
 │   ├── index.ts                     # Library entry (global registration + export * barrel)
 │   ├── styles/
 │   │   ├── variables.scss           # CSS variables (--c-*)
-│   │   └── global.scss              # Auto-generated global style aggregation (@forward barrel)
+│   │   └── global.scss              # Auto-generated shared-variable entry
 │   ├── components/
 │   │   └── C_[Name]/
 │   │       ├── index.vue            # Main component file
@@ -362,7 +362,7 @@ naive-ui-components/
 │   ├── plugins/                     # highlight.js and other plugins
 │   └── utils/                       # Utility functions
 ├── scripts/
-│   ├── gen-global-scss.js           # Generate global.scss (@forward barrel)
+│   ├── gen-global-scss.js           # Generate global.scss (shared variables only)
 │   ├── watch-global-scss.js         # Dev mode SCSS watcher
 │   ├── merge-css.js                 # Merge CSS artifacts
 │   ├── gen-exports.js               # Auto-generate package.json exports

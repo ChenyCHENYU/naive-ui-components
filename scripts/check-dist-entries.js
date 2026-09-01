@@ -82,6 +82,15 @@ for (const name of componentNames) {
   }
 }
 
+for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
+  const filename = path.join(distDir, styleEntry)
+  const css = fs.readFileSync(filename, 'utf8')
+  if (css.includes(':deep(') || /\.n-steps--vertical\)\s*(?:\{|\.)/.test(css)) {
+    console.error(`❌ Published stylesheet ${styleEntry} contains an invalid scoped selector`)
+    process.exit(1)
+  }
+}
+
 if (Object.keys(packageJson.exports).some(key => key.startsWith('./_'))) {
   console.error('❌ 内部下划线入口不应出现在 package exports 中')
   process.exit(1)

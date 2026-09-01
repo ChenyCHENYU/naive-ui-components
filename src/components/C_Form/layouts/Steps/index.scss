@@ -67,31 +67,29 @@
   }
 }
 
-/* 垂直步骤样式 */
-.steps-container:has(.steps-indicator:deep(.n-steps--vertical)) {
+/* 垂直步骤样式：由组件状态驱动，避免 scoped CSS 生成无效的 :has/:deep 组合。 */
+.steps-container.is-vertical {
   flex-direction: row;
   align-items: flex-start;
 }
 
-.steps-container:has(.steps-indicator:deep(.n-steps--vertical))
-  .steps-indicator {
+.steps-container.is-vertical .steps-indicator {
   flex-shrink: 0;
   width: 250px;
   margin-right: 24px;
 }
 
-.steps-container:has(.steps-indicator:deep(.n-steps--vertical)) .steps-content {
+.steps-container.is-vertical .steps-content {
   flex: 1;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .steps-container:has(.steps-indicator:deep(.n-steps--vertical)) {
+  .steps-container.is-vertical {
     flex-direction: column !important;
   }
 
-  .steps-container:has(.steps-indicator:deep(.n-steps--vertical))
-    .steps-indicator {
+  .steps-container.is-vertical .steps-indicator {
     width: 100% !important;
     margin-right: 0 !important;
     margin-bottom: 16px;
