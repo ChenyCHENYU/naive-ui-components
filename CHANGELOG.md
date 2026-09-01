@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.11.4
+
+### Patch Changes
+
+- c98137f: Forward and type the `C_Form` tabs and steps layout action slots so custom layout controls work through the public component boundary.
+
 ## 0.11.3
 
 ### Patch Changes
