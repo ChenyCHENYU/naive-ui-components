@@ -225,7 +225,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends object = DataRecord">
   import {
     ref,
     computed,
@@ -285,17 +285,17 @@
   const props = withDefaults(
     defineProps<{
       /** 列配置（crud 模式下可省略） */
-      columns?: TableColumn[]
+      columns?: TableColumn<T>[]
       /** 数据源（crud 模式下可省略） */
-      data?: MaybeRefLike<DataRecord[]>
+      data?: MaybeRefLike<T[]>
       /** 加载状态 */
       loading?: MaybeRefLike<boolean>
       /** 行唯一键 */
-      rowKey?: string | ((row: DataRecord) => DataTableRowKey)
+      rowKey?: string | ((row: T) => DataTableRowKey)
       /** 统一功能配置（edit / selection / expand / pagination / dynamicRows / toolbar / display） */
-      config?: TableConfig
+      config?: TableConfig<T>
       /** CRUD 绑定 — 传入 useTableCrud() 的返回值，自动接管 data/columns/loading/actions/pagination/events */
-      crud?: CrudBinding
+      crud?: CrudBinding<T>
     }>(),
     {
       rowKey: 'id',
@@ -341,12 +341,12 @@
   const globalConfig = useTableGlobalConfig()
   const resolvedRowKey = (row: DataRecord): DataTableRowKey =>
     typeof props.rowKey === 'function'
-      ? props.rowKey(row)
+      ? (props.rowKey as (record: DataRecord) => DataTableRowKey)(row)
       : (row[props.rowKey] as DataTableRowKey)
 
   /** 合并 crud 返回的 actions/pagination 到用户 config，并叠加全局配置 */
   const effectiveConfig = computed<TableConfig>(() => {
-    let cfg: TableConfig = props.config || {}
+    let cfg: TableConfig = (props.config as TableConfig | undefined) || {}
     if (props.crud) {
       const fromCrud: Partial<TableConfig> = {}
       if (props.crud.actions) fromCrud.actions = props.crud.actions.value
@@ -358,7 +358,10 @@
   })
 
   const effectiveColumns = computed<TableColumn[]>(
-    () => props.columns ?? props.crud?.columns.value ?? []
+    () =>
+      (props.columns ??
+        props.crud?.columns.value ??
+        []) as unknown as TableColumn[]
   )
 
   /* ================= 配置解析 ================= */
@@ -374,7 +377,10 @@
     val && typeof val === 'object' && 'value' in val ? val.value : (val as T)
 
   const normalizedData = computed<DataRecord[]>(
-    () => unwrapRef(props.data) ?? props.crud?.data.value ?? []
+    () =>
+      (unwrapRef(props.data) ??
+        props.crud?.data.value ??
+        []) as unknown as DataRecord[]
   )
 
   const normalizedLoading = computed<boolean>(
