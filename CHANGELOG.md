@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.11.1
+
+### Patch Changes
+
+- 1b09ddd: Preserve the row model generic across `C_Table` Vue props so typed `CrudBinding<T>` values can be passed directly without consumer-side casts.
+
 ## 0.11.0
 
 ### Minor Changes
