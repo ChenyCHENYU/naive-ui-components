@@ -4,6 +4,7 @@ export type {
   AMapMapInstance,
   AMapMarkerEvent,
   AMapPosition,
+  AMapSecurityConfig,
   MapConfig,
   MapCoordinate,
   MapExpose,

@@ -268,7 +268,11 @@
     if (!mapContainer.value) return
     const version = beginInitialization()
     try {
-      const AMap = await loadAMapApi(props.amapKey, props.amapLoadTimeout)
+      const AMap = await loadAMapApi(
+        props.amapKey,
+        props.amapLoadTimeout,
+        props.amapSecurityConfig
+      )
       if (!isCurrentInitialization(version) || !mapContainer.value) return
       amapApi = AMap
       amapMap = new AMap.Map(mapContainer.value, {
@@ -303,6 +307,7 @@
     [
       () => props.mapType,
       () => props.amapKey,
+      () => props.amapSecurityConfig,
       () => props.amapLoadTimeout,
       () => props.amapOptions,
       () => props.tileConfig,

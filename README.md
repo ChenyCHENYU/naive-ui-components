@@ -244,7 +244,7 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
-组件实例提供 `getMap()`、`refresh()` 和 `fitToMarkers()`，适合标签页显示、容器尺寸变化和业务图层扩展。使用 `map-type="amap"` 时必须提供 `amap-key`；宿主应用还需在 CSP 的 `script-src` 中允许 `https://webapi.amap.com`。API Key 是公开的客户端标识，域名白名单和配额限制必须在高德控制台配置，不能把它当作服务端密钥。
+组件实例提供 `getMap()`、`refresh()` 和 `fitToMarkers()`，适合标签页显示、容器尺寸变化和业务图层扩展。使用 `map-type="amap"` 时必须提供 `amap-key`；2021-12-02 之后申请的 Key 还必须按[高德官方安全密钥说明](https://lbs.amap.com/api/javascript-api-v2/guide/abc/jscode)配置 `:amap-security-config="{ serviceHost: '/_AMapService' }"`（生产推荐，由服务端代理保管安全密钥），或仅在开发环境传 `{ securityJsCode: '...' }`。安全配置会在 SDK 脚本加载前写入，并拒绝同页混用不同 Key。宿主应用还需在 CSP 的 `script-src` 中允许 `https://webapi.amap.com`，同时在高德控制台配置域名白名单和配额限制。
 
 `C_Date`、`C_Time`、`C_Menu`、`C_FormSearch` 均支持标准 `v-model`。组件可直接放在没有 `NMessageProvider` / `NDialogProvider` 的页面；如需统一提示、确认和文案，可在安装时传入 `feedback`、`locale`、`form` 与 `table.defaults`。
 

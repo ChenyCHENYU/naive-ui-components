@@ -16,6 +16,11 @@ export type MapType = 'osm' | 'amap'
 export type MapCoordinate = [latitude: number, longitude: number]
 export type AMapPosition = [longitude: number, latitude: number]
 
+/** 高德 JS API 安全配置；生产环境优先使用服务端代理。 */
+export type AMapSecurityConfig =
+  | { serviceHost: string; securityJsCode?: never }
+  | { securityJsCode: string; serviceHost?: never }
+
 export interface MapMarker {
   id?: string | number
   lat: number
@@ -86,6 +91,7 @@ export interface MapProps {
   markers?: MapMarker[]
   mapType?: MapType
   amapKey?: string
+  amapSecurityConfig?: AMapSecurityConfig
   amapLoadTimeout?: number
   amapOptions?: Record<string, unknown>
   tileConfig?: MapTileConfig

@@ -16,6 +16,7 @@ Please use GitHub's private security-advisory flow for the repository. Include t
 - Upload type, size, hashing, and chunk checks improve UX and integrity but do not replace server-side content validation, malware scanning, quotas, or access control.
 - Spreadsheet, document, image, audio, video, and map sources remain untrusted external content. Apply suitable origin, CSP, download, and privacy policies in the host application.
 - `C_Map` loads AMap only when explicitly selected. AMap consumers must allow `https://webapi.amap.com` in `script-src`, configure domain allowlists and quotas at the provider, and treat the browser API key as public metadata rather than a server secret. OSM tile URLs and custom tile sources should be restricted by the host application's `img-src` and privacy policy.
+- AMap keys issued after 2021-12-02 require a security credential. Production deployments should use `amapSecurityConfig.serviceHost` with a same-origin `/_AMapService` proxy so the credential remains server-side; plaintext `securityJsCode` is intended for local development only.
 
 ## Dependency and release controls
 

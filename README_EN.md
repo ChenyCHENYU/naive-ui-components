@@ -185,7 +185,7 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
 </template>
 ```
 
-The exposed instance provides `getMap()`, `refresh()`, and `fitToMarkers()` for tab visibility changes, container resizes, and custom business layers. `map-type="amap"` requires `amap-key`, and the host CSP must allow `https://webapi.amap.com` in `script-src`. Treat the browser API key as a public identifier and enforce domain allowlists and quotas in the AMap console.
+The exposed instance provides `getMap()`, `refresh()`, and `fitToMarkers()` for tab visibility changes, container resizes, and custom business layers. `map-type="amap"` requires `amap-key`; keys created after 2021-12-02 also require `:amap-security-config="{ serviceHost: '/_AMapService' }"` (recommended in production so the server proxy retains the security secret), or `{ securityJsCode: '...' }` for development only, as described by the [official AMap security guidance](https://lbs.amap.com/api/javascript-api-v2/guide/abc/jscode). The config is installed before the SDK script and conflicting keys on one page are rejected. The host CSP must also allow `https://webapi.amap.com` in `script-src`, with domain allowlists and quotas enforced in the AMap console.
 
 `C_Date`, `C_Time`, `C_Menu`, and `C_FormSearch` support standard `v-model`. Message/dialog providers are optional; application-wide feedback, locale, form defaults, and `table.defaults` can be supplied through plugin options.
 

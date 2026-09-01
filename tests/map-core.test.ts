@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import fs from 'node:fs'
 import path from 'node:path'
-import { loadAMapApi } from '../src/components/C_Map/amapLoader'
+import {
+  loadAMapApi,
+  normalizeAMapSecurityConfig,
+} from '../src/components/C_Map/amapLoader'
 import {
   getValidMapMarkers,
   isValidMapCoordinate,
@@ -13,6 +16,7 @@ import {
   getRelativeCssAssets,
   LEAFLET_IMAGE_FILES,
 } from '../scripts/leaflet-assets'
+import type { AMapApi, AMapSecurityConfig } from '../src/components/C_Map/types'
 
 const root = path.resolve(import.meta.dir, '..')
 
@@ -47,6 +51,66 @@ describe('C_Map coordinate and provider contracts', () => {
   test('rejects AMap loading outside the browser instead of hanging', async () => {
     expect(loadAMapApi('demo-key')).rejects.toThrow('只能在浏览器环境加载')
     expect(loadAMapApi('  ')).rejects.toThrow('API Key 不能为空')
+  })
+
+  test('normalizes the mutually exclusive AMap security modes', () => {
+    expect(
+      normalizeAMapSecurityConfig({
+        serviceHost: ' https://maps.example.com/_AMapService ',
+      })
+    ).toEqual({ serviceHost: 'https://maps.example.com/_AMapService' })
+    expect(
+      normalizeAMapSecurityConfig({ securityJsCode: ' demo-code ' })
+    ).toEqual({ securityJsCode: 'demo-code' })
+    expect(() => normalizeAMapSecurityConfig({ serviceHost: '/maps' })).toThrow(
+      '/_AMapService'
+    )
+  })
+
+  test('installs AMap security config before appending the SDK script', async () => {
+    const listeners = new Map<string, () => void>()
+    const script = {
+      async: false,
+      dataset: {},
+      src: '',
+      addEventListener: (event: string, handler: () => void) =>
+        listeners.set(event, handler),
+      removeEventListener: (event: string) => listeners.delete(event),
+      remove: () => undefined,
+    } as unknown as HTMLScriptElement
+    const mockHost: {
+      AMap?: AMapApi
+      _AMapSecurityConfig?: AMapSecurityConfig
+    } = {}
+    const api = {} as AMapApi
+    const mockDocument = {
+      querySelector: () => null,
+      createElement: () => script,
+      head: {
+        appendChild: () => {
+          expect(mockHost._AMapSecurityConfig).toEqual({
+            serviceHost: '/_AMapService',
+          })
+          mockHost.AMap = api
+          listeners.get('load')?.()
+          return script
+        },
+      },
+    } as unknown as Document
+
+    const platform = {
+      clearTimeout: globalThis.clearTimeout,
+      document: mockDocument,
+      host: mockHost,
+      setTimeout: globalThis.setTimeout,
+    }
+
+    await expect(
+      loadAMapApi('demo-key', 1_000, { serviceHost: '/_AMapService' }, platform)
+    ).resolves.toBe(api)
+    await expect(
+      loadAMapApi('other-key', 1_000, undefined, platform)
+    ).rejects.toThrow('不能使用不同的高德地图 Key')
   })
 })
 

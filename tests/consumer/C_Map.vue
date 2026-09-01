@@ -33,6 +33,7 @@
     aria-label="业务网点地图"
     :markers="markers"
     :tile-config="{ maxZoom: 18 }"
+    :amap-security-config="{ serviceHost: '/_AMapService' }"
     fit-markers-on-init
     @ready="handleReady"
     @marker-click="handleMarkerClick"

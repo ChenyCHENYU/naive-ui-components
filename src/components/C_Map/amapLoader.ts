@@ -8,39 +8,124 @@
  */
 
 import { AMAP_CONFIG } from './data'
-import type { AMapApi } from './types'
+import type { AMapApi, AMapSecurityConfig } from './types'
 
 const DEFAULT_LOAD_TIMEOUT = 15_000
 const SCRIPT_SELECTOR = 'script[data-c-map-amap="true"]'
 
 let loader: Promise<AMapApi> | null = null
+let loaderIdentity: string | null = null
+
+/** 规范化并校验高德安全配置，保证两种认证模式互斥。 */
+export function normalizeAMapSecurityConfig(
+  config?: AMapSecurityConfig
+): AMapSecurityConfig | undefined {
+  if (!config) return undefined
+
+  const serviceHost = config.serviceHost?.trim()
+  const securityJsCode = config.securityJsCode?.trim()
+  if (serviceHost && securityJsCode) {
+    throw new Error('高德地图安全配置只能选择 serviceHost 或 securityJsCode')
+  }
+  if (serviceHost) {
+    if (!serviceHost.endsWith('/_AMapService')) {
+      throw new Error('高德地图 serviceHost 必须以 /_AMapService 结尾')
+    }
+    return { serviceHost }
+  }
+  if (securityJsCode) return { securityJsCode }
+  throw new Error('高德地图安全配置不能为空')
+}
+
+interface AMapHost {
+  AMap?: AMapApi
+  _AMapSecurityConfig?: AMapSecurityConfig
+}
+
+interface AMapLoaderPlatform {
+  clearTimeout: typeof window.clearTimeout
+  document: Document
+  host: AMapHost
+  setTimeout: typeof window.setTimeout
+}
+
+const resolvePlatform = (platform?: AMapLoaderPlatform): AMapLoaderPlatform => {
+  if (platform) return platform
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Error('高德地图 API 只能在浏览器环境加载')
+  }
+  return {
+    clearTimeout: window.clearTimeout.bind(window),
+    document,
+    host: window as AMapHost,
+    setTimeout: window.setTimeout.bind(window),
+  }
+}
+
+const prepareAMapLoad = (
+  key: string,
+  securityConfig?: AMapSecurityConfig,
+  platform?: AMapLoaderPlatform
+): {
+  identity: string
+  normalizedKey: string
+  normalizedSecurityConfig?: AMapSecurityConfig
+  platform: AMapLoaderPlatform
+} => {
+  const normalizedKey = key.trim()
+  if (!normalizedKey) throw new Error('高德地图 API Key 不能为空')
+  const normalizedSecurityConfig = normalizeAMapSecurityConfig(securityConfig)
+  return {
+    identity: JSON.stringify([normalizedKey, normalizedSecurityConfig]),
+    normalizedKey,
+    normalizedSecurityConfig,
+    platform: resolvePlatform(platform),
+  }
+}
 
 /** 为全部组件实例只加载一次高德 SDK，失败或超时后允许安全重试。 */
 export function loadAMapApi(
   key: string,
-  timeout = DEFAULT_LOAD_TIMEOUT
+  timeout = DEFAULT_LOAD_TIMEOUT,
+  securityConfig?: AMapSecurityConfig,
+  platform?: AMapLoaderPlatform
 ): Promise<AMapApi> {
-  const normalizedKey = key.trim()
-  if (!normalizedKey)
-    return Promise.reject(new Error('高德地图 API Key 不能为空'))
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return Promise.reject(new Error('高德地图 API 只能在浏览器环境加载'))
+  let context: ReturnType<typeof prepareAMapLoad>
+  try {
+    context = prepareAMapLoad(key, securityConfig, platform)
+  } catch (error) {
+    return Promise.reject(error)
   }
-
-  const host = window as typeof window & { AMap?: AMapApi }
+  const { identity, normalizedKey, normalizedSecurityConfig } = context
+  const {
+    clearTimeout,
+    document: documentRef,
+    host,
+    setTimeout,
+  } = context.platform
+  if (loaderIdentity && loaderIdentity !== identity) {
+    return Promise.reject(
+      new Error('同一页面不能使用不同的高德地图 Key 或安全配置')
+    )
+  }
   if (host.AMap) return Promise.resolve(host.AMap)
   if (loader) return loader
 
+  loaderIdentity = identity
+  if (normalizedSecurityConfig) {
+    host._AMapSecurityConfig = { ...normalizedSecurityConfig }
+  }
+
   loader = new Promise((resolve, reject) => {
     const existingScript =
-      document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR)
-    const script = existingScript || document.createElement('script')
+      documentRef.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR)
+    const script = existingScript || documentRef.createElement('script')
     let settled = false
     const loadTimeout =
       Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_LOAD_TIMEOUT
 
     const cleanup = () => {
-      window.clearTimeout(timer)
+      clearTimeout(timer)
       script.removeEventListener('load', handleLoad)
       script.removeEventListener('error', handleError)
     }
@@ -50,6 +135,7 @@ export function loadAMapApi(
       cleanup()
       script.remove()
       loader = null
+      loaderIdentity = null
       reject(error)
     }
     const handleLoad = () => {
@@ -63,7 +149,7 @@ export function loadAMapApi(
       resolve(host.AMap)
     }
     const handleError = () => fail(new Error('高德地图 API 加载失败'))
-    const timer = window.setTimeout(
+    const timer = setTimeout(
       () => fail(new Error(`高德地图 API 加载超时（${loadTimeout}ms）`)),
       loadTimeout
     )
@@ -75,7 +161,7 @@ export function loadAMapApi(
     script.async = true
     script.dataset.cMapAmap = 'true'
     script.src = `${AMAP_CONFIG.apiUrl}${encodeURIComponent(normalizedKey)}`
-    document.head.appendChild(script)
+    documentRef.head.appendChild(script)
   })
 
   return loader
