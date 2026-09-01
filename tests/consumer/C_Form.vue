@@ -4,7 +4,14 @@
     :options="options"
     :config="config"
     @submit="handleSubmit"
-  />
+  >
+    <template #tab-actions="{ currentTab, validateTab }">
+      <button @click="validateTab">{{ currentTab.toUpperCase() }}</button>
+    </template>
+    <template #step-actions="{ currentStep, goToStep }">
+      <button @click="goToStep(currentStep + 1)">{{ currentStep }}</button>
+    </template>
+  </C_Form>
 </template>
 
 <script setup lang="ts">

@@ -47,7 +47,18 @@
       @validate-success="forwardValidateSuccess"
       @validate-error="forwardValidateError"
       @fields-change="handleFieldsChange"
-    />
+    >
+      <template
+        v-for="(_, slotName) in $slots"
+        #[slotName]="slotProps"
+      >
+        <slot
+          v-if="slotName !== 'action'"
+          :name="slotName"
+          v-bind="slotProps"
+        />
+      </template>
+    </component>
 
     <!-- 表单操作按钮区域（只在特定布局中显示） -->
     <NFormItem
@@ -125,6 +136,7 @@
     LayoutType,
     LayoutConfig,
     SubmitEventPayload,
+    FormSlots,
     FormModel,
     FormRecord,
   } from './types'
@@ -224,6 +236,8 @@
     'validate-success': [model: FormModel<T>]
     'validate-error': [errors: unknown]
   }>()
+
+  defineSlots<FormSlots<T>>()
 
   /* ================= 配置解析 ================= */
 

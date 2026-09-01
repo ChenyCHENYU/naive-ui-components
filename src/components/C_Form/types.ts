@@ -477,6 +477,47 @@ export interface FormInstance<T extends object = FormRecord> {
   submit(): Promise<boolean>
 }
 
+/** C_Form 默认操作区插槽参数。 */
+export interface FormActionSlotProps<T extends object = FormRecord> {
+  form: FormInst | null
+  model: FormModel<T>
+  validate: FormInstance<T>['validate']
+  validateField: FormInstance<T>['validateField']
+  reset: FormInstance<T>['resetFields']
+  setFields: FormInstance<T>['setFields']
+  getModel: FormInstance<T>['getModel']
+  clearValidation: FormInstance<T>['clearValidation']
+  submit: FormInstance<T>['submit']
+  reloadOptions: FormInstance<T>['reloadOptions']
+  submitting: boolean
+}
+
+/** Tabs 布局操作区插槽参数。 */
+export interface FormTabActionsSlotProps {
+  currentTab: string
+  totalTabs: number
+  validateTab: () => Promise<boolean>
+  switchToTab: (targetTab: string) => Promise<boolean>
+}
+
+/** Steps 布局操作区插槽参数。 */
+export interface FormStepActionsSlotProps {
+  currentStep: number
+  totalSteps: number
+  isFirstStep: boolean
+  isLastStep: boolean
+  nextStep: () => Promise<void>
+  previousStep: () => void
+  goToStep: (stepIndex: number) => Promise<void>
+}
+
+/** C_Form 对外公开的具名插槽。 */
+export interface FormSlots<T extends object = FormRecord> {
+  action?: (props: FormActionSlotProps<T>) => unknown
+  'tab-actions'?: (props: FormTabActionsSlotProps) => unknown
+  'step-actions'?: (props: FormStepActionsSlotProps) => unknown
+}
+
 /* =================== 布局组件类型 =================== */
 
 /**
