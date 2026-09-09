@@ -13,6 +13,17 @@ describe('keyboard and status accessibility contracts', () => {
     expect(source).toContain(':aria-busy="verifying"')
     expect(source).toContain(':aria-label="statusText"')
     expect(source).toContain('aria-live="polite"')
+    expect(source).toContain('<span v-else>🧩</span>')
+    expect(source).toContain("triggerText ?? t('captcha.trigger')")
+  })
+
+  test('guide preserves the driver default when overlay opacity is omitted', () => {
+    const source = read('src/components/C_Guide/index.vue')
+    expect(source).toContain('props.theme?.overlayOpacity === undefined')
+    expect(source).toContain('...overlayOptions')
+    expect(source).not.toContain(
+      'overlayOpacity: props.theme?.overlayOpacity'
+    )
   })
 
   test('notification and bookmark triggers use native buttons', () => {

@@ -31,9 +31,9 @@
             <span
               v-else-if="hasError"
               class="error-icon"
-              >!</span
+              >⚠️</span
             >
-            <span v-else>↔</span>
+            <span v-else>🧩</span>
           </span>
           <span
             class="captcha-text"
@@ -52,7 +52,7 @@
             >
               {{ t('captcha.failed') }}
             </span>
-            <span v-else>{{ triggerText || t('captcha.trigger') }}</span>
+            <span v-else>{{ triggerText ?? t('captcha.trigger') }}</span>
           </span>
         </span>
       </button>
@@ -138,7 +138,7 @@
     if (verifying.value) return t('captcha.verifying')
     if (isVerified.value) return t('captcha.success')
     if (hasError.value) return t('captcha.failed')
-    return props.triggerText || t('captcha.trigger')
+    return props.triggerText ?? t('captcha.trigger')
   })
 
   const clearErrorTimer = () => {

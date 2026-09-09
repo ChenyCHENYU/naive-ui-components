@@ -81,11 +81,28 @@ const vendorStyles = {
   C_VideoPlayer: ['xgplayer/dist/index.min.css'],
 }
 const fullStyleDependencies = {
+  C_ActionBar: ['C_Icon'],
+  C_AudioPlayer: ['C_Icon'],
+  C_Breadcrumb: ['C_Icon'],
+  C_Chat: ['C_Icon'],
+  C_Code: ['C_Icon'],
+  C_CollapsePanel: ['C_Icon'],
+  C_ContextMenu: ['C_Icon'],
   C_Form: ['C_Editor'],
-  C_Table: ['C_Form'],
+  C_Guide: ['C_Icon'],
+  C_Language: ['C_Icon'],
+  C_Login: ['C_Icon', 'C_Captcha', 'C_QRCode'],
+  C_Table: ['C_Icon', 'C_Form'],
+  C_TagsView: ['C_Icon'],
+  C_Theme: ['C_Icon'],
+  C_Timeline: ['C_Icon'],
+  C_Transfer: ['C_Icon'],
+  C_WorkFlow: ['C_Icon'],
 }
 const baseStyleDependencies = {
-  C_Table: ['C_Form'],
+  ...fullStyleDependencies,
+  C_Form: [],
+  C_Table: ['C_Icon', 'C_Form'],
 }
 const readVendorStyle = packagePath => {
   const filename = path.resolve(__dirname, '../node_modules', packagePath)

@@ -93,6 +93,10 @@ Components({
 
 `importStyle: true`（等价于 `'full'`）保持原有完整样式行为。只使用 C_Form/C_Table 基础字段、不使用内置富文本编辑器时，可设置 `importStyle: 'base'`，避免带入编辑器样式；其他组件会安全回退到标准样式入口。如需兼容旧项目的主入口导入，可显式设置 `importOnDemand: false`。
 
+每个 `C_*/style.css` 都是可独立消费的完整组件样式入口：如果组件内部组合了 `C_Icon`、`C_Captcha` 等其他公共组件，对应依赖样式会自动包含，无需使用侧重复导入，也不会依赖全量 `style.css` 兜底。
+
+`C_Menu` 会在鼠标进入或键盘聚焦叶子菜单时触发 `intent` 事件；宿主可将其绑定到路由预取函数，点击与 `select` 行为保持不变。
+
 也可以手动选择样式层级：
 
 ```typescript

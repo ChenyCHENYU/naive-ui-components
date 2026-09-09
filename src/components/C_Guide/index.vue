@@ -131,6 +131,10 @@
     activeDriver?.destroy()
     let currentStepIndex = 0
     let completed = false
+    const overlayOptions =
+      props.theme?.overlayOpacity === undefined
+        ? {}
+        : { overlayOpacity: props.theme.overlayOpacity }
 
     const driverObj = driver({
       popoverClass: buildPopoverClass(),
@@ -138,7 +142,7 @@
       showProgress: props.showProgress,
       allowClose: props.allowClose,
       allowKeyboardControl: props.keyboard,
-      overlayOpacity: props.theme?.overlayOpacity,
+      ...overlayOptions,
       doneBtnText: props.doneBtnText,
       nextBtnText: props.nextBtnText,
       prevBtnText: props.prevBtnText,

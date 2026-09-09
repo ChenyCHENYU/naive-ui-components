@@ -93,6 +93,10 @@ Components({
 
 `importStyle: true` (an alias of `'full'`) preserves the existing complete style behavior. When C_Form/C_Table only use base fields and no built-in rich-text editor, set `importStyle: 'base'` to avoid editor CSS; other components safely fall back to their standard style entry. Set `importOnDemand: false` only when a legacy project still requires the package root.
 
+Every `C_*/style.css` file is a self-contained component style entry. When a component composes public components such as `C_Icon` or `C_Captcha`, their required styles are included automatically, so consumers do not need duplicate imports or the global `style.css` fallback.
+
+`C_Menu` emits a non-mutating `intent` event when a leaf item is hovered or keyboard-focused. Hosts may connect it to route prefetching without changing the existing `select` behavior.
+
 The style tiers can also be imported explicitly:
 
 ```typescript

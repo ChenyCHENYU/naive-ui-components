@@ -27,6 +27,8 @@ export interface MenuProps {
 
 export interface MenuEmits {
   select: [key: string]
+  /** 鼠标或键盘聚焦叶子项时触发，可用于无副作用的路由预取。 */
+  intent: [key: string]
   'update:modelValue': [key: MenuValue]
   /** @deprecated Use update:modelValue. */
   'update:value': [key: MenuValue]

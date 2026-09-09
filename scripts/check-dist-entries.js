@@ -92,6 +92,28 @@ for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
   }
 }
 
+const componentStyleContracts = {
+  'C_Guide.css': ['.c-icon['],
+  'C_Login.css': [
+    '.c-icon[',
+    '.c-captcha-modern[',
+    '.c-qrcode[',
+    '.vue-puzzle-vcode',
+  ],
+}
+for (const [styleEntry, selectors] of Object.entries(
+  componentStyleContracts
+)) {
+  const css = fs.readFileSync(path.join(distDir, styleEntry), 'utf8')
+  const missingSelectors = selectors.filter(selector => !css.includes(selector))
+  if (missingSelectors.length > 0) {
+    console.error(
+      `❌ ${styleEntry} 缺少内部组件样式: ${missingSelectors.join(', ')}`
+    )
+    process.exit(1)
+  }
+}
+
 const mapCss = fs.readFileSync(path.join(distDir, 'C_Map.css'), 'utf8')
 const missingMapAssets = getRelativeCssAssets(mapCss)
   .map(asset => path.resolve(distDir, asset))
@@ -168,6 +190,7 @@ const captchaHtml = await renderToString(
 if (
   !captchaHtml.includes('<button') ||
   !captchaHtml.includes('aria-label=') ||
+  !captchaHtml.includes('🧩') ||
   captchaHtml.includes('vue3-puzzle-vcode')
 ) {
   console.error('❌ Captcha SSR/accessibility consumer smoke test failed')

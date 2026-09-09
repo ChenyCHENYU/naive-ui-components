@@ -39,13 +39,14 @@
     :dropdown-props="dropdownProps"
     :indent="indent"
     :root-indent="rootIndent"
+    :node-props="getNodeProps"
     @update:value="handleMenuClick"
     @update:expanded-keys="onExpandedKeysChange"
   />
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick } from 'vue'
+  import { ref, computed, watch, nextTick, type HTMLAttributes } from 'vue'
   import { type MenuOption, type MenuInst } from 'naive-ui'
   import { createMenuOptions, type MenuAdapterConfig } from '../_shared/public'
   import type { MenuEmits, MenuProps } from './types'
@@ -147,6 +148,19 @@
       emit('update:value', key)
     }
     emit('select', key)
+  }
+
+  /** 在点击前暴露鼠标/键盘导航意图，供宿主安全预取目标路由。 */
+  const getNodeProps = (option: MenuOption): HTMLAttributes => {
+    const notifyIntent = () => {
+      if (typeof option.key === 'string' && !option.children?.length) {
+        emit('intent', option.key)
+      }
+    }
+    return {
+      onPointerenter: notifyIntent,
+      onFocusin: notifyIntent,
+    }
   }
 
   const onExpandedKeysChange = (keys: string[]) => {

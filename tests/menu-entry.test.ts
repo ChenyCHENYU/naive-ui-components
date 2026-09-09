@@ -29,4 +29,17 @@ describe('C_Menu subpath entry', () => {
     expect(options[0]?.key).toBe('/dashboard')
     expect(options[0]?.label).toBe('Dashboard')
   })
+
+  test('菜单叶子节点暴露无副作用的导航意图事件', async () => {
+    const component = await Bun.file(
+      new URL('../src/components/C_Menu/index.vue', import.meta.url)
+    ).text()
+    const types = await Bun.file(
+      new URL('../src/components/C_Menu/types.ts', import.meta.url)
+    ).text()
+
+    expect(component).toContain(':node-props="getNodeProps"')
+    expect(component).toContain("emit('intent', option.key)")
+    expect(types).toContain('intent: [key: string]')
+  })
 })
