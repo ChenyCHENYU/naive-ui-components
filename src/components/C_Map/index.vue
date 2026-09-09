@@ -40,6 +40,7 @@
   import { NSpin } from 'naive-ui'
   import { DEFAULT_MAP_CONFIG } from './data'
   import { loadAMapApi } from './amapLoader'
+  import { loadLeafletApi } from './leafletLoader'
   import {
     getValidMapMarkers,
     isValidMapCoordinate,
@@ -234,7 +235,7 @@
     if (!mapContainer.value) return
     const version = beginInitialization()
     try {
-      const L = await import('leaflet')
+      const L = await loadLeafletApi()
       if (!isCurrentInitialization(version) || !mapContainer.value) return
       leafletApi = L
       const { url, options } = resolveTileConfig(props.tileConfig)

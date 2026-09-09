@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.11.8
+
+### Patch Changes
+
+- 修复 `C_Map` 在 Vite 深层按需加载、未整体预构建组件库时的 Leaflet CommonJS/ESM 互操作错误；组件同时兼容命名空间和 `default` 导出，并在 API 形态异常时返回明确错误。同步关闭 `C_VtableGantt` 在组件快速卸载或配置连续变化时的异步初始化竞态，避免向已经失效的容器创建实例。
+
 ## 0.11.7
 
 ### Patch Changes

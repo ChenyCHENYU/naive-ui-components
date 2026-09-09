@@ -16,11 +16,26 @@ import {
   getRelativeCssAssets,
   LEAFLET_IMAGE_FILES,
 } from '../scripts/leaflet-assets'
+import { resolveLeafletApi } from '../src/components/C_Map/leafletLoader'
 import type { AMapApi, AMapSecurityConfig } from '../src/components/C_Map/types'
 
 const root = path.resolve(import.meta.dir, '..')
 
 describe('C_Map coordinate and provider contracts', () => {
+  test('normalizes ESM namespaces and CommonJS default exports', () => {
+    const leaflet = {
+      map: () => undefined,
+      marker: () => undefined,
+      tileLayer: () => undefined,
+    }
+
+    expect(resolveLeafletApi(leaflet)).toBe(leaflet)
+    expect(resolveLeafletApi({ default: leaflet })).toBe(leaflet)
+    expect(() => resolveLeafletApi({ default: {} })).toThrow(
+      'Leaflet 模块加载失败'
+    )
+  })
+
   test('validates latitude/longitude and converts AMap coordinate order', () => {
     expect(isValidMapCoordinate([39.9042, 116.4074])).toBe(true)
     expect(isValidMapCoordinate([91, 116.4074])).toBe(false)
