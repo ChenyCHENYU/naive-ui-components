@@ -1,6 +1,6 @@
 # @robot-admin/naive-ui-components
 
-## 0.12.0
+## 0.12.1
 
 ### Minor Changes
 
