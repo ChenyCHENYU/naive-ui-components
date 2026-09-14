@@ -162,10 +162,8 @@
   // ==================== Composables ====================
   const containerRef = ref<HTMLDivElement>()
   const isDark = computed(() => props.theme === 'dark')
-  const { graph, initGraph, centerContent, zoomToFit } = useGraphBase(
-    containerRef,
-    isDark
-  )
+  const { graph, initGraph, centerContent, zoomToFit, scheduleZoomToFit } =
+    useGraphBase(containerRef, isDark)
   const { exportOptions, handleExport } = useGraphExport(graph, 'bpmn-diagram')
   const { bindInteractions } = useEdgeInteraction(graph, {
     portPositions,
@@ -235,7 +233,7 @@
       return cell
     })
     graph.value.resetCells(cells)
-    setTimeout(() => graph.value!.zoomToFit({ padding: 50, maxScale: 1 }), 200)
+    scheduleZoomToFit(200, 50)
   }
 
   const addElement = (type: string) => {

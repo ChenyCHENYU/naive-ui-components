@@ -87,7 +87,7 @@
 <script setup lang="ts">
   import {
     computed,
-    unref,
+    reactive,
     h,
     withDirectives,
     defineComponent,
@@ -99,9 +99,15 @@
     ActionItem,
     ActionDropdownItem,
     ActionBarConfig,
+    ActionButtonSize,
     TableActionsProps,
     TableActionsEmits,
   } from './types'
+  import {
+    ACTION_BAR_DEFAULT_CONFIG,
+    resolveActionPreset,
+    resolveActionState,
+  } from './presets'
 
   defineOptions({ name: 'C_ActionBar' })
 
@@ -114,19 +120,8 @@
 
   const emit = defineEmits<TableActionsEmits>()
 
-  const defaultConfig: Required<ActionBarConfig> = {
-    align: 'left',
-    size: 'medium',
-    gap: 8,
-    wrap: false,
-    showDivider: false,
-    dividerType: 'vertical',
-    compact: false,
-    inline: true,
-  }
-
   const finalConfig = computed<Required<ActionBarConfig>>(() => ({
-    ...defaultConfig,
+    ...ACTION_BAR_DEFAULT_CONFIG,
     ...props.config,
   }))
 
@@ -144,7 +139,7 @@
         return props.actions.filter(action => shouldShowAction(action))
       }
       return props.actions.filter(
-        action => action.group === 'left' && shouldShowAction(action)
+        action => action.group !== 'right' && shouldShowAction(action)
       )
     }
     return []
@@ -161,22 +156,30 @@
 
   const shouldShowAction = (action: ActionItem): boolean => {
     if (action.show === undefined) return true
-    return unref(action.show)
+    return resolveActionState(action.show) ?? true
   }
 
+  const runningActions = reactive(new Set<ActionItem>())
+
   const isActionDisabled = (action: ActionItem): boolean => {
-    return unref(action.disabled) || false
+    return resolveActionState(action.disabled) || runningActions.has(action)
   }
 
   const isActionLoading = (action: ActionItem): boolean => {
-    return unref(action.loading) || false
+    return resolveActionState(action.loading) || runningActions.has(action)
   }
 
   const handleActionClick = async (action: ActionItem) => {
     if (action.dropdown && action.dropdown.length > 0) return
+    if (isActionDisabled(action) || isActionLoading(action)) return
     emit('action-click', action)
-    if (action.onClick) {
+    if (!action.onClick) return
+
+    if (action.autoLoading !== false) runningActions.add(action)
+    try {
       await action.onClick()
+    } finally {
+      runningActions.delete(action)
     }
   }
 
@@ -201,13 +204,26 @@
     emits: ['click', 'dropdown-select'],
     setup(props, { emit }) {
       const action = computed(() => props.action)
+      const resolvedAction = computed(() => resolveActionPreset(action.value))
+      const buttonSize = computed(
+        () => resolvedAction.value.size || finalConfig.value.size
+      )
+      const iconSize = computed(() => {
+        const sizes: Record<ActionButtonSize, number> = {
+          tiny: 14,
+          small: 15,
+          medium: 16,
+          large: 18,
+        }
+        return sizes[buttonSize.value]
+      })
 
       const dropdownOptions = computed(() => {
-        if (!action.value.dropdown) return []
-        return action.value.dropdown
+        if (!resolvedAction.value.dropdown) return []
+        return resolvedAction.value.dropdown
           .filter(item => {
             if (item.show === undefined) return true
-            return unref(item.show)
+            return resolveActionState(item.show)
           })
           .map(item => ({
             key: item.key,
@@ -215,12 +231,12 @@
             icon: item.icon
               ? () => h(C_Icon, { name: item.icon, size: 14 })
               : undefined,
-            disabled: unref(item.disabled),
+            disabled: resolveActionState(item.disabled),
           }))
       })
 
       const handleDropdownSelect = (key: string) => {
-        const item = action.value.dropdown?.find(d => d.key === key)
+        const item = resolvedAction.value.dropdown?.find(d => d.key === key)
         if (item) {
           emit('dropdown-select', item)
         }
@@ -230,35 +246,40 @@
         const button = h(
           NButton,
           {
-            type: action.value.type || 'default',
-            size: action.value.size || finalConfig.value.size,
+            type: resolvedAction.value.type || 'default',
+            size: buttonSize.value,
             loading: isActionLoading(action.value),
             disabled: isActionDisabled(action.value),
             ...extraProps,
-            ...action.value.buttonProps,
+            ...resolvedAction.value.buttonProps,
           },
           {
-            default: () => action.value.label,
-            icon: action.value.icon
-              ? () => h(C_Icon, { name: action.value.icon, size: 16 })
+            default: () => resolvedAction.value.label,
+            icon: resolvedAction.value.icon
+              ? () =>
+                  h(C_Icon, {
+                    name: resolvedAction.value.icon,
+                    size: iconSize.value,
+                  })
               : undefined,
           }
         )
 
-        return action.value.directives && action.value.directives.length > 0
-          ? withDirectives(button, action.value.directives as any)
+        return resolvedAction.value.directives &&
+          resolvedAction.value.directives.length > 0
+          ? withDirectives(button, resolvedAction.value.directives as any)
           : button
       }
 
       const renderButton = () => {
         const vnode = createButtonVNode({ onClick: () => emit('click') })
-        if (action.value.tooltip) {
+        if (resolvedAction.value.tooltip) {
           return h(
             NTooltip,
             { placement: 'top' },
             {
               trigger: () => vnode,
-              default: () => action.value.tooltip,
+              default: () => resolvedAction.value.tooltip,
             }
           )
         }
@@ -280,7 +301,10 @@
       }
 
       return () => {
-        if (action.value.dropdown && action.value.dropdown.length > 0) {
+        if (
+          resolvedAction.value.dropdown &&
+          resolvedAction.value.dropdown.length > 0
+        ) {
           return renderDropdownButton()
         }
         return renderButton()

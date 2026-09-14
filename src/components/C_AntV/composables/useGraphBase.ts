@@ -76,15 +76,15 @@ export function useGraphBase(
 ) {
   const MAX_RETRY = 10
   let retryCount = 0
+  let retryTimer: ReturnType<typeof setTimeout> | undefined
+  let zoomToFitTimer: ReturnType<typeof setTimeout> | undefined
+  let disposed = false
 
   const graph: Ref<any> = ref(null)
   const loading = ref(false)
 
-  /**
-   * 初始化图表实例
-   */
-  const initGraph = async (options: any = {}) => {
-    await nextTick()
+  const initializeGraph = (options: any): void => {
+    if (disposed) return
     loading.value = true
 
     try {
@@ -102,7 +102,10 @@ export function useGraphBase(
       if (width === 0 || height === 0) {
         retryCount++
         if (retryCount < MAX_RETRY) {
-          setTimeout(() => initGraph(options), 100)
+          clearTimeout(retryTimer)
+          retryTimer = setTimeout(() => {
+            if (!disposed) void initGraph(options)
+          }, 100)
         }
         return
       }
@@ -125,6 +128,16 @@ export function useGraphBase(
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * 初始化图表实例
+   */
+  const initGraph = async (options: any = {}) => {
+    clearTimeout(retryTimer)
+    retryTimer = undefined
+    await nextTick()
+    initializeGraph(options)
   }
 
   /**
@@ -159,9 +172,14 @@ export function useGraphBase(
    * 销毁当前图表实例
    */
   function destroyGraph() {
+    clearTimeout(retryTimer)
+    clearTimeout(zoomToFitTimer)
+    retryTimer = undefined
+    zoomToFitTimer = undefined
     if (graph.value) {
-      graph.value.dispose()
+      const currentGraph = graph.value
       graph.value = null
+      currentGraph.dispose()
     }
   }
 
@@ -177,6 +195,21 @@ export function useGraphBase(
    */
   function zoomToFit() {
     graph.value?.zoomToFit({ padding: 20, maxScale: 1 })
+  }
+
+  /**
+   * 数据渲染完成后安全执行自适应；实例已替换或组件已卸载时自动取消。
+   */
+  function scheduleZoomToFit(delay = 200, padding = 20) {
+    clearTimeout(zoomToFitTimer)
+    const targetGraph = graph.value
+    if (!targetGraph) return
+
+    zoomToFitTimer = setTimeout(() => {
+      if (!disposed && graph.value === targetGraph) {
+        targetGraph.zoomToFit({ padding, maxScale: 1 })
+      }
+    }, delay)
   }
 
   /**
@@ -197,7 +230,10 @@ export function useGraphBase(
   }
 
   // 组件卸载时自动销毁图表
-  onUnmounted(destroyGraph)
+  onUnmounted(() => {
+    disposed = true
+    destroyGraph()
+  })
 
   return {
     graph,
@@ -206,6 +242,7 @@ export function useGraphBase(
     destroyGraph,
     centerContent,
     zoomToFit,
+    scheduleZoomToFit,
     zoom,
     resizeGraph,
     updateTheme,

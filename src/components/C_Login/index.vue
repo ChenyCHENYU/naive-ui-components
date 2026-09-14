@@ -168,6 +168,26 @@
       </NFormItem>
     </NForm>
 
+    <!-- ===== 人机验证拼图（仅密码登录模式） ===== -->
+    <div
+      v-if="feat.captchaVerify && activeTab === 'password'"
+      class="c-login__captcha-wrap"
+    >
+      <C_Captcha
+        ref="captchaRef"
+        theme="dark"
+        :provider="props.captchaProvider"
+        :challenge-url="props.captchaChallengeUrl"
+        :verifier="props.captchaVerifier"
+        :require-server-verification="props.requireCaptchaServerVerification"
+        :verification-timeout="props.captchaVerificationTimeout"
+        @success="handleCaptchaSuccess"
+        @fail="handleCaptchaFail"
+        @change="handleCaptchaChange"
+        @visible-change="emit('captcha-visible-change', $event)"
+      />
+    </div>
+
     <!-- ===== 登录按钮（密码和验证码模式） ===== -->
     <NButton
       v-if="activeTab === 'password' || activeTab === 'captcha'"
@@ -190,24 +210,6 @@
           : t('cl_login_btn', '登 录')
       }}
     </NButton>
-
-    <!-- ===== 人机验证拼图（仅密码登录模式） ===== -->
-    <div
-      v-if="feat.captchaVerify && activeTab === 'password'"
-      class="c-login__captcha-wrap"
-    >
-      <C_Captcha
-        ref="captchaRef"
-        trigger-text=""
-        theme="dark"
-        :verifier="props.captchaVerifier"
-        :require-server-verification="props.requireCaptchaServerVerification"
-        :verification-timeout="props.captchaVerificationTimeout"
-        @success="handleCaptchaSuccess"
-        @fail="handleCaptchaFail"
-        @change="handleCaptchaChange"
-      />
-    </div>
 
     <!-- ===== 返回按钮（验证码子视图） ===== -->
     <NButton
@@ -539,19 +541,13 @@
     storageKey: 'c_login_remember',
     defaultUsername: '',
     defaultPassword: '',
+    captchaProvider: 'puzzle-captcha',
     requireCaptchaServerVerification: false,
     captchaVerificationTimeout: 10_000,
   })
 
   const emit = defineEmits<{
-    (
-      e: 'submit',
-      data: PasswordFormData & {
-        captchaToken?: string
-        captchaTimestamp?: number
-        captchaVerifiedBy?: CaptchaSuccessPayload['verifiedBy']
-      }
-    ): void
+    (e: 'submit', data: PasswordFormData): void
     (e: 'captcha-submit', data: CaptchaFormData): void
     (e: 'send-code', account: string): void
     (e: 'social-login', provider: string): void
@@ -559,6 +555,7 @@
     (e: 'qrcode-refresh'): void
     (e: 'register-submit', data: RegisterFormData): void
     (e: 'register-send-code', phone: string): void
+    (e: 'captcha-visible-change', visible: boolean): void
   }>()
 
   // ===== 合并 Props（填充默认值） =====
@@ -634,6 +631,7 @@
         ? {
             captchaToken: captchaToken.value,
             captchaTimestamp: captchaTimestamp.value,
+            captchaType: captchaType.value,
             captchaVerifiedBy: captchaVerifiedBy.value,
           }
         : {}),
@@ -662,12 +660,14 @@
   const captchaValid = ref(false)
   const captchaToken = ref('')
   const captchaTimestamp = ref(0)
+  const captchaType = ref<CaptchaSuccessPayload['type']>('puzzle-captcha')
   const captchaVerifiedBy = ref<CaptchaSuccessPayload['verifiedBy']>()
 
   const handleCaptchaSuccess = (data: CaptchaSuccessPayload) => {
     captchaValid.value = true
     captchaToken.value = data.token
     captchaTimestamp.value = data.timestamp
+    captchaType.value = data.type
     captchaVerifiedBy.value = data.verifiedBy
   }
   const handleCaptchaFail = () => {
@@ -678,6 +678,7 @@
     if (!valid) {
       captchaToken.value = ''
       captchaTimestamp.value = 0
+      captchaType.value = 'puzzle-captcha'
       captchaVerifiedBy.value = undefined
     }
   }
@@ -686,6 +687,7 @@
     captchaValid.value = false
     captchaToken.value = ''
     captchaTimestamp.value = 0
+    captchaType.value = 'puzzle-captcha'
     captchaVerifiedBy.value = undefined
     captchaRef.value?.reset()
   }

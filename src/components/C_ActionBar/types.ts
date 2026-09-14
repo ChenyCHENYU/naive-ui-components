@@ -10,44 +10,40 @@
 import type { Ref, Directive } from 'vue'
 import type { ButtonProps } from 'naive-ui'
 
+export type ActionState = boolean | Ref<boolean> | (() => boolean)
+
 export type ActionButtonType =
-  | 'default'
-  | 'primary'
-  | 'info'
-  | 'success'
-  | 'warning'
-  | 'error'
+  'default' | 'primary' | 'info' | 'success' | 'warning' | 'error'
 
 export type ActionButtonSize = 'tiny' | 'small' | 'medium' | 'large'
 
 export type ActionGroupAlign =
-  | 'left'
-  | 'center'
-  | 'right'
-  | 'space-between'
-  | 'space-around'
+  'left' | 'center' | 'right' | 'space-between' | 'space-around'
 
 export interface ActionDropdownItem {
   key: string
   label: string
   icon?: string
-  disabled?: boolean | Ref<boolean>
-  show?: boolean | Ref<boolean>
+  disabled?: ActionState
+  show?: ActionState
   onClick?: () => void | Promise<void>
 }
 
 export interface ActionItem {
   key?: string
-  label: string
+  /** 内置语义 key 可省略 label、icon 与 type，并自动继承一致的视觉预设。 */
+  label?: string
   icon?: string
   type?: ActionButtonType
   size?: ActionButtonSize
-  loading?: boolean | Ref<boolean>
-  disabled?: boolean | Ref<boolean>
-  show?: boolean | Ref<boolean>
+  loading?: ActionState
+  disabled?: ActionState
+  show?: ActionState
   tooltip?: string
   group?: 'left' | 'right'
   dropdown?: ActionDropdownItem[]
+  /** Promise 操作默认自动显示 loading 并阻止重复触发。 */
+  autoLoading?: boolean
   onClick?: () => void | Promise<void>
   buttonProps?: Partial<ButtonProps>
   directives?: Array<

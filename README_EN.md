@@ -4,7 +4,7 @@
 
 **Enterprise-grade Vue 3 component library built on Naive UI**
 
-51 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
+53 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
 
 [![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 [![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
@@ -135,6 +135,40 @@ const { model, formRef, bindings } = useCForm({
 })
 ```
 
+For create/edit flows, `C_FormModal` consumes a structural headless `editor` directly. Fields, validation, and layout remain data-driven by `C_Form`, while pages no longer own duplicate modal, draft, or loading state:
+
+```vue
+<script setup lang="ts">
+  import { C_FormModal } from '@robot-admin/naive-ui-components/C_FormModal'
+  import type { FormModalEditor } from '@robot-admin/naive-ui-components/C_FormModal'
+  import {
+    defineFormConfig,
+    defineFormOptions,
+  } from '@robot-admin/naive-ui-components/C_Form'
+
+  interface UserForm {
+    name: string
+  }
+
+  defineProps<{ editor: FormModalEditor<UserForm> }>()
+
+  const fields = defineFormOptions<UserForm>([
+    { type: 'input', prop: 'name', label: 'Name', required: true },
+  ])
+  const formConfig = defineFormConfig<UserForm>({ labelPlacement: 'top' })
+</script>
+
+<template>
+  <C_FormModal
+    :editor="editor"
+    :options="fields"
+    :config="formConfig"
+  />
+</template>
+```
+
+The editor contract is structural: the component package does not depend on a request library. Any controller exposing `visible/mode/model/title/loading/setModel/close/submit` can drive it. The default uses a responsive 620px width, `small` form controls, and a right-aligned icon-based `C_ActionBar` for a compact admin workflow. Close button, mask close, and Escape remain enabled by default and can be disabled for high-risk forms.
+
 For remote tables, `useTableQuery` owns cancellation, latest-request-wins behavior, pagination, and loading. Destructure its `bindings` and use `<C_Table v-bind="bindings" />`:
 
 ```ts
@@ -156,6 +190,65 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
     fetchUsers({ page, pageSize, ...query }, signal),
 })
 ```
+
+`C_Tabs` is the data-driven page-scenario switcher for the global `C_*` system. It defaults to the compact
+`small` size, lazy pane display, and supports controlled or uncontrolled state. Set `tabsOnly` for filters or
+view switching; pane content is not executed, avoiding hidden render work and side effects. Most pages only maintain an item array; complex
+content can opt into `render`, `pane`, or `pane-{key}` slots:
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import { C_Tabs, defineTabs } from '@robot-admin/naive-ui-components/C_Tabs'
+
+  const activeView = ref('basic')
+  const views = defineTabs([
+    { key: 'basic', label: 'Basic table', icon: 'mdi:table' },
+    { key: 'tree', label: 'Tree table', icon: 'mdi:file-tree-outline' },
+  ])
+</script>
+
+<template>
+  <C_Tabs
+    v-model="activeView"
+    :items="views"
+    type="segment"
+    tabs-only
+  />
+</template>
+```
+
+| API                           | Description                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `items`                       | Requires `key/label`; supports icons, badges, disabled/closable state, and `renderTab/render` |
+| `modelValue` / `defaultValue` | Controlled and uncontrolled state                                                             |
+| `type` / `size` / `placement` | `line/card/bar/segment`, common sizes and placements; defaults to `line/small/top`            |
+| `tabsOnly`                    | Renders navigation only for table scenarios and query switches                                |
+| `beforeChange`                | Sync/async guard; `false` or an error keeps the current tab                                   |
+| Slots                         | `tab`, `pane`, and `pane-{key}`, each with item and active state                              |
+| Events                        | `change`, `close`, `add`, and standard `update:modelValue`                                    |
+
+Use `C_ActionBar` as the single page/table action model instead of maintaining another toolbar abstraction. It defaults to compact `tiny` buttons with icons and a `6px` gap. Semantic keys such as `add`, `refresh`, `export`, `columns`, and `settings` supply consistent labels, icons, and button types; custom actions receive a neutral icon when none is provided. `show`, `disabled`, and `loading` accept booleans, refs, or getters; async handlers are guarded against duplicate clicks and receive automatic loading feedback. `C_Table` consumes the same actions through `toolbar.actions` / `toolbar.rightActions` while preserving its existing toolbar slots. Override `actionBar.size` or an individual action's `size` when a larger control is required:
+
+```ts
+import { defineActions } from '@robot-admin/naive-ui-components/C_ActionBar'
+import { defineTableConfig } from '@robot-admin/naive-ui-components/C_Table'
+
+const actions = defineActions([
+  { key: 'add', onClick: openCreate },
+  { key: 'refresh', disabled: () => loading.value, onClick: refresh },
+  { key: 'settings', group: 'right', onClick: openSettings },
+])
+
+const config = defineTableConfig({
+  toolbar: {
+    actions,
+    actionBar: { size: 'small' }, // optional; tiny by default
+  },
+})
+```
+
+`C_Table` remains owned by its current Naive UI table implementation. A MachTable mode should render MachTable with its native columns, events, and instance API as a complete engine boundary rather than translating between the two engines. They only share engine-neutral page actions such as `C_ActionBar`.
 
 ### Recommended C_Map setup
 
@@ -195,7 +288,29 @@ The exposed instance provides `getMap()`, `refresh()`, and `fitToMarkers()` for 
 
 ### C_Captcha Server Verification
 
+The captcha trigger uses package-owned SVG status icons and does not depend on platform emoji or an online icon service. Idle, verifying, success, and error states keep consistent sizing and semantic colors. `C_Login` places the verification action before submit, keeps the action label explicit, and forwards `captcha-visible-change` so hosts can pause expensive background animation during puzzle interaction. Brand styling can be adjusted from the host with `--cc-height`, `--cc-radius`, `--cc-color`, `--cc-icon-color`, `--cc-bg`, `--cc-bg-hover`, `--cc-border`, `--cc-border-hover`, and `--cc-focus`, without reaching into internal DOM.
+
 The default local mode only proves that the browser-side puzzle interaction completed. It is not a security credential for login, payment, or other sensitive actions. In production, provide a `verifier` and enable `require-server-verification`. Timeout, cancellation, and stale attempts are handled by the component, and `success` is emitted only after approval by an independent server/provider challenge. Request `token` and `timestamp` values are client-generated telemetry and must never be trusted as proof by the server.
+
+For a permanently free, network-independent option, explicitly select the open-source MIT ALTCHA self-hosted provider. It is lazy-loaded only when selected, so the default puzzle path keeps its startup cost. ALTCHA mode always fails closed through server verification: the application server must issue fresh single-use challenges, verify the PoW payload, prevent replay, and rate-limit attempts while retaining all secrets server-side.
+
+```vue
+<C_Captcha
+  provider="altcha"
+  challenge-url="/api/auth/captcha/challenge"
+  :verifier="
+    async ({ token, signal }) => {
+      const response = await fetch('/api/auth/captcha/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ payload: token }),
+        signal,
+      })
+      return response.json() // { valid: boolean, token: 'single-use-server-token' }
+    }
+  "
+/>
+```
 
 ```vue
 <C_Captcha
@@ -218,36 +333,37 @@ The default local mode only proves that the browser-side puzzle interaction comp
 />
 ```
 
-With `require-server-verification`, a successful response must include a server token. Server tokens should be short-lived, single-use, and bound to the current session or operation. `C_Login` forwards the same policy through `captchaVerifier`, `requireCaptchaServerVerification`, and `captchaVerificationTimeout`, and its `submit` payload identifies the result through `captchaVerifiedBy`. See [SECURITY.md](./SECURITY.md) for trust-boundary details.
+With `require-server-verification`, a successful response must include a server token. Server tokens should be short-lived, single-use, and bound to the current session or operation. `C_Login` forwards the same policy through `captchaProvider`, `captchaChallengeUrl`, `captchaVerifier`, `requireCaptchaServerVerification`, and `captchaVerificationTimeout`; its `submit` payload identifies the result through `captchaType` and `captchaVerifiedBy`. See [SECURITY.md](./SECURITY.md) for trust-boundary details.
 
-### 📋 Component List (51 Components)
+### 📋 Component List (53 Components)
 
 > 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).
 
 #### Basic Components
 
-| Component        | Description              | External Deps               |
-| ---------------- | ------------------------ | --------------------------- |
-| `C_Icon`         | Iconify icon wrapper     | `@iconify/vue`              |
-| `C_Code`         | Code highlighting        | `highlight.js`              |
-| `C_Barcode`      | Barcode generator        | `@chenfengyuan/vue-barcode` |
-| `C_Captcha`      | Puzzle captcha           | `vue3-puzzle-vcode`         |
-| `C_Cascade`      | Cascade panel selector   | -                           |
-| `C_Guide`        | User guide / tour        | `driver.js`                 |
-| `C_Progress`     | Enhanced progress bar    | -                           |
-| `C_Steps`        | Step bar                 | -                           |
-| `C_ActionBar`    | Action button bar        | -                           |
-| `C_Theme`        | Theme switcher           | -                           |
-| `C_Language`     | Language switcher        | -                           |
-| `C_Date`         | Enhanced date picker     | -                           |
-| `C_City`         | Province / city selector | -                           |
-| `C_Breadcrumb`   | Breadcrumb navigation    | -                           |
-| `C_Menu`         | Navigation menu          | -                           |
-| `C_TagsView`     | Tab-based navigation     | -                           |
-| `C_GlobalSearch` | Global search panel      | -                           |
-| `C_AvatarGroup`  | Avatar group display     | -                           |
-| `C_OrgChart`     | Organization chart       | -                           |
-| `C_Skeleton`     | Skeleton placeholder     | -                           |
+| Component        | Description               | External Deps                 |
+| ---------------- | ------------------------- | ----------------------------- |
+| `C_Icon`         | Iconify icon wrapper      | `@iconify/vue`                |
+| `C_Code`         | Code highlighting         | `highlight.js`                |
+| `C_Barcode`      | Barcode generator         | `@chenfengyuan/vue-barcode`   |
+| `C_Captcha`      | Puzzle / ALTCHA captcha   | `vue3-puzzle-vcode`, `altcha` |
+| `C_Cascade`      | Cascade panel selector    | -                             |
+| `C_Guide`        | User guide / tour         | `driver.js`                   |
+| `C_Progress`     | Enhanced progress bar     | -                             |
+| `C_Steps`        | Step bar                  | -                             |
+| `C_ActionBar`    | Action button bar         | -                             |
+| `C_Theme`        | Theme switcher            | -                             |
+| `C_Language`     | Language switcher         | -                             |
+| `C_Date`         | Enhanced date picker      | -                             |
+| `C_City`         | Province / city selector  | -                             |
+| `C_Breadcrumb`   | Breadcrumb navigation     | -                             |
+| `C_Menu`         | Navigation menu           | -                             |
+| `C_Tabs`         | Data-driven scenario tabs | -                             |
+| `C_TagsView`     | Tab-based navigation      | -                             |
+| `C_GlobalSearch` | Global search panel       | -                             |
+| `C_AvatarGroup`  | Avatar group display      | -                             |
+| `C_OrgChart`     | Organization chart        | -                             |
+| `C_Skeleton`     | Skeleton placeholder      | -                             |
 
 #### Content & Editor Components
 
@@ -280,6 +396,7 @@ With `require-server-verification`, a successful response must include a server 
 | Component         | Description                                       | External Deps        |
 | ----------------- | ------------------------------------------------- | -------------------- |
 | `C_Form`          | Dynamic form engine (Grid/Tabs/Steps/Card layout) | -                    |
+| `C_FormModal`     | Data-driven create/edit form modal                | -                    |
 | `C_FormSearch`    | Search form                                       | -                    |
 | `C_CollapsePanel` | Collapse panel                                    | -                    |
 | `C_SplitPane`     | Split pane                                        | -                    |
@@ -321,7 +438,7 @@ Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`
 
 ```
 bun run build
-  ├── 1. tsdown          → Multi-entry bundling (51 components ESM/CJS/DTS)
+  ├── 1. tsdown          → Multi-entry bundling (53 components ESM/CJS/DTS)
   ├── 2. sass CLI        → Compile the shared-variable entry → global-scss.css
   ├── 3. merge-css.js    → Merge Vue-compiled SFC CSS + global variables → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
@@ -331,7 +448,7 @@ bun run build
 
 #### Key Technical Details
 
-- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 51 independent entries compiled in parallel
+- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 53 independent entries compiled in parallel
 - **SCSS processing**: Custom `scssTransformPlugin` compiles SFC SCSS within the Rolldown pipeline; standalone Sass CLI only compiles the shared-variable entry
 - **CSS merging**: Post-build merges Vue scoped-compiled per-chunk CSS with shared variables into a single `style.css`, avoiding duplicate styles and leaked raw `:deep()` selectors
 - **Type exports**: Unified `export *` barrel pattern with auto-generated `.d.ts`
@@ -346,7 +463,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # Main entry
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (51 components)
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (53 components)
 ├── C_Form.base.css / C_Form.full.css      # Base/full style tiers
 ├── C_Table.base.css / C_Table.full.css    # Base/full style tiers
 ├── style.css                              # Merged full styles

@@ -8,6 +8,7 @@ export type {
   CaptchaEmits,
   CaptchaInstance,
   CaptchaProof,
+  CaptchaProvider,
   CaptchaProps,
   CaptchaSuccessPayload,
   CaptchaVerificationRequest,

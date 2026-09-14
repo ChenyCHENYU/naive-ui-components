@@ -116,9 +116,19 @@
   const resetMapInstances = (): void => {
     clearLeafletMarkers()
     clearAMapMarkers()
-    leafletMap?.remove()
-    amapMap?.destroy()
+    const currentLeafletMap = leafletMap
     leafletMap = null
+    // Leaflet 1.9 的缩放兜底定时器不会随 remove() 取消。先终止其内部
+    // transition 状态，确保容器销毁后的迟到回调直接返回。
+    if (currentLeafletMap) {
+      const animatedMap = currentLeafletMap as LeafletMap & {
+        _animatingZoom?: boolean
+      }
+      animatedMap._animatingZoom = false
+    }
+    currentLeafletMap?.stop()
+    currentLeafletMap?.remove()
+    amapMap?.destroy()
     amapMap = null
     mapContainer.value?.replaceChildren()
   }

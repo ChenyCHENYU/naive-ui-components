@@ -13,17 +13,45 @@ describe('keyboard and status accessibility contracts', () => {
     expect(source).toContain(':aria-busy="verifying"')
     expect(source).toContain(':aria-label="statusText"')
     expect(source).toContain('aria-live="polite"')
-    expect(source).toContain('<span v-else>🧩</span>')
+    expect(source).toContain('<C_Icon')
+    expect(source).toContain('type="svg"')
+    expect(source).not.toContain('🧩')
+    expect(source).not.toContain('⚠️')
     expect(source).toContain("triggerText ?? t('captcha.trigger')")
+    expect(source).toContain("emit('visible-change', active)")
+  })
+
+  test('altcha remains opt-in, lazy, and server-verified', () => {
+    const source = read('src/components/C_Captcha/index.vue')
+    const types = read('src/components/C_Captcha/types.ts')
+
+    expect(source).toContain("provider: 'puzzle-captcha'")
+    expect(source).toContain("import('altcha')")
+    expect(source).toContain("import('altcha/i18n/zh-cn')")
+    expect(source).toContain("type: 'altcha'")
+    expect(source).toContain('await verifyProof(')
+    expect(source).toContain(
+      'ALTCHA provider requires a server-owned challengeUrl'
+    )
+    expect(types).toContain(
+      "export type CaptchaProvider = 'puzzle-captcha' | 'altcha'"
+    )
+  })
+
+  test('login places the explicit captcha action before submit', () => {
+    const source = read('src/components/C_Login/index.vue')
+    expect(source.indexOf('class="c-login__captcha-wrap"')).toBeLessThan(
+      source.indexOf('class="c-login__submit-btn"')
+    )
+    expect(source).not.toContain('trigger-text=""')
+    expect(source).toContain("emit('captcha-visible-change', $event)")
   })
 
   test('guide preserves the driver default when overlay opacity is omitted', () => {
     const source = read('src/components/C_Guide/index.vue')
     expect(source).toContain('props.theme?.overlayOpacity === undefined')
     expect(source).toContain('...overlayOptions')
-    expect(source).not.toContain(
-      'overlayOpacity: props.theme?.overlayOpacity'
-    )
+    expect(source).not.toContain('overlayOpacity: props.theme?.overlayOpacity')
   })
 
   test('notification and bookmark triggers use native buttons', () => {

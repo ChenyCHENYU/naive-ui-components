@@ -19,6 +19,7 @@ import type { CrossPageSelectionConfig } from './useCrossPageSelection'
 import type { ExportConfig } from './useTableExport'
 import type { FormatterConfig } from './useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../../config'
+import type { ActionBarConfig, ActionItem } from '../../C_ActionBar/types'
 
 /* ================= CRUD 绑定类型 ================= */
 
@@ -153,6 +154,12 @@ export interface ToolbarConfig {
   show?: boolean
   /** 是否启用列设置 */
   columnSettings?: boolean
+  /** 左侧业务动作，统一交给 C_ActionBar 渲染。 */
+  actions?: ActionItem[]
+  /** 右侧业务动作，适合左侧存在标签页或查询条件的场景。 */
+  rightActions?: ActionItem[]
+  /** 透传给 C_ActionBar 的布局与尺寸配置。 */
+  actionBar?: ActionBarConfig
 }
 
 export interface DisplayConfig {
@@ -281,6 +288,9 @@ export interface ResolvedConfig {
   columnWidth: number
   showToolbar: boolean
   enableColumnSettings: boolean
+  toolbarActions: ActionItem[]
+  toolbarRightActions: ActionItem[]
+  toolbarActionBarConfig: ActionBarConfig
   /** 虚拟滚动 */
   virtualScroll: boolean
   virtualItemHeight: number
@@ -519,6 +529,9 @@ function resolveDisplay(display: DisplayConfig | undefined) {
 const resolveToolbar = (toolbar: ToolbarConfig | undefined) => ({
   showToolbar: toolbar?.show !== false,
   enableColumnSettings: toolbar?.columnSettings !== false,
+  toolbarActions: toolbar?.actions ?? [],
+  toolbarRightActions: toolbar?.rightActions ?? [],
+  toolbarActionBarConfig: toolbar?.actionBar ?? {},
 })
 
 const resolveVirtualScroll = (

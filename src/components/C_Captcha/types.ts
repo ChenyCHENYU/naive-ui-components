@@ -5,8 +5,11 @@ export interface CaptchaProof {
   token: string
   /** Client clock value only; servers must never use it as freshness proof. */
   timestamp: number
-  type: 'puzzle-captcha'
+  type: CaptchaProvider
 }
+
+/** Built-in challenge renderers. ALTCHA requires application-server verification. */
+export type CaptchaProvider = 'puzzle-captcha' | 'altcha'
 
 export interface CaptchaVerificationRequest extends CaptchaProof {
   /** Cancels superseded, reset, unmounted, or timed-out verification. */
@@ -32,6 +35,10 @@ export interface CaptchaSuccessPayload extends CaptchaProof {
 }
 
 export interface CaptchaProps {
+  /** Challenge renderer. The default puzzle mode remains backward compatible. */
+  provider?: CaptchaProvider
+  /** Same-origin endpoint that issues a fresh ALTCHA challenge. */
+  challengeUrl?: string
   triggerText?: string
   images?: string[]
   disabled?: boolean
@@ -55,6 +62,7 @@ export interface CaptchaEmits {
   (event: 'verify-error', error: unknown): void
   (event: 'load-error', error: unknown): void
   (event: 'change', valid: boolean): void
+  (event: 'visible-change', visible: boolean): void
   (event: 'reset'): void
 }
 

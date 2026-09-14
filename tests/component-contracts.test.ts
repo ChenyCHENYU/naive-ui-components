@@ -18,8 +18,32 @@ import type {
   TimeModelValue,
   TimeProps,
 } from '../src/components/C_Time/types'
+import {
+  ACTION_BAR_DEFAULT_CONFIG,
+  DEFAULT_ACTION_ICON,
+  defineActions,
+  resolveActionPreset,
+  resolveActionState,
+} from '../src/components/C_ActionBar/presets'
+import { defineTabs } from '../src/components/C_Tabs/data'
 
 describe('shared component contracts', () => {
+  test('C_Tabs keeps data definitions flat and rejects ambiguous keys', () => {
+    const tabs = defineTabs([
+      { key: 'base', label: '基础表格' },
+      { key: 'tree', label: '树形表格', badge: 3 },
+    ])
+
+    expect(tabs.map(item => item.key)).toEqual(['base', 'tree'])
+    expect(() =>
+      defineTabs([
+        { key: 'same', label: 'A' },
+        { key: 'same', label: 'B' },
+      ])
+    ).toThrow('重复 key')
+    expect(() => defineTabs([{ key: '', label: '空键' }])).toThrow('不能为空')
+  })
+
   test('feedback works without Naive providers and injected adapters take precedence', async () => {
     const notifications: string[] = []
     let translated = ''
@@ -51,7 +75,10 @@ describe('shared component contracts', () => {
         setup() {
           const feedback = useComponentFeedback()
           feedback.error('non-fatal')
-          confirmed = feedback.confirm({ title: 'Confirm', content: 'Proceed?' })
+          confirmed = feedback.confirm({
+            title: 'Confirm',
+            content: 'Proceed?',
+          })
           return () => h('div')
         },
       })
@@ -59,6 +86,41 @@ describe('shared component contracts', () => {
 
     await renderToString(app)
     expect(await confirmed).toBe(false)
+  })
+
+  test('C_ActionBar resolves semantic actions without duplicating labels and icons', () => {
+    const actions = defineActions([
+      { key: 'add', onClick: () => undefined },
+      { key: 'refresh', disabled: () => true },
+    ])
+
+    expect(actions[1]?.disabled?.()).toBe(true)
+    expect(resolveActionPreset({ key: 'add' })).toMatchObject({
+      label: '新增',
+      icon: 'mdi:plus',
+      type: 'primary',
+    })
+    expect(resolveActionPreset({ key: 'add', label: '创建订单' }).label).toBe(
+      '创建订单'
+    )
+    expect(resolveActionPreset({ key: 'save' })).toMatchObject({
+      label: '保存',
+      icon: 'mdi:content-save-outline',
+      type: 'primary',
+    })
+    expect(resolveActionPreset({ key: 'cancel' })).toMatchObject({
+      label: '取消',
+      icon: 'mdi:close',
+    })
+    expect(resolveActionPreset({ key: 'approve', label: '审批' }).icon).toBe(
+      DEFAULT_ACTION_ICON
+    )
+    expect(ACTION_BAR_DEFAULT_CONFIG).toMatchObject({
+      size: 'tiny',
+      compact: true,
+      gap: 6,
+    })
+    expect(resolveActionState(() => true)).toBe(true)
   })
 })
 

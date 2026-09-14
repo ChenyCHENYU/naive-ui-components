@@ -12,7 +12,6 @@
  * ```vue
  * <C_TagsView
  *   :label-formatter="$t"
- *   @select="router.push"
  * />
  * ```
  *
@@ -204,7 +203,7 @@
 
   const navigateToTag = (tag: TagItem) => {
     if (tag.path !== route.path) {
-      router.push(tag.path)
+      void router.push(tag.path).catch(() => undefined)
     }
     scrollToTag(tag.path)
   }
@@ -227,7 +226,7 @@
         fallbackPath = remaining[remaining.length - 1]?.path || props.homePath
       }
 
-      router.push(fallbackPath)
+      void router.push(fallbackPath).catch(() => undefined)
       emit('close', fallbackPath)
     }
   }
@@ -298,7 +297,7 @@
         break
       case 'closeAll':
         tags.removeAllTags()
-        router.push(props.homePath)
+        void router.push(props.homePath).catch(() => undefined)
         emit('closeAll')
         break
     }

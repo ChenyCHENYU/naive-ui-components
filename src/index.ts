@@ -50,6 +50,7 @@ import {
   FORM_GLOBAL_CONFIG_KEY,
   type FormConfig,
 } from './components/C_Form'
+import { C_FormModal } from './components/C_FormModal'
 import {
   C_Table,
   TABLE_GLOBAL_CONFIG_KEY,
@@ -65,6 +66,7 @@ import { C_Chat } from './components/C_Chat'
 import { C_ContextMenu } from './components/C_ContextMenu'
 import { C_Login } from './components/C_Login'
 import { C_Timeline } from './components/C_Timeline'
+import { C_Tabs } from './components/C_Tabs'
 import { C_Transfer } from './components/C_Transfer'
 import { C_Skeleton } from './components/C_Skeleton'
 import { C_OrgChart } from './components/C_OrgChart'
@@ -120,6 +122,7 @@ const components: Component[] = [
   C_FilePreview,
   C_WorkFlow,
   C_Form,
+  C_FormModal,
   C_Table,
   C_GlobalSearch,
   C_Menu,
@@ -131,6 +134,7 @@ const components: Component[] = [
   C_ContextMenu,
   C_Login,
   C_Timeline,
+  C_Tabs,
   C_Transfer,
   C_Skeleton,
   C_OrgChart,
@@ -174,6 +178,7 @@ export * from './components/C_VideoPlayer'
 export * from './components/C_FilePreview'
 export * from './components/C_WorkFlow'
 export * from './components/C_Form'
+export * from './components/C_FormModal'
 export * from './components/C_Table'
 export * from './components/C_GlobalSearch'
 export * from './components/C_Menu'
@@ -185,6 +190,7 @@ export * from './components/C_Chat'
 export * from './components/C_ContextMenu'
 export * from './components/C_Login'
 export * from './components/C_Timeline'
+export * from './components/C_Tabs'
 export * from './components/C_Transfer'
 export * from './components/C_Skeleton'
 export * from './components/C_OrgChart'

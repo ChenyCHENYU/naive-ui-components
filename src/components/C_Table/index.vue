@@ -30,9 +30,24 @@
     >
       <div class="toolbar-left">
         <slot name="toolbar-left" />
+        <C_ActionBar
+          v-if="resolved.toolbarActions.length"
+          :actions="resolved.toolbarActions"
+          :config="{
+            ...resolved.toolbarActionBarConfig,
+          }"
+        />
       </div>
       <div class="toolbar-right">
         <slot name="toolbar-right" />
+        <C_ActionBar
+          v-if="resolved.toolbarRightActions.length"
+          :actions="resolved.toolbarRightActions"
+          :config="{
+            align: 'right',
+            ...resolved.toolbarActionBarConfig,
+          }"
+        />
         <C_Icon
           v-if="resolved.exportConfig"
           name="mdi:download"
@@ -273,6 +288,7 @@
   import { generateFormOptions } from './data'
   import ColumnSettings from './components/ColumnSettings/index.vue'
   import C_Icon from '../C_Icon/index.vue'
+  import C_ActionBar from '../C_ActionBar/index.vue'
   import C_Form from '../C_Form/index.vue'
   import { cloneData } from '../../utils/data'
   import { useComponentFeedback, useComponentLocale } from '../../config'

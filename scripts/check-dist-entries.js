@@ -93,6 +93,7 @@ for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
 }
 
 const componentStyleContracts = {
+  'C_Captcha.css': ['.c-icon['],
   'C_Guide.css': ['.c-icon['],
   'C_Login.css': [
     '.c-icon[',
@@ -190,7 +191,9 @@ const captchaHtml = await renderToString(
 if (
   !captchaHtml.includes('<button') ||
   !captchaHtml.includes('aria-label=') ||
-  !captchaHtml.includes('🧩') ||
+  !captchaHtml.includes('<svg') ||
+  !captchaHtml.includes('captcha-default') ||
+  captchaHtml.includes('🧩') ||
   captchaHtml.includes('vue3-puzzle-vcode')
 ) {
   console.error('❌ Captcha SSR/accessibility consumer smoke test failed')

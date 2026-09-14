@@ -2,7 +2,12 @@
  * @Description: C_Login 通用登录组件 - 类型定义
  */
 
-import type { CaptchaVerifier } from '../C_Captcha/types'
+import type {
+  CaptchaProof,
+  CaptchaProvider,
+  CaptchaSuccessPayload,
+  CaptchaVerifier,
+} from '../C_Captcha/types'
 
 // ================= 功能开关 =================
 export interface LoginFeatures {
@@ -36,6 +41,10 @@ export interface SocialProvider {
 export interface PasswordFormData {
   username: string
   password: string
+  captchaToken?: string
+  captchaTimestamp?: number
+  captchaType?: CaptchaProof['type']
+  captchaVerifiedBy?: CaptchaSuccessPayload['verifiedBy']
 }
 
 export interface CaptchaFormData {
@@ -74,6 +83,10 @@ export interface LoginProps {
   defaultPassword?: string
   /** 人机验证的应用服务端校验适配器 */
   captchaVerifier?: CaptchaVerifier
+  /** 人机验证提供方；ALTCHA 模式必须同时配置挑战地址和服务端校验器 */
+  captchaProvider?: CaptchaProvider
+  /** 签发一次性 ALTCHA 挑战的同源服务端地址 */
+  captchaChallengeUrl?: string
   /** 未配置服务端校验器时是否拒绝登录验证 */
   requireCaptchaServerVerification?: boolean
   /** 服务端人机验证超时（毫秒） */

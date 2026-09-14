@@ -4,7 +4,7 @@
 
 **基于 Naive UI 的 Vue 3 企业级组件库**
 
-从 Robot Admin 中提炼的 51 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
+从 Robot Admin 中提炼的 53 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
 
 [![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 [![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
@@ -167,6 +167,40 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
+新增/编辑场景推荐用 `C_FormModal` 直接消费 Headless CRUD 的结构化 `editor`。字段、校验和布局继续由 `C_Form` 配置驱动，页面不再重复编写 Modal、按钮、loading 和草稿状态；默认采用紧凑小尺寸表单和右下角带图标操作按钮，宽度、表单尺寸与动作文案仍可覆盖：
+
+```vue
+<script setup lang="ts">
+  import { C_FormModal } from '@robot-admin/naive-ui-components/C_FormModal'
+  import type { FormModalEditor } from '@robot-admin/naive-ui-components/C_FormModal'
+  import {
+    defineFormConfig,
+    defineFormOptions,
+  } from '@robot-admin/naive-ui-components/C_Form'
+
+  interface UserForm {
+    name: string
+  }
+
+  defineProps<{ editor: FormModalEditor<UserForm> }>()
+
+  const fields = defineFormOptions<UserForm>([
+    { type: 'input', prop: 'name', label: '名称', required: true },
+  ])
+  const formConfig = defineFormConfig<UserForm>({ labelPlacement: 'top' })
+</script>
+
+<template>
+  <C_FormModal
+    :editor="editor"
+    :options="fields"
+    :config="formConfig"
+  />
+</template>
+```
+
+`editor` 采用结构类型，不要求组件库依赖某个请求库；任何提供 `visible/mode/model/title/loading/setModel/close/submit` 的 Headless 控制器都可接入。弹窗默认保留关闭按钮、遮罩关闭和 Esc 行为，也可按高风险表单显式关闭。
+
 远程表格推荐交给 `useTableQuery` 管理请求取消、竞态、分页和 loading；只需把 `bindings` 绑定给组件。`rowKey` 必须稳定且唯一，默认会检测缺失和重复键。
 
 ```vue
@@ -216,6 +250,65 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
+`C_Tabs` 是面向页面场景切换的统一数据驱动标签页，名称与全局 `C_*` 体系保持一致。默认使用紧凑
+`small` 尺寸、延迟呈现面板并支持受控/非受控状态；只做筛选或视图切换时启用 `tabsOnly`，组件
+不会执行面板内容，避免隐藏内容产生渲染开销或副作用。常规场景只维护数组，复杂内容可以按需使用 `render`、`pane` 或
+`pane-{key}` 插槽：
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import { C_Tabs, defineTabs } from '@robot-admin/naive-ui-components/C_Tabs'
+
+  const activeView = ref('basic')
+  const views = defineTabs([
+    { key: 'basic', label: '基础表格', icon: 'mdi:table' },
+    { key: 'tree', label: '树形表格', icon: 'mdi:file-tree-outline' },
+  ])
+</script>
+
+<template>
+  <C_Tabs
+    v-model="activeView"
+    :items="views"
+    type="segment"
+    tabs-only
+  />
+</template>
+```
+
+| API                           | 说明                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| `items`                       | `key/label` 为必填，支持 `icon`、`badge`、禁用、关闭及 `renderTab/render` |
+| `modelValue` / `defaultValue` | 同时支持受控和非受控状态                                                  |
+| `type` / `size` / `placement` | `line/card/bar/segment` 与常用尺寸、方向；默认 `line/small/top`           |
+| `tabsOnly`                    | 只呈现标签导航，适合表格场景和查询条件切换                                |
+| `beforeChange`                | 支持同步或异步切换守卫；返回 `false` 或抛错均保留当前页                   |
+| 插槽                          | `tab`、`pane` 和 `pane-{key}`，均提供当前 item 与 active 状态             |
+| 事件                          | `change`、`close`、`add` 及标准 `update:modelValue`                       |
+
+页面级和表格级按钮统一使用 `C_ActionBar`，无需再维护另一套 Toolbar。操作栏默认采用带图标的 `tiny` 紧凑按钮和 `6px` 间距；`add`、`refresh`、`export`、`columns`、`settings` 等语义 key 会自动补齐一致的文案、图标与按钮类型，自定义动作未传图标时使用中性操作图标。`show`、`disabled`、`loading` 可直接传布尔值、`Ref` 或 getter，异步操作默认防重复点击并自动展示 loading。`C_Table` 可在 `toolbar.actions` / `toolbar.rightActions` 中直接复用同一份动作配置，同时保留原有左右插槽；需要更大按钮时，通过 `actionBar.size` 或单个动作的 `size` 覆盖：
+
+```ts
+import { defineActions } from '@robot-admin/naive-ui-components/C_ActionBar'
+import { defineTableConfig } from '@robot-admin/naive-ui-components/C_Table'
+
+const actions = defineActions([
+  { key: 'add', onClick: openCreate },
+  { key: 'refresh', disabled: () => loading.value, onClick: refresh },
+  { key: 'settings', group: 'right', onClick: openSettings },
+])
+
+const config = defineTableConfig({
+  toolbar: {
+    actions,
+    actionBar: { size: 'small' }, // 可选；默认是 tiny
+  },
+})
+```
+
+`C_Table` 继续由当前 Naive UI 表格实现负责；需要 MachTable 时应由业务入口完整渲染 MachTable 及其原生配置，避免在两套列定义、事件和实例 API 之间做隐式转换。二者只共享 `C_ActionBar` 这类框架无关的页面动作模型，不互相污染。
+
 ### C_Map 推荐用法
 
 `C_Map` 统一以 `[纬度, 经度]` 接收中心点和标记坐标；切换高德地图时会在组件内部转换为其要求的 `[经度, 纬度]`，使用侧无需维护两套数据。非法标记会被隔离，组件只清理自己创建的 Marker，不会误删通过 `ready` 事件添加的业务图层。
@@ -254,7 +347,29 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 
 ### C_Captcha 服务端校验
 
+验证码入口使用组件库内置 SVG 状态图标，不依赖操作系统 Emoji 或在线图标服务；默认、校验中、成功和失败状态均保持一致的尺寸与语义颜色。`C_Login` 会把验证入口放在提交按钮之前并显示明确操作文案，同时透传 `captcha-visible-change`，宿主可在拼图交互期间暂停高开销背景动画。品牌接入可在外层通过 `--cc-height`、`--cc-radius`、`--cc-color`、`--cc-icon-color`、`--cc-bg`、`--cc-bg-hover`、`--cc-border`、`--cc-border-hover` 和 `--cc-focus` 调整外观，无需穿透组件内部 DOM。
+
 默认本地模式仅证明浏览器内的拼图交互已经完成，不能作为登录、支付等敏感操作的安全凭证。生产场景应传入 `verifier`，并开启 `require-server-verification`；组件会处理超时、取消和竞态，只在独立的服务端/验证码提供商确认后发出 `success`。请求中的 `token`、`timestamp` 都由客户端生成，只能用于关联和日志，服务端绝不能把它们本身当作可信证明。
+
+需要国内网络可用且长期免费的方案时，可显式选择开源 MIT 的 ALTCHA 自托管模式。该模式仅在使用时懒加载，不增加默认拼图入口的首屏执行成本；组件会强制服务端校验，缺少 `challenge-url` 或 `verifier` 时失败关闭。应用后端必须签发新鲜的一次性挑战、验证 PoW payload、阻止重放并限流；密钥只存于服务端。
+
+```vue
+<C_Captcha
+  provider="altcha"
+  challenge-url="/api/auth/captcha/challenge"
+  :verifier="
+    async ({ token, signal }) => {
+      const response = await fetch('/api/auth/captcha/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ payload: token }),
+        signal,
+      })
+      return response.json() // { valid: boolean, token: '服务端一次性登录令牌' }
+    }
+  "
+/>
+```
 
 ```vue
 <C_Captcha
@@ -277,36 +392,37 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 />
 ```
 
-开启 `require-server-verification` 后，成功响应必须包含服务端 token。该 token 应短期、一次性使用，并绑定当前会话或业务请求。`C_Login` 可通过 `captchaVerifier`、`requireCaptchaServerVerification` 和 `captchaVerificationTimeout` 透传同一安全策略，并在 `submit` 数据中通过 `captchaVerifiedBy` 标识验证来源。更多边界说明见 [SECURITY.md](./SECURITY.md)。
+开启 `require-server-verification` 后，成功响应必须包含服务端 token。该 token 应短期、一次性使用，并绑定当前会话或业务请求。`C_Login` 可通过 `captchaProvider`、`captchaChallengeUrl`、`captchaVerifier`、`requireCaptchaServerVerification` 和 `captchaVerificationTimeout` 透传同一安全策略，并在 `submit` 数据中通过 `captchaType` 与 `captchaVerifiedBy` 标识验证类型和来源。更多边界说明见 [SECURITY.md](./SECURITY.md)。
 
-### 📋 组件清单（51 个）
+### 📋 组件清单（53 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
 #### 基础组件
 
-| 组件             | 说明             | 外部依赖                    |
-| ---------------- | ---------------- | --------------------------- |
-| `C_Icon`         | Iconify 图标封装 | `@iconify/vue`              |
-| `C_Code`         | 代码高亮显示     | `highlight.js`              |
-| `C_Barcode`      | 条形码生成器     | `@chenfengyuan/vue-barcode` |
-| `C_Captcha`      | 拼图验证码       | `vue3-puzzle-vcode`         |
-| `C_Cascade`      | 级联面板选择器   | -                           |
-| `C_Guide`        | 新手引导         | `driver.js`                 |
-| `C_Progress`     | 增强进度条       | -                           |
-| `C_Steps`        | 步骤条           | -                           |
-| `C_ActionBar`    | 操作按钮栏       | -                           |
-| `C_Theme`        | 主题切换器       | -                           |
-| `C_Language`     | 语言切换器       | -                           |
-| `C_Date`         | 日期选择器增强   | -                           |
-| `C_City`         | 省市区三级联动   | -                           |
-| `C_Breadcrumb`   | 面包屑导航       | -                           |
-| `C_Menu`         | 导航菜单         | -                           |
-| `C_TagsView`     | 标签页导航       | -                           |
-| `C_GlobalSearch` | 全局搜索面板     | -                           |
-| `C_AvatarGroup`  | 头像组合展示     | -                           |
-| `C_OrgChart`     | 组织架构图       | -                           |
-| `C_Skeleton`     | 骨架屏占位组件   | -                           |
+| 组件             | 说明                    | 外部依赖                      |
+| ---------------- | ----------------------- | ----------------------------- |
+| `C_Icon`         | Iconify 图标封装        | `@iconify/vue`                |
+| `C_Code`         | 代码高亮显示            | `highlight.js`                |
+| `C_Barcode`      | 条形码生成器            | `@chenfengyuan/vue-barcode`   |
+| `C_Captcha`      | 拼图/ALTCHA 人机验证    | `vue3-puzzle-vcode`、`altcha` |
+| `C_Cascade`      | 级联面板选择器          | -                             |
+| `C_Guide`        | 新手引导                | `driver.js`                   |
+| `C_Progress`     | 增强进度条              | -                             |
+| `C_Steps`        | 步骤条                  | -                             |
+| `C_ActionBar`    | 操作按钮栏              | -                             |
+| `C_Theme`        | 主题切换器              | -                             |
+| `C_Language`     | 语言切换器              | -                             |
+| `C_Date`         | 日期选择器增强          | -                             |
+| `C_City`         | 省市区三级联动          | -                             |
+| `C_Breadcrumb`   | 面包屑导航              | -                             |
+| `C_Menu`         | 导航菜单                | -                             |
+| `C_Tabs`         | 数据驱动标签页/场景切换 | -                             |
+| `C_TagsView`     | 标签页导航              | -                             |
+| `C_GlobalSearch` | 全局搜索面板            | -                             |
+| `C_AvatarGroup`  | 头像组合展示            | -                             |
+| `C_OrgChart`     | 组织架构图              | -                             |
+| `C_Skeleton`     | 骨架屏占位组件          | -                             |
 
 #### 内容 & 编辑组件
 
@@ -339,6 +455,7 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 | 组件              | 说明                                              | 外部依赖             |
 | ----------------- | ------------------------------------------------- | -------------------- |
 | `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | -                    |
+| `C_FormModal`     | 数据驱动的新增/编辑表单弹窗                       | -                    |
 | `C_FormSearch`    | 搜索表单                                          | -                    |
 | `C_CollapsePanel` | 折叠面板                                          | -                    |
 | `C_SplitPane`     | 分割面板                                          | -                    |
@@ -380,7 +497,7 @@ bun add vue naive-ui
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（51 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（53 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
   ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -390,7 +507,7 @@ bun run build
 
 #### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），51 个独立入口并行编译
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），53 个独立入口并行编译
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 仅编译共享变量入口
 - **CSS 合并**：构建后将 Vue 已完成 scoped 转换的 per-chunk CSS 与共享变量合并为单一 `style.css`，避免重复样式和原始 `:deep()` 选择器泄漏
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
@@ -405,7 +522,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（51 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（53 组件）
 ├── C_Form.base.css / C_Form.full.css      # 基础/完整样式层级
 ├── C_Table.base.css / C_Table.full.css    # 基础/完整样式层级
 ├── style.css                              # 合并后的全量样式

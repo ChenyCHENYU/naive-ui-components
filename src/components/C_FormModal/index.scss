@@ -1,0 +1,51 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-09-13
+ * @FilePath: \naive-ui-components\src\components\C_FormModal\index.scss
+ * @Description: 紧凑型数据驱动表单弹窗样式
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+
+.c-form-modal {
+  overflow: hidden;
+  border-radius: 10px;
+
+  :deep(.n-card-header) {
+    min-height: 46px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--n-border-color);
+  }
+
+  :deep(.n-card-header__main) {
+    font-size: 15px;
+    font-weight: 650;
+  }
+
+  :deep(.n-card__content) {
+    padding: 14px 16px 8px;
+  }
+
+  :deep(.n-card__action) {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 16px;
+    background: color-mix(in srgb, var(--n-color-modal) 94%, var(--n-border-color));
+    border-top: 1px solid var(--n-border-color);
+  }
+
+  :deep(.n-form-item) {
+    margin-bottom: 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .c-form-modal {
+    :deep(.n-card__content) {
+      padding-inline: 12px;
+    }
+
+    :deep(.n-card__action) {
+      padding-inline: 12px;
+    }
+  }
+}

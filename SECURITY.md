@@ -11,6 +11,7 @@ Please use GitHub's private security-advisory flow for the repository. Include t
 ## Trust boundaries
 
 - `C_Captcha` local mode is a UI interaction check, not authentication. Its client token and timestamp are untrusted telemetry. Sensitive flows must configure `verifier` with `requireServerVerification`, validate an independent server/provider-issued challenge, and return a short-lived, single-use token bound to the session or operation. Fail-closed mode rejects successful responses that omit this token.
+- `C_Captcha` ALTCHA mode is self-hosted and forces server verification. The application server must sign fresh challenges, validate payloads with a server-only secret, enforce expiration and single use, bind the returned token to the session or operation, and apply rate limits. The browser must never receive the HMAC secret.
 - Rich HTML is sanitized by the library, but applications must still apply server-side validation, output encoding, CSP, and authorization. Client-side sanitization is not an authorization boundary.
 - Formula evaluation uses a bounded parser and does not execute arbitrary JavaScript. Do not replace it with `eval` or `Function` for untrusted input.
 - Upload type, size, hashing, and chunk checks improve UX and integrity but do not replace server-side content validation, malware scanning, quotas, or access control.

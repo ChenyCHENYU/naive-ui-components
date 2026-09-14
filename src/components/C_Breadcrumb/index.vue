@@ -9,7 +9,7 @@
  * ```vue
  * <C_Breadcrumb
  *   :label-formatter="$t"
- *   @select="router.push"
+ *   @select="handleSelect"
  * />
  * ```
  *

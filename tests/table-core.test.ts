@@ -10,6 +10,7 @@ import { useTableExpand } from '../src/components/C_Table/composables/useTableEx
 import { useTableActions } from '../src/components/C_Table/composables/useTableActions'
 import { validateTableRowKeys } from '../src/components/C_Table/helpers'
 import { mergeGlobalConfig } from '../src/components/C_Table/composables/useTableGlobalConfig'
+import { resolveConfig } from '../src/components/C_Table/composables/useTableConfig'
 import type {
   DataRecord,
   PaginationConfig,
@@ -22,7 +23,9 @@ const rows = (count: number): DataRecord[] =>
 describe('C_Table remote query controller', () => {
   test('latest request wins and stale requests receive an abort signal', async () => {
     const signals: AbortSignal[] = []
-    const resolvers: Array<(value: { data: DataRecord[]; total: number }) => void> = []
+    const resolvers: Array<
+      (value: { data: DataRecord[]; total: number }) => void
+    > = []
     const scope = effectScope()
     const query = scope.run(() =>
       useTableQuery<DataRecord, { keyword: string }>({
@@ -87,6 +90,24 @@ describe('C_Table global defaults', () => {
       remote: true,
     })
     expect(merged.validateRowKeys).toBe(false)
+  })
+})
+
+describe('C_Table toolbar actions', () => {
+  test('keeps the shared C_ActionBar model on both toolbar sides', () => {
+    const add = { key: 'add', onClick: () => undefined }
+    const refresh = { key: 'refresh', onClick: () => undefined }
+    const resolved = resolveConfig({
+      toolbar: {
+        actions: [add],
+        rightActions: [refresh],
+        actionBar: { compact: true },
+      },
+    })
+
+    expect(resolved.toolbarActions).toEqual([add])
+    expect(resolved.toolbarRightActions).toEqual([refresh])
+    expect(resolved.toolbarActionBarConfig).toEqual({ compact: true })
   })
 })
 

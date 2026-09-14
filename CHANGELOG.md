@@ -1,5 +1,17 @@
 # @robot-admin/naive-ui-components
 
+## 0.12.0
+
+### Minor Changes
+
+- Enhance `C_ActionBar` with semantic action presets, getter-based reactive states, guarded async loading, and icon-first compact `tiny` defaults, including consistent create/save/cancel/close actions for forms and details. Allow `C_Table` toolbars to consume the same left/right action model while preserving existing slots, configurable sizing, and independent table engines.
+
+- Polish the C_Captcha and C_Login verification flow with package-owned SVG state icons, explicit verification copy, theme variables, a visibility event for pausing expensive host effects, and a clearer verification-before-submit layout. Add an opt-in, lazily loaded ALTCHA provider for free self-hosted proof-of-work challenges while preserving the existing puzzle provider by default.
+
+- 新增公开的 `C_Tabs` 数据驱动紧凑标签页，支持 render、插槽、异步切换守卫、徽标、图标、关闭和 tabs-only 场景，并接入按需 Resolver 与独立样式入口。
+
+- Add `C_FormModal`, a compact data-driven create/edit modal that reuses `C_Form` and `C_ActionBar`, accepts any structurally compatible headless CRUD editor without coupling the component package to a request library, and keeps fields, validation, loading and footer actions out of business templates.
+
 ## 0.11.8
 
 ### Patch Changes

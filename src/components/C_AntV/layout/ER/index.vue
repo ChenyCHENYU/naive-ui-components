@@ -135,10 +135,8 @@
   // ==================== Composables ====================
   const containerRef = ref<HTMLDivElement>()
   const isDark = computed(() => props.theme === 'dark')
-  const { graph, initGraph, centerContent, zoomToFit } = useGraphBase(
-    containerRef,
-    isDark
-  )
+  const { graph, initGraph, centerContent, zoomToFit, scheduleZoomToFit } =
+    useGraphBase(containerRef, isDark)
   const { exportOptions, handleExport } = useGraphExport(graph, 'er-diagram')
 
   // ==================== 编辑器状态 ====================
@@ -422,6 +420,8 @@
   const emitDataChange = () => emit('data-change', getCurrentData())
 
   // ==================== Graph 事件绑定 ====================
+  let selectedEdge: Edge | null = null
+
   watch(
     graph,
     newGraph => {
@@ -433,8 +433,6 @@
       })
       newGraph.on('edge:connected', emitDataChange)
       newGraph.on('edge:removed', emitDataChange)
-
-      let selectedEdge: Edge | null = null
 
       newGraph.on('edge:click', ({ edge }) => {
         if (deleteMode.value) {
@@ -455,25 +453,6 @@
         selectedEdge = null
         if (!deleteMode.value) resetEdgeStyles()
       })
-
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // 忽略来自 input/textarea/contenteditable 元素的按键
-        const tag = (e.target as HTMLElement)?.tagName
-        if (
-          tag === 'INPUT' ||
-          tag === 'TEXTAREA' ||
-          (e.target as HTMLElement)?.isContentEditable
-        )
-          return
-
-        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
-          selectedEdge.remove()
-          emitDataChange()
-          selectedEdge = null
-        }
-      }
-      document.addEventListener('keydown', handleKeyDown)
-      onUnmounted(() => document.removeEventListener('keydown', handleKeyDown))
 
       emit('ready', newGraph)
 
@@ -502,10 +481,7 @@
           }
 
           newGraph.resetCells(cells)
-          setTimeout(
-            () => newGraph.zoomToFit({ padding: 20, maxScale: 1 }),
-            300
-          )
+          scheduleZoomToFit(300, 20)
         }
       })
     },
@@ -545,7 +521,29 @@
     { deep: true }
   )
 
-  onMounted(() => initGraph())
+  const handleKeyDown = (e: KeyboardEvent): void => {
+    const target = e.target as HTMLElement | null
+    if (
+      target?.tagName === 'INPUT' ||
+      target?.tagName === 'TEXTAREA' ||
+      target?.isContentEditable
+    ) {
+      return
+    }
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
+      selectedEdge.remove()
+      emitDataChange()
+      selectedEdge = null
+    }
+  }
+
+  onMounted(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    void initGraph()
+  })
+
+  onUnmounted(() => document.removeEventListener('keydown', handleKeyDown))
 
   defineExpose({
     getGraph: () => graph.value ?? undefined,

@@ -10,6 +10,22 @@ describe('RobotNaiveUiResolver', () => {
     })
   })
 
+  test('resolves the data-driven form modal as an on-demand component', () => {
+    expect(RobotNaiveUiResolver().resolve('C_FormModal')).toEqual({
+      name: 'C_FormModal',
+      from: '@robot-admin/naive-ui-components/C_FormModal',
+      sideEffects: undefined,
+    })
+  })
+
+  test('resolves the public data-driven tabs component on demand', () => {
+    expect(RobotNaiveUiResolver().resolve('C_Tabs')).toEqual({
+      name: 'C_Tabs',
+      from: '@robot-admin/naive-ui-components/C_Tabs',
+      sideEffects: undefined,
+    })
+  })
+
   test('supports the root entry fallback', () => {
     expect(
       RobotNaiveUiResolver({ importOnDemand: false }).resolve('C_Form')?.from

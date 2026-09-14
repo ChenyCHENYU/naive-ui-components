@@ -88,6 +88,7 @@ const fullStyleDependencies = {
   C_Code: ['C_Icon'],
   C_CollapsePanel: ['C_Icon'],
   C_ContextMenu: ['C_Icon'],
+  C_Captcha: ['C_Icon'],
   C_Form: ['C_Editor'],
   C_Guide: ['C_Icon'],
   C_Language: ['C_Icon'],

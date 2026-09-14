@@ -1,0 +1,97 @@
+.c-tabs {
+  width: 100%;
+  color: var(--ra-color-text-primary, var(--c-text-1));
+
+  :deep(.n-tabs-nav) {
+    min-width: 0;
+  }
+
+  :deep(.n-tabs-tab) {
+    min-height: var(--ra-control-height-small, 32px);
+    color: var(--ra-tab-text, var(--ra-color-text-secondary, var(--c-text-2)));
+    font-size: var(--ra-type-font-size-sm, 13px);
+    font-weight: var(--ra-type-font-weight-medium, 500);
+    transition:
+      color var(--ra-motion-duration-fast, 120ms)
+        var(--ra-motion-easing-standard, ease),
+      background-color var(--ra-motion-duration-fast, 120ms)
+        var(--ra-motion-easing-standard, ease);
+  }
+
+  :deep(.n-tabs-tab:hover) {
+    color: var(--ra-color-primary-hover, var(--c-primary-hover));
+  }
+
+  :deep(.n-tabs-tab:focus-visible) {
+    outline: 2px solid var(--ra-color-focus-ring, rgba(32, 128, 240, 0.3));
+    outline-offset: -2px;
+  }
+
+  :deep(.n-tabs-tab--active) {
+    color: var(--ra-tab-text-active, var(--ra-color-primary, var(--c-primary)));
+    font-weight: var(--ra-type-font-weight-semibold, 600);
+  }
+
+  :deep(.n-tabs-bar) {
+    height: 2px;
+    border-radius: var(--ra-radius-pill, 999px);
+    background: var(--ra-tab-indicator, #2080f0);
+  }
+
+  :deep(.n-tabs-pane-wrapper) {
+    color: var(--ra-color-text-primary, var(--c-text-1));
+  }
+
+  &.is-segment {
+    :deep(.n-tabs-rail) {
+      min-height: calc(var(--ra-control-height-small, 32px) + 4px);
+      padding: 2px;
+      background: var(--ra-color-surface-muted, rgba(0, 0, 0, 0.04));
+      border: 1px solid var(--ra-color-divider, var(--c-border));
+      border-radius: var(--ra-radius-md, 8px);
+    }
+
+    :deep(.n-tabs-tab) {
+      padding: 0 var(--ra-space-3, 12px);
+      border-radius: var(--ra-radius-sm, 6px);
+    }
+
+    :deep(.n-tabs-tab:hover:not(.n-tabs-tab--active)) {
+      background: var(
+        --ra-tab-bg-hover,
+        var(--ra-color-fill-hover, var(--hover-color, transparent))
+      );
+    }
+  }
+
+  &.is-card :deep(.n-tabs-tab) {
+    padding-inline: var(--ra-space-3, 12px);
+  }
+
+  &.is-tabs-only :deep(.n-tabs-pane-wrapper) {
+    display: none;
+  }
+}
+
+.c-tabs__label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--ra-space-1, 4px);
+  white-space: nowrap;
+}
+
+.c-tabs__icon {
+  flex: none;
+  color: currentColor;
+}
+
+.c-tabs__badge {
+  margin-left: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-tabs :deep(.n-tabs-tab) {
+    transition: none;
+  }
+}

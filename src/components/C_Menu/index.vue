@@ -10,7 +10,7 @@
  * <C_Menu
  *   :routes="menuData"
  *   :label-formatter="$t"
- *   @select="router.push"
+ *   @select="handleSelect"
  * />
  * ```
  *
@@ -18,7 +18,7 @@
  * ```vue
  * <C_Menu
  *   :options="nMenuOptions"
- *   @select="router.push"
+ *   @select="handleSelect"
  * />
  * ```
  *
