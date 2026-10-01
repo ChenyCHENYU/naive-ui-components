@@ -57,9 +57,11 @@ describe('C_AntV domain adapters', () => {
       path.join(root, 'src/components/C_AntV/layout/UML/index.vue'),
       'utf8'
     )
-    expect(bpmn).toContain(
-      'loadData(props.data === undefined ? sampleData : normalizeData(props.data))'
+    expect(bpmn).toMatch(
+      /loadData\(\s*props\.data === undefined \? sampleData : normalizeData\(props\.data\)\s*\)/
     )
-    expect(uml).toContain('if (props.data) loadUmlData(props.data)')
+    expect(uml.replace(/\s+/g, ' ')).toContain(
+      'if (props.data) loadUmlData(props.data)'
+    )
   })
 })

@@ -1,5 +1,19 @@
 # @robot-admin/naive-ui-components
 
+## 0.13.0
+
+### Minor Changes
+
+- fc872e4: Release C_GlobalSearch's keyboard shortcut listener on unmount.
+
+  Keep CRUD delete feedback consistent with structured `{ data, error }` results and make tree `defaultExpandAll` work with controlled row expansion. Restore C_Table summaries in Naive UI's keyed-row format, validate persisted column settings, and avoid mutating caller-owned columns. Expose submit state and action in C_Form step slots, and harden C_FilePreview URL, auto-preview, loading, object-URL, and spreadsheet value handling. Tighten C_Icon's public types, isolate C_Editor focus styling to the component, make C_Chat preview, file, and retry actions keyboard accessible, and keep C_AudioPlayer state honest when playback fails or its playlist changes. Repair C_AntV BPMN domain-data round-trips and honor initial external BPMN/UML data. Make C_VtableGantt option merging prototype-safe and synchronize fullscreen state with the actual DOM lifecycle. Validate persisted C_CollapsePanel/C_TagsView state and avoid path interpolation in tag selectors. Isolate C_Upload's initial file list, consistently filter accepted picker/drop/paste files, label image actions, show per-file hashing progress, and make chunk cancellation effective throughout resume lookup, requests, and merging. Load initial C_WorkFlow models, isolate emitted snapshots and condition edits, honor readonly boundaries, prevent ID collisions, and clean up deferred view actions. Support timestamp and formatted string date ranges in C_FormSearch, hide decorative C_ActionBar icons from accessible names, and include Vue source templates in the verification gate.
+
+### Patch Changes
+
+- fc872e4: Harden smaller interaction components: keep login's remembered username current and reject malformed SMS recipients, load city data only when opened and scope letter navigation to each instance, make code actions keyboard-accessible and report modal close events, bound skeleton render counts, and synchronize menu expansion when route options arrive. Improve markdown, organization chart, timeline, tree, transfer, date/time, cascade, context menu, split pane, progress, avatar and step state and accessibility behavior.
+- fc872e4: Make image crop exports use one canvas snapshot, report failures, honor disabled state, and apply flips to the actual image. Make signature readonly mode effective, preserve imported/background images across redraws, and replace placeholder SVG output with a raster-backed SVG. Fix calendar local-date saving and reactive editable mode. Prevent stale QR renders, keep logo-bearing SVG exports consistent with previews, and relayout waterfall images by aspect ratio while suppressing duplicate infinite-load requests.
+- fc872e4: Keep C_NotificationCenter server read state authoritative, avoid duplicate popover toggles, forward WebSocket events, and validate action links before navigation. Prevent C_VideoPlayer from creating a player after unmount, remove duplicate shortcut/cleanup paths, and make mini-player controls keyboard accessible. Reject malformed C_Cron expressions without rewriting them, preview second-level schedules across the full search horizon, and honor disabled controls. Fix C_FormulaEditor logical operator evaluation, read-only input behavior, and keyboard accessibility.
+
 ## 0.12.1
 
 ### Minor Changes
