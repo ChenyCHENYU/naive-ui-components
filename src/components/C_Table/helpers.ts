@@ -44,3 +44,40 @@ export function validateTableRowKeys<T extends object>(
   })
   return issues
 }
+
+/** Collect parent keys for a controlled tree table's default-expand-all mode. */
+export function collectTreeBranchKeys<T extends object>(
+  rows: readonly T[],
+  childrenKey: string,
+  rowKey: (row: T) => DataTableRowKey
+): DataTableRowKey[] {
+  const keys = new Set<DataTableRowKey>()
+  const visited = new WeakSet<object>()
+  const stack = [...rows]
+  const safeRowKey = (row: T): DataTableRowKey | undefined => {
+    try {
+      return rowKey(row)
+    } catch {
+      // Invalid keys are reported separately by the table row-key contract.
+      return undefined
+    }
+  }
+  const hasValidKey = (
+    key: DataTableRowKey | undefined
+  ): key is DataTableRowKey => key !== null && key !== undefined && key !== ''
+
+  while (stack.length) {
+    const row = stack.pop()!
+    if (visited.has(row)) continue
+    visited.add(row)
+    const children = (row as Record<string, unknown>)[childrenKey]
+    if (!Array.isArray(children) || children.length === 0) continue
+    const key = safeRowKey(row)
+    if (hasValidKey(key)) keys.add(key)
+    for (const child of children) {
+      if (child && typeof child === 'object') stack.push(child as T)
+    }
+  }
+
+  return [...keys]
+}

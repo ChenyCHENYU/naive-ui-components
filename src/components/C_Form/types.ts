@@ -509,10 +509,15 @@ export interface FormStepActionsSlotProps {
   nextStep: () => Promise<void>
   previousStep: () => void
   goToStep: (stepIndex: number) => Promise<void>
+  /** Validate and submit the complete form, including fields in other steps. */
+  submit: () => Promise<boolean>
+  submitting: boolean
 }
 
 /** C_Form 对外公开的具名插槽。 */
 export interface FormSlots<T extends object = FormRecord> {
+  /** Field-specific named slots are intentionally open-ended. */
+  [slotName: string]: ((props: any) => unknown) | undefined
   action?: (props: FormActionSlotProps<T>) => unknown
   'tab-actions'?: (props: FormTabActionsSlotProps) => unknown
   'step-actions'?: (props: FormStepActionsSlotProps) => unknown

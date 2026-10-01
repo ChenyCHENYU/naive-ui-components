@@ -167,6 +167,8 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
+自定义操作栏应调用 `action` 插槽的 `submit()`，不要用 `validate()` 代替提交。步骤布局的 `step-actions` 插槽同时提供 `isLastStep`、`submit()` 和 `submitting`，可在最后一步直接放置提交按钮。异步保存放在 `config.onSubmit` 中并等待完成；`@submit` 是保存成功后的通知事件，不承诺等待监听器返回的 Promise。
+
 新增/编辑场景推荐用 `C_FormModal` 直接消费 Headless CRUD 的结构化 `editor`。字段、校验和布局继续由 `C_Form` 配置驱动，页面不再重复编写 Modal、按钮、loading 和草稿状态；默认采用紧凑小尺寸表单和右下角带图标操作按钮，宽度、表单尺寸与动作文案仍可覆盖：
 
 ```vue
@@ -249,6 +251,10 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
   <C_Table v-bind="bindings" />
 </template>
 ```
+
+将 Headless CRUD 绑定到 `:crud` 时，表格会识别操作结果中的 `{ error }`：失败不会触发删除成功事件，也不会重复展示 CRUD 控制器已经展示的反馈。自定义 `actions.delete` 可返回 Promise，或返回 `{ data, error }` 结构。
+
+树形数据可直接使用 `<C_Table :data="rows" :columns="columns" :config="{ tree: { defaultExpandAll: true }, pagination: false }" />`；`children` 是默认子节点字段，也可通过 `tree.childrenKey` 指定。默认展开会初始化所有父节点，并在异步追加新父节点时展开新节点，不会重新展开用户手动收起的旧节点。
 
 `C_Tabs` 是面向页面场景切换的统一数据驱动标签页，名称与全局 `C_*` 体系保持一致。默认使用紧凑
 `small` 尺寸、延迟呈现面板并支持受控/非受控状态；只做筛选或视图切换时启用 `tabsOnly`，组件
@@ -394,6 +400,8 @@ const config = defineTableConfig({
 
 开启 `require-server-verification` 后，成功响应必须包含服务端 token。该 token 应短期、一次性使用，并绑定当前会话或业务请求。`C_Login` 可通过 `captchaProvider`、`captchaChallengeUrl`、`captchaVerifier`、`requireCaptchaServerVerification` 和 `captchaVerificationTimeout` 透传同一安全策略，并在 `submit` 数据中通过 `captchaType` 与 `captchaVerifiedBy` 标识验证类型和来源。更多边界说明见 [SECURITY.md](./SECURITY.md)。
 
+`C_Login` 的“记住我”只保存用户名，不保存密码。短信验证码仅对格式正确的手机号触发事件；组件会立即开始本地倒计时，发送结果和服务端限流仍由宿主处理。`C_City` 在首次打开时才加载城市索引，字母跳转只作用于当前实例；默认触发器、字母和城市项均可用键盘操作。
+
 ### 📋 组件清单（53 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
@@ -450,6 +458,8 @@ const config = defineTableConfig({
 | `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`          |
 | `C_Timeline`     | 时间线（垂直/水平/可折叠）                | -                          |
 
+图片/日历类组件的使用边界：`C_ImageCropper` 翻转会更新实际图片源并重置当前裁剪位置，加载和导出失败通过 `error: Error` 报告；`C_Signature` 的 `readonly` 只禁止用户交互，暴露方法仍可用于加载历史数据，其 SVG 导出是保留画布效果的栅格嵌入 SVG；`C_QRCode` 带 Logo 的 SVG 同样采用栅格嵌入，以保持预览与导出一致。`C_FullCalendar` 使用本地日历日期创建当日事件；`C_WaterFall` 会根据图片实际宽高比自动重排，建议以稳定唯一的 `id` 标识每项。
+
 #### 表单 & 布局组件
 
 | 组件              | 说明                                              | 外部依赖             |
@@ -471,7 +481,7 @@ const config = defineTableConfig({
 | --------------- | -------------------------------------- | -------- |
 | `C_Chat`        | 聊天组件（联系人/消息气泡/输入框）     | -        |
 | `C_ContextMenu` | 右键菜单（嵌套子菜单/快捷键/危险操作） | -        |
-| `C_Login`       | 登录组件（5种模式/验证码/记住密码）    | -        |
+| `C_Login`       | 登录组件（5种模式/验证码/记住用户名）  | -        |
 
 #### 流程 & 通知组件
 
@@ -482,6 +492,22 @@ const config = defineTableConfig({
 | `C_Upload`             | 大文件上传（分片/断点续传/哈希校验） | `spark-md5`      |
 
 ### 🔌 依赖说明
+
+`C_FilePreview` 的 URL 入口仅接受 HTTPS 或当前站点同源 HTTP（便于本地开发）；不接受脚本、数据 URL、带凭据 URL 或跨站明文 HTTP。`autoPreview` 会在有文件源时自动打开预览，已打开时切换文件源会刷新内容。重复预览会释放旧 PDF 对象 URL，并忽略过期加载结果。Excel 单元格的 `0` 与 `false` 会原样保留。
+
+`C_AntV` 的 BPMN 对外数据保持 `{ nodes, flows }` 领域结构；组件内部转换为 X6 单元格，并在 `data-change` / `getData()` 中还原节点位置、类型、属性和连线条件。BPMN/UML 仅在未提供 `data` 时加载内置示例；显式传入空数据会显示空画布。
+
+`C_VtableGantt` 合并预设与 `options` 时会保留未覆盖的嵌套配置、以新数组整体替换旧数组，并忽略原型相关键；全屏按钮状态仅反映该甘特图容器的实际全屏状态。
+
+`C_AudioPlayer` 只在浏览器确认 `play()` 成功后进入播放状态并触发 `play`；自动播放被拒绝时会触发 `error`，空播放列表不会产生虚假的播放事件。静音、曲目和进度条均可用键盘操作。
+
+`C_CollapsePanel` 与 `C_TagsView` 会校验本地持久化数据结构；损坏或旧格式数据会安全回退，不会阻断组件初始化。持久化标签仅恢复站内路径，特殊字符路径的定位不会拼接 CSS 选择器。
+
+`C_Table` 列设置只恢复有效的列键、可见性、列宽和固定方向；损坏的 `persistKey` 存储会回退到传入列。列设置在本地副本上操作，不会修改调用方的列对象。`C_Upload` 的默认文件列表同样会复制后再管理，文件选择、拖拽和粘贴共用 `accept` 过滤，图片操作可通过键盘识别和访问；并发计算哈希时，各文件显示自己的进度。分片上传在查询断点、请求或合并阶段取消后，不会继续派发请求或发出过期的完成事件。自定义上传请求的 `abort()` 即使不回调，也会释放分片等待任务。
+
+`C_WorkFlow` 会在首次渲染时加载传入的 `modelValue`，并在 `getCurrentWorkflowData()` / `save` / `change` / `node-click` 中输出隔离的数据快照，避免调用方意外修改内部节点。条件编辑弹窗在保存前不会修改画布数据，未填完整的条件不会被静默丢弃。`readonly` 禁止节点拖拽、连线、配置、增删与保存，但仍允许预览、验证和适应视图；节点与条件 ID 在同一时刻连续创建时保持唯一。
+
+类型验证同时覆盖 TypeScript 源码、Vue 单文件组件模板和发布后的使用侧示例。`C_Table` 合计行的 `summary.render` 应返回按列键组织的对象（`{ columnKey: { value, colSpan? } }`）；`C_FormSearch` 的日期范围兼容原有数字时间戳数组，也支持格式化字符串数组，两种值会分别绑定 Naive UI 对应的值接口。
 
 组件运行依赖已由本包声明，安装组件库时会自动解析。所有场景都需要：
 

@@ -53,9 +53,17 @@
         #[slotName]="slotProps"
       >
         <slot
-          v-if="slotName !== 'action'"
+          v-if="slotName !== 'action' && slotName !== 'step-actions'"
           :name="slotName"
           v-bind="slotProps"
+        />
+      </template>
+      <template #step-actions="slotProps">
+        <slot
+          name="step-actions"
+          v-bind="slotProps"
+          :submit="submit"
+          :submitting="isSubmitting"
         />
       </template>
     </component>
@@ -68,12 +76,12 @@
       <slot
         name="action"
         :form="formRef"
-        :model="formModel"
+        :model="typedModel"
         :validate="validate"
         :validateField="validateField"
         :reset="resetFields"
         :setFields="setFields"
-        :getModel="getModel"
+        :getModel="typedGetModel"
         :clearValidation="clearValidation"
         :submit="submit"
         :reloadOptions="reloadOptions"
@@ -298,6 +306,9 @@
     emit as unknown as Parameters<typeof useFormState>[3],
     modelValueRef as ComputedRef<FormModel | undefined>
   )
+
+  const typedModel = computed(() => formModel.value as FormModel<T>)
+  const typedGetModel = (): FormModel<T> => getModel() as FormModel<T>
 
   /* ===== 渲染引擎 ===== */
   const currentInstance = getCurrentInstance()

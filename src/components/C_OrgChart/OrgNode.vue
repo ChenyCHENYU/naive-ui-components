@@ -10,41 +10,53 @@
     <div
       class="c-orgchart__node"
       :class="[node.className, { 'c-orgchart__node--leaf': isLeaf }]"
-      @click.stop="$emit('node-click', node)"
     >
-      <slot
-        name="node"
-        :node="node"
-        :is-leaf="isLeaf"
-        :is-expanded="isExpanded"
+      <div
+        class="c-orgchart__node-select"
+        :role="$slots.node ? undefined : 'button'"
+        :tabindex="$slots.node ? undefined : 0"
+        :aria-label="$slots.node ? undefined : node.label"
+        @click.stop="selectNode"
+        @keydown.enter.stop="selectNode"
+        @keydown.space.stop.prevent="selectNode"
       >
-        <!-- 默认节点渲染 -->
-        <div class="c-orgchart__node-default">
-          <div
-            v-if="node.avatar"
-            class="c-orgchart__avatar"
-          >
-            <img
-              :src="node.avatar"
-              :alt="node.label"
-            />
-          </div>
-          <div class="c-orgchart__info">
-            <div class="c-orgchart__label">{{ node.label }}</div>
+        <slot
+          name="node"
+          :node="node"
+          :is-leaf="isLeaf"
+          :is-expanded="isExpanded"
+        >
+          <!-- 默认节点渲染 -->
+          <div class="c-orgchart__node-default">
             <div
-              v-if="node.subtitle"
-              class="c-orgchart__subtitle"
+              v-if="node.avatar"
+              class="c-orgchart__avatar"
             >
-              {{ node.subtitle }}
+              <img
+                :src="node.avatar"
+                :alt="node.label"
+              />
+            </div>
+            <div class="c-orgchart__info">
+              <div class="c-orgchart__label">{{ node.label }}</div>
+              <div
+                v-if="node.subtitle"
+                class="c-orgchart__subtitle"
+              >
+                {{ node.subtitle }}
+              </div>
             </div>
           </div>
-        </div>
-      </slot>
+        </slot>
+      </div>
 
       <!-- 折叠/展开按钮 -->
       <button
         v-if="collapsible && !isLeaf"
+        type="button"
         class="c-orgchart__toggle"
+        :aria-label="isExpanded ? `折叠 ${node.label}` : `展开 ${node.label}`"
+        :aria-expanded="isExpanded"
         @click.stop="toggleExpand"
       >
         {{ isExpanded ? '−' : '+' }}
@@ -70,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
+  import { ref, computed, watch } from 'vue'
   import type { OrgChartNode } from './types'
 
   defineOptions({ name: 'OrgNode' })
@@ -80,13 +92,19 @@
     collapsible?: boolean
   }>()
 
-  defineEmits<{
+  const emit = defineEmits<{
     'node-click': [node: OrgChartNode]
     'node-expand': [node: OrgChartNode]
     'node-collapse': [node: OrgChartNode]
   }>()
 
   const isExpanded = ref(!props.node.collapsed)
+  watch(
+    () => props.node.collapsed,
+    collapsed => {
+      isExpanded.value = !collapsed
+    }
+  )
 
   const hasChildren = computed(
     () => props.node.children && props.node.children.length > 0
@@ -94,7 +112,17 @@
 
   const isLeaf = computed(() => !hasChildren.value)
 
+  const selectNode = (event: MouseEvent | KeyboardEvent) => {
+    if (event instanceof KeyboardEvent && event.target !== event.currentTarget)
+      return
+    const target = event.target as HTMLElement
+    if (target.closest('button, a, input, select, textarea')) return
+    emit('node-click', props.node)
+  }
+
   const toggleExpand = () => {
     isExpanded.value = !isExpanded.value
+    if (isExpanded.value) emit('node-expand', props.node)
+    else emit('node-collapse', props.node)
   }
 </script>

@@ -25,8 +25,13 @@ import { setItem, getItem } from '../../../utils/storage'
 
 /** 缓存数据结构 */
 interface CachedState {
-  unreadIds: string[]
+  readIds: string[]
   lastFetchTime: number
+}
+
+interface NotificationCoreEvents {
+  onNewMessage?: (message: NotificationMessage) => void
+  onWSStatusChange?: (status: WSConnectionStatus) => void
 }
 
 /** 防抖持久化延迟（ms） */
@@ -52,7 +57,10 @@ function isNotificationMessage(value: unknown): value is NotificationMessage {
  * 统一管理消息列表、未读数、分类过滤、已读标记、
  * API 交互、WebSocket 桥接、轮询调度和本地缓存。
  */
-export function useNotificationCore(props: NotificationCenterProps) {
+export function useNotificationCore(
+  props: NotificationCenterProps,
+  events: NotificationCoreEvents = {}
+) {
   /* ─── 响应式状态 ─────────────────────────────── */
 
   /** 消息列表 */
@@ -109,15 +117,16 @@ export function useNotificationCore(props: NotificationCenterProps) {
    * 从缓存恢复未读状态
    */
   function restoreFromCache() {
+    // API responses are authoritative; local demo preferences must never
+    // turn a server-side read notification back into an unread one.
+    if (props.fetchNotifications) return
     const cached = getItem<CachedState>(storageKey.value)
-    if (Array.isArray(cached?.unreadIds)) {
+    if (Array.isArray(cached?.readIds)) {
       const idSet = new Set(
-        cached.unreadIds.filter((id): id is string => typeof id === 'string')
+        cached.readIds.filter((id): id is string => typeof id === 'string')
       )
       for (const msg of messages.value) {
-        if (idSet.has(msg.id)) {
-          msg.status = 'unread'
-        }
+        if (idSet.has(msg.id) && msg.status !== 'archived') msg.status = 'read'
       }
     }
   }
@@ -129,13 +138,14 @@ export function useNotificationCore(props: NotificationCenterProps) {
    * 持久化未读状态到本地缓存（防抖）
    */
   function persistToCache() {
+    if (props.fetchNotifications) return
     if (persistTimer) clearTimeout(persistTimer)
     persistTimer = setTimeout(() => {
-      const unreadIds = messages.value
-        .filter(m => m.status === 'unread')
+      const readIds = messages.value
+        .filter(m => m.status === 'read')
         .map(m => m.id)
       setItem<CachedState>(storageKey.value, {
-        unreadIds,
+        readIds,
         lastFetchTime: Date.now(),
       })
       persistTimer = null
@@ -166,7 +176,9 @@ export function useNotificationCore(props: NotificationCenterProps) {
           pageSize,
         })
         if (version !== fetchVersion) return
-        const list = Array.isArray(result.list) ? result.list : []
+        const list = Array.isArray(result.list)
+          ? result.list.map(message => ({ ...message }))
+          : []
         if (reset) {
           messages.value = list
         } else {
@@ -352,6 +364,7 @@ export function useNotificationCore(props: NotificationCenterProps) {
           messages.value.unshift(msg)
           total.value++
           persistToCache()
+          events.onNewMessage?.(msg)
           showDesktopNotification(msg)
         }
         break
@@ -376,6 +389,7 @@ export function useNotificationCore(props: NotificationCenterProps) {
   /** WebSocket 连接状态变更回调 */
   function handleWSStatusChange(s: WSConnectionStatus) {
     wsStatus.value = s
+    events.onWSStatusChange?.(s)
   }
 
   const { connect: wsConnect, disconnect: wsDisconnect } = useNotificationWS(

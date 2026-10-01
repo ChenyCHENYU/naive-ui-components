@@ -119,7 +119,9 @@
             ? props.createText
             : props.saveText,
         loading: busy,
-        onClick: () => formRef.value?.submit(),
+        onClick: async () => {
+          await formRef.value?.submit()
+        },
       },
     ])
   )

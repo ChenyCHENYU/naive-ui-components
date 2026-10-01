@@ -27,6 +27,7 @@
             <NButton
               size="tiny"
               quaternary
+              aria-label="复制代码"
               @click="copyCode"
               :loading="copying"
             >
@@ -49,6 +50,7 @@
             <NButton
               size="tiny"
               quaternary
+              :aria-label="isFullscreen ? '退出全屏' : '全屏查看'"
               @click="toggleFullscreen"
             >
               <template #icon>
@@ -67,13 +69,8 @@
 
     <!-- 代码内容区域 -->
     <div class="c-code-content">
-      <div
-        class="code-wrapper"
-        @mouseenter="showFloatingCopy = true"
-        @mouseleave="showFloatingCopy = false"
-      >
+      <div class="code-wrapper">
         <NCode
-          :key="`code-${language}-${code.length}`"
           :code="code"
           :language="language"
           :hljs="hljs"
@@ -85,32 +82,31 @@
         />
 
         <!-- 悬浮复制按钮 -->
-        <Transition name="fade">
-          <div
-            v-if="showFloatingCopy && !showHeader"
-            class="floating-copy-btn"
-          >
-            <NTooltip trigger="hover">
-              <template #trigger>
-                <NButton
-                  size="small"
-                  quaternary
-                  @click="copyCode"
-                  :loading="copying"
-                  class="copy-floating"
-                >
-                  <template #icon>
-                    <C_Icon
-                      :name="copying ? 'mdi:loading' : 'mdi:content-copy'"
-                      :loading="copying"
-                    />
-                  </template>
-                </NButton>
-              </template>
-              复制代码
-            </NTooltip>
-          </div>
-        </Transition>
+        <div
+          v-if="!showHeader"
+          class="floating-copy-btn"
+        >
+          <NTooltip trigger="hover">
+            <template #trigger>
+              <NButton
+                size="small"
+                quaternary
+                aria-label="复制代码"
+                @click="copyCode"
+                :loading="copying"
+                class="copy-floating"
+              >
+                <template #icon>
+                  <C_Icon
+                    :name="copying ? 'mdi:loading' : 'mdi:content-copy'"
+                    :loading="copying"
+                  />
+                </template>
+              </NButton>
+            </template>
+            复制代码
+          </NTooltip>
+        </div>
       </div>
 
       <!-- 语言加载状态 -->
@@ -125,7 +121,8 @@
 
     <!-- 全屏模态框 -->
     <NModal
-      v-model:show="isFullscreen"
+      :show="isFullscreen"
+      @update:show="setFullscreen"
       :mask-closable="false"
       :show-icon="false"
       :bordered="false"
@@ -145,6 +142,7 @@
           <NButton
             size="small"
             quaternary
+            aria-label="退出全屏"
             @click="toggleFullscreen"
           >
             <template #icon>
@@ -154,7 +152,6 @@
         </div>
         <div class="fullscreen-body">
           <NCode
-            :key="`fullscreen-code-${language}-${code.length}`"
             :code="code"
             :language="language"
             :hljs="hljs"
@@ -169,15 +166,7 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    ref,
-    computed,
-    watch,
-    onMounted,
-    onUnmounted,
-    nextTick,
-    inject,
-  } from 'vue'
+  import { ref, computed, watch, nextTick, inject } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
 
   // 直接在组件内定义 HighlightManager 接口，避免导入错误
@@ -231,7 +220,6 @@
   const copying = ref(false)
   const isFullscreen = ref(false)
   const languageLoading = ref(false)
-  const showFloatingCopy = ref(false)
 
   // 安全地获取 hljs 实例
   const hljs = computed(() => {
@@ -333,8 +321,13 @@
    * 切换全屏显示状态
    */
   function toggleFullscreen() {
-    isFullscreen.value = !isFullscreen.value
-    emit('fullscreen', isFullscreen.value)
+    setFullscreen(!isFullscreen.value)
+  }
+
+  function setFullscreen(value: boolean) {
+    if (value === isFullscreen.value) return
+    isFullscreen.value = value
+    emit('fullscreen', value)
   }
 
   /**
@@ -369,23 +362,6 @@
     }
     return titleMap[lang.toLowerCase()] || lang.toUpperCase()
   }
-
-  /**
-   * 处理ESC键退出全屏
-   */
-  function handleEscapeKey(event: KeyboardEvent) {
-    if (event.key === 'Escape' && isFullscreen.value) {
-      toggleFullscreen()
-    }
-  }
-
-  onMounted(() => {
-    document.addEventListener('keydown', handleEscapeKey)
-  })
-
-  onUnmounted(() => {
-    document.removeEventListener('keydown', handleEscapeKey)
-  })
 
   defineExpose({
     copyCode,

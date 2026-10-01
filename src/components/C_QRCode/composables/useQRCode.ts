@@ -1,4 +1,4 @@
-import { ref, computed, watch, type Ref } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, type Ref } from 'vue'
 import QRCode from 'qrcode'
 import type {
   ErrorCorrectionLevel,
@@ -30,10 +30,13 @@ function drawLogo(
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const ratio = logo.size ?? 0.2
+      const ratio = Math.min(0.3, Math.max(0.05, logo.size ?? 0.2))
       const logoSize = Math.floor(qrSize * ratio)
-      const padding = logo.padding ?? 4
-      const borderRadius = logo.borderRadius ?? 4
+      const padding = Math.max(0, logo.padding ?? 4)
+      const borderRadius = Math.min(
+        logoSize / 2,
+        Math.max(0, logo.borderRadius ?? 4)
+      )
 
       const x = (canvas.width - logoSize) / 2
       const y = (canvas.height - logoSize) / 2
@@ -80,8 +83,10 @@ export function useQRCode(
   options: UseQRCodeOptions
 ) {
   const svgHtml = ref('')
+  const svgTrusted = ref(false)
   const error = ref<Error | null>(null)
   const loading = ref(false)
+  let renderVersion = 0
 
   const effectiveLevel = computed<ErrorCorrectionLevel>(() => {
     if (options.logo.value) {
@@ -102,42 +107,86 @@ export function useQRCode(
     },
   }))
 
-  async function renderCanvas() {
-    const canvas = canvasRef.value
-    if (!canvas || !options.value.value) return
-    await QRCode.toCanvas(canvas, options.value.value, qrOptions.value)
-    if (options.logo.value) {
-      await drawLogo(canvas, options.logo.value, options.size.value)
+  async function createCanvas() {
+    const canvas = document.createElement('canvas')
+    const { value } = options.value
+    const settings = qrOptions.value
+    const logo = options.logo.value
+    const size = options.size.value
+    await QRCode.toCanvas(canvas, value, settings)
+    if (logo) {
+      await drawLogo(canvas, logo, size)
     }
+    return canvas
   }
 
-  async function renderSvg() {
-    if (!options.value.value) {
-      svgHtml.value = ''
-      return
+  async function createSvg() {
+    if (options.logo.value) {
+      const canvas = await createCanvas()
+      const raster = canvas.toDataURL('image/png')
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"><image href="${raster}" width="100%" height="100%"/></svg>`
     }
-    const svgString = await QRCode.toString(options.value.value, {
+    return QRCode.toString(options.value.value, {
       ...qrOptions.value,
       type: 'svg',
     })
-    svgHtml.value = svgString
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.value
+    if (!canvas) return
+    canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+    canvas.width = 0
+    canvas.height = 0
+  }
+
+  function clearVisual() {
+    svgHtml.value = ''
+    svgTrusted.value = false
+    clearCanvas()
+  }
+
+  async function renderCurrent(version: number) {
+    if (options.mode.value === 'canvas') {
+      const output = await createCanvas()
+      if (version !== renderVersion) return
+      const canvas = canvasRef.value
+      if (!canvas) return
+      canvas.width = output.width
+      canvas.height = output.height
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Canvas context 不可用')
+      context.drawImage(output, 0, 0)
+      svgHtml.value = ''
+      svgTrusted.value = false
+      return
+    }
+
+    const svg = await createSvg()
+    if (version !== renderVersion) return
+    svgHtml.value = svg
+    svgTrusted.value = Boolean(options.logo.value)
+    clearCanvas()
   }
 
   async function render() {
-    if (!options.value.value) return
+    const version = ++renderVersion
+    if (!options.value.value) {
+      clearVisual()
+      error.value = null
+      loading.value = false
+      return
+    }
     loading.value = true
     error.value = null
     try {
-      if (options.mode.value === 'canvas') {
-        await renderCanvas()
-      } else {
-        await renderSvg()
-      }
+      await renderCurrent(version)
     } catch (e) {
+      if (version !== renderVersion) return
       error.value = e instanceof Error ? e : new Error(String(e))
-      console.error('二维码渲染失败:', e)
+      clearVisual()
     } finally {
-      loading.value = false
+      if (version === renderVersion) loading.value = false
     }
   }
 
@@ -146,17 +195,10 @@ export function useQRCode(
     quality = 0.92
   ): Promise<string> {
     if (type === 'svg') {
-      const svgStr = await QRCode.toString(options.value.value, {
-        ...qrOptions.value,
-        type: 'svg',
-      })
+      const svgStr = await createSvg()
       return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`
     }
-    const tempCanvas = document.createElement('canvas')
-    await QRCode.toCanvas(tempCanvas, options.value.value, qrOptions.value)
-    if (options.logo.value) {
-      await drawLogo(tempCanvas, options.logo.value, options.size.value)
-    }
+    const tempCanvas = await createCanvas()
     const mimeType = type === 'jpeg' ? 'image/jpeg' : 'image/png'
     return tempCanvas.toDataURL(mimeType, quality)
   }
@@ -166,7 +208,9 @@ export function useQRCode(
     const link = document.createElement('a')
     link.download = `${filename}.${type}`
     link.href = dataUrl
+    document.body.appendChild(link)
     link.click()
+    link.remove()
   }
 
   watch(
@@ -184,5 +228,9 @@ export function useQRCode(
     { deep: true }
   )
 
-  return { svgHtml, error, loading, render, toDataURL, download }
+  onBeforeUnmount(() => {
+    renderVersion++
+  })
+
+  return { svgHtml, svgTrusted, error, loading, render, toDataURL, download }
 }

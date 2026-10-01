@@ -38,6 +38,9 @@
         v-for="(lay, index) in layoutItems"
         :key="lay.item.id"
         class="waterfall__item"
+        role="button"
+        tabindex="0"
+        :aria-label="lay.item.title || `瀑布流项目 ${index + 1}`"
         :style="{
           position: 'absolute',
           left: `${lay.x}px`,
@@ -46,6 +49,8 @@
           transition: `all ${props.animationDuration ?? DEFAULT_ANIMATION_DURATION}ms ease`,
         }"
         @click="emit('item-click', lay.item, index)"
+        @keydown.enter="emit('item-click', lay.item, index)"
+        @keydown.space.prevent="emit('item-click', lay.item, index)"
       >
         <slot
           name="item"
@@ -168,13 +173,17 @@
   )
 
   const skeletonItems = computed(() => {
-    const cols = columns.value
+    const cols = Math.min(24, Math.max(1, Math.floor(columns.value)))
     const width = containerWidth.value
-    const g = props.gap
-    if (cols <= 0 || width <= 0) return []
+    const g = Math.max(0, props.gap)
+    if (!Number.isFinite(cols) || width <= 0) return []
 
     const colWidth = (width - (cols - 1) * g) / cols
-    const count = props.skeletonCount ?? DEFAULT_SKELETON_COUNT
+    if (colWidth <= 0) return []
+    const count = Math.min(
+      100,
+      Math.max(0, Math.floor(props.skeletonCount ?? DEFAULT_SKELETON_COUNT))
+    )
     const colHeights = Array(cols).fill(0)
     const result: { x: number; y: number; width: number; height: number }[] = []
 
@@ -182,7 +191,7 @@
       const minIdx = colHeights.indexOf(Math.min(...colHeights))
       const h =
         SKELETON_HEIGHT_RANGE[0] +
-        Math.random() * (SKELETON_HEIGHT_RANGE[1] - SKELETON_HEIGHT_RANGE[0])
+        ((i * 73) % (SKELETON_HEIGHT_RANGE[1] - SKELETON_HEIGHT_RANGE[0]))
       result.push({
         x: minIdx * (colWidth + g),
         y: colHeights[minIdx],
@@ -219,7 +228,7 @@
     const img = event.target as HTMLImageElement
     if (img.naturalHeight && img.naturalWidth) {
       const realHeight = (img.naturalHeight / img.naturalWidth) * lay.width
-      cacheImageHeight(lay.item.id, realHeight)
+      cacheImageHeight(lay.item.id, realHeight, lay.width, lay.item.src)
     }
     emit('image-loaded', lay.item)
   }
@@ -251,6 +260,11 @@
 
   .waterfall__item {
     cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--primary-color, #2080f0);
+      outline-offset: 2px;
+    }
   }
 
   .waterfall__card {

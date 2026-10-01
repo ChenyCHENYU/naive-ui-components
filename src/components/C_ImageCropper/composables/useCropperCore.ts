@@ -1,6 +1,14 @@
 import { ref, type Ref } from 'vue'
 import type { CropOutputFormat, CropResult } from '../types'
 
+interface CropperInstance {
+  rotateLeft: () => void
+  rotateRight: () => void
+  changeScale: (step: number) => void
+  refresh: () => void
+  getCropChecked: (callback: (canvas: HTMLCanvasElement) => void) => void
+}
+
 interface UseCropperCoreOptions {
   format?: Ref<CropOutputFormat>
   quality?: Ref<number>
@@ -8,11 +16,11 @@ interface UseCropperCoreOptions {
   maxHeight?: Ref<number>
 }
 
-/**
- *
- */
+const EXPORT_TIMEOUT_MS = 15_000
+
+/** Manage the vue-cropper instance and serialize a single crop snapshot. */
 export function useCropperCore(options: UseCropperCoreOptions = {}) {
-  const cropperRef = ref<any>(null)
+  const cropperRef = ref<CropperInstance | null>(null)
 
   function rotateLeft() {
     cropperRef.value?.rotateLeft()
@@ -23,116 +31,101 @@ export function useCropperCore(options: UseCropperCoreOptions = {}) {
   }
 
   function rotate(angle: number) {
+    if (!Number.isFinite(angle)) return
     const steps = Math.round(angle / 90)
     const fn = steps > 0 ? rotateRight : rotateLeft
     for (let i = 0; i < Math.abs(steps); i++) fn()
   }
 
   function zoom(scale: number) {
+    if (!Number.isFinite(scale) || scale === 0) return
     cropperRef.value?.changeScale(scale > 0 ? 1 : -1)
-  }
-
-  function flipX() {
-    const el = cropperRef.value?.$refs?.img
-    if (!el) return
-    const current = el.style.transform || ''
-    if (current.includes('scaleX(-1)')) {
-      el.style.transform = current.replace('scaleX(-1)', 'scaleX(1)')
-    } else {
-      el.style.transform =
-        current.replace(/scaleX\([^)]*\)/, '') + ' scaleX(-1)'
-    }
-  }
-
-  function flipY() {
-    const el = cropperRef.value?.$refs?.img
-    if (!el) return
-    const current = el.style.transform || ''
-    if (current.includes('scaleY(-1)')) {
-      el.style.transform = current.replace('scaleY(-1)', 'scaleY(1)')
-    } else {
-      el.style.transform =
-        current.replace(/scaleY\([^)]*\)/, '') + ' scaleY(-1)'
-    }
   }
 
   function reset() {
     cropperRef.value?.refresh()
   }
 
-  function constrainSize(w: number, h: number) {
-    let ow = w
-    let oh = h
-    const maxW = options.maxWidth?.value ?? 0
-    const maxH = options.maxHeight?.value ?? 0
-
-    if (maxW > 0 && ow > maxW) {
-      const ratio = maxW / ow
-      ow = maxW
-      oh = Math.round(oh * ratio)
+  function constrainSize(width: number, height: number) {
+    const maxWidth = options.maxWidth?.value ?? 0
+    const maxHeight = options.maxHeight?.value ?? 0
+    const ratio = Math.min(
+      1,
+      maxWidth > 0 ? maxWidth / width : 1,
+      maxHeight > 0 ? maxHeight / height : 1
+    )
+    return {
+      width: Math.max(1, Math.round(width * ratio)),
+      height: Math.max(1, Math.round(height * ratio)),
     }
-    if (maxH > 0 && oh > maxH) {
-      const ratio = maxH / oh
-      oh = maxH
-      ow = Math.round(ow * ratio)
-    }
-    return { width: ow, height: oh }
   }
 
   function getCropResult(): Promise<CropResult> {
     return new Promise((resolve, reject) => {
       const cropper = cropperRef.value
-      if (!cropper) return reject(new Error('Cropper not initialized'))
+      if (!cropper) {
+        reject(new Error('Cropper not initialized'))
+        return
+      }
 
       const format = options.format?.value ?? 'png'
-      const quality = options.quality?.value ?? 0.92
-      const mime =
-        format === 'jpeg'
-          ? 'image/jpeg'
-          : format === 'webp'
-            ? 'image/webp'
-            : 'image/png'
+      const quality = Math.min(1, Math.max(0, options.quality?.value ?? 0.92))
+      const mime = format === 'jpeg' ? 'image/jpeg' : `image/${format}`
+      let settled = false
+      const timeout = setTimeout(
+        () => fail(new Error('Crop result timed out')),
+        EXPORT_TIMEOUT_MS
+      )
 
-      cropper.getCropData((base64: string) => {
-        cropper.getCropBlob((blob: Blob) => {
-          const img = new Image()
-          img.onload = () => {
-            const { width, height } = constrainSize(img.width, img.height)
+      function fail(error: unknown) {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      }
 
-            if (width !== img.width || height !== img.height) {
-              const canvas = document.createElement('canvas')
-              canvas.width = width
-              canvas.height = height
-              const ctx = canvas.getContext('2d')!
-              ctx.drawImage(img, 0, 0, width, height)
-              const constrainedBase64 = canvas.toDataURL(mime, quality)
-              canvas.toBlob(
-                constrainedBlob => {
-                  resolve({
-                    base64: constrainedBase64,
-                    blob: constrainedBlob!,
-                    width,
-                    height,
-                    format,
-                  })
-                },
-                mime,
-                format === 'png' ? undefined : quality
-              )
-            } else {
-              resolve({
-                base64,
-                blob,
-                width: img.width,
-                height: img.height,
-                format,
-              })
+      function complete(result: CropResult) {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        resolve(result)
+      }
+
+      try {
+        cropper.getCropChecked(source => {
+          if (settled) return
+          try {
+            if (!source.width || !source.height)
+              throw new Error('Crop result is empty')
+            const { width, height } = constrainSize(source.width, source.height)
+            let output = source
+            if (width !== source.width || height !== source.height) {
+              output = document.createElement('canvas')
+              output.width = width
+              output.height = height
+              const context = output.getContext('2d')
+              if (!context) throw new Error('Canvas 2D context unavailable')
+              context.drawImage(source, 0, 0, width, height)
             }
+            const base64 = output.toDataURL(mime, quality)
+            output.toBlob(
+              blob => {
+                if (!blob) {
+                  fail(new Error('Crop result could not be encoded'))
+                  return
+                }
+                complete({ base64, blob, width, height, format })
+              },
+              mime,
+              quality
+            )
+          } catch (error) {
+            fail(error)
           }
-          img.onerror = () => reject(new Error('Failed to load crop result'))
-          img.src = base64
         })
-      })
+      } catch (error) {
+        fail(error)
+      }
     })
   }
 
@@ -142,8 +135,6 @@ export function useCropperCore(options: UseCropperCoreOptions = {}) {
     rotateLeft,
     rotateRight,
     zoom,
-    flipX,
-    flipY,
     reset,
     getCropResult,
   }

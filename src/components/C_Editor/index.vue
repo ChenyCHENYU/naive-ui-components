@@ -8,9 +8,12 @@
 <template>
   <div
     :id="editorId"
-    ref="editorContainer"
     class="c-editor w-full"
-    :class="{ 'editor-dark': isDark, 'is-disabled': isDisabled }"
+    :class="{
+      'editor-dark': isDark,
+      'is-disabled': isDisabled,
+      'editor-focused': isFocused,
+    }"
     @focusin="handleEditorFocus"
     @focusout="handleEditorBlur"
   >
@@ -84,7 +87,7 @@
 
   const emit = defineEmits<Emits>()
 
-  const editorContainer = ref<HTMLElement | null>(null)
+  const isFocused = ref(false)
   const editorInstance = shallowRef<EditorInstance | null>(null)
   const isInitialized = ref<boolean>(false)
   const editorHtml = ref(props.modelValue)
@@ -196,26 +199,11 @@
   })
 
   const handleEditorFocus = (): void => {
-    if (!editorContainer.value) return
-    const container = editorContainer.value.closest(
-      '.form-demo'
-    ) as HTMLElement | null
-    if (container) {
-      container.classList.add('editor-focused')
-      const containerWidth = container.scrollWidth
-      container.style.maxWidth = `${containerWidth}px`
-    }
+    isFocused.value = true
   }
 
   const handleEditorBlur = (): void => {
-    if (!editorContainer.value) return
-    const container = editorContainer.value.closest(
-      '.form-demo'
-    ) as HTMLElement | null
-    if (container) {
-      container.classList.remove('editor-focused')
-      container.style.maxWidth = ''
-    }
+    isFocused.value = false
   }
 
   onBeforeUnmount(() => {
@@ -325,7 +313,6 @@
   }
 
   .editor-focused {
-    overflow: hidden !important;
     max-width: 100% !important;
   }
 </style>

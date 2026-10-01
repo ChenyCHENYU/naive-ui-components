@@ -22,6 +22,10 @@
       role="menu"
       tabindex="-1"
       @keydown.escape="close"
+      @keydown.arrow-down.prevent="moveFocus(1)"
+      @keydown.arrow-up.prevent="moveFocus(-1)"
+      @keydown.home.prevent="focusBoundary('first')"
+      @keydown.end.prevent="focusBoundary('last')"
     >
       <ContextMenuItems
         :items="props.items"
@@ -66,6 +70,34 @@
   const visible = ref(false)
   const position = ref({ x: 0, y: 0 })
   const menuRef = ref<HTMLElement>()
+  let previousFocus: HTMLElement | null = null
+
+  function focusableItems(): HTMLElement[] {
+    return Array.from(
+      menuRef.value?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([aria-disabled="true"])'
+      ) ?? []
+    )
+  }
+
+  function focusBoundary(boundary: 'first' | 'last') {
+    const items = focusableItems()
+    const item = boundary === 'first' ? items[0] : items[items.length - 1]
+    item?.focus()
+  }
+
+  function moveFocus(delta: number) {
+    const items = focusableItems()
+    if (items.length === 0) return
+    const index = items.indexOf(document.activeElement as HTMLElement)
+    const next =
+      index < 0
+        ? delta > 0
+          ? 0
+          : items.length - 1
+        : (index + delta + items.length) % items.length
+    items[next]?.focus()
+  }
 
   // ===== 菜单定位样式 =====
   const menuStyle = computed(() => ({
@@ -98,18 +130,31 @@
   // ===== 打开/关闭 =====
   const open = (x: number, y: number) => {
     if (props.disabled) return
-    position.value = { x, y }
+    if (!visible.value)
+      previousFocus = document.activeElement as HTMLElement | null
+    position.value = {
+      x: Number.isFinite(x) ? Math.max(0, x) : 0,
+      y: Number.isFinite(y) ? Math.max(0, y) : 0,
+    }
     visible.value = true
-    emit('open', { x, y })
+    emit('open', { ...position.value })
     adjustPosition()
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
 
-    // 聚焦以支持 Escape 关闭
-    nextTick(() => menuRef.value?.focus())
+    nextTick(() => focusBoundary('first'))
   }
 
   const close = () => {
+    if (!visible.value) return
     visible.value = false
+    window.removeEventListener('resize', close)
+    window.removeEventListener('scroll', close, true)
     emit('close')
+    nextTick(() => {
+      if (previousFocus?.isConnected) previousFocus.focus()
+      previousFocus = null
+    })
   }
 
   // ===== 菜单项选择 =====
@@ -119,6 +164,8 @@
   }
 
   onBeforeUnmount(() => {
+    window.removeEventListener('resize', close)
+    window.removeEventListener('scroll', close, true)
     visible.value = false
   })
 

@@ -8,11 +8,17 @@
 <template>
   <div class="c-time-wrapper">
     <!-- 时间段选择模式 -->
-    <div v-if="mode === 'range'" class="time-range-container">
+    <div
+      v-if="mode === 'range'"
+      class="time-range-container"
+    >
       <NTimePicker
         v-model:value="startTime"
         :placeholder="startPlaceholder"
         :format="timeFormat"
+        :hours="allowedHours"
+        :minutes="allowedMinutes"
+        :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         v-bind="mergedStartAttrs"
         @update:value="handleStartTimeChange"
@@ -22,6 +28,9 @@
         v-model:value="endTime"
         :placeholder="endPlaceholder"
         :format="timeFormat"
+        :hours="allowedHours"
+        :minutes="allowedMinutes"
+        :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         :is-hour-disabled="
           props.enableTimeRestriction ? isEndHourDisabled : undefined
@@ -39,11 +48,17 @@
     </div>
 
     <!-- 单个时间选择模式 -->
-    <div v-else class="time-single-container">
+    <div
+      v-else
+      class="time-single-container"
+    >
       <NTimePicker
         v-model:value="singleTime"
         :placeholder="placeholder"
         :format="timeFormat"
+        :hours="allowedHours"
+        :minutes="allowedMinutes"
+        :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         v-bind="mergedAttrs"
         @update:value="handleSingleTimeChange"
@@ -53,61 +68,64 @@
 </template>
 
 <script lang="ts" setup>
-import { NTimePicker } from "naive-ui";
-import { useTimeSelection } from "./composables/useTimeSelection";
-import type { TimeProps, TimeEmits, TimeExpose } from "./types";
+  import { NTimePicker } from 'naive-ui'
+  import { useTimeSelection } from './composables/useTimeSelection'
+  import type { TimeProps, TimeEmits, TimeExpose } from './types'
 
-defineOptions({ name: "C_Time" });
+  defineOptions({ name: 'C_Time' })
 
-const props = withDefaults(defineProps<TimeProps>(), {
-  mode: "range",
-  startPlaceholder: "请选择开始时间",
-  endPlaceholder: "请选择结束时间",
-  placeholder: "请选择时间",
-  format: "HH:mm",
-  useHours: true,
-  useMinutes: true,
-  useSeconds: false,
-  hourStep: 1,
-  minuteStep: 30,
-  secondStep: 1,
-  startTimeProps: () => ({}),
-  endTimeProps: () => ({}),
-  attrs: () => ({}),
-  defaultStartTime: null,
-  defaultEndTime: null,
-  defaultSingleTime: null,
-  enableTimeRestriction: false,
-});
+  const props = withDefaults(defineProps<TimeProps>(), {
+    mode: 'range',
+    startPlaceholder: '请选择开始时间',
+    endPlaceholder: '请选择结束时间',
+    placeholder: '请选择时间',
+    format: 'HH:mm',
+    useHours: true,
+    useMinutes: true,
+    useSeconds: false,
+    hourStep: 1,
+    minuteStep: 30,
+    secondStep: 1,
+    startTimeProps: () => ({}),
+    endTimeProps: () => ({}),
+    attrs: () => ({}),
+    defaultStartTime: null,
+    defaultEndTime: null,
+    defaultSingleTime: null,
+    enableTimeRestriction: false,
+  })
 
-const emit = defineEmits<TimeEmits>();
+  const emit = defineEmits<TimeEmits>()
 
-const {
-  startTime,
-  endTime,
-  singleTime,
-  timeFormat,
-  endTimeDisabled,
-  mergedStartAttrs,
-  mergedEndAttrs,
-  mergedAttrs,
-  isEndHourDisabled,
-  isEndMinuteDisabled,
-  isEndSecondDisabled,
-  handleStartTimeChange,
-  handleEndTimeChange,
-  handleSingleTimeChange,
-  reset,
-} = useTimeSelection(props, emit);
+  const {
+    startTime,
+    endTime,
+    singleTime,
+    timeFormat,
+    allowedHours,
+    allowedMinutes,
+    allowedSeconds,
+    endTimeDisabled,
+    mergedStartAttrs,
+    mergedEndAttrs,
+    mergedAttrs,
+    isEndHourDisabled,
+    isEndMinuteDisabled,
+    isEndSecondDisabled,
+    handleStartTimeChange,
+    handleEndTimeChange,
+    handleSingleTimeChange,
+    reset,
+  } = useTimeSelection(props, emit)
 
-defineExpose<TimeExpose>({
-  reset,
-  startTime,
-  endTime,
-  singleTime,
-});
+  defineExpose<TimeExpose>({
+    reset,
+    startTime,
+    endTime,
+    singleTime,
+  })
 </script>
 
 <style scoped lang="scss">
-@use "./index.scss";
+  @use './index.scss';
 </style>

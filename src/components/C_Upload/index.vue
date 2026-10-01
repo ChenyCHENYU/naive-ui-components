@@ -53,7 +53,6 @@
       v-else-if="props.showFileList && fileList.length > 0"
       :file-list="fileList"
       :show-thumbnail="props.showThumbnail"
-      :hash-progress="hashProgress"
       @remove="handleRemove"
       @retry="handleRetry"
     />
@@ -107,7 +106,6 @@
   const {
     fileList,
     totalPercent,
-    hashProgress,
     addFiles,
     removeFile,
     clearAll,

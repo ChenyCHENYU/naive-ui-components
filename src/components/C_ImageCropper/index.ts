@@ -1,4 +1,4 @@
-export { default as C_ImageCropper } from "./index.vue";
+export { default as C_ImageCropper } from './index.vue'
 export type {
   CropOutputFormat,
   AspectRatioPreset,
@@ -6,5 +6,5 @@ export type {
   ImageCropperProps,
   ImageCropperExpose,
   ImageCropperEmits,
-} from "./types";
-export { useCropperCore } from "./composables/useCropperCore";
+} from './types'
+export { useCropperCore } from './composables/useCropperCore'

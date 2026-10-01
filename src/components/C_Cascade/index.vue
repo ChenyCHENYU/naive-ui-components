@@ -14,7 +14,7 @@
       :options="levelOptions[index]"
       clearable
       :placeholder="placeholders[index]"
-      :disabled="index > 0 && !selectedValues[index - 1]"
+      :disabled="index > 0 && selectedValues[index - 1] === null"
       @update:value="handleChange(index)"
       class="n-select-item"
     />
@@ -24,6 +24,7 @@
 <script lang="ts" setup>
   import { ref, computed, watch } from 'vue'
   import { NSelect } from 'naive-ui'
+  import { normalizeCascadeSelection } from './cascadeSelection'
   import type { CascadeItem, CascadeValue } from './types'
 
   defineOptions({ name: 'C_Cascade' })
@@ -49,7 +50,7 @@
 
   const getLevelData = (level: number): CascadeItem[] => {
     if (level === 0) return props.data
-    if (!selectedValues.value[level - 1]) return []
+    if (selectedValues.value[level - 1] === null) return []
     const parentData = getLevelData(level - 1)
     return (
       parentData.find(x => x.value === selectedValues.value[level - 1])
@@ -77,7 +78,7 @@
 
   const getSelectedItem = (index: number) => {
     const value = selectedValues.value[index]
-    if (!value) return null
+    if (value === null) return null
     const data = getLevelData(index)
     const item = data.find(i => i.value === value)
     return item ? { label: item.label, value: item.value } : null
@@ -94,13 +95,13 @@
   }
 
   watch(
-    () => props.modelValue,
-    val => {
-      selectedValues.value = [
-        val?.primary?.value ?? null,
-        val?.secondary?.value ?? null,
-        val?.tertiary?.value ?? null,
-      ]
+    () => [props.modelValue, props.data] as const,
+    ([modelValue, data]) => {
+      selectedValues.value = normalizeCascadeSelection(
+        data,
+        modelValue,
+        selectedValues.value
+      )
     },
     { immediate: true, deep: true }
   )

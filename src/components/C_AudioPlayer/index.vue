@@ -44,7 +44,14 @@
     >
       <div
         class="c-audio-player__progress-bar"
+        role="slider"
+        :tabindex="currentTrack ? 0 : -1"
+        aria-label="播放进度"
+        :aria-valuemin="0"
+        :aria-valuemax="Math.floor(totalDuration)"
+        :aria-valuenow="Math.floor(currentTime)"
         @click="seekByClick"
+        @keydown="seekByKeyboard"
       >
         <div
           class="c-audio-player__progress-fill"
@@ -60,6 +67,7 @@
     <!-- ================ Controls ================ -->
     <div class="c-audio-player__controls">
       <button
+        type="button"
         class="c-audio-player__ctrl-btn is-mode"
         :title="currentModeLabel"
         @click="cycleMode"
@@ -67,6 +75,7 @@
         <C_Icon :name="currentModeIcon" />
       </button>
       <button
+        type="button"
         class="c-audio-player__ctrl-btn is-skip"
         title="上一曲"
         @click="prev"
@@ -74,13 +83,16 @@
         <C_Icon name="mdi:skip-previous" />
       </button>
       <button
+        type="button"
         class="c-audio-player__ctrl-btn is-play"
+        :disabled="!currentTrack"
         :title="isPlaying ? '暂停' : '播放'"
         @click="togglePlay"
       >
         <C_Icon :name="isPlaying ? 'mdi:pause' : 'mdi:play'" />
       </button>
       <button
+        type="button"
         class="c-audio-player__ctrl-btn is-skip"
         title="下一曲"
         @click="next"
@@ -88,6 +100,7 @@
         <C_Icon name="mdi:skip-next" />
       </button>
       <button
+        type="button"
         class="c-audio-player__ctrl-btn is-mode"
         title="播放列表"
         @click="playlistVisible = !playlistVisible"
@@ -101,11 +114,14 @@
       v-if="theme !== 'minimal'"
       class="c-audio-player__volume"
     >
-      <C_Icon
-        :name="volumeIcon"
+      <button
+        type="button"
         class="c-audio-player__volume-icon"
+        :aria-label="volume === 0 ? '取消静音' : '静音'"
         @click="toggleMute"
-      />
+      >
+        <C_Icon :name="volumeIcon" />
+      </button>
       <NSlider
         v-model:value="volume"
         :min="0"
@@ -125,9 +141,10 @@
         <span>播放列表</span>
         <span>{{ tracks.length }} 首</span>
       </div>
-      <div
+      <button
         v-for="(track, idx) in tracks"
         :key="track.id"
+        type="button"
         class="c-audio-player__track"
         :class="{ 'is-active': idx === activeIndex }"
         @click="playTrack(idx)"
@@ -154,18 +171,19 @@
         >
           {{ formatTime(track.duration) }}
         </span>
-      </div>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, ref, watch } from 'vue'
+  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import {
     DEFAULT_AUDIO_PLAYER_PROPS,
     formatTime,
     MODE_ICON_MAP,
+    normalizeTrackIndex,
     type AudioPlayerProps,
   } from './types'
 
@@ -194,13 +212,21 @@
     pause: []
     ended: [index: number]
     modeChange: [mode: string]
+    error: [error: unknown]
   }>()
 
   // ==================== Audio Core ====================
 
   let audio: HTMLAudioElement | null = null
+  let playVersion = 0
+  const hasTrack = (index: number): boolean =>
+    Number.isInteger(index) && Boolean(props.tracks[index])
+  const isCurrentPlayback = (version: number, current: HTMLAudioElement) =>
+    version === playVersion && current === audio
 
-  const activeIndex = ref(props.initialIndex ?? 0)
+  const activeIndex = ref(
+    normalizeTrackIndex(props.initialIndex ?? 0, props.tracks.length)
+  )
   const isPlaying = ref(false)
   const currentTime = ref(0)
   const totalDuration = ref(0)
@@ -212,8 +238,8 @@
   const currentTrack = computed(() => props.tracks[activeIndex.value])
 
   const progressPercent = computed(() => {
-    if (totalDuration.value === 0) return 0
-    return (currentTime.value / totalDuration.value) * 100
+    if (totalDuration.value <= 0) return 0
+    return Math.min(100, (currentTime.value / totalDuration.value) * 100)
   })
 
   const volumeIcon = computed(() => {
@@ -232,14 +258,19 @@
 
   /** 初始化音频实例 */
   function initAudio() {
+    playVersion += 1
     if (audio) {
       audio.pause()
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.removeEventListener('loadedmetadata', onMetaLoaded)
       audio.removeEventListener('ended', onEnded)
     }
+    audio = null
+    isPlaying.value = false
+    currentTime.value = 0
     const track = currentTrack.value
-    if (!track) return
+    totalDuration.value = track?.duration ?? 0
+    if (!track || typeof Audio === 'undefined') return
 
     audio = new Audio(track.src)
     audio.volume = volume.value / 100
@@ -250,12 +281,16 @@
 
   /** 播放进度更新回调 */
   function onTimeUpdate() {
-    if (audio) currentTime.value = audio.currentTime
+    if (audio)
+      currentTime.value = Number.isFinite(audio.currentTime)
+        ? audio.currentTime
+        : 0
   }
 
   /** 音频元数据加载完成回调 */
   function onMetaLoaded() {
-    if (audio) totalDuration.value = audio.duration
+    if (audio)
+      totalDuration.value = Number.isFinite(audio.duration) ? audio.duration : 0
   }
 
   /** 播放结束回调，根据模式决定下一步 */
@@ -263,67 +298,109 @@
     emit('ended', activeIndex.value)
     switch (playMode.value) {
       case 'loop':
-        audio?.play().catch(() => {})
+        if (audio) audio.currentTime = 0
+        void startPlayback(activeIndex.value, false)
         break
       case 'single':
         isPlaying.value = false
         break
       case 'shuffle':
-        playTrack(Math.floor(Math.random() * props.tracks.length))
+        if (props.tracks.length) {
+          void playTrack(Math.floor(Math.random() * props.tracks.length))
+        }
         break
       default: // list
-        if (activeIndex.value < props.tracks.length - 1) next()
-        else {
-          activeIndex.value = 0
-          initAudio()
-          audio?.play().catch(() => {})
+        if (!props.tracks.length) {
+          isPlaying.value = false
+          break
         }
+        void playTrack(
+          activeIndex.value < props.tracks.length - 1
+            ? activeIndex.value + 1
+            : 0
+        )
+    }
+  }
+
+  /** Only a successful browser play() transition can enter the playing state. */
+  async function startPlayback(idx: number, restart: boolean): Promise<void> {
+    if (!hasTrack(idx)) return
+    if (restart || !audio || activeIndex.value !== idx) {
+      activeIndex.value = idx
+      initAudio()
+    }
+    const currentAudio = audio
+    if (!currentAudio) return
+    const version = ++playVersion
+    try {
+      await currentAudio.play()
+      if (!isCurrentPlayback(version, currentAudio)) return
+      isPlaying.value = true
+      emit('play', idx)
+    } catch (error) {
+      if (!isCurrentPlayback(version, currentAudio)) return
+      isPlaying.value = false
+      emit('error', error)
     }
   }
 
   /** 切换播放/暂停 */
   function togglePlay() {
-    if (!audio) initAudio()
-    if (isPlaying.value) {
-      audio?.pause()
-      isPlaying.value = false
-      emit('pause')
-    } else {
-      audio?.play().catch(() => {})
-      isPlaying.value = true
-      emit('play', activeIndex.value)
+    if (!currentTrack.value) return
+    if (!isPlaying.value) {
+      void startPlayback(activeIndex.value, false)
+      return
     }
+    playVersion += 1
+    audio?.pause()
+    isPlaying.value = false
+    emit('pause')
   }
 
   /** 播放指定索引的曲目 */
-  function playTrack(idx: number) {
-    activeIndex.value = idx
-    initAudio()
-    audio?.play().catch(() => {})
-    isPlaying.value = true
-    emit('play', idx)
+  function playTrack(idx: number): Promise<void> {
+    return startPlayback(idx, true)
   }
 
   /** 上一曲 */
   function prev() {
+    if (!props.tracks.length) return
     const idx =
       activeIndex.value <= 0 ? props.tracks.length - 1 : activeIndex.value - 1
-    playTrack(idx)
+    void playTrack(idx)
   }
 
   /** 下一曲 */
   function next() {
+    if (!props.tracks.length) return
     const idx =
       activeIndex.value >= props.tracks.length - 1 ? 0 : activeIndex.value + 1
-    playTrack(idx)
+    void playTrack(idx)
   }
 
   /** 点击进度条跳转播放位置 */
   function seekByClick(e: MouseEvent) {
     if (!audio || !totalDuration.value) return
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    if (rect.width <= 0) return
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     audio.currentTime = ratio * totalDuration.value
+    currentTime.value = audio.currentTime
+  }
+
+  function seekByKeyboard(event: KeyboardEvent) {
+    if (!audio || totalDuration.value <= 0) return
+    const delta =
+      event.key === 'ArrowRight' ? 5 : event.key === 'ArrowLeft' ? -5 : 0
+    const target =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? totalDuration.value
+          : currentTime.value + delta
+    if (!delta && event.key !== 'Home' && event.key !== 'End') return
+    event.preventDefault()
+    audio.currentTime = Math.max(0, Math.min(totalDuration.value, target))
     currentTime.value = audio.currentTime
   }
 
@@ -357,22 +434,51 @@
   watch(
     () => props.tracks,
     () => {
-      activeIndex.value = 0
+      const resume = isPlaying.value
+      activeIndex.value = normalizeTrackIndex(
+        props.initialIndex ?? 0,
+        props.tracks.length
+      )
       initAudio()
+      if (resume) void startPlayback(activeIndex.value, false)
     }
   )
 
   watch(
     () => props.initialIndex,
     val => {
-      if (val !== undefined && val !== activeIndex.value) {
-        activeIndex.value = val
+      const nextIndex = normalizeTrackIndex(val ?? 0, props.tracks.length)
+      if (nextIndex !== activeIndex.value) {
+        const resume = isPlaying.value
+        activeIndex.value = nextIndex
         initAudio()
+        if (resume) void startPlayback(nextIndex, false)
       }
     }
   )
 
+  watch(
+    () => props.mode,
+    mode => {
+      playMode.value = mode
+    }
+  )
+
+  watch(
+    () => props.showPlaylist,
+    show => {
+      playlistVisible.value = show
+    }
+  )
+
+  onMounted(() => {
+    if (props.autoplay && currentTrack.value) {
+      void startPlayback(activeIndex.value, false)
+    }
+  })
+
   onBeforeUnmount(() => {
+    playVersion += 1
     if (audio) {
       audio.pause()
       audio.removeEventListener('timeupdate', onTimeUpdate)
@@ -381,11 +487,6 @@
       audio = null
     }
   })
-
-  // 自动播放
-  if (props.autoplay && props.tracks.length > 0) {
-    playTrack(activeIndex.value)
-  }
 </script>
 
 <style scoped lang="scss">

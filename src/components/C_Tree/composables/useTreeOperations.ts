@@ -2,6 +2,7 @@ import { ref, computed, h } from 'vue'
 import { NTag, NButton, NPopconfirm, NSpace } from 'naive-ui'
 import C_Icon from '../../C_Icon/index.vue'
 import { presetConfigs } from '../data'
+import { collectExpandableKeys, findTreeNode } from '../treeKeys'
 import type {
   TreeOption,
   TreeNodeData,
@@ -27,14 +28,31 @@ type EmitFn = {
  */
 export function useTreeOperations(props: TreeProps, emit: EmitFn) {
   const internalSearchPattern = ref('')
-  const expandedKeys = ref<(string | number)[]>(props.defaultExpandedKeys ?? [])
-  const selectedKeys = ref<(string | number)[]>(props.defaultSelectedKeys ?? [])
-  const isAllExpanded = ref(props.defaultExpandAll ?? false)
+  const expandedKeys = ref<(string | number)[]>(
+    props.defaultExpandAll
+      ? collectExpandableKeys(
+          props.data,
+          props.keyField ?? 'id',
+          props.childrenField ?? 'children'
+        )
+      : [...(props.defaultExpandedKeys ?? [])]
+  )
+  const selectedKeys = ref<(string | number)[]>([
+    ...(props.defaultSelectedKeys ?? []),
+  ])
 
   const keyField = computed(() => props.keyField ?? 'id')
   const labelField = computed(() => props.labelField ?? 'name')
   const childrenField = computed(() => props.childrenField ?? 'children')
   const iconField = computed(() => props.iconField ?? 'icon')
+  const allExpandableKeys = computed(() =>
+    collectExpandableKeys(props.data, keyField.value, childrenField.value)
+  )
+  const isAllExpanded = computed(() => {
+    const keys = allExpandableKeys.value
+    const expanded = new Set(expandedKeys.value)
+    return keys.length > 0 && keys.every(key => expanded.has(key))
+  })
 
   const mergedConfig = computed(() => {
     const preset = presetConfigs[props.mode ?? 'custom'] || {}
@@ -54,32 +72,13 @@ export function useTreeOperations(props: TreeProps, emit: EmitFn) {
 
   const selectedNode = computed((): TreeNodeData | null => {
     if (selectedKeys.value.length === 0) return null
-    const findNode = (
-      nodes: TreeNodeData[],
-      id: string | number
-    ): TreeNodeData | null => {
-      for (const node of nodes) {
-        if (node[keyField.value] === id) return node
-        if (node[childrenField.value]) {
-          const found = findNode(node[childrenField.value], id)
-          if (found) return found
-        }
-      }
-      return null
-    }
-    return findNode(props.data, selectedKeys.value[0])
+    return findTreeNode(
+      props.data,
+      selectedKeys.value[0],
+      keyField.value,
+      childrenField.value
+    )
   })
-
-  const getAllKeys = (nodes: TreeNodeData[]): (string | number)[] => {
-    const keys: (string | number)[] = []
-    nodes.forEach(node => {
-      keys.push(node[keyField.value])
-      if (node[childrenField.value]) {
-        keys.push(...getAllKeys(node[childrenField.value]))
-      }
-    })
-    return keys
-  }
 
   const getNodeIcon = (node: TreeNodeData): string => {
     const config = mergedConfig.value.iconConfig!
@@ -155,6 +154,7 @@ export function useTreeOperations(props: TreeProps, emit: EmitFn) {
           size: 'tiny' as const,
           type: action.type || ('default' as const),
           secondary: true,
+          'aria-label': action.text || action.key,
           style: { padding: '4px 6px', minWidth: '24px', height: '24px' },
           onClick: (e: Event) => {
             e.stopPropagation()
@@ -205,18 +205,11 @@ export function useTreeOperations(props: TreeProps, emit: EmitFn) {
   }
 
   const toggleExpandAll = (): void => {
-    if (isAllExpanded.value) {
-      expandedKeys.value = []
-      isAllExpanded.value = false
-    } else {
-      expandedKeys.value = getAllKeys(props.data)
-      isAllExpanded.value = true
-    }
+    expandedKeys.value = isAllExpanded.value ? [] : allExpandableKeys.value
   }
 
   const handleExpandedKeysChange = (keys: (string | number)[]): void => {
     expandedKeys.value = keys
-    isAllExpanded.value = keys.length === getAllKeys(props.data).length
   }
 
   const handleSelectedKeysChange = (keys: (string | number)[]): void => {
@@ -239,12 +232,10 @@ export function useTreeOperations(props: TreeProps, emit: EmitFn) {
 
   const expose: TreeExpose = {
     expandAll: () => {
-      expandedKeys.value = getAllKeys(props.data)
-      isAllExpanded.value = true
+      expandedKeys.value = allExpandableKeys.value
     },
     collapseAll: () => {
       expandedKeys.value = []
-      isAllExpanded.value = false
     },
     selectNode: (key: string | number) => {
       selectedKeys.value = [key]

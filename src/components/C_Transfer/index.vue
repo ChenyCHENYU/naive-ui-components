@@ -37,6 +37,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
+          aria-label="搜索可选列表"
         >
           <template #prefix>
             <C_Icon name="mdi:magnify" />
@@ -63,6 +64,7 @@
             <NCheckbox
               :checked="sourceChecked.has(item.key)"
               :disabled="item.disabled"
+              :aria-label="item.label"
               size="small"
               @update:checked="toggleSourceCheck(item.key)"
               @click.stop
@@ -87,17 +89,21 @@
     <!-- ================ Actions ================ -->
     <div class="c-transfer__actions">
       <button
+        type="button"
         class="c-transfer__btn"
-        :class="{ 'is-disabled': sourceChecked.size === 0 }"
-        :disabled="sourceChecked.size === 0"
+        aria-label="移至已选列表"
+        :class="{ 'is-disabled': movableSourceKeys.length === 0 }"
+        :disabled="movableSourceKeys.length === 0"
         @click="moveToTarget"
       >
         <C_Icon name="mdi:chevron-right" />
       </button>
       <button
+        type="button"
         class="c-transfer__btn"
-        :class="{ 'is-disabled': targetChecked.size === 0 }"
-        :disabled="targetChecked.size === 0"
+        aria-label="移回可选列表"
+        :class="{ 'is-disabled': movableTargetKeys.length === 0 }"
+        :disabled="movableTargetKeys.length === 0"
         @click="moveToSource"
       >
         <C_Icon name="mdi:chevron-left" />
@@ -135,6 +141,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
+          aria-label="搜索已选列表"
         >
           <template #prefix>
             <C_Icon name="mdi:magnify" />
@@ -161,6 +168,7 @@
             <NCheckbox
               :checked="targetChecked.has(item.key)"
               :disabled="item.disabled"
+              :aria-label="item.label"
               size="small"
               @update:checked="toggleTargetCheck(item.key)"
               @click.stop
@@ -185,8 +193,9 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, reactive, ref } from 'vue'
+  import { computed, reactive, ref, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
+  import { movableKeys, allMovableChecked } from './transferSelection'
   import {
     DEFAULT_TRANSFER_PROPS,
     type TransferItem,
@@ -239,12 +248,12 @@
   const targetKeySet = computed(() => new Set(props.modelValue))
 
   const sourceList = computed(() =>
-    props.data.filter(d => !targetKeySet.value.has(d.key))
+    [...dataMap.value.values()].filter(d => !targetKeySet.value.has(d.key))
   )
 
   const targetList = computed(() => {
     const result: TransferItem[] = []
-    for (const key of props.modelValue) {
+    for (const key of new Set(props.modelValue)) {
       const item = dataMap.value.get(key)
       if (item) result.push(item)
     }
@@ -281,6 +290,25 @@
 
   const sourceChecked = reactive(new Set<string | number>())
   const targetChecked = reactive(new Set<string | number>())
+  const movableSourceKeys = computed(() =>
+    movableKeys(sourceList.value, sourceChecked)
+  )
+  const movableTargetKeys = computed(() =>
+    movableKeys(targetList.value, targetChecked)
+  )
+
+  watch([sourceList, targetList], () => {
+    const sourceKeys = new Set(
+      sourceList.value.filter(item => !item.disabled).map(item => item.key)
+    )
+    const targetKeys = new Set(
+      targetList.value.filter(item => !item.disabled).map(item => item.key)
+    )
+    for (const key of sourceChecked)
+      if (!sourceKeys.has(key)) sourceChecked.delete(key)
+    for (const key of targetChecked)
+      if (!targetKeys.has(key)) targetChecked.delete(key)
+  })
 
   /** 切换源列表项选中状态 */
   function toggleSourceCheck(key: string | number) {
@@ -294,24 +322,16 @@
     else targetChecked.add(key)
   }
 
-  const isSourceAllChecked = computed(
-    () =>
-      filteredSourceList.value.length > 0 &&
-      filteredSourceList.value.every(
-        i => i.disabled || sourceChecked.has(i.key)
-      )
+  const isSourceAllChecked = computed(() =>
+    allMovableChecked(filteredSourceList.value, sourceChecked)
   )
   const isSourceIndeterminate = computed(
     () =>
       !isSourceAllChecked.value &&
       filteredSourceList.value.some(i => sourceChecked.has(i.key))
   )
-  const isTargetAllChecked = computed(
-    () =>
-      filteredTargetList.value.length > 0 &&
-      filteredTargetList.value.every(
-        i => i.disabled || targetChecked.has(i.key)
-      )
+  const isTargetAllChecked = computed(() =>
+    allMovableChecked(filteredTargetList.value, targetChecked)
   )
   const isTargetIndeterminate = computed(
     () =>
@@ -341,8 +361,9 @@
 
   /** 将选中项移至目标列表 */
   function moveToTarget() {
-    const keys = [...sourceChecked]
-    const newVal = [...props.modelValue, ...keys]
+    const keys = movableSourceKeys.value
+    if (keys.length === 0) return
+    const newVal = [...new Set([...props.modelValue, ...keys])]
     emit('update:modelValue', newVal)
     emit('change', newVal, 'right', keys)
     sourceChecked.clear()
@@ -350,7 +371,8 @@
 
   /** 将选中项移回源列表 */
   function moveToSource() {
-    const keys = [...targetChecked]
+    const keys = movableTargetKeys.value
+    if (keys.length === 0) return
     const removeSet = new Set(keys)
     const newVal = props.modelValue.filter(k => !removeSet.has(k))
     emit('update:modelValue', newVal)

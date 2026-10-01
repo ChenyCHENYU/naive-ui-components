@@ -55,6 +55,9 @@ export function usePlayerCore(props: VideoPlayerProps) {
   /** 是否全屏 */
   const isFullscreen = ref(false)
 
+  let initVersion = 0
+  let disposed = false
+
   /** 构建播放器核心容器配置 */
   function buildCoreConfig(): IPlayerOptions {
     return {
@@ -95,7 +98,8 @@ export function usePlayerCore(props: VideoPlayerProps) {
       mini: props.miniPlayer ?? false,
       fullscreen: props.fullscreen !== false,
       cssFullscreen: props.cssFullscreen !== false,
-      keyShortcut: props.keyboard !== false,
+      // The component handles shortcuts on its own focused container.
+      keyShortcut: false,
     }
   }
 
@@ -144,7 +148,9 @@ export function usePlayerCore(props: VideoPlayerProps) {
 
   /** 初始化播放器 */
   async function initPlayer() {
-    if (!containerRef.value) return
+    if (disposed || !containerRef.value) return
+
+    const version = ++initVersion
 
     playerState.value = 'loading'
 
@@ -154,19 +160,28 @@ export function usePlayerCore(props: VideoPlayerProps) {
     delete (config as Record<string, unknown>).__sourceType
 
     let PlayerConstructor: typeof import('xgplayer').default
+    try {
+      /* 根据源类型动态加载对应的播放器 */
+      if (sourceType === 'hls') {
+        const { default: HlsPlayer } = await import('xgplayer-hls')
+        PlayerConstructor =
+          HlsPlayer as unknown as typeof import('xgplayer').default
+      } else {
+        const { default: PresetPlayer } = await import('xgplayer')
+        PlayerConstructor = PresetPlayer
+      }
 
-    /* 根据源类型动态加载对应的播放器 */
-    if (sourceType === 'hls') {
-      const { default: HlsPlayer } = await import('xgplayer-hls')
-      PlayerConstructor =
-        HlsPlayer as unknown as typeof import('xgplayer').default
-    } else {
-      const { default: PresetPlayer } = await import('xgplayer')
-      PlayerConstructor = PresetPlayer
+      // A route may unmount while the player chunk is still loading.
+      if (disposed || version !== initVersion || !containerRef.value) return
+      const player = new PlayerConstructor(config)
+      playerRef.value = player
+    } catch (error) {
+      if (disposed || version !== initVersion) return
+      playerState.value = 'error'
+      throw error
     }
 
-    const player = new PlayerConstructor(config)
-    playerRef.value = player
+    const player = playerRef.value!
 
     /* 绑定事件 */
     player.on(Events.READY, () => {
@@ -205,6 +220,7 @@ export function usePlayerCore(props: VideoPlayerProps) {
 
   /** 销毁播放器 */
   function destroyPlayer() {
+    initVersion++
     const player = playerRef.value
     if (player) {
       player.destroy()
@@ -213,9 +229,11 @@ export function usePlayerCore(props: VideoPlayerProps) {
     playerState.value = 'idle'
     currentTime.value = 0
     duration.value = 0
+    isFullscreen.value = false
   }
 
   onBeforeUnmount(() => {
+    disposed = true
     destroyPlayer()
   })
 

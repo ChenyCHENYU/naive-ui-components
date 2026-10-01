@@ -9,8 +9,8 @@
 <template>
   <div class="c-form-default">
     <template
-      v-for="item in formItems"
-      :key="item.key"
+      v-for="(item, index) in formItems"
+      :key="item.key ?? index"
     >
       <component :is="item" />
     </template>

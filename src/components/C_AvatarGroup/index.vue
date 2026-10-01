@@ -14,7 +14,10 @@
       placement="top"
     >
       <template #trigger>
-        <div
+        <component
+          :is="mergedProps.clickable ? 'button' : 'div'"
+          :type="mergedProps.clickable ? 'button' : undefined"
+          :aria-label="mergedProps.clickable ? item.name : undefined"
           class="c-avatar-group__item"
           :class="[
             `is-${mergedProps.shape}`,
@@ -45,7 +48,7 @@
             class="c-avatar-group__status"
             :style="statusStyle(item.status)"
           />
-        </div>
+        </component>
       </template>
       {{ item.tooltip ?? item.name }}
     </NTooltip>
@@ -56,7 +59,14 @@
       placement="top"
     >
       <template #trigger>
-        <div
+        <component
+          :is="mergedProps.overflowClickable ? 'button' : 'div'"
+          :type="mergedProps.overflowClickable ? 'button' : undefined"
+          :aria-label="
+            mergedProps.overflowClickable
+              ? `显示另外 ${overflowCount} 个头像`
+              : undefined
+          "
           class="c-avatar-group__overflow"
           :class="[
             `is-${mergedProps.shape}`,
@@ -68,7 +78,7 @@
           "
         >
           +{{ overflowCount }}
-        </div>
+        </component>
       </template>
       <div style="max-width: 200px">
         <div
@@ -131,12 +141,12 @@
   }))
 
   const visibleItems = computed(() => {
-    const max = mergedProps.value.max!
+    const max = Math.max(0, Math.floor(mergedProps.value.max!))
     return props.items.length > max ? props.items.slice(0, max) : props.items
   })
 
   const hiddenItems = computed(() => {
-    const max = mergedProps.value.max!
+    const max = Math.max(0, Math.floor(mergedProps.value.max!))
     return props.items.length > max ? props.items.slice(max) : []
   })
 

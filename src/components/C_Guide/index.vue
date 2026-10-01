@@ -16,7 +16,7 @@
     <template #trigger>
       <NButton
         text
-        @click="startGuide"
+        @click="startGuide()"
       >
         <C_Icon
           :name="props.triggerIcon"

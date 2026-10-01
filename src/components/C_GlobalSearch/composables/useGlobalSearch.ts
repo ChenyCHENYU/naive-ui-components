@@ -241,18 +241,19 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
     selectedIndex.value = 0
   })
 
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.defaultPrevented) return
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault()
+      void openDialog()
+    }
+  }
+
   onMounted(() => {
     loadHistory()
-    const handleKeydown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        openDialog()
-      }
-    }
     document.addEventListener('keydown', handleKeydown)
-    onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
   })
+  onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
 
   return {
     showDialog,

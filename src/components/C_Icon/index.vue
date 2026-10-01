@@ -118,42 +118,7 @@
   import { computed, nextTick, onMounted, readonly, ref, watch } from 'vue'
   import type { IconProps } from './types'
 
-  interface LegacyIconProps extends IconProps {
-    /** 图标名称/路径/组件实例 */
-    name: string | any
-    /** 图标类型 */
-    type?: 'iconify' | 'unocss' | 'component' | 'svg' | 'image'
-    /** 图标颜色 */
-    color?: string
-    /** 图标大小(px) */
-    size?: number | string
-    /** SVG路径数据(仅type=svg时使用) */
-    svgPath?: string
-    /** SVG viewBox(仅type=svg时使用) */
-    viewBox?: string
-    /** 图片alt属性(仅type=image时使用) */
-    alt?: string
-    /** 是否可点击 */
-    clickable?: boolean
-    /** 加载状态 */
-    loading?: boolean
-    /** 错误时的回退图标 */
-    fallbackIcon?: string
-    /** 工具提示 */
-    title?: string
-    /** 无障碍标签 */
-    ariaLabel?: string
-    /** 自定义样式类 */
-    customClass?: string
-    /** 旋转角度 */
-    rotate?: number
-    /** 是否翻转 */
-    flip?: 'horizontal' | 'vertical' | 'both'
-    /** 传递给组件的额外属性(仅type=component时使用) */
-    componentProps?: Record<string, any>
-  }
-
-  const props = withDefaults(defineProps<LegacyIconProps>(), {
+  const props = withDefaults(defineProps<IconProps>(), {
     name: undefined,
     type: 'iconify',
     color: 'currentColor',
@@ -173,8 +138,8 @@
   })
 
   const emit = defineEmits<{
-    click: [event: MouseEvent]
-    error: [type: string, error?: any]
+    click: [event: MouseEvent | KeyboardEvent]
+    error: [type: string, error?: unknown]
     load: []
   }>()
 
@@ -193,7 +158,7 @@
 
   // 计算图标样式
   const iconStyle = computed(() => {
-    const style: Record<string, any> = {
+    const style: Record<string, string> = {
       display: 'inline-flex',
       justifyContent: 'center',
       alignItems: 'center',
@@ -224,12 +189,9 @@
     if (typeof props.name === 'string') {
       return props.name
     }
-    if (props.name && props.name.__name) {
-      return props.name.__name
-    }
-    if (props.name && props.name.name) {
-      return props.name.name
-    }
+    const componentName = props.name as { __name?: string; name?: string }
+    if (componentName?.__name) return componentName.__name
+    if (componentName?.name) return componentName.name
     return 'Component Icon'
   })
 
@@ -249,7 +211,11 @@
   })
 
   // 统一错误处理函数
-  const handleError = (type: string, message: string, originalError?: any) => {
+  const handleError = (
+    type: string,
+    message: string,
+    originalError?: unknown
+  ) => {
     console.warn(`[C_Icon] ${message}:`, iconDisplayName.value, originalError)
     errorMessage.value = message
     imageLoading.value = false // 错误时停止加载状态
@@ -277,7 +243,7 @@
     if (!props.clickable || props.loading) return
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      emit('click', event as any)
+      emit('click', event)
     }
   }
 
@@ -324,6 +290,9 @@
   // 验证规则映射
   const validationRules = {
     iconify: (): string | null => {
+      if (typeof props.name !== 'string') {
+        return 'Iconify图标名称必须为字符串'
+      }
       if (!props.name.includes(':')) {
         console.warn(
           '[C_Icon] Iconify图标名称格式应为 "prefix:name"，如 "mdi:home"'

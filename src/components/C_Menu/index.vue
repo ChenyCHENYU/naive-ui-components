@@ -73,9 +73,13 @@
 
   const menuRef = ref<MenuInst | null>(null)
   const internalExpandedKeys = ref<string[]>([...props.defaultExpandedKeys])
+  const sameKeys = (left: string[], right: string[]) =>
+    left.length === right.length &&
+    left.every((key, index) => key === right[index])
   const expandedKeys = computed({
     get: () => props.expandedKeys ?? internalExpandedKeys.value,
     set: (keys: string[]) => {
+      if (sameKeys(expandedKeys.value, keys)) return
       internalExpandedKeys.value = keys
       emit('update:expandedKeys', keys)
     },
@@ -115,7 +119,8 @@
     for (const item of items) {
       const children = item.children as MenuOption[] | undefined
       if (children?.length) {
-        const currentKeys = [...parentKeys, item.key as string]
+        const currentKeys =
+          typeof item.key === 'string' ? [...parentKeys, item.key] : parentKeys
         if (children.some(child => child.key === targetKey)) {
           return currentKeys
         }
@@ -174,8 +179,8 @@
   // ====== 路由跟踪 ======
 
   watch(
-    () => activeKey.value,
-    newKey => {
+    [activeKey, mergedOptions],
+    ([newKey]) => {
       if (!newKey) return
       const newKeys = computeExpandedKeys(newKey)
       expandedKeys.value = Array.from(

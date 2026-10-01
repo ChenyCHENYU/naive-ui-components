@@ -3,7 +3,9 @@ import { evaluateSafeExpression } from '../src/components/C_FormulaEditor/utils/
 import {
   formatCellValue,
   getCellClass,
+  processExcelSheet,
 } from '../src/components/C_FilePreview/data'
+import { resolvePreviewUrl } from '../src/components/C_FilePreview/fileUrl'
 import { getDefaultAvatar } from '../src/components/C_WorkFlow/data'
 import { getItem, removeItem, setItem } from '../src/utils/storage'
 
@@ -34,6 +36,8 @@ describe('safe formula evaluation', () => {
         }
       )
     ).toBe(1)
+    expect(evaluateSafeExpression('TRUE OR FALSE', fields, {})).toBe(true)
+    expect(evaluateSafeExpression('FALSE AND TRUE', fields, {})).toBe(false)
   })
 
   test('rejects property traversal and inherited prototype values', () => {
@@ -72,6 +76,37 @@ describe('SSR and spreadsheet data safety', () => {
   test('keeps numeric zero visible in spreadsheet previews', () => {
     expect(formatCellValue(0)).toBe('0')
     expect(getCellClass(0)).toBe('cell-number')
+    const sheet = processExcelSheet(
+      {
+        '!ref': 'A1:B2',
+        A1: { v: 0 },
+        B1: { v: 'Flag' },
+        A2: { v: 0 },
+        B2: { v: false },
+      },
+      []
+    )
+    expect(sheet.columns[0]?.title).toBe('0')
+    expect(sheet.data[1]?.col_0?.value).toBe(0)
+    expect(sheet.data[1]?.col_1?.value).toBe(false)
+  })
+
+  test('accepts HTTPS and same-origin file URLs only', () => {
+    const base = 'http://localhost:5173/demo'
+    expect(resolvePreviewUrl('/files/report.pdf', base)).toBe(
+      'http://localhost:5173/files/report.pdf'
+    )
+    expect(resolvePreviewUrl('https://files.example/report.pdf', base)).toBe(
+      'https://files.example/report.pdf'
+    )
+    expect(
+      resolvePreviewUrl('http://files.example/report.pdf', base)
+    ).toBeNull()
+    expect(resolvePreviewUrl('javascript:alert(1)', base)).toBeNull()
+    expect(resolvePreviewUrl('data:text/html,<script>', base)).toBeNull()
+    expect(
+      resolvePreviewUrl('https://user:pass@files.example/a.pdf', base)
+    ).toBeNull()
   })
 
   test('generates workflow avatars locally and escapes SVG text', () => {

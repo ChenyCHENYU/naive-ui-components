@@ -115,6 +115,7 @@
   import { CATEGORY_MAP, PRIORITY_MAP } from '../constants'
   import { useNotificationFormat } from '../composables/useNotificationFormat'
   import { sanitizeRichHtml } from '../../../utils/html'
+  import { resolveNotificationActionUrl } from '../actionUrl'
 
   interface Props {
     /** 消息数据 */
@@ -155,20 +156,15 @@
 
   /** 处理操作按钮点击 */
   function handleAction() {
-    const url = props.message.actionUrl
-    if (!url) return
+    const action = resolveNotificationActionUrl(props.message.actionUrl)
+    if (!action) return
 
-    emit('action', url)
-
-    if (/^https?:\/\//i.test(url)) {
-      const parsed = new URL(url)
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        window.open(parsed.href, '_blank', 'noopener,noreferrer')
-      }
-      return
+    emit('action', action.url)
+    if (action.kind === 'external') {
+      window.open(action.url, '_blank', 'noopener,noreferrer')
+    } else {
+      emit('navigate', action.url)
     }
-
-    if (!/^[a-z][a-z\d+.-]*:/i.test(url)) emit('navigate', url)
   }
 </script>
 

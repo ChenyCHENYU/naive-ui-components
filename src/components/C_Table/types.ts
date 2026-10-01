@@ -140,6 +140,8 @@ export interface UseTableActionsOptions<T extends object = DataRecord> {
   /** 事件发射器 */
   /** Deletion action completion notification; kept separate from CRUD data mutation. */
   onRowDeleted?: (row: T, index: number) => void
+  /** A bound CRUD action may already report success or failure to the user. */
+  isDeleteFeedbackHandled?: (action: ApiFunction<T>) => boolean
   /** 查看详情回调 */
   onViewDetail?: (data: T) => void
 }

@@ -20,6 +20,19 @@ interface UseCollapsePanelOptions {
   onCollapse?: (key: string) => void
 }
 
+/** Decode persisted keys without trusting localStorage JSON shape. */
+export function parseStoredCollapseKeys(raw: string | null): string[] | null {
+  if (!raw) return null
+  try {
+    const value: unknown = JSON.parse(raw)
+    return Array.isArray(value)
+      ? value.filter((key): key is string => typeof key === 'string')
+      : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * 折叠面板展开/折叠核心逻辑
  */
@@ -40,7 +53,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
     if (!persistKey.value) return null
     try {
       const raw = localStorage.getItem(`collapse-panel:${persistKey.value}`)
-      return raw ? JSON.parse(raw) : null
+      return parseStoredCollapseKeys(raw)
     } catch {
       return null
     }

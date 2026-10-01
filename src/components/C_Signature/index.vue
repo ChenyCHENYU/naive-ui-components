@@ -7,26 +7,39 @@
 -->
 <template>
   <div class="c-signature">
-    <div v-if="showToolbar" class="signature-toolbar">
+    <div
+      v-if="showToolbar"
+      class="signature-toolbar"
+    >
       <div class="toolbar-section">
         <NButtonGroup>
           <NButton
             :type="currentMode === 'pen' ? 'primary' : 'default'"
             size="small"
+            :disabled="interactionDisabled"
             @click="currentMode = 'pen'"
           >
             <template #icon>
-              <C_Icon name="mdi:draw" :size="16" color="currentColor" />
+              <C_Icon
+                name="mdi:draw"
+                :size="16"
+                color="currentColor"
+              />
             </template>
             画笔
           </NButton>
           <NButton
             :type="currentMode === 'eraser' ? 'primary' : 'default'"
             size="small"
+            :disabled="interactionDisabled"
             @click="currentMode = 'eraser'"
           >
             <template #icon>
-              <C_Icon name="mdi:eraser" :size="16" color="currentColor" />
+              <C_Icon
+                name="mdi:eraser"
+                :size="16"
+                color="currentColor"
+              />
             </template>
             橡皮擦
           </NButton>
@@ -35,22 +48,30 @@
 
       <div class="toolbar-section divider" />
 
-      <div v-if="currentMode === 'pen'" class="toolbar-section">
+      <div
+        v-if="currentMode === 'pen'"
+        class="toolbar-section"
+      >
         <span class="section-label">颜色</span>
         <NColorPicker
           v-model:value="currentPenConfig.color"
           :show-alpha="false"
+          :disabled="interactionDisabled"
           size="small"
           :swatches="PRESET_COLORS"
         />
       </div>
 
-      <div v-if="currentMode === 'pen'" class="toolbar-section">
+      <div
+        v-if="currentMode === 'pen'"
+        class="toolbar-section"
+      >
         <span class="section-label">粗细</span>
         <NInputNumber
           v-model:value="currentPenConfig.width"
           :min="1"
           :max="20"
+          :disabled="interactionDisabled"
           size="small"
           style="width: 80px"
         />
@@ -59,15 +80,31 @@
       <div class="toolbar-section divider" />
 
       <div class="toolbar-section">
-        <NButton size="small" :disabled="!canUndo" @click="handleUndo">
+        <NButton
+          size="small"
+          :disabled="interactionDisabled || !canUndo"
+          @click="handleUndo"
+        >
           <template #icon>
-            <C_Icon name="mdi:undo" :size="16" color="currentColor" />
+            <C_Icon
+              name="mdi:undo"
+              :size="16"
+              color="currentColor"
+            />
           </template>
           撤销
         </NButton>
-        <NButton size="small" :disabled="!canRedo" @click="handleRedo">
+        <NButton
+          size="small"
+          :disabled="interactionDisabled || !canRedo"
+          @click="handleRedo"
+        >
           <template #icon>
-            <C_Icon name="mdi:redo" :size="16" color="currentColor" />
+            <C_Icon
+              name="mdi:redo"
+              :size="16"
+              color="currentColor"
+            />
           </template>
           重做
         </NButton>
@@ -79,11 +116,15 @@
         <NButton
           size="small"
           type="error"
-          :disabled="isEmpty"
+          :disabled="interactionDisabled || isEmpty"
           @click="handleClear"
         >
           <template #icon>
-            <C_Icon name="mdi:delete-outline" :size="16" color="currentColor" />
+            <C_Icon
+              name="mdi:delete-outline"
+              :size="16"
+              color="currentColor"
+            />
           </template>
           清空
         </NButton>
@@ -91,6 +132,7 @@
     </div>
 
     <div
+      ref="canvasWrapperRef"
       class="signature-canvas-wrapper"
       :class="{ disabled, readonly }"
       :style="{
@@ -104,7 +146,10 @@
         class="signature-canvas"
         :class="{ disabled, readonly }"
       />
-      <div v-if="isEmpty && !disabled && !readonly" class="canvas-placeholder">
+      <div
+        v-if="isEmpty && !disabled && !readonly"
+        class="canvas-placeholder"
+      >
         请在此处签名
       </div>
     </div>
@@ -112,158 +157,229 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, toRef, onMounted, onUnmounted } from "vue";
-import { NButton, NButtonGroup, NColorPicker, NInputNumber } from "naive-ui";
-import C_Icon from "../C_Icon/index.vue";
-import { useSignatureCanvas } from "./composables/useSignatureCanvas";
-import { useSignatureHistory } from "./composables/useSignatureHistory";
-import { useSignatureExport } from "./composables/useSignatureExport";
-import {
-  DEFAULT_PEN_CONFIG,
-  DEFAULT_WATERMARK_CONFIG,
-  PRESET_COLORS,
-} from "./data";
-import type {
-  ExportOptions,
-  PenConfig,
-  PenMode,
-  SignatureExpose,
-  SignaturePoint,
-  SignatureProps,
-  SignatureStroke,
-  WatermarkConfig,
-} from "./types";
+  import {
+    ref,
+    shallowRef,
+    reactive,
+    toRef,
+    computed,
+    watch,
+    onMounted,
+    onUnmounted,
+  } from 'vue'
+  import { NButton, NButtonGroup, NColorPicker, NInputNumber } from 'naive-ui'
+  import C_Icon from '../C_Icon/index.vue'
+  import { useSignatureCanvas } from './composables/useSignatureCanvas'
+  import { useSignatureHistory } from './composables/useSignatureHistory'
+  import { useSignatureExport } from './composables/useSignatureExport'
+  import {
+    DEFAULT_PEN_CONFIG,
+    DEFAULT_WATERMARK_CONFIG,
+    PRESET_COLORS,
+  } from './data'
+  import type {
+    ExportOptions,
+    PenConfig,
+    PenMode,
+    SignatureExpose,
+    SignaturePoint,
+    SignatureProps,
+    SignatureStroke,
+    WatermarkConfig,
+  } from './types'
 
-defineOptions({ name: "C_Signature" });
+  defineOptions({ name: 'C_Signature' })
 
-const props = withDefaults(defineProps<SignatureProps>(), {
-  width: "100%",
-  height: 300,
-  disabled: false,
-  readonly: false,
-  showToolbar: true,
-  maxHistory: 50,
-});
+  const props = withDefaults(defineProps<SignatureProps>(), {
+    width: '100%',
+    height: 300,
+    disabled: false,
+    readonly: false,
+    showToolbar: true,
+    maxHistory: 50,
+  })
 
-const emit = defineEmits<{
-  "start-draw": [];
-  drawing: [point: SignaturePoint];
-  "end-draw": [stroke: SignatureStroke];
-  clear: [];
-  undo: [];
-  redo: [];
-  change: [data: SignatureStroke[]];
-}>();
+  const emit = defineEmits<{
+    'start-draw': []
+    drawing: [point: SignaturePoint]
+    'end-draw': [stroke: SignatureStroke]
+    clear: []
+    undo: []
+    redo: []
+    change: [data: SignatureStroke[]]
+    error: [error: Error]
+  }>()
 
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-const currentMode = ref<PenMode>("pen");
-const currentPenConfig = reactive<PenConfig>({
-  ...DEFAULT_PEN_CONFIG,
-  ...props.penConfig,
-});
-const currentWatermark = reactive<WatermarkConfig>({
-  ...DEFAULT_WATERMARK_CONFIG,
-  ...props.watermark,
-});
+  const canvasRef = ref<HTMLCanvasElement | null>(null)
+  const canvasWrapperRef = ref<HTMLElement | null>(null)
+  const backgroundImage = shallowRef<HTMLImageElement | null>(null)
+  const importedImage = shallowRef<HTMLImageElement | null>(null)
+  const interactionDisabled = computed(() => props.disabled || props.readonly)
+  const currentMode = ref<PenMode>('pen')
+  const currentPenConfig = reactive<PenConfig>({
+    ...DEFAULT_PEN_CONFIG,
+    ...props.penConfig,
+  })
+  const currentWatermark = reactive<WatermarkConfig>({
+    ...DEFAULT_WATERMARK_CONFIG,
+    ...props.watermark,
+  })
 
-const {
-  strokes,
-  canUndo,
-  canRedo,
-  isEmpty,
-  addStroke,
-  undo,
-  redo,
-  clear,
-  loadData,
-} = useSignatureHistory({
-  maxHistory: props.maxHistory,
-  onChange: (data) => {
-    canvasInstance.redrawStrokes(data as SignatureStroke[]);
-    emit("change", data as SignatureStroke[]);
-  },
-});
+  const {
+    strokes,
+    canUndo,
+    canRedo,
+    isEmpty: historyEmpty,
+    addStroke,
+    undo,
+    redo,
+    clear,
+    loadData,
+  } = useSignatureHistory({
+    maxHistory: props.maxHistory,
+    onChange: data => {
+      canvasInstance.redrawStrokes(data)
+      emit('change', data)
+    },
+  })
 
-const canvasInstance = useSignatureCanvas({
-  canvasRef,
-  penConfig: toRef(currentPenConfig),
-  mode: currentMode,
-  disabled: toRef(props, "disabled"),
-  onStrokeComplete: (stroke: SignatureStroke) => {
-    addStroke(stroke);
-    emit("end-draw", stroke);
-  },
-  onDrawStart: () => emit("start-draw"),
-  onDrawing: (point: SignaturePoint) => emit("drawing", point),
-});
+  const isEmpty = computed(() => historyEmpty.value && !importedImage.value)
 
-const exportInstance = useSignatureExport({
-  canvasRef,
-  watermark: toRef(currentWatermark),
-});
+  const canvasInstance = useSignatureCanvas({
+    canvasRef,
+    penConfig: toRef(currentPenConfig),
+    mode: currentMode,
+    disabled: interactionDisabled,
+    backgroundImage,
+    importedImage,
+    onStrokeComplete: (stroke: SignatureStroke) => {
+      addStroke(stroke)
+      emit('end-draw', stroke)
+    },
+    onDrawStart: () => emit('start-draw'),
+    onDrawing: (point: SignaturePoint) => emit('drawing', point),
+  })
 
-const handleUndo = (): boolean => {
-  const result = undo();
-  if (result) emit("undo");
-  return result;
-};
+  const exportInstance = useSignatureExport({
+    canvasRef,
+    watermark: toRef(currentWatermark),
+  })
 
-const handleRedo = (): boolean => {
-  const result = redo();
-  if (result) emit("redo");
-  return result;
-};
+  const handleUndo = (): boolean => {
+    const result = undo()
+    if (result) emit('undo')
+    return result
+  }
 
-const handleClear = () => {
-  clear();
-  canvasInstance.clearCanvas();
-  emit("clear");
-};
+  const handleRedo = (): boolean => {
+    const result = redo()
+    if (result) emit('redo')
+    return result
+  }
 
-const exportSignature = async (
-  options?: ExportOptions,
-): Promise<string | Blob> => {
-  return exportInstance.exportSignature(options);
-};
+  const handleClear = () => {
+    importedImage.value = null
+    clear()
+    emit('clear')
+  }
 
-const download = async (
-  filename?: string,
-  options?: ExportOptions,
-): Promise<void> => {
-  return exportInstance.download(filename, options);
-};
+  const exportSignature = async (
+    options?: ExportOptions
+  ): Promise<string | Blob> => {
+    return exportInstance.exportSignature(options)
+  }
 
-const loadImage = async (imageUrl: string): Promise<void> => {
-  await exportInstance.loadImage(imageUrl);
-  clear();
-};
+  const download = async (
+    filename?: string,
+    options?: ExportOptions
+  ): Promise<void> => {
+    return exportInstance.download(filename, options)
+  }
 
-const getSignatureData = (): SignatureStroke[] =>
-  strokes.value as SignatureStroke[];
-const loadSignatureData = (data: SignatureStroke[]): void => loadData(data);
-const isSignatureEmpty = (): boolean => isEmpty.value;
+  function readImage(imageUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image()
+      image.crossOrigin = 'anonymous'
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('签名图片加载失败'))
+      image.src = imageUrl
+    })
+  }
 
-onMounted(() => {
-  canvasInstance.initCanvas();
-  canvasInstance.bindEvents();
-  if (props.backgroundImage) loadImage(props.backgroundImage);
-});
+  let backgroundVersion = 0
+  async function setBackgroundImage(imageUrl?: string) {
+    const version = ++backgroundVersion
+    if (!imageUrl) {
+      backgroundImage.value = null
+      canvasInstance.redrawStrokes(strokes.value)
+      return
+    }
+    const image = await readImage(imageUrl)
+    if (version !== backgroundVersion) return
+    backgroundImage.value = image
+    canvasInstance.redrawStrokes(strokes.value)
+  }
 
-onUnmounted(() => canvasInstance.unbindEvents());
+  const loadImage = async (imageUrl: string): Promise<void> => {
+    const image = await readImage(imageUrl)
+    importedImage.value = image
+    clear()
+  }
 
-defineExpose<SignatureExpose>({
-  clear: handleClear,
-  undo: handleUndo,
-  redo: handleRedo,
-  export: exportSignature,
-  download,
-  loadImage,
-  getSignatureData,
-  loadSignatureData,
-  isEmpty: isSignatureEmpty,
-});
+  const getSignatureData = (): SignatureStroke[] =>
+    strokes.value.map(stroke => ({
+      ...stroke,
+      points: stroke.points.map(point => ({ ...point })),
+    }))
+  const loadSignatureData = (data: SignatureStroke[]): void => {
+    importedImage.value = null
+    loadData(data)
+  }
+  const isSignatureEmpty = (): boolean => isEmpty.value
+
+  onMounted(() => {
+    canvasInstance.initCanvas()
+    canvasInstance.bindEvents()
+    if (typeof ResizeObserver !== 'undefined' && canvasWrapperRef.value) {
+      resizeObserver = new ResizeObserver(() => {
+        canvasInstance.initCanvas()
+        canvasInstance.redrawStrokes(strokes.value)
+      })
+      resizeObserver.observe(canvasWrapperRef.value)
+    }
+    void setBackgroundImage(props.backgroundImage).catch(reportBackgroundError)
+  })
+
+  let resizeObserver: ResizeObserver | null = null
+  function reportBackgroundError(error: unknown) {
+    emit('error', error instanceof Error ? error : new Error(String(error)))
+  }
+  watch(
+    () => props.backgroundImage,
+    imageUrl => {
+      void setBackgroundImage(imageUrl).catch(reportBackgroundError)
+    }
+  )
+
+  onUnmounted(() => {
+    backgroundVersion++
+    resizeObserver?.disconnect()
+    canvasInstance.unbindEvents()
+  })
+
+  defineExpose<SignatureExpose>({
+    clear: handleClear,
+    undo: handleUndo,
+    redo: handleRedo,
+    export: exportSignature,
+    download,
+    loadImage,
+    getSignatureData,
+    loadSignatureData,
+    isEmpty: isSignatureEmpty,
+  })
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

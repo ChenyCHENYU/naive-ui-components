@@ -303,6 +303,15 @@
   }
 }
 
+.c-chat__msg-image-button {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
 .c-chat__msg-image {
   max-width: 240px;
   max-height: 180px;
@@ -326,6 +335,9 @@
   padding: 10px 14px;
   border-radius: 12px;
   cursor: pointer;
+  font: inherit;
+  text-align: left;
+  border: 0;
 
   .is-other & {
     background: var(--chat-bubble-other);
@@ -373,6 +385,14 @@
   font-size: 11px;
   margin-top: 2px;
   text-align: right;
+
+  &:is(button) {
+    align-self: flex-end;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: inherit;
+  }
 
   &.is-sending {
     color: var(--chat-text-secondary);

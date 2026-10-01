@@ -43,7 +43,7 @@
         >
           <div class="c-breadcrumb__trigger">
             <C_Icon
-              v-if="showIcon"
+              v-if="showIcon && item.icon"
               :name="item.icon"
               :size="iconSize"
             />
@@ -56,7 +56,7 @@
           @click="handleSelect(item.key)"
         >
           <C_Icon
-            v-if="showIcon"
+            v-if="showIcon && item.icon"
             :name="item.icon"
             :size="iconSize"
           />

@@ -51,8 +51,8 @@ export function getValidMapMarkers(markers: readonly MapMarker[]): MapMarker[] {
 /** 将缩放值限制在当前瓦片图层允许的范围内。 */
 export function normalizeMapZoom(
   zoom: number,
-  minZoom = OSM_TILE_CONFIG.minZoom,
-  maxZoom = OSM_TILE_CONFIG.maxZoom
+  minZoom: number = OSM_TILE_CONFIG.minZoom,
+  maxZoom: number = OSM_TILE_CONFIG.maxZoom
 ): number {
   if (!Number.isFinite(zoom)) return DEFAULT_MAP_CONFIG.zoom
   return Math.min(Math.max(zoom, minZoom), maxZoom)

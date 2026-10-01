@@ -11,7 +11,7 @@
     <NPopover
       v-model:show="core.popoverVisible.value"
       :width="420"
-      trigger="click"
+      trigger="manual"
       placement="bottom-end"
       :show-arrow="false"
       content-class="c-notification-center__popover"
@@ -95,6 +95,7 @@
     NotificationCenterExpose,
     NotificationMessage,
     NotificationCategory,
+    WSConnectionStatus,
   } from './types'
   import { useNotificationCore } from './composables/useNotificationCore'
   import NotificationBadge from './components/NotificationBadge.vue'
@@ -117,12 +118,15 @@
     allRead: [category?: NotificationCategory]
     delete: [ids: string[]]
     unreadChange: [count: number]
-    wsStatusChange: [status: string]
+    wsStatusChange: [status: WSConnectionStatus]
     newMessage: [message: NotificationMessage]
     navigate: [url: string]
   }>()
 
-  const core = useNotificationCore(props)
+  const core = useNotificationCore(props, {
+    onNewMessage: message => emit('newMessage', message),
+    onWSStatusChange: status => emit('wsStatusChange', status),
+  })
 
   /* ─── 计算属性 ───────────────────────────────── */
 

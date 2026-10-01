@@ -9,12 +9,14 @@ import {
   provide,
   watch,
   onMounted,
+  onBeforeUnmount,
   nextTick,
   markRaw,
   type Component,
   type Ref,
 } from 'vue'
 import { useComponentFeedback } from '../../../config'
+import { cloneData, isDataEqual } from '../../../utils/data'
 import type {
   WorkflowNode,
   WorkflowEdge,
@@ -24,7 +26,13 @@ import type {
   MenuPosition,
   WorkflowEmits,
 } from '../types'
-import { NODE_TITLES, INITIAL_NODE, NODE_Y_GAP, generateEdgeId } from '../data'
+import {
+  NODE_TITLES,
+  INITIAL_NODE,
+  NODE_Y_GAP,
+  generateEdgeId,
+  generateWorkflowId,
+} from '../data'
 
 import StartNode from '../nodes/StartNode.vue'
 import ApprovalNode from '../nodes/ApprovalNode.vue'
@@ -53,13 +61,30 @@ export function useWorkflowNodes(
   const message = useComponentFeedback()
 
   /* ─── 响应式状态 ────────────────────────────────────────── */
-  const nodes = ref<WorkflowNode[]>([{ ...INITIAL_NODE }])
-  const edges = ref<WorkflowEdge[]>([])
+  const nodes = ref<WorkflowNode[]>(
+    cloneData(props.modelValue?.nodes ?? [INITIAL_NODE])
+  )
+  const edges = ref<WorkflowEdge[]>(cloneData(props.modelValue?.edges ?? []))
+  const workflowConfig = ref<WorkflowData['config']>(
+    props.modelValue
+      ? cloneData(props.modelValue.config)
+      : { version: '1.0', createdAt: new Date().toISOString() }
+  )
   const showAddMenu = ref(false)
   const menuPosition = ref<MenuPosition>({ x: 0, y: 0 })
   const showNodeConfig = ref(false)
   const currentNode = ref<WorkflowNode | null>(null)
   const currentAddNodeId = ref<string | null>(null)
+  const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
+  let disposed = false
+
+  const schedule = (callback: () => void, delay: number) => {
+    const timer = setTimeout(() => {
+      pendingTimers.delete(timer)
+      if (!disposed) callback()
+    }, delay)
+    pendingTimers.add(timer)
+  }
 
   /* ─── 计算属性 ──────────────────────────────────────────── */
   const nodeTypes = computed(() => NODE_COMPONENT_MAP)
@@ -82,9 +107,11 @@ export function useWorkflowNodes(
   /* ─── 数据操作 ──────────────────────────────────────────── */
   /** 获取当前工作流完整数据 */
   const getCurrentWorkflowData = (): WorkflowData => ({
-    nodes: nodes.value,
-    edges: edges.value,
-    config: { version: '1.0', createdAt: new Date().toISOString() },
+    nodes: cloneData(nodes.value),
+    edges: cloneData(edges.value),
+    ...(workflowConfig.value !== undefined && {
+      config: cloneData(workflowConfig.value),
+    }),
   })
 
   /** 触发数据变更事件 */
@@ -97,7 +124,8 @@ export function useWorkflowNodes(
   /** 延迟适应画布视图 */
   const deferFitView = (padding = 60, duration = 400): void => {
     nextTick(() => {
-      setTimeout(() => {
+      if (disposed) return
+      schedule(() => {
         vueFlowRef.value?.fitView?.({ padding, duration })
       }, 100)
     })
@@ -105,6 +133,7 @@ export function useWorkflowNodes(
 
   /* ─── 添加菜单 ──────────────────────────────────────────── */
   const handleShowAddMenu = (position: MenuPosition, nodeId?: string): void => {
+    if (props.readonly) return
     menuPosition.value = {
       x: typeof position.x === 'number' ? position.x : 0,
       y: typeof position.y === 'number' ? position.y : 0,
@@ -119,13 +148,13 @@ export function useWorkflowNodes(
 
   /* ─── 节点删除 ──────────────────────────────────────────── */
   const deleteNode = (nodeId: string): void => {
-    if (nodeId === 'start-1') {
+    if (props.readonly) return
+    const nodeIndex = nodes.value.findIndex(n => n.id === nodeId)
+    if (nodeIndex === -1) return
+    if (nodes.value[nodeIndex].type === 'start') {
       message.warning('不能删除开始节点')
       return
     }
-
-    const nodeIndex = nodes.value.findIndex(n => n.id === nodeId)
-    if (nodeIndex === -1) return
 
     /* 收集上下游边，用于重连 */
     const incomingEdges = edges.value.filter(e => e.target === nodeId)
@@ -185,11 +214,11 @@ export function useWorkflowNodes(
     type: NodeType,
     targetNode: WorkflowNode | null
   ): WorkflowNode => ({
-    id: `${type}-${Date.now()}`,
+    id: generateWorkflowId(type),
     type,
     position: {
-      x: targetNode?.position.x || 150,
-      y: (targetNode?.position.y || 130) + NODE_Y_GAP,
+      x: targetNode?.position.x ?? 150,
+      y: (targetNode?.position.y ?? 130) + NODE_Y_GAP,
     },
     data: {
       title: NODE_TITLES[type],
@@ -231,6 +260,7 @@ export function useWorkflowNodes(
 
   /* ─── 节点添加（公开） ───────────────────────────────────── */
   const addNode = (type: NodeType): void => {
+    if (props.readonly) return
     try {
       const { targetNodeIndex, targetNode } = getTargetNodeInfo()
       const newNode = createNewNode(type, targetNode)
@@ -254,21 +284,24 @@ export function useWorkflowNodes(
   }
 
   /* ─── 节点交互 ──────────────────────────────────────────── */
-  const onNodeClick = (event: { node: WorkflowNode }): void => {
-    const { node } = event
-    currentNode.value = node
-    showNodeConfig.value = true
-    emit('node-click', node)
+  const onNodeClick = (event: { node: { id: string } }): void => {
+    const node = nodes.value.find(item => item.id === event.node.id)
+    if (!node) return
+    if (!props.readonly) {
+      currentNode.value = node
+      showNodeConfig.value = true
+    }
+    emit('node-click', cloneData(node))
   }
 
   const handleConfigSave = (configData: Record<string, unknown>): void => {
-    if (!currentNode.value) return
+    if (props.readonly || !currentNode.value) return
 
     const nodeIndex = nodes.value.findIndex(n => n.id === currentNode.value!.id)
     if (nodeIndex !== -1) {
       const updatedNode = {
         ...nodes.value[nodeIndex],
-        data: { ...nodes.value[nodeIndex].data, ...configData },
+        data: { ...nodes.value[nodeIndex].data, ...cloneData(configData) },
       }
       nodes.value.splice(nodeIndex, 1, updatedNode)
       currentNode.value = updatedNode
@@ -299,7 +332,8 @@ export function useWorkflowNodes(
 
   /** 重置节点和边（不涉及验证状态） */
   const resetNodes = (): void => {
-    nodes.value = [{ ...INITIAL_NODE }]
+    if (props.readonly) return
+    nodes.value = cloneData([INITIAL_NODE])
     edges.value = []
     emitChange()
     deferFitView(80, 600)
@@ -310,17 +344,25 @@ export function useWorkflowNodes(
   watch(
     () => props.modelValue,
     newValue => {
-      if (newValue && newValue !== getCurrentWorkflowData()) {
-        nodes.value = newValue.nodes || []
-        edges.value = newValue.edges || []
-      }
+      if (!newValue) return
+      if (
+        isDataEqual(newValue.nodes ?? [], nodes.value) &&
+        isDataEqual(newValue.edges ?? [], edges.value) &&
+        isDataEqual(newValue.config, workflowConfig.value)
+      )
+        return
+      nodes.value = cloneData(newValue.nodes ?? [])
+      edges.value = cloneData(newValue.edges ?? [])
+      workflowConfig.value = cloneData(newValue.config)
     },
     { deep: true }
   )
 
   onMounted(() => {
+    disposed = false
     nextTick(() => {
-      setTimeout(() => {
+      if (disposed) return
+      schedule(() => {
         vueFlowRef.value?.fitView?.({
           padding: 80,
           includeHiddenNodes: false,
@@ -330,6 +372,12 @@ export function useWorkflowNodes(
         })
       }, 300)
     })
+  })
+
+  onBeforeUnmount(() => {
+    disposed = true
+    pendingTimers.forEach(timer => clearTimeout(timer))
+    pendingTimers.clear()
   })
 
   return {

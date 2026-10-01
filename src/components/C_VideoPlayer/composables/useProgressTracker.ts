@@ -132,6 +132,7 @@ export function useProgressTracker(
   /** 心跳上报 */
   function startHeartbeat() {
     const interval = antiCheat?.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL
+    if (!Number.isFinite(interval) || interval <= 0) return
     heartbeatTimer = setInterval(() => {
       if (isPlaying) {
         invokeReporter(antiCheat?.onHeartbeat, getProgressData())

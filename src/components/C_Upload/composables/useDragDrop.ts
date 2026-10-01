@@ -26,6 +26,7 @@ export function useDragDrop(
   /** 是否正在拖拽悬停 */
   const isDragOver = ref(false)
   let boundElement: HTMLElement | null = null
+  let disposed = false
 
   // ─── 拖拽事件 ─────────────────────────────────
 
@@ -63,6 +64,7 @@ export function useDragDrop(
     if (!items) return
 
     const files = await collectDropFiles(items, e.dataTransfer)
+    if (disposed || !enabled.value) return
     const filtered = filterByAccept(files, accept.value)
     if (filtered.length > 0) onFiles(filtered)
   }
@@ -123,8 +125,14 @@ export function useDragDrop(
     boundElement = null
   }
 
-  onMounted(bindEvents)
-  onBeforeUnmount(unbindEvents)
+  onMounted(() => {
+    disposed = false
+    bindEvents()
+  })
+  onBeforeUnmount(() => {
+    disposed = true
+    unbindEvents()
+  })
 
   watch([containerRef, enabled, pasteable], () => {
     unbindEvents()
@@ -198,10 +206,14 @@ async function readEntry(entry: FileSystemEntry): Promise<File[]> {
 }
 
 /** 根据 accept 过滤文件 */
-function filterByAccept(files: File[], accept: string): File[] {
+export function filterByAccept(files: File[], accept: string): File[] {
   if (!accept) return files
 
-  const acceptTypes = accept.split(',').map(s => s.trim().toLowerCase())
+  const acceptTypes = accept
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+  if (acceptTypes.length === 0) return files
 
   return files.filter(file => {
     return acceptTypes.some(type => {

@@ -1,5 +1,8 @@
 <template>
-  <div v-if="imageFiles.length > 0" class="image-preview">
+  <div
+    v-if="imageFiles.length > 0"
+    class="image-preview"
+  >
     <div
       v-for="file in imageFiles"
       :key="file.uid"
@@ -47,6 +50,7 @@
             circle
             size="tiny"
             type="warning"
+            aria-label="重试上传"
             @click="emit('retry', file.uid)"
           >
             <template #icon>
@@ -57,6 +61,7 @@
             circle
             size="tiny"
             type="error"
+            aria-label="移除文件"
             @click="emit('remove', file.uid)"
           >
             <template #icon>
@@ -77,120 +82,124 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { NProgress, NButton, NEllipsis } from "naive-ui";
-import C_Icon from "../../C_Icon/index.vue";
-import type { UploadFileItem } from "../types";
+  import { computed } from 'vue'
+  import { NProgress, NButton, NEllipsis } from 'naive-ui'
+  import C_Icon from '../../C_Icon/index.vue'
+  import type { UploadFileItem } from '../types'
 
-const props = defineProps<{
-  /** 文件列表 */
-  fileList: UploadFileItem[];
-}>();
+  const props = defineProps<{
+    /** 文件列表 */
+    fileList: UploadFileItem[]
+  }>()
 
-const emit = defineEmits<{
-  remove: [uid: string];
-  retry: [uid: string];
-}>();
+  const emit = defineEmits<{
+    remove: [uid: string]
+    retry: [uid: string]
+  }>()
 
-/** 过滤出图片文件 */
-const imageFiles = computed(() =>
-  props.fileList.filter((f) => f.type?.startsWith("image/")),
-);
+  /** 过滤出图片文件 */
+  const imageFiles = computed(() =>
+    props.fileList.filter(f => f.type?.startsWith('image/'))
+  )
 </script>
 
 <style scoped lang="scss">
-.image-preview {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  .image-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
 
-  &__item {
-    position: relative;
-    aspect-ratio: 1;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    background: var(--body-color);
+    &__item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      background: var(--body-color);
 
-    &--error {
-      border-color: var(--error-color);
+      &--error {
+        border-color: var(--error-color);
+      }
+
+      &--success,
+      &--instant {
+        border-color: color-mix(
+          in srgb,
+          var(--success-color) 30%,
+          var(--border-color)
+        );
+      }
+
+      &:hover .image-preview__overlay {
+        opacity: 1;
+      }
+
+      &:focus-within .image-preview__overlay {
+        opacity: 1;
+      }
     }
 
-    &--success,
-    &--instant {
-      border-color: color-mix(
-        in srgb,
-        var(--success-color) 30%,
-        var(--border-color)
-      );
+    &__img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
-    &:hover .image-preview__overlay {
+    &__overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    /* 上传中始终显示遮罩 */
+    &__item--uploading .image-preview__overlay,
+    &__item--hashing .image-preview__overlay,
+    &__item--error .image-preview__overlay {
       opacity: 1;
     }
-  }
 
-  &__img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  &__overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.45);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  /* 上传中始终显示遮罩 */
-  &__item--uploading .image-preview__overlay,
-  &__item--hashing .image-preview__overlay,
-  &__item--error .image-preview__overlay {
-    opacity: 1;
-  }
-
-  &__progress {
-    :deep(.n-progress) {
-      --n-fill-color: #fff;
-    }
-  }
-
-  &__status-icon {
-    font-size: 28px;
-
-    &--success {
-      color: var(--success-color);
+    &__progress {
+      :deep(.n-progress) {
+        --n-fill-color: #fff;
+      }
     }
 
-    &--error {
-      color: var(--error-color);
+    &__status-icon {
+      font-size: 28px;
+
+      &--success {
+        color: var(--success-color);
+      }
+
+      &--error {
+        color: var(--error-color);
+      }
+    }
+
+    &__actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    &__name {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 2px 6px;
+      font-size: 11px;
+      color: #fff;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+      text-align: center;
     }
   }
-
-  &__actions {
-    display: flex;
-    gap: 6px;
-  }
-
-  &__name {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 2px 6px;
-    font-size: 11px;
-    color: #fff;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
-    text-align: center;
-  }
-}
 </style>

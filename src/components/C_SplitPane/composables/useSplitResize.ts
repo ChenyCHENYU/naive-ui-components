@@ -50,14 +50,23 @@ export function useSplitResize(options: UseSplitResizeOptions) {
     onDragEnd,
   } = options
 
+  const safeMin = Number.isFinite(minSize) ? minSize : 0
+  const safeMax = Number.isFinite(maxSize) ? maxSize : 100
+  const minBound = Math.max(0, Math.min(100, Math.min(safeMin, safeMax)))
+  const maxBound = Math.max(0, Math.min(100, Math.max(safeMin, safeMax)))
+  const initialSize = Math.min(
+    maxBound,
+    Math.max(minBound, Number.isFinite(defaultSize) ? defaultSize : 50)
+  )
+
   /** 首面板当前大小（百分比） */
-  const panelSize = ref(defaultSize)
+  const panelSize = ref(initialSize)
   /** 是否正在拖拽 */
   const isDragging = ref(false)
   /** 折叠状态 */
   const collapsedTarget = ref<CollapseTarget | null>(null)
   /** 折叠前记住的面板大小 */
-  const sizeBeforeCollapse = ref(defaultSize)
+  const sizeBeforeCollapse = ref(initialSize)
   let previousBodyCursor = ''
   let previousBodyUserSelect = ''
 
@@ -70,7 +79,8 @@ export function useSplitResize(options: UseSplitResizeOptions) {
    * 将大小限制在 min/max 范围内
    */
   const clampSize = (size: number): number => {
-    return Math.min(maxSize, Math.max(minSize, size))
+    if (!Number.isFinite(size)) return panelSize.value
+    return Math.min(maxBound, Math.max(minBound, size))
   }
 
   /**
@@ -125,6 +135,7 @@ export function useSplitResize(options: UseSplitResizeOptions) {
    */
   const updateSize = (newSize: number) => {
     const clamped = clampSize(newSize)
+    if (clamped === panelSize.value) return
     panelSize.value = clamped
     onResize?.(clamped, 100 - clamped)
   }
@@ -213,14 +224,14 @@ export function useSplitResize(options: UseSplitResizeOptions) {
 
     const target = collapsedTarget.value
     collapsedTarget.value = null
-    panelSize.value = sizeBeforeCollapse.value
+    panelSize.value = clampSize(sizeBeforeCollapse.value)
 
     onExpand?.(target)
     onResize?.(panelSize.value, 100 - panelSize.value)
   }
 
   const toggle = (target: CollapseTarget = 'first') => {
-    if (collapsedTarget.value) {
+    if (collapsedTarget.value === target) {
       expand()
     } else {
       collapse(target)
@@ -232,11 +243,12 @@ export function useSplitResize(options: UseSplitResizeOptions) {
    * 根据按键获取增量
    */
   const getKeyDelta = (key: string, isHorizontal: boolean): number | null => {
+    const keyStep = Number.isFinite(step) && step > 0 ? step : 2
     const keyMap: Record<string, number | null> = {
-      ArrowLeft: isHorizontal ? -step : 0,
-      ArrowRight: isHorizontal ? step : 0,
-      ArrowUp: !isHorizontal ? -step : 0,
-      ArrowDown: !isHorizontal ? step : 0,
+      ArrowLeft: isHorizontal ? -keyStep : 0,
+      ArrowRight: isHorizontal ? keyStep : 0,
+      ArrowUp: !isHorizontal ? -keyStep : 0,
+      ArrowDown: !isHorizontal ? keyStep : 0,
     }
     return keyMap[key] ?? null
   }
@@ -246,12 +258,12 @@ export function useSplitResize(options: UseSplitResizeOptions) {
 
     /* Home / End 直接跳到极值 */
     if (e.key === 'Home') {
-      updateSize(minSize)
+      updateSize(minBound)
       e.preventDefault()
       return
     }
     if (e.key === 'End') {
-      updateSize(maxSize)
+      updateSize(maxBound)
       e.preventDefault()
       return
     }
@@ -267,8 +279,8 @@ export function useSplitResize(options: UseSplitResizeOptions) {
   /* ─── 重置 / 查询 ───────────────────────────── */
   const resetSize = () => {
     collapsedTarget.value = null
-    panelSize.value = defaultSize
-    onResize?.(defaultSize, 100 - defaultSize)
+    panelSize.value = initialSize
+    onResize?.(initialSize, 100 - initialSize)
   }
 
   const setSize = (size: number) => {

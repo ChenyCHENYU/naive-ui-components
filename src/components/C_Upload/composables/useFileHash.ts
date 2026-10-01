@@ -18,9 +18,13 @@ export function useFileHash(chunkSize: Ref<number>) {
   const hashProgress = ref(0)
   const hashing = computed(() => activeHashCount.value > 0)
 
-  async function calculateHash(file: File): Promise<string> {
+  async function calculateHash(
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
     activeHashCount.value += 1
     hashProgress.value = 0
+    onProgress?.(0)
     const spark = new SparkMD5.ArrayBuffer()
     const size = Math.max(1, Math.trunc(Number(chunkSize.value) || 1))
     const totalChunks = Math.max(1, Math.ceil(file.size / size))
@@ -29,6 +33,7 @@ export function useFileHash(chunkSize: Ref<number>) {
       if (file.size === 0) {
         spark.append(new ArrayBuffer(0))
         hashProgress.value = 100
+        onProgress?.(100)
         return spark.end()
       }
 
@@ -38,6 +43,7 @@ export function useFileHash(chunkSize: Ref<number>) {
         const buffer = await file.slice(start, start + size).arrayBuffer()
         spark.append(buffer)
         hashProgress.value = Math.round(((index + 1) / totalChunks) * 100)
+        onProgress?.(hashProgress.value)
         // eslint-disable-next-line no-await-in-loop -- 避免大文件计算长期阻塞 UI 线程。
         await yieldToBrowser()
       }

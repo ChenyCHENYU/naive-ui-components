@@ -188,16 +188,24 @@
               </div>
 
               <!-- 图片消息 -->
-              <img
+              <button
                 v-else-if="msg.type === 'image'"
-                :src="msg.content"
-                class="c-chat__msg-image"
+                type="button"
+                class="c-chat__msg-image-button"
+                :aria-label="`预览${msg.username || '聊天'}的图片`"
                 @click="emit('image-preview', msg.content)"
-              />
+              >
+                <img
+                  :src="msg.content"
+                  :alt="msg.fileName || '聊天图片'"
+                  class="c-chat__msg-image"
+                />
+              </button>
 
               <!-- 文件消息 -->
-              <div
+              <button
                 v-else-if="msg.type === 'file'"
+                type="button"
                 class="c-chat__msg-file"
                 @click="emit('file-click', msg)"
               >
@@ -216,7 +224,7 @@
                     {{ formatFileSize(msg.fileSize) }}
                   </span>
                 </div>
-              </div>
+              </button>
 
               <!-- 时间戳 -->
               <span
@@ -227,20 +235,19 @@
               </span>
 
               <!-- 发送状态 -->
-              <span
-                v-if="msg.sender === 'self' && msg.status"
-                class="c-chat__msg-status"
-                :class="`is-${msg.status}`"
-                @click="msg.status === 'failed' && emit('resend', msg)"
+              <button
+                v-if="msg.sender === 'self' && msg.status === 'failed'"
+                type="button"
+                class="c-chat__msg-status is-failed"
+                @click="emit('resend', msg)"
               >
-                {{
-                  msg.status === 'sending'
-                    ? '发送中...'
-                    : msg.status === 'failed'
-                      ? '发送失败，点击重试'
-                      : ''
-                }}
-              </span>
+                发送失败，点击重试
+              </button>
+              <span
+                v-else-if="msg.sender === 'self' && msg.status === 'sending'"
+                class="c-chat__msg-status is-sending"
+                >发送中...</span
+              >
             </div>
           </div>
         </template>

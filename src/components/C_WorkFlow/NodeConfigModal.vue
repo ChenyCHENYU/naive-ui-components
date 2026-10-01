@@ -255,6 +255,7 @@
     createDefaultCondition,
   } from './data'
   import { useComponentFeedback } from '../../config'
+  import { cloneData } from '../../utils/data'
 
   interface Props {
     show: boolean
@@ -377,7 +378,7 @@
     selectedCopyUsers.value = copyUsers.map((u: User) => u.id)
   }
   const configureConditionNode = (node: WorkflowNode) => {
-    conditions.value = (node.data as any).conditions || []
+    conditions.value = cloneData((node.data as any).conditions || [])
   }
 
   const saveStartNodeConfig = async (): Promise<boolean> => {
@@ -414,15 +415,15 @@
       message.error('请至少添加一个条件分支')
       return false
     }
-    const validConditions = conditions.value.filter(
-      c => c.name && c.field && c.operator && c.value
+    const hasIncompleteCondition = conditions.value.some(
+      c => !c.name?.trim() || !c.field || !c.operator || !c.value?.trim()
     )
-    if (validConditions.length === 0) {
-      message.error('请完善条件配置')
+    if (hasIncompleteCondition) {
+      message.error('请完善所有条件配置')
       return false
     }
-    emit('save', { conditions: validConditions })
-    message.success(`已设置 ${validConditions.length} 个条件分支`)
+    emit('save', { conditions: cloneData(conditions.value) })
+    message.success(`已设置 ${conditions.value.length} 个条件分支`)
     return true
   }
   const saveNodeConfig = async (): Promise<boolean> => {

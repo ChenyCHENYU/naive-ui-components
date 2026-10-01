@@ -23,11 +23,31 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
 
   /* ==================== 计算属性 ==================== */
   const timeFormat = computed(() => {
-    if (props.useSeconds) {
-      return props.format?.includes('ss') ? props.format : 'HH:mm:ss'
-    }
-    return props.format ?? 'HH:mm'
+    if (props.format && props.format !== 'HH:mm') return props.format
+    const fields = [
+      props.useHours !== false && 'HH',
+      props.useMinutes !== false && 'mm',
+      props.useSeconds && 'ss',
+    ].filter(Boolean)
+    return fields.join(':') || 'HH:mm'
   })
+
+  const allowedHours = computed(() => steppedValues(24, props.hourStep))
+  const allowedMinutes = computed(() => steppedValues(60, props.minuteStep))
+  const allowedSeconds = computed(() => steppedValues(60, props.secondStep))
+
+  function steppedValues(limit: number, rawStep?: number): number[] {
+    const step = Number.isInteger(rawStep) && (rawStep ?? 0) > 0 ? rawStep! : 1
+    return Array.from(
+      { length: Math.ceil(limit / step) },
+      (_, index) => index * step
+    )
+  }
+
+  function timeOfDay(value: number): number {
+    const date = new Date(value)
+    return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
+  }
 
   const endTimeDisabled = computed(
     () => props.mode === 'range' && startTime.value === null
@@ -102,7 +122,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     } else if (
       props.enableTimeRestriction &&
       endTime.value !== null &&
-      endTime.value <= value
+      timeOfDay(endTime.value) <= timeOfDay(value)
     ) {
       endTime.value = null
     }
@@ -112,9 +132,16 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
   }
 
   const handleEndTimeChange = (value: number | null) => {
-    endTime.value = value
-    emit('change-end', value)
-    if (props.mode === 'range') emit('change-range', startTime.value, value)
+    const accepted =
+      props.enableTimeRestriction &&
+      value !== null &&
+      startTime.value !== null &&
+      timeOfDay(value) <= timeOfDay(startTime.value)
+        ? null
+        : value
+    endTime.value = accepted
+    emit('change-end', accepted)
+    if (props.mode === 'range') emit('change-range', startTime.value, accepted)
     emitModel()
   }
 
@@ -137,14 +164,17 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     // eslint-disable-next-line complexity -- Compatibility sync handles two modes and legacy defaults atomically.
     () => {
       if (props.modelValue !== undefined) {
-        if (props.mode === 'range' && Array.isArray(props.modelValue)) {
-          startTime.value = props.modelValue[0] ?? null
-          endTime.value = props.modelValue[1] ?? null
-        } else if (
-          props.mode === 'single' &&
-          !Array.isArray(props.modelValue)
-        ) {
-          singleTime.value = props.modelValue
+        if (props.mode === 'range') {
+          startTime.value = Array.isArray(props.modelValue)
+            ? (props.modelValue[0] ?? null)
+            : null
+          endTime.value = Array.isArray(props.modelValue)
+            ? (props.modelValue[1] ?? null)
+            : null
+        } else {
+          singleTime.value = Array.isArray(props.modelValue)
+            ? null
+            : props.modelValue
         }
         return
       }
@@ -168,6 +198,9 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     endTime,
     singleTime,
     timeFormat,
+    allowedHours,
+    allowedMinutes,
+    allowedSeconds,
     endTimeDisabled,
     mergedStartAttrs,
     mergedEndAttrs,

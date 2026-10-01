@@ -199,15 +199,10 @@
     return [...new Set(names)]
   })
 
-  onMounted(() => {
-    if (props.showWordCount && props.modelValue) {
-      emit('word-count-change', props.modelValue.length)
-    }
-  })
-
   watch(
     () => props.modelValue,
     newValue => {
+      latestText.value = newValue ?? ''
       if (props.showWordCount) {
         emit('word-count-change', newValue?.length || 0)
       }
@@ -228,15 +223,16 @@
   }
 
   const handleHtmlChanged = (html: string) => {
-    cachedHtml.value = html
-    emit('change', latestText.value, html)
+    const safeHtml = sanitizeRichHtml(html)
+    cachedHtml.value = safeHtml
+    emit('change', latestText.value, safeHtml)
     if (props.autoSave) {
       autoSave(latestText.value)
     }
   }
 
   const handleSave = async (text: string, html: Promise<string>) => {
-    emit('save', text, await html)
+    emit('save', text, sanitizeRichHtml(await html))
   }
 
   const handleUploadImage = (
@@ -273,11 +269,25 @@
 
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 
+  watch(
+    () => props.autoSave,
+    enabled => {
+      if (!enabled && autoSaveTimer) {
+        clearTimeout(autoSaveTimer)
+        autoSaveTimer = null
+      }
+    }
+  )
+
   const autoSave = (text: string) => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
-    autoSaveTimer = setTimeout(() => {
-      emit('auto-save', text)
-    }, props.autoSaveInterval)
+    autoSaveTimer = setTimeout(
+      () => {
+        autoSaveTimer = null
+        emit('auto-save', text)
+      },
+      Math.max(0, props.autoSaveInterval)
+    )
   }
 
   onBeforeUnmount(() => {

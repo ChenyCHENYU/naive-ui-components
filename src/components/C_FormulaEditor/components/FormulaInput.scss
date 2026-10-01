@@ -28,10 +28,20 @@
   }
 
   &__clear {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
     font-size: 12px;
     color: var(--c-primary);
     cursor: pointer;
     user-select: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--c-primary);
+      outline-offset: 2px;
+    }
 
     &:hover {
       opacity: 0.8;
@@ -87,11 +97,7 @@
 
     /* 数字 */
     :deep(.formula-num) {
-      color: color-mix(
-        in srgb,
-        var(--success-color, #18a058) 90%,
-        transparent
-      );
+      color: color-mix(in srgb, var(--success-color, #18a058) 90%, transparent);
     }
 
     /* 括号 */

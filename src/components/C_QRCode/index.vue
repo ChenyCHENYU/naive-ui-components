@@ -78,17 +78,23 @@
 
   const canvasRef = ref<HTMLCanvasElement | null>(null)
 
-  const { svgHtml, error, render, toDataURL, download } = useQRCode(canvasRef, {
-    value: toRef(props, 'value'),
-    size: toRef(props, 'size'),
-    color: toRef(props, 'color'),
-    bgColor: toRef(props, 'bgColor'),
-    errorCorrectionLevel: toRef(props, 'errorCorrectionLevel'),
-    margin: toRef(props, 'margin'),
-    mode: toRef(props, 'mode'),
-    logo: toRef(props, 'logo'),
-  })
-  const safeSvgHtml = computed(() => sanitizeSvg(svgHtml.value))
+  const { svgHtml, svgTrusted, error, render, toDataURL, download } = useQRCode(
+    canvasRef,
+    {
+      value: toRef(props, 'value'),
+      size: toRef(props, 'size'),
+      color: toRef(props, 'color'),
+      bgColor: toRef(props, 'bgColor'),
+      errorCorrectionLevel: toRef(props, 'errorCorrectionLevel'),
+      margin: toRef(props, 'margin'),
+      mode: toRef(props, 'mode'),
+      logo: toRef(props, 'logo'),
+    }
+  )
+  // The raster SVG is assembled solely from a canvas-generated PNG data URL.
+  const safeSvgHtml = computed(() =>
+    svgTrusted.value ? svgHtml.value : sanitizeSvg(svgHtml.value)
+  )
 
   watch(error, e => {
     if (e) emit('error', e)

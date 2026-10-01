@@ -164,7 +164,7 @@ export const processExcelSheet = (
   const columns: ExcelColumn[] = Array.from({ length: maxCol + 1 }, (_, c) => {
     const cellAddress = XLSX.utils.encode_cell({ r: 0, c })
     const cell = worksheet[cellAddress]
-    const columnName = cell ? String(cell.v || '').trim() : `列${c + 1}`
+    const columnName = cell ? String(cell.v ?? '').trim() : `列${c + 1}`
     return {
       title: columnName || `列${c + 1}`,
       key: `col_${c}`,
@@ -193,7 +193,7 @@ export const processExcelSheet = (
       const mergeInfo = mergeMap.get(`${r}-${c}`)
 
       row[`col_${c}`] = {
-        value: cell ? cell.v || '' : '',
+        value: cell ? (cell.v ?? '') : '',
         merged: !!mergeInfo,
         hidden: mergeInfo && !mergeInfo.isMain,
         rowspan: mergeInfo?.isMain ? mergeInfo.rowspan : 1,

@@ -6,8 +6,10 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
  */
 
+import type { Component } from 'vue'
+
 export interface IconProps {
-  name: string | unknown
+  name: string | Component
   type?: 'iconify' | 'unocss' | 'component' | 'svg' | 'image'
   color?: string
   size?: number | string

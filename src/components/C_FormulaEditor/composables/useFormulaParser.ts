@@ -164,6 +164,31 @@ export function useFormulaParser(
   }
 
   /** 完整校验公式 */
+  function checkOperatorBoundaries(tokens: FormulaToken[]): FormulaValidation {
+    const meaningful = tokens.filter(token => token.type !== 'space')
+    const first = meaningful[0]
+    const last = meaningful[meaningful.length - 1]
+    if (
+      first?.type === 'operator' &&
+      !['-', '+', 'NOT'].includes(first.value) &&
+      OPERATORS.has(first.value)
+    ) {
+      return {
+        valid: false,
+        message: `公式不能以运算符「${first.value}」开头`,
+        position: first.start,
+      }
+    }
+    if (last?.type === 'operator' || last?.value === ',') {
+      return {
+        valid: false,
+        message: '公式不能以运算符或逗号结尾',
+        position: last.start,
+      }
+    }
+    return { valid: true, message: '' }
+  }
+
   function validate(formula: string): FormulaValidation {
     if (!formula.trim()) {
       return { valid: true, message: '公式为空' }
@@ -184,22 +209,9 @@ export function useFormulaParser(
     const funcCheck = checkFunctions(tokens)
     if (!funcCheck.valid) return funcCheck
 
-    /* 5. 基本语法校验 — 不能以运算符开头（除了负号） */
-    const meaningful = tokens.filter(t => t.type !== 'space')
-    if (meaningful.length > 0) {
-      const first = meaningful[0]
-      if (
-        first.type === 'operator' &&
-        first.value !== '-' &&
-        !OPERATORS.has(first.value) === false
-      ) {
-        return {
-          valid: false,
-          message: `公式不能以运算符「${first.value}」开头`,
-          position: first.start,
-        }
-      }
-    }
+    /* 5. 基本语法边界 */
+    const boundaryCheck = checkOperatorBoundaries(tokens)
+    if (!boundaryCheck.valid) return boundaryCheck
 
     return { valid: true, message: '公式合法' }
   }

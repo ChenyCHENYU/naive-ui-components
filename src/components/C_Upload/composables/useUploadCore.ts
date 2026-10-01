@@ -36,7 +36,9 @@ export function useUploadCore(props: UploadProps) {
 
   // ─── 文件列表 ────────────────────────────────
 
-  const fileList = ref<UploadFileItem[]>([...(props.defaultFileList ?? [])])
+  const fileList = ref<UploadFileItem[]>(
+    (props.defaultFileList ?? []).map(file => ({ ...file }))
+  )
   const pausedSet = reactive(new Set<string>())
   const operationVersions = new Map<string, symbol>()
   const ownedObjectUrls = new Set<string>()
@@ -195,6 +197,14 @@ export function useUploadCore(props: UploadProps) {
     )
   }
 
+  function calculateItemHash(item: UploadFileItem, version: symbol) {
+    return calculateHash(item.raw!, percent => {
+      if (isOperationCurrent(item.uid, version)) {
+        updateFile(item.uid, { percent })
+      }
+    })
+  }
+
   /** 上传单个文件 */
   // eslint-disable-next-line complexity -- 单文件状态机集中保证校验、秒传、分片及取消的原子性。
   async function processFile(item: UploadFileItem) {
@@ -228,6 +238,8 @@ export function useUploadCore(props: UploadProps) {
         name: preparedFile.name,
         size: preparedFile.size,
         type: preparedFile.type,
+        hash: undefined,
+        chunkProgress: undefined,
         thumbUrl: createThumbnail(preparedFile),
       })
     }
@@ -241,7 +253,7 @@ export function useUploadCore(props: UploadProps) {
     if (instantCheck.value && !item.hash) {
       updateFile(item.uid, { status: 'hashing' })
       try {
-        const hash = await calculateHash(item.raw)
+        const hash = await calculateItemHash(item, version)
         if (!isOperationCurrent(item.uid, version)) return
         updateFile(item.uid, { hash })
         const result = await instantCheck.value(hash, item.raw.name)
@@ -277,7 +289,7 @@ export function useUploadCore(props: UploadProps) {
     if (!hash) {
       updateFile(item.uid, { status: 'hashing' })
       try {
-        hash = await calculateHash(file)
+        hash = await calculateItemHash(item, version)
         if (!isOperationCurrent(item.uid, version)) return
         updateFile(item.uid, { hash })
       } catch {
@@ -289,7 +301,7 @@ export function useUploadCore(props: UploadProps) {
     }
 
     // 2. 分片上传
-    updateFile(item.uid, { status: 'uploading' })
+    updateFile(item.uid, { status: 'uploading', percent: 0 })
 
     await chunkUploader.uploadChunks({
       uid: item.uid,
@@ -316,7 +328,7 @@ export function useUploadCore(props: UploadProps) {
 
   /** 普通上传 */
   function processNormalUpload(item: UploadFileItem, version: symbol) {
-    updateFile(item.uid, { status: 'uploading' })
+    updateFile(item.uid, { status: 'uploading', percent: 0 })
 
     uploadQueue.enqueue(
       item,

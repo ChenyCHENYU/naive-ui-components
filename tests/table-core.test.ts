@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import fs from 'node:fs'
+import path from 'node:path'
 import { computed, effectScope, nextTick, ref, type VNode } from 'vue'
 import { useCellEdit } from '../src/components/C_Table/composables/useCellEdit'
 import { useCrossPageSelection } from '../src/components/C_Table/composables/useCrossPageSelection'
@@ -8,7 +10,10 @@ import { useRowEdit } from '../src/components/C_Table/composables/useRowEdit'
 import { useTableQuery } from '../src/components/C_Table/composables/useTableQuery'
 import { useTableExpand } from '../src/components/C_Table/composables/useTableExpand'
 import { useTableActions } from '../src/components/C_Table/composables/useTableActions'
-import { validateTableRowKeys } from '../src/components/C_Table/helpers'
+import {
+  collectTreeBranchKeys,
+  validateTableRowKeys,
+} from '../src/components/C_Table/helpers'
 import { mergeGlobalConfig } from '../src/components/C_Table/composables/useTableGlobalConfig'
 import { resolveConfig } from '../src/components/C_Table/composables/useTableConfig'
 import type {
@@ -51,6 +56,20 @@ describe('C_Table remote query controller', () => {
 })
 
 describe('C_Table row-key contract', () => {
+  test('default-expand-all collects only parent rows and tolerates cycles', () => {
+    interface TreeRow {
+      id: number
+      children?: TreeRow[]
+    }
+    const root: TreeRow = { id: 1 }
+    const branch: TreeRow = { id: 2, children: [{ id: 3 }] }
+    root.children = [branch]
+    branch.children?.push(root)
+    expect(collectTreeBranchKeys([root], 'children', row => row.id)).toEqual([
+      1, 2,
+    ])
+  })
+
   test('reports missing, duplicate, and throwing row-key resolvers', () => {
     const data = [{ id: 1 }, { id: 1 }, {}, { id: 4 }]
     const issues = validateTableRowKeys(data, row => {
@@ -64,6 +83,18 @@ describe('C_Table row-key contract', () => {
       'error',
     ])
     expect(issues[0]?.firstIndex).toBe(0)
+  })
+})
+
+describe('C_Table summary contract', () => {
+  test('passes the keyed summary row directly to Naive UI', () => {
+    const source = fs.readFileSync(
+      path.resolve(import.meta.dir, '../src/components/C_Table/index.vue'),
+      'utf8'
+    )
+    expect(source).toContain(
+      'const summaryFn = computed(() => resolved.value.summaryRender)'
+    )
   })
 })
 
@@ -108,6 +139,68 @@ describe('C_Table toolbar actions', () => {
     expect(resolved.toolbarActions).toEqual([add])
     expect(resolved.toolbarRightActions).toEqual([refresh])
     expect(resolved.toolbarActionBarConfig).toEqual({ compact: true })
+  })
+})
+
+describe('C_Table delete action contract', () => {
+  test('does not report success or delete the row when CRUD returns an error', async () => {
+    const row = { id: 1 }
+    const error = new Error('delete rejected')
+    const notifications: string[] = []
+    const deleted: number[] = []
+    const feedback = {
+      confirm: () => true,
+      success: (message: string) => notifications.push(`success:${message}`),
+      error: (message: string) => notifications.push(`error:${message}`),
+    }
+    const makeActions = (result: unknown, feedbackHandled: boolean) => {
+      const deleteAction = async () => result
+      return useTableActions({
+        actions: computed(() => ({ delete: deleteAction })),
+        config: ref({ editable: false, editMode: 'none', feedback }),
+        tableManager: {
+          editStates: {
+            modalEdit: { startEdit: () => undefined },
+            rowEdit: {
+              isEditingRow: () => false,
+              startEditRow: () => undefined,
+              cancelEditRow: () => undefined,
+              saveEditRow: async () => undefined,
+            },
+          },
+        },
+        rowKey: current => current.id,
+        onRowDeleted: current => deleted.push(current.id),
+        isDeleteFeedbackHandled: () => feedbackHandled,
+      })
+    }
+    const clickDelete = async (result: unknown, feedbackHandled: boolean) => {
+      const vnode = makeActions(result, feedbackHandled).renderActions(
+        row,
+        0
+      ) as VNode
+      const buttons = (vnode.children as { default: () => VNode[] }).default()
+      buttons[0]?.props?.onClick()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+
+    await clickDelete({ data: null, error }, true)
+    expect(notifications).toEqual([])
+    expect(deleted).toEqual([])
+
+    await clickDelete({ data: null, error }, false)
+    expect(notifications).toEqual(['error:删除失败'])
+    expect(deleted).toEqual([])
+
+    notifications.length = 0
+    await clickDelete({ data: { success: true }, error: null }, true)
+    expect(notifications).toEqual([])
+    expect(deleted).toEqual([1])
+
+    notifications.length = 0
+    await clickDelete(undefined, false)
+    expect(notifications).toEqual(['success:删除成功'])
+    expect(deleted).toEqual([1, 1])
   })
 })
 

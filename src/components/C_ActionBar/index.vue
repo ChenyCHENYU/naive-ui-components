@@ -87,7 +87,7 @@
 <script setup lang="ts">
   import {
     computed,
-    reactive,
+    shallowReactive,
     h,
     withDirectives,
     defineComponent,
@@ -159,7 +159,7 @@
     return resolveActionState(action.show) ?? true
   }
 
-  const runningActions = reactive(new Set<ActionItem>())
+  const runningActions = shallowReactive(new Set<ActionItem>())
 
   const isActionDisabled = (action: ActionItem): boolean => {
     return resolveActionState(action.disabled) || runningActions.has(action)
@@ -225,14 +225,17 @@
             if (item.show === undefined) return true
             return resolveActionState(item.show)
           })
-          .map(item => ({
-            key: item.key,
-            label: item.label,
-            icon: item.icon
-              ? () => h(C_Icon, { name: item.icon, size: 14 })
-              : undefined,
-            disabled: resolveActionState(item.disabled),
-          }))
+          .map(item => {
+            const { icon } = item
+            return {
+              key: item.key,
+              label: item.label,
+              icon: icon
+                ? () => h(C_Icon, { name: icon, size: 14, 'aria-hidden': true })
+                : undefined,
+              disabled: resolveActionState(item.disabled),
+            }
+          })
       })
 
       const handleDropdownSelect = (key: string) => {
@@ -243,6 +246,7 @@
       }
 
       const createButtonVNode = (extraProps?: Record<string, any>) => {
+        const { icon } = resolvedAction.value
         const button = h(
           NButton,
           {
@@ -255,11 +259,12 @@
           },
           {
             default: () => resolvedAction.value.label,
-            icon: resolvedAction.value.icon
+            icon: icon
               ? () =>
                   h(C_Icon, {
-                    name: resolvedAction.value.icon,
+                    name: icon,
                     size: iconSize.value,
+                    'aria-hidden': true,
                   })
               : undefined,
           }

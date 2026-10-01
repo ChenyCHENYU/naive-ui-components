@@ -210,7 +210,7 @@ export function setupHighlight(app: App, options: HighlightPluginOptions = {}) {
 
   // 挂载到全局
   if (typeof window !== 'undefined') {
-    window.hljs = hlJsInstance
+    Reflect.set(window, 'hljs', hlJsInstance)
   }
 
   // 提供给 Vue 应用
@@ -230,11 +230,4 @@ export const defaultHighlightOptions: HighlightPluginOptions = {
   autoDetect: false,
   extraLanguages: [],
   debug: false,
-}
-
-// 类型声明
-declare global {
-  interface Window {
-    hljs: HLJSApi
-  }
 }

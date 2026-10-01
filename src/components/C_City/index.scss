@@ -1,4 +1,7 @@
 .city-selector-trigger {
+  background: transparent;
+  font: inherit;
+  color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -12,6 +15,11 @@
 
   &:hover {
     border-color: var(--c-primary, #1890ff);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--c-primary, #1890ff);
+    outline-offset: 2px;
   }
 
   &__text {
@@ -60,6 +68,9 @@
   flex-shrink: 0;
 
   .city-selector-letter {
+    border: 0;
+    background: transparent;
+    font: inherit;
     padding: 2px 6px;
     cursor: pointer;
     color: var(--c-primary, #1890ff);
@@ -73,6 +84,10 @@
       background-color: var(--c-primary, #1890ff);
       color: #fff;
       border-radius: 2px;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--c-primary, #1890ff);
     }
   }
 }
@@ -121,6 +136,10 @@
 }
 
 .city-item {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   padding: 3px 10px;
   cursor: pointer;
   font-size: 13px;
@@ -133,10 +152,19 @@
     color: var(--c-primary, #1890ff);
   }
 
+  &:focus-visible {
+    outline: 2px solid var(--c-primary, #1890ff);
+  }
+
   &.is-active {
     background-color: var(--c-primary, #1890ff);
     color: #fff;
   }
+}
+
+.city-selector-status {
+  padding: 16px;
+  text-align: center;
 }
 
 :deep(.n-scrollbar) {

@@ -19,15 +19,23 @@
         :value="modelValue"
         :visible="visible"
       >
-        <div class="city-selector-trigger">
+        <button
+          type="button"
+          class="city-selector-trigger"
+          :aria-expanded="visible"
+          aria-label="选择城市"
+        >
           <span class="city-selector-trigger__text">{{
             modelValue || placeholder
           }}</span>
-        </div>
+        </button>
       </slot>
     </template>
 
-    <div class="city-selector-content">
+    <div
+      ref="contentRef"
+      class="city-selector-content"
+    >
       <div class="city-selector-header">
         <NRadioGroup
           v-model:value="radioValue"
@@ -51,38 +59,49 @@
         v-if="showLetters"
         class="city-selector-letters"
       >
-        <span
+        <button
           v-for="letter in letters"
           :key="letter"
+          type="button"
           class="city-selector-letter"
           @click="scrollToLetter(letter)"
         >
           {{ letter }}
-        </span>
+        </button>
       </div>
 
       <NScrollbar class="city-selector-body">
         <div
-          v-if="radioValue === 'city'"
+          v-if="radioValue === 'city' && !cityData"
+          role="status"
+          class="city-selector-status"
+        >
+          {{
+            cityLoadError ? '城市数据加载失败，请重新打开重试' : '正在加载城市…'
+          }}
+        </div>
+        <div
+          v-else-if="radioValue === 'city'"
           class="city-list"
         >
           <div
             v-for="(cities, letter) in cityDataByLetter"
             :key="letter"
-            :id="`letter-${letter}`"
+            :data-letter="letter"
             class="city-group"
           >
             <div class="city-group__letter">{{ letter }}:</div>
             <div class="city-group__cities">
-              <span
+              <button
                 v-for="(city, index) in cities"
                 :key="`${letter}-${index}`"
+                type="button"
                 class="city-item"
                 :class="{ 'is-active': modelValue === city.name }"
                 @click="handleCitySelect(city.name)"
               >
                 {{ city.name }}
-              </span>
+              </button>
             </div>
           </div>
         </div>
@@ -94,20 +113,21 @@
           <div
             v-for="province in allProvinces"
             :key="province.id"
-            :id="`letter-${province.id}`"
+            :data-letter="province.id"
             class="province-group"
           >
             <div class="province-group__name">{{ province.name }}:</div>
             <div class="province-group__cities">
-              <span
+              <button
                 v-for="(city, index) in province.data"
                 :key="`${province.id}-${index}`"
+                type="button"
                 class="city-item"
                 :class="{ 'is-active': modelValue === city }"
                 @click="handleCitySelect(city)"
               >
                 {{ city }}
-              </span>
+              </button>
             </div>
           </div>
         </div>
@@ -117,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted } from 'vue'
+  import { ref, computed, watch } from 'vue'
   import {
     NPopover,
     NRadioGroup,
@@ -136,13 +156,10 @@
     name: string
   }
 
-  // 城市数据懒加载（83KB JSON 仅在组件挂载时加载）
+  // 仅首次打开时加载；未使用的选择器不下载城市数据。
   const cityData = ref<{ cities: Record<string, CityItem[]> } | null>(null)
-
-  onMounted(async () => {
-    const mod = await import('./city.json')
-    cityData.value = mod.default ?? mod
-  })
+  const cityLoadError = ref(false)
+  let cityLoadPromise: Promise<void> | null = null
 
   interface ProvinceItem {
     id?: string
@@ -169,8 +186,24 @@
   const emit = defineEmits<Emits>()
 
   const visible = ref(false)
+  const contentRef = ref<HTMLElement | null>(null)
   const radioValue = ref<'city' | 'province'>('city')
   const searchValue = ref('')
+
+  watch(visible, open => {
+    if (!open || cityData.value || cityLoadPromise) return
+    cityLoadError.value = false
+    cityLoadPromise = import('./city.json')
+      .then(mod => {
+        cityData.value = mod.default ?? mod
+      })
+      .catch(() => {
+        cityLoadError.value = true
+      })
+      .finally(() => {
+        cityLoadPromise = null
+      })
+  })
 
   const allProvinces = computed(() => {
     const provinces: ProvinceItem[] = []
@@ -181,32 +214,7 @@
   })
 
   const cityDataByLetter = computed(() => {
-    if (cityData.value?.cities) {
-      return cityData.value.cities
-    }
-    // 数据未加载时，从省份数据生成城市索引作为 fallback
-    const cities: Record<string, CityItem[]> = {}
-    let cityId = 1
-    const citySet = new Set<string>()
-    allProvinces.value.forEach(province => {
-      province.data.forEach(cityName => {
-        citySet.add(cityName)
-      })
-    })
-    Array.from(citySet).forEach(cityName => {
-      const letter = cityName[0].toUpperCase()
-      if (!cities[letter]) cities[letter] = []
-      cities[letter].push({ id: cityId++, name: cityName, spell: '' })
-    })
-    const sortedCities: Record<string, CityItem[]> = {}
-    Object.keys(cities)
-      .sort()
-      .forEach(letter => {
-        sortedCities[letter] = cities[letter].sort((a, b) =>
-          a.name.localeCompare(b.name, 'zh-CN')
-        )
-      })
-    return sortedCities
+    return cityData.value?.cities ?? {}
   })
 
   const letters = computed(() => {
@@ -261,7 +269,9 @@
   }
 
   const scrollToLetter = (letter: string): void => {
-    const element = document.getElementById(`letter-${letter}`)
+    const element = Array.from(
+      contentRef.value?.querySelectorAll<HTMLElement>('[data-letter]') ?? []
+    ).find(item => item.dataset.letter === letter)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }

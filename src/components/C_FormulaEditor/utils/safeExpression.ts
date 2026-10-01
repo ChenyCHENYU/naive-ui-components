@@ -231,15 +231,19 @@ class SafeExpressionParser {
 
   private parseOr(): Primitive {
     let value = this.parseAnd()
-    while (this.consume('OR'))
-      value = Boolean(value) || Boolean(this.parseAnd())
+    while (this.consume('OR')) {
+      const right = this.parseAnd()
+      value = Boolean(value) || Boolean(right)
+    }
     return value
   }
 
   private parseAnd(): Primitive {
     let value = this.parseEquality()
-    while (this.consume('AND'))
-      value = Boolean(value) && Boolean(this.parseEquality())
+    while (this.consume('AND')) {
+      const right = this.parseEquality()
+      value = Boolean(value) && Boolean(right)
+    }
     return value
   }
 

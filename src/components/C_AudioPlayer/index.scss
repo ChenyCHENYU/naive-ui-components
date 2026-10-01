@@ -8,7 +8,11 @@
   --ap-accent: var(--primary-color);
   --ap-text: var(--text-color-1);
   --ap-text-sub: var(--text-color-3);
-  --ap-progress-bg: color-mix(in srgb, var(--primary-color) 15%, var(--border-color));
+  --ap-progress-bg: color-mix(
+    in srgb,
+    var(--primary-color) 15%,
+    var(--border-color)
+  );
   --ap-progress-fill: var(--primary-color);
 
   display: flex;
@@ -184,7 +188,8 @@
       &:hover {
         background: color-mix(in srgb, var(--ap-accent) 85%, #000);
         color: #fff;
-        box-shadow: 0 2px 10px color-mix(in srgb, var(--ap-accent) 35%, transparent);
+        box-shadow: 0 2px 10px
+          color-mix(in srgb, var(--ap-accent) 35%, transparent);
       }
     }
   }
@@ -199,6 +204,11 @@
   }
 
   &__volume-icon {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
     font-size: 18px;
     color: var(--ap-text-sub);
     cursor: pointer;
@@ -236,6 +246,12 @@
 
   &__track {
     display: flex;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     align-items: center;
     gap: 12px;
     padding: 10px 20px;

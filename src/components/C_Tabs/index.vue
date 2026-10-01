@@ -7,7 +7,8 @@
 -->
 <template>
   <NTabs
-    v-model:value="activeValue"
+    :value="activeValue ?? undefined"
+    @update:value="handleValueUpdate"
     class="c-tabs"
     :class="[`is-${type}`, { 'is-tabs-only': tabsOnly }]"
     :type="type"
@@ -159,6 +160,10 @@
       )
     },
   })
+
+  const handleValueUpdate = (value: TabsValue): void => {
+    activeValue.value = value
+  }
 
   const handleBeforeLeave = async (
     target: TabsValue,

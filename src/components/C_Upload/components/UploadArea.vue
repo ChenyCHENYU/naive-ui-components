@@ -20,6 +20,8 @@
       :accept="accept"
       :multiple="multiple"
       :webkitdirectory="directory || undefined"
+      :disabled="disabled"
+      @click.stop
       @change="handleInputChange"
     />
 
@@ -56,7 +58,7 @@
 <script setup lang="ts">
   import { ref, computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
-  import { useDragDrop } from '../composables/useDragDrop'
+  import { filterByAccept, useDragDrop } from '../composables/useDragDrop'
 
   const props = withDefaults(
     defineProps<{
@@ -111,7 +113,9 @@
   /** input change */
   function handleInputChange(e: Event) {
     const input = e.target as HTMLInputElement
-    const files = Array.from(input.files ?? [])
+    const files = props.disabled
+      ? []
+      : filterByAccept(Array.from(input.files ?? []), props.accept)
     if (files.length > 0) {
       emit('files', files)
     }

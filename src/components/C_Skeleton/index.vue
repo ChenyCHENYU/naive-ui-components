@@ -10,17 +10,20 @@
     v-if="props.loading"
     class="c-skeleton"
     :class="[`c-skeleton--${animationType}`]"
+    :style="{ '--c-skeleton-radius': borderRadius }"
+    role="status"
+    aria-label="加载中"
   >
     <!-- text 预设 -->
     <template v-if="preset === 'text'">
       <div
-        v-for="i in repeat"
+        v-for="i in safeRepeat"
         :key="i"
         class="c-skeleton__text"
       >
         <div
           class="c-skeleton__line c-skeleton__item"
-          :style="{ width: i === repeat ? '60%' : '100%' }"
+          :style="{ width: i === safeRepeat ? '60%' : '100%' }"
         />
       </div>
     </template>
@@ -45,7 +48,7 @@
     <!-- image 预设 -->
     <template v-else-if="preset === 'image'">
       <div
-        v-for="i in repeat"
+        v-for="i in safeRepeat"
         :key="i"
         class="c-skeleton__image c-skeleton__item"
       >
@@ -67,7 +70,7 @@
     <!-- card 预设 -->
     <template v-else-if="preset === 'card'">
       <div
-        v-for="i in repeat"
+        v-for="i in safeRepeat"
         :key="i"
         class="c-skeleton__card"
       >
@@ -311,36 +314,43 @@
     props.animation === false ? 'none' : props.animation
   )
 
+  const boundedCount = (value: number, maximum: number): number =>
+    Number.isFinite(value)
+      ? Math.min(maximum, Math.max(1, Math.floor(value)))
+      : 1
+
+  const safeRepeat = computed(() => boundedCount(props.repeat, 100))
+
   const tableConfig = computed<Required<SkeletonTableConfig>>(() => ({
-    rows: props.table?.rows ?? 5,
-    cols: props.table?.cols ?? 4,
+    rows: boundedCount(props.table?.rows ?? 5, 100),
+    cols: boundedCount(props.table?.cols ?? 4, 20),
     showHeader: props.table?.showHeader ?? true,
     showActions: props.table?.showActions ?? true,
   }))
 
   const formConfig = computed<Required<SkeletonFormConfig>>(() => ({
-    fields: props.form?.fields ?? 6,
-    cols: props.form?.cols ?? 2,
+    fields: boundedCount(props.form?.fields ?? 6, 100),
+    cols: boundedCount(props.form?.cols ?? 2, 12),
     showLabel: props.form?.showLabel ?? true,
     showActions: props.form?.showActions ?? true,
   }))
 
   const listConfig = computed<Required<SkeletonListConfig>>(() => ({
-    items: props.list?.items ?? 5,
+    items: boundedCount(props.list?.items ?? 5, 100),
     showAvatar: props.list?.showAvatar ?? true,
-    descLines: props.list?.descLines ?? 2,
+    descLines: boundedCount(props.list?.descLines ?? 2, 20),
   }))
 
   const cardConfig = computed<Required<SkeletonCardConfig>>(() => ({
     showCover: props.card?.showCover ?? true,
-    titleLines: props.card?.titleLines ?? 1,
-    descLines: props.card?.descLines ?? 2,
+    titleLines: boundedCount(props.card?.titleLines ?? 1, 20),
+    descLines: boundedCount(props.card?.descLines ?? 2, 20),
     showFooter: props.card?.showFooter ?? true,
   }))
 
   const detailConfig = computed<Required<SkeletonDetailConfig>>(() => ({
-    fields: props.detail?.fields ?? 6,
-    valueLines: props.detail?.valueLines ?? 1,
+    fields: boundedCount(props.detail?.fields ?? 6, 100),
+    valueLines: boundedCount(props.detail?.valueLines ?? 1, 20),
     showAvatar: props.detail?.showAvatar ?? true,
   }))
 </script>

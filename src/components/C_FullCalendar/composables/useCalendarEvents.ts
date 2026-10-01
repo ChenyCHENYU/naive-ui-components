@@ -8,10 +8,20 @@ import {
   BUTTON_TEXT,
 } from '../data'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin from '@fullcalendar/interaction'
+import interactionPlugin, {
+  type DateClickArg,
+  type EventResizeDoneArg,
+} from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
-import type { CalendarOptions } from '@fullcalendar/core'
+import type {
+  CalendarApi,
+  CalendarOptions,
+  EventApi,
+  EventClickArg,
+  EventDropArg,
+} from '@fullcalendar/core'
 import zhCn from '@fullcalendar/core/locales/zh-cn'
+import { buildLocalEventRange } from '../calendarDate'
 
 type EmitFn = {
   (event: 'update:events', events: CalendarEvent[]): void
@@ -21,19 +31,24 @@ type EmitFn = {
   (event: 'event-dropped', eventData: Partial<CalendarEvent>): void
 }
 
+let fallbackEventId = 0
+const createEventId = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `calendar-${Date.now()}-${++fallbackEventId}`
+
 /**
  *
  */
 export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
   const message = useComponentFeedback()
-  const calendarRef = ref()
+  const calendarRef = ref<{ getApi: () => CalendarApi } | null>(null)
 
   const internalEvents = ref<CalendarEvent[]>([...(props.events ?? [])])
 
   const showActionDialog = ref(false)
   const showEditModal = ref(false)
   const isEditing = ref(false)
-  const selectedEvent = ref<any>(null)
+  const selectedEvent = shallowRef<EventApi | null>(null)
   const editForm = ref<CalendarEditForm>({ ...DEFAULT_EDIT_FORM })
 
   const addEventToArray = (event: CalendarEvent) => {
@@ -59,7 +74,7 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
   /**
    *
    */
-  function handleEventClick(info: any) {
+  function handleEventClick(info: EventClickArg) {
     if (!props.editable) return
     info.jsEvent.preventDefault()
     selectedEvent.value = info.event
@@ -69,19 +84,19 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
   /**
    *
    */
-  function handleDateClick(info: any) {
+  function handleDateClick(info: DateClickArg) {
     if (!props.editable || !props.showAddDialog) return
-    openAddModal(new Date(info.dateStr))
+    openAddModal(info.date)
   }
 
   /**
    *
    */
-  function handleEventDrop(info: any) {
+  function handleEventDrop(info: EventDropArg) {
     const payload = {
       id: info.event.id,
-      start: info.event.start,
-      end: info.event.end,
+      start: info.event.start ?? undefined,
+      end: info.event.end ?? undefined,
     }
     updateEventInArray(payload)
     emit('event-dropped', payload)
@@ -91,11 +106,11 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
   /**
    *
    */
-  function handleEventResize(info: any) {
+  function handleEventResize(info: EventResizeDoneArg) {
     const payload = {
       id: info.event.id,
-      start: info.event.start,
-      end: info.event.end,
+      start: info.event.start ?? undefined,
+      end: info.event.end ?? undefined,
     }
     updateEventInArray(payload)
     emit('event-updated', payload)
@@ -118,13 +133,15 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    *
    */
   function openEditModal() {
-    if (!selectedEvent.value) return
-    isEditing.value = true
     const event = selectedEvent.value
-    const startDate = new Date(event.start)
-    const endDate = event.end
-      ? new Date(event.end)
-      : new Date(event.start.getTime() + 3600000)
+    if (!event?.start) return
+    const { start } = event
+    isEditing.value = true
+    const startDate = new Date(start)
+    const endDate =
+      event.end && !event.allDay
+        ? new Date(event.end)
+        : new Date(start.getTime() + 3600000)
 
     editForm.value = {
       id: event.id,
@@ -146,17 +163,27 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
       message.error('请输入事件标题')
       return false
     }
-    if (editForm.value.startTime >= editForm.value.endTime) {
-      message.error('结束时间必须晚于开始时间')
+    const range = buildLocalEventRange(
+      editForm.value.date,
+      editForm.value.startTime,
+      editForm.value.endTime
+    )
+    if (!range) {
+      message.error('请选择有效日期和时间，且结束时间须晚于开始时间')
+      return false
+    }
+    if (
+      isEditing.value &&
+      !internalEvents.value.some(event => event.id === editForm.value.id)
+    ) {
+      message.error('事件已不存在，请刷新后重试')
       return false
     }
 
-    const dateStr = new Date(editForm.value.date).toISOString().split('T')[0]
     const eventData: CalendarEvent = {
-      id: isEditing.value ? editForm.value.id : Date.now().toString(),
-      title: editForm.value.title,
-      start: new Date(`${dateStr}T${editForm.value.startTime}:00`),
-      end: new Date(`${dateStr}T${editForm.value.endTime}:00`),
+      id: isEditing.value ? editForm.value.id : createEventId(),
+      title: editForm.value.title.trim(),
+      ...range,
       color: editForm.value.color,
     }
 
@@ -180,6 +207,10 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
   function deleteEvent() {
     if (!selectedEvent.value) return
     const { id, title } = selectedEvent.value
+    if (!internalEvents.value.some(event => event.id === id)) {
+      showActionDialog.value = false
+      return
+    }
     removeEventFromArray(id)
     emit('event-deleted', { id, title })
     showActionDialog.value = false
@@ -190,7 +221,7 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     plugins: [dayGridPlugin, interactionPlugin, listPlugin],
     locale: zhCn,
     initialView: props.initialView ?? 'dayGridMonth',
-    events: internalEvents.value as any,
+    events: internalEvents.value,
     headerToolbar: HEADER_TOOLBAR,
     buttonText: BUTTON_TEXT,
     editable: props.editable ?? true,
@@ -213,10 +244,27 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     newEvents => {
       calendarOptions.value = {
         ...calendarOptions.value,
-        events: newEvents as any,
+        events: newEvents,
       }
     },
     { deep: true }
+  )
+
+  watch(
+    () => props.editable,
+    editable => {
+      calendarOptions.value = {
+        ...calendarOptions.value,
+        editable: editable ?? true,
+      }
+    }
+  )
+
+  watch(
+    () => props.initialView,
+    view => {
+      if (view) calendarRef.value?.getApi().changeView(view)
+    }
   )
 
   return {
@@ -236,7 +284,13 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
       addEvent: addEventToArray,
       updateEvent: updateEventInArray,
       deleteEvent: removeEventFromArray,
-      getEvents: () => internalEvents.value,
+      getEvents: () =>
+        internalEvents.value.map(event => ({
+          ...event,
+          start:
+            event.start instanceof Date ? new Date(event.start) : event.start,
+          end: event.end instanceof Date ? new Date(event.end) : event.end,
+        })),
     },
   }
 }

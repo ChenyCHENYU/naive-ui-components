@@ -27,6 +27,7 @@
     watch,
     useSlots,
     onMounted,
+    onBeforeUnmount,
     type CSSProperties,
   } from 'vue'
   import { NProgress } from 'naive-ui'
@@ -71,7 +72,11 @@
 
   const slots = useSlots()
   const p = ref<number | number[]>(
-    Array.isArray(props.percentage) ? [...props.percentage] : 0
+    props.isAnimation && props.type !== 'multiple-circle'
+      ? 0
+      : Array.isArray(props.percentage)
+        ? [...props.percentage]
+        : props.percentage
   )
 
   const hasIndicatorSlot = computed(() => !!slots.indicator)
@@ -100,44 +105,74 @@
     offsetDegree: props.offsetDegree,
     railColor: props.railColor,
     railStyle: props.railStyle,
+    showIndicator: props.showIndicator,
     status: props.status,
     strokeWidth: props.strokeWidth,
     unit: props.unit,
   }))
 
+  let mounted = false
+  let animationFrame: number | null = null
+
+  function cancelAnimation() {
+    if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+    animationFrame = null
+  }
+
+  function animateTo(targetValue: number, duration: number) {
+    const current = Array.isArray(p.value) ? p.value[0] : p.value
+    const startValue = Number.isFinite(current) ? current : 0
+    if (startValue === targetValue) return
+    const startTime = performance.now()
+
+    function tick(now: number) {
+      const progress = Math.min(Math.max((now - startTime) / duration, 0), 1)
+      p.value = Math.round(startValue + (targetValue - startValue) * progress)
+      if (progress < 1) animationFrame = requestAnimationFrame(tick)
+      else animationFrame = null
+    }
+
+    animationFrame = requestAnimationFrame(tick)
+  }
+
+  function syncProgress() {
+    cancelAnimation()
+    const target = props.percentage
+    if (props.type === 'multiple-circle') {
+      p.value = Array.isArray(target) ? [...target] : [target]
+      return
+    }
+
+    const rawValue = Array.isArray(target) ? target[0] : target
+    const targetValue = Number.isFinite(rawValue) ? rawValue : 0
+    const duration = Number.isFinite(props.time) ? Math.max(0, props.time) : 0
+    if (!props.isAnimation || duration === 0) {
+      p.value = targetValue
+      return
+    }
+
+    animateTo(targetValue, duration)
+  }
+
   watch(
-    () => props.percentage,
-    newVal => {
-      if (!props.isAnimation) {
-        p.value = newVal
-      } else if (props.type === 'multiple-circle' && Array.isArray(newVal)) {
-        p.value = [...newVal]
-      }
+    [
+      () => props.percentage,
+      () => props.isAnimation,
+      () => props.type,
+      () => props.time,
+    ],
+    () => {
+      if (mounted) syncProgress()
     },
-    { immediate: true, deep: true }
+    { deep: true }
   )
 
   onMounted(() => {
-    if (props.isAnimation && props.type !== 'multiple-circle') {
-      const targetValue = Array.isArray(props.percentage)
-        ? props.percentage[0]
-        : props.percentage
-
-      if (targetValue > 0) {
-        const startTime = performance.now()
-
-        const animate = (now: number) => {
-          const elapsed = now - startTime
-          const progress = Math.min(elapsed / props.time, 1)
-          p.value = Math.round(progress * targetValue)
-
-          if (progress < 1) {
-            requestAnimationFrame(animate)
-          }
-        }
-
-        requestAnimationFrame(animate)
-      }
-    }
+    mounted = true
+    syncProgress()
+  })
+  onBeforeUnmount(() => {
+    mounted = false
+    cancelAnimation()
   })
 </script>

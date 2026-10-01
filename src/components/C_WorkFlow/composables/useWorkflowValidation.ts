@@ -3,7 +3,7 @@
  * 封装流程校验逻辑、错误展示和节点定位
  */
 
-import { ref, type Ref } from 'vue'
+import { ref, onBeforeUnmount, type Ref } from 'vue'
 import { useComponentFeedback } from '../../../config'
 import type { WorkflowNode, WorkflowEdge, ValidationError } from '../types'
 import { FIELD_DISPLAY_NAMES, ERROR_TYPE_TEXTS } from '../data'
@@ -27,6 +27,7 @@ export function useWorkflowValidation(
   /* ─── 响应式状态 ────────────────────────────────────────── */
   const validationErrors = ref<ValidationError[]>([])
   const showValidationErrors = ref(false)
+  let jumpTimer: ReturnType<typeof setTimeout> | undefined
 
   /* ─── 核心验证 ──────────────────────────────────────────── */
   /** 执行工作流验证，返回错误列表（纯逻辑，不操作 UI） */
@@ -125,7 +126,9 @@ export function useWorkflowValidation(
       duration: 800,
     })
 
-    setTimeout(() => {
+    if (jumpTimer) clearTimeout(jumpTimer)
+    jumpTimer = setTimeout(() => {
+      jumpTimer = undefined
       options?.onShowNodeConfig?.(node)
       showValidationErrors.value = false
     }, 900)
@@ -145,6 +148,10 @@ export function useWorkflowValidation(
     validationErrors.value = []
     showValidationErrors.value = false
   }
+
+  onBeforeUnmount(() => {
+    if (jumpTimer) clearTimeout(jumpTimer)
+  })
 
   return {
     validationErrors,

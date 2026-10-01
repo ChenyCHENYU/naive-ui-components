@@ -14,7 +14,7 @@
       `c-orgchart--line-${props.lineStyle}`,
     ]"
     :style="cssVars"
-    @wheel.prevent="handleWheel"
+    @wheel="handleWheel"
     @mousedown="handlePanStart"
     @mousemove="handlePanMove"
     @mouseup="handlePanEnd"
@@ -49,6 +49,7 @@
       class="c-orgchart__controls"
     >
       <button
+        type="button"
         class="c-orgchart__control-btn"
         title="放大"
         @click="zoomIn"
@@ -57,6 +58,7 @@
       </button>
       <span class="c-orgchart__zoom-level">{{ zoomPercent }}%</span>
       <button
+        type="button"
         class="c-orgchart__control-btn"
         title="缩小"
         @click="zoomOut"
@@ -64,6 +66,7 @@
         −
       </button>
       <button
+        type="button"
         class="c-orgchart__control-btn"
         title="重置"
         @click="resetView"
@@ -131,6 +134,7 @@
    */
   const handleWheel = (e: WheelEvent) => {
     if (!props.zoomable) return
+    e.preventDefault()
     const delta = e.deltaY > 0 ? -0.1 : 0.1
     const newZoom = Math.max(
       props.minZoom,
@@ -140,7 +144,13 @@
   }
 
   const handlePanStart = (e: MouseEvent) => {
-    if (!props.pannable) return
+    if (!props.pannable || e.button !== 0) return
+    if (
+      (e.target as HTMLElement).closest(
+        '.c-orgchart__node, .c-orgchart__controls'
+      )
+    )
+      return
     isPanning.value = true
     panStartX.value = e.clientX - panX.value
     panStartY.value = e.clientY - panY.value
@@ -165,7 +175,10 @@
   }
 
   const resetView = () => {
-    zoom.value = props.initialZoom
+    zoom.value = Math.max(
+      props.minZoom,
+      Math.min(props.maxZoom, props.initialZoom)
+    )
     panX.value = 0
     panY.value = 0
   }

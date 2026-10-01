@@ -14,11 +14,16 @@ export function useInfiniteScroll(
 ) {
   const status = ref<InfiniteScrollStatus>('idle')
   let observer: IntersectionObserver | null = null
+  let requested = false
 
   function handleIntersect(entries: IntersectionObserverEntry[]) {
     const entry = entries[0]
-    if (!entry?.isIntersecting) return
-    if (!enabled.value || loading.value || noMore.value) return
+    if (!entry?.isIntersecting) {
+      requested = false
+      return
+    }
+    if (!enabled.value || loading.value || noMore.value || requested) return
+    requested = true
     status.value = 'loading'
     onLoadMore()
   }
@@ -35,6 +40,7 @@ export function useInfiniteScroll(
   function stopObserving() {
     observer?.disconnect()
     observer = null
+    requested = false
   }
 
   watch([loading, noMore], () => {
@@ -44,6 +50,7 @@ export function useInfiniteScroll(
       status.value = 'loading'
     } else {
       status.value = 'idle'
+      requested = false
     }
   })
 

@@ -49,6 +49,12 @@ export const DEFAULT_AUDIO_PLAYER_PROPS: Partial<AudioPlayerProps> = {
   theme: 'default',
 }
 
+/** Keep an external initial index inside the current playlist. */
+export function normalizeTrackIndex(index: number, count: number): number {
+  if (!Number.isFinite(index) || count <= 0) return 0
+  return Math.min(Math.max(Math.trunc(index), 0), count - 1)
+}
+
 /** Playback mode icon map */
 export const MODE_ICON_MAP: Record<string, { icon: string; label: string }> = {
   list: { icon: 'mdi:repeat', label: 'List Loop' },

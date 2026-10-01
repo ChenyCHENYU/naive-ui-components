@@ -13,6 +13,7 @@
     <template #trigger>
       <NButton
         text
+        :aria-label="themeTooltip"
         @click="cycleThemeMode"
       >
         <C_Icon

@@ -10,9 +10,13 @@
     class="c-steps"
     :class="[`steps-${direction}`, { 'steps-connected': connected }]"
   >
-    <div
+    <component
       v-for="(step, index) in steps"
       :key="index"
+      :is="clickable ? 'button' : 'div'"
+      :type="clickable ? 'button' : undefined"
+      :disabled="clickable && step.disabled"
+      :aria-current="getStatus(index) === 'process' ? 'step' : undefined"
       class="step-item"
       :class="[
         `step-${getStatus(index)}`,
@@ -55,7 +59,7 @@
           {{ step.description }}
         </div>
       </div>
-    </div>
+    </component>
   </div>
 </template>
 

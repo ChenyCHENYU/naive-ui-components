@@ -11,9 +11,15 @@ interface UseSignatureCanvasOptions {
   penConfig: Ref<PenConfig>
   mode: Ref<PenMode>
   disabled: Ref<boolean>
+  backgroundImage?: Ref<HTMLImageElement | null>
+  importedImage?: Ref<HTMLImageElement | null>
   onStrokeComplete: (stroke: SignatureStroke) => void
   onDrawStart: () => void
   onDrawing: (point: SignaturePoint) => void
+}
+
+type StrokeView = Omit<SignatureStroke, 'points'> & {
+  readonly points: readonly SignaturePoint[]
 }
 
 /**
@@ -25,6 +31,8 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     penConfig,
     mode,
     disabled,
+    backgroundImage,
+    importedImage,
     onStrokeComplete,
     onDrawStart,
     onDrawing,
@@ -43,8 +51,6 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     const rect = canvas.getBoundingClientRect()
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
-    canvas.style.width = `${rect.width}px`
-    canvas.style.height = `${rect.height}px`
     ctx.scale(dpr, dpr)
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -133,10 +139,15 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     }
   }
 
-  const redrawStrokes = (strokes: SignatureStroke[]) => {
+  const redrawStrokes = (strokes: readonly StrokeView[]) => {
     if (!ctx || !canvasRef.value) return
     const canvas = canvasRef.value
+    const { width, height } = canvas.getBoundingClientRect()
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (backgroundImage?.value)
+      ctx.drawImage(backgroundImage.value, 0, 0, width, height)
+    if (importedImage?.value)
+      ctx.drawImage(importedImage.value, 0, 0, width, height)
     strokes.forEach(stroke => {
       for (let i = 1; i < stroke.points.length; i++) {
         drawStroke(

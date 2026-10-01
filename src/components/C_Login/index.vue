@@ -602,8 +602,8 @@
   // ===== 记住我 =====
   const rememberMe = ref(false)
 
-  watch(rememberMe, val => {
-    if (val) {
+  watch([rememberMe, () => passwordForm.username], ([remember]) => {
+    if (remember) {
       setItem(props.storageKey, { username: passwordForm.username })
     } else {
       removeItem(props.storageKey)
@@ -704,8 +704,9 @@
 
   // ===== 发送验证码 =====
   const handleSendCode = () => {
-    if (!captchaForm.account) return
-    emit('send-code', captchaForm.account)
+    const account = captchaForm.account.trim()
+    if (countdown.value > 0 || !MOBILE_PATTERN.test(account)) return
+    emit('send-code', account)
     if (countdownTimer) {
       clearInterval(countdownTimer)
       countdownTimer = null
@@ -771,8 +772,9 @@
   }
 
   const handleRegSendCode = () => {
-    if (!registerForm.phone) return
-    emit('register-send-code', registerForm.phone)
+    const phone = registerForm.phone.trim()
+    if (regCountdown.value > 0 || !MOBILE_PATTERN.test(phone)) return
+    emit('register-send-code', phone)
     if (regCountdownTimer) {
       clearInterval(regCountdownTimer)
       regCountdownTimer = null

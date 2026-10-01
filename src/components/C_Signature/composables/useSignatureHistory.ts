@@ -6,11 +6,18 @@ interface UseSignatureHistoryOptions {
   onChange?: (strokes: SignatureStroke[]) => void
 }
 
+const cloneStrokes = (strokes: SignatureStroke[]): SignatureStroke[] =>
+  strokes.map(stroke => ({
+    ...stroke,
+    points: stroke.points.map(point => ({ ...point })),
+  }))
+
 /**
  *
  */
 export function useSignatureHistory(options: UseSignatureHistoryOptions = {}) {
-  const { maxHistory = 50, onChange } = options
+  const { onChange } = options
+  const maxHistory = Math.max(2, Math.floor(options.maxHistory ?? 50))
 
   const strokes = ref<SignatureStroke[]>([])
   const historyStack = ref<SignatureStroke[][]>([])
@@ -22,34 +29,34 @@ export function useSignatureHistory(options: UseSignatureHistoryOptions = {}) {
   )
 
   const addStroke = (stroke: SignatureStroke) => {
-    strokes.value.push(stroke)
+    strokes.value.push(cloneStrokes([stroke])[0])
     saveToHistory()
   }
 
   const saveToHistory = () => {
     historyStack.value = historyStack.value.slice(0, historyIndex.value + 1)
-    historyStack.value.push([...strokes.value])
+    historyStack.value.push(cloneStrokes(strokes.value))
     historyIndex.value++
     if (historyStack.value.length > maxHistory) {
       historyStack.value.shift()
       historyIndex.value--
     }
-    onChange?.(strokes.value)
+    onChange?.(cloneStrokes(strokes.value))
   }
 
   const undo = (): boolean => {
     if (!canUndo.value) return false
     historyIndex.value--
-    strokes.value = [...historyStack.value[historyIndex.value]]
-    onChange?.(strokes.value)
+    strokes.value = cloneStrokes(historyStack.value[historyIndex.value])
+    onChange?.(cloneStrokes(strokes.value))
     return true
   }
 
   const redo = (): boolean => {
     if (!canRedo.value) return false
     historyIndex.value++
-    strokes.value = [...historyStack.value[historyIndex.value]]
-    onChange?.(strokes.value)
+    strokes.value = cloneStrokes(historyStack.value[historyIndex.value])
+    onChange?.(cloneStrokes(strokes.value))
     return true
   }
 
@@ -57,14 +64,14 @@ export function useSignatureHistory(options: UseSignatureHistoryOptions = {}) {
     strokes.value = []
     historyStack.value = [[]]
     historyIndex.value = 0
-    onChange?.(strokes.value)
+    onChange?.([])
   }
 
   const loadData = (data: SignatureStroke[]) => {
-    strokes.value = [...data]
-    historyStack.value = [[...data]]
+    strokes.value = cloneStrokes(data)
+    historyStack.value = [cloneStrokes(data)]
     historyIndex.value = 0
-    onChange?.(strokes.value)
+    onChange?.(cloneStrokes(strokes.value))
   }
 
   const isEmpty = computed(() => strokes.value.length === 0)

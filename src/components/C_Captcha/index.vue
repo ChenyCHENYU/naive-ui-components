@@ -149,7 +149,7 @@
     watch,
     type Component,
   } from 'vue'
-  import type { AltchaWidgetElement } from 'altcha/types'
+  import type { AltchaWidgetElement } from 'altcha/types/generic'
   import { useComponentFeedback, useComponentLocale } from '../../config'
   import C_Icon from '../C_Icon/index.vue'
   import type {

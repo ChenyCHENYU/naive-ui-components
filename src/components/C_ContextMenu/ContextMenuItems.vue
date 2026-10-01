@@ -20,12 +20,17 @@
         },
       ]"
       role="menuitem"
+      tabindex="-1"
       :aria-disabled="item.disabled || undefined"
       :aria-haspopup="item.children?.length ? 'menu' : undefined"
       :aria-expanded="
         item.children?.length ? activeSubKey === item.key : undefined
       "
       @click.stop="handleItemClick(item)"
+      @keydown.enter.stop.prevent="handleKeyboardSelect(item, $event)"
+      @keydown.space.stop.prevent="handleKeyboardSelect(item, $event)"
+      @keydown.arrow-right.stop.prevent="openSubmenu(item, $event)"
+      @keydown.arrow-left.stop.prevent="focusParentMenu($event)"
       @mouseenter="handleMouseEnter(item)"
       @mouseleave="handleMouseLeave"
     >
@@ -73,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, ref } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import type { ContextMenuItem } from './types'
 
@@ -110,6 +115,32 @@
   const handleItemClick = (item: ContextMenuItem) => {
     if (item.disabled || item.children?.length) return
     emit('select', item)
+  }
+
+  function openSubmenu(item: ContextMenuItem, event: KeyboardEvent) {
+    if (item.disabled || !item.children?.length) return
+    clearSubTimer()
+    activeSubKey.value = item.key
+    nextTick(() => {
+      const container = event.currentTarget as HTMLElement | null
+      container
+        ?.querySelector<HTMLElement>(
+          '.c-context-menu__submenu [role="menuitem"]:not([aria-disabled="true"])'
+        )
+        ?.focus()
+    })
+  }
+
+  function handleKeyboardSelect(item: ContextMenuItem, event: KeyboardEvent) {
+    if (item.children?.length) openSubmenu(item, event)
+    else handleItemClick(item)
+  }
+
+  function focusParentMenu(event: KeyboardEvent) {
+    const item = event.currentTarget as HTMLElement | null
+    const submenu = item?.closest('.c-context-menu__submenu')
+    const parent = submenu?.parentElement
+    if (parent?.getAttribute('role') === 'menuitem') parent.focus()
   }
 
   const handleMouseEnter = (item: ContextMenuItem) => {

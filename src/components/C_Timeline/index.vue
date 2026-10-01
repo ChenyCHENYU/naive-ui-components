@@ -38,7 +38,8 @@
 
       <!-- 内容区 -->
       <div class="c-timeline__body">
-        <div
+        <button
+          type="button"
           class="c-timeline__header"
           @click="emit('item-click', item, idx)"
         >
@@ -54,7 +55,7 @@
             class="c-timeline__time"
             >{{ item.time }}</span
           >
-        </div>
+        </button>
 
         <div
           v-if="item.tags?.length"
@@ -69,11 +70,11 @@
         </div>
 
         <div
-          v-if="item.content && (!item.collapsible || expandedMap[item.id])"
+          v-if="item.content && (!item.collapsible || expandedMap.get(item.id))"
           :class="[
             'c-timeline__detail',
             item.collapsible
-              ? expandedMap[item.id]
+              ? expandedMap.get(item.id)
                 ? 'is-expanded'
                 : 'is-collapsed'
               : 'is-expanded',
@@ -85,20 +86,22 @@
           />
         </div>
 
-        <span
+        <button
           v-if="item.collapsible"
+          type="button"
           :class="[
             'c-timeline__collapse-trigger',
-            { 'is-expanded': expandedMap[item.id] },
+            { 'is-expanded': expandedMap.get(item.id) },
           ]"
+          :aria-expanded="Boolean(expandedMap.get(item.id))"
           @click="toggleExpand(item)"
         >
-          {{ expandedMap[item.id] ? '收起' : '展开详情' }}
+          {{ expandedMap.get(item.id) ? '收起' : '展开详情' }}
           <C_Icon
             name="mdi:chevron-down"
             class="collapse-arrow"
           />
-        </span>
+        </button>
       </div>
     </div>
 
@@ -114,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue'
+  import { computed, reactive, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import { sanitizeRichHtml } from '../../utils/html'
   import {
@@ -144,24 +147,28 @@
   }>()
 
   // ===== 展开状态 =====
-  const expandedMap = ref<Record<string | number, boolean>>({})
+  const expandedMap = reactive(new Map<string | number, boolean>())
 
   // 初始化展开状态
   watch(
     () => props.items,
     items => {
+      const present = new Set(items.map(item => item.id))
+      for (const id of expandedMap.keys()) {
+        if (!present.has(id)) expandedMap.delete(id)
+      }
       items.forEach(item => {
-        if (item.collapsible && !(item.id in expandedMap.value)) {
-          expandedMap.value[item.id] = item.defaultExpanded ?? false
+        if (item.collapsible && !expandedMap.has(item.id)) {
+          expandedMap.set(item.id, item.defaultExpanded ?? false)
         }
       })
     },
-    { immediate: true }
+    { immediate: true, deep: true }
   )
 
   const toggleExpand = (item: TimelineItem) => {
-    const next = !expandedMap.value[item.id]
-    expandedMap.value[item.id] = next
+    const next = !expandedMap.get(item.id)
+    expandedMap.set(item.id, next)
     emit('expand', item, next)
   }
 
@@ -197,13 +204,13 @@
     /** 展开全部 */
     expandAll: () => {
       props.items.forEach(item => {
-        if (item.collapsible) expandedMap.value[item.id] = true
+        if (item.collapsible) expandedMap.set(item.id, true)
       })
     },
     /** 折叠全部 */
     collapseAll: () => {
       props.items.forEach(item => {
-        if (item.collapsible) expandedMap.value[item.id] = false
+        if (item.collapsible) expandedMap.set(item.id, false)
       })
     },
   })

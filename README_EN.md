@@ -135,6 +135,8 @@ const { model, formRef, bindings } = useCForm({
 })
 ```
 
+Custom action bars should call the `action` slot's `submit()` rather than treating `validate()` as submission. The step-layout `step-actions` slot also provides `isLastStep`, `submit()`, and `submitting`. Put asynchronous persistence in `config.onSubmit`; the `@submit` event is a post-success notification and does not await an event listener's promise.
+
 For create/edit flows, `C_FormModal` consumes a structural headless `editor` directly. Fields, validation, and layout remain data-driven by `C_Form`, while pages no longer own duplicate modal, draft, or loading state:
 
 ```vue
@@ -190,6 +192,10 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
     fetchUsers({ page, pageSize, ...query }, signal),
 })
 ```
+
+When binding a headless CRUD controller through `:crud`, the table recognizes `{ error }` action results: failed deletes do not emit a successful-deletion event, and feedback already shown by the controller is not duplicated. Custom `actions.delete` callbacks may return a promise or a `{ data, error }` result.
+
+Tree data can use `<C_Table :data="rows" :columns="columns" :config="{ tree: { defaultExpandAll: true }, pagination: false }" />` directly. `children` is the default child key and can be changed with `tree.childrenKey`. Default expansion includes parent rows added later without reopening rows the user collapsed.
 
 `C_Tabs` is the data-driven page-scenario switcher for the global `C_*` system. It defaults to the compact
 `small` size, lazy pane display, and supports controlled or uncontrolled state. Set `tabsOnly` for filters or
@@ -335,6 +341,8 @@ For a permanently free, network-independent option, explicitly select the open-s
 
 With `require-server-verification`, a successful response must include a server token. Server tokens should be short-lived, single-use, and bound to the current session or operation. `C_Login` forwards the same policy through `captchaProvider`, `captchaChallengeUrl`, `captchaVerifier`, `requireCaptchaServerVerification`, and `captchaVerificationTimeout`; its `submit` payload identifies the result through `captchaType` and `captchaVerifiedBy`. See [SECURITY.md](./SECURITY.md) for trust-boundary details.
 
+`C_Login` remembers only the username, never the password. SMS events require a valid phone number; the local countdown starts immediately, while delivery results and server-side rate limits remain the host's responsibility. `C_City` loads its city index on first open and scopes letter navigation to its own instance; the default trigger, letters, and city items are keyboard-operable.
+
 ### 📋 Component List (53 Components)
 
 > 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).
@@ -391,6 +399,8 @@ With `require-server-verification`, a successful response must include a server 
 | `C_FilePreview`  | File preview (PDF/Word/Excel)                | `xlsx`, `mammoth`          |
 | `C_Timeline`     | Timeline (vertical/horizontal/collapsible)   | -                          |
 
+Image/calendar behavior notes: `C_ImageCropper` flips the actual source and resets the current crop position; load/export failures emit `error: Error`. `C_Signature` readonly mode blocks user interaction but keeps exposed methods available for loading saved data. Its SVG export embeds the rendered raster canvas. `C_QRCode` uses the same raster-in-SVG approach when a logo is present so preview and export match. `C_FullCalendar` creates same-day events in local calendar time. `C_WaterFall` relayouts from actual image aspect ratios; give each item a stable unique `id`.
+
 #### Form & Layout Components
 
 | Component         | Description                                       | External Deps        |
@@ -423,6 +433,22 @@ With `require-server-verification`, a successful response must include a server 
 | `C_Upload`             | Large file upload (chunked/resumable)    | `spark-md5`      |
 
 ### 🔌 Dependency Notes
+
+`C_FilePreview` accepts HTTPS URLs and same-origin HTTP URLs for local development. Script/data URLs, credential-bearing URLs, and cross-origin plain HTTP are rejected. `autoPreview` opens a supplied file automatically, and changing the source refreshes an open preview. Repeated previews release the previous PDF object URL and ignore stale loading results. Excel values `0` and `false` remain intact.
+
+`C_AntV` keeps the public BPMN model as `{ nodes, flows }`. It converts that model to X6 cells internally and restores node positions, types, properties, and flow conditions in `data-change` and `getData()`. BPMN and UML load built-in samples only when `data` is absent; an explicit empty model produces an empty canvas.
+
+`C_VtableGantt` merges presets and `options` without dropping untouched nested settings, replaces arrays as a whole, and ignores prototype-related keys. Its fullscreen button reflects the actual fullscreen state of that Gantt container.
+
+`C_AudioPlayer` enters the playing state and emits `play` only after the browser accepts `play()`. A rejected autoplay emits `error`, and an empty playlist cannot emit a false play event. Mute, playlist tracks, and seeking are keyboard operable.
+
+`C_CollapsePanel` and `C_TagsView` validate persisted data before restoring it, so corrupt or outdated JSON cannot break initialization. Persisted tags restore only in-app paths, and special characters in a path are no longer interpolated into CSS selectors.
+
+`C_Table` column settings restore only valid keys, visibility, widths, and fixed directions; corrupt `persistKey` storage falls back to the supplied columns. Settings operate on local column copies rather than mutating caller-owned objects. `C_Upload` copies its initial file list before managing it, applies the same `accept` filter to picker, drop, and paste input, labels image actions for keyboard users, and shows per-file progress during concurrent hashing. Cancelling a chunked upload during resume lookup, an active request, or merging cannot start later requests or emit stale completion; a custom request's `abort()` releases the pending chunk even if it never calls back.
+
+`C_WorkFlow` loads the supplied `modelValue` on first render and returns isolated snapshots from `getCurrentWorkflowData()`, `save`, `change`, and `node-click`, so callers cannot accidentally mutate its internal nodes. Editing conditions cannot change canvas data before Save, and incomplete conditions are not silently dropped. `readonly` blocks dragging, connecting, configuring, adding/removing, and saving while leaving preview, validation, and fit-to-view available. Node and condition IDs remain unique when created in the same tick.
+
+Type verification covers TypeScript source, Vue SFC templates, and consumer examples built against the package. `C_Table` summary rendering expects an object keyed by column (`{ columnKey: { value, colSpan? } }`). `C_FormSearch` preserves existing numeric timestamp ranges and also supports formatted string ranges, binding each to the matching Naive UI value API.
 
 Runtime component dependencies are declared by this package and resolved automatically. Every consumer needs:
 

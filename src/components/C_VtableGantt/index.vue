@@ -49,6 +49,7 @@
     type GanttOptions,
     type GanttPreset,
   } from './data'
+  import { mergeGanttOptions } from './optionsMerge'
 
   defineOptions({ name: 'C_VtableGantt' })
 
@@ -85,6 +86,7 @@
   const isFullscreen = ref(false)
   let initVersion = 0
   let initTimer: ReturnType<typeof setTimeout> | undefined
+  let resizeTimer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
 
   const containerHeight = computed(() =>
@@ -98,42 +100,6 @@
     !disposed &&
     version === initVersion &&
     ganttContainerRef.value === container
-
-  const deepMerge = (target: any, source: any, seen = new WeakMap()): any => {
-    if (!isObject(target)) return source
-    if (!isObject(source)) return target
-    if (seen.has(source)) return seen.get(source)
-    return createMergeResult(target, source, seen)
-  }
-
-  const isObject = (value: any): boolean => {
-    return value !== null && typeof value === 'object'
-  }
-
-  const isSpecialObject = (value: any): boolean => {
-    return value instanceof Date || value instanceof RegExp
-  }
-
-  const createMergeResult = (
-    target: any,
-    source: any,
-    seen: WeakMap<any, any>
-  ): any => {
-    const result = Array.isArray(target) ? [...target] : { ...target }
-    seen.set(source, result)
-    for (const key in source) {
-      if (!source.hasOwnProperty(key)) continue
-      const sourceValue = source[key]
-      const shouldDeepMerge =
-        isObject(sourceValue) &&
-        !Array.isArray(sourceValue) &&
-        !isSpecialObject(sourceValue)
-      result[key] = shouldDeepMerge
-        ? deepMerge(target[key] || {}, sourceValue, seen)
-        : sourceValue
-    }
-    return result
-  }
 
   const processData = (data: GanttTask[]): GanttTask[] => {
     return data.map(item => ({
@@ -228,7 +194,7 @@
       if (!isCurrentInitialization(version, container)) return
       const isDark = props.theme === 'dark'
       const presetConfig = presetConfigs[props.preset] || presetConfigs.basic
-      const finalConfig = deepMerge(presetConfig, props.options)
+      const finalConfig = mergeGanttOptions(presetConfig, props.options)
       const processedData = processData(props.data || [])
       if (ganttInstance.value) ganttInstance.value.release()
       const tableTheme = isDark ? themes.DARK : themes.DEFAULT
@@ -252,27 +218,34 @@
     }
   }
 
+  const scheduleResize = () => {
+    if (resizeTimer) clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      resizeTimer = undefined
+      if (!disposed) ganttInstance.value?.resize?.()
+    }, 100)
+  }
+
   const toggleFullscreen = async () => {
-    if (!ganttContainerRef.value) return
+    const container = ganttContainerRef.value
+    if (!container) return
     try {
-      if (!document.fullscreenElement) {
-        await ganttContainerRef.value.requestFullscreen()
-        isFullscreen.value = true
-      } else {
+      if (document.fullscreenElement === container) {
         await document.exitFullscreen()
-        isFullscreen.value = false
+      } else {
+        await container.requestFullscreen()
       }
-      setTimeout(() => ganttInstance.value?.resize?.(), 100)
+      isFullscreen.value = document.fullscreenElement === container
+      scheduleResize()
     } catch (error) {
       console.warn('全屏切换失败:', error)
-      isFullscreen.value = !isFullscreen.value
-      nextTick(() => ganttInstance.value?.resize?.())
+      isFullscreen.value = document.fullscreenElement === container
     }
   }
 
   const handleFullscreenChange = () => {
-    isFullscreen.value = !!document.fullscreenElement
-    nextTick(() => ganttInstance.value?.resize?.())
+    isFullscreen.value = document.fullscreenElement === ganttContainerRef.value
+    scheduleResize()
   }
 
   const updateData = (newData: GanttTask[]) => {
@@ -339,6 +312,7 @@
     disposed = true
     initVersion += 1
     if (initTimer) clearTimeout(initTimer)
+    if (resizeTimer) clearTimeout(resizeTimer)
     document.removeEventListener('fullscreenchange', handleFullscreenChange)
     destroyGantt()
   })

@@ -77,4 +77,34 @@ describe('keyboard and status accessibility contracts', () => {
       expect(source).toContain('<button')
     }
   })
+
+  test('chat preview, file, and retry actions use native keyboard controls', () => {
+    const source = read('src/components/C_Chat/index.vue')
+    expect(source).toMatch(/<button\s+v-else-if="msg\.type === 'image'"/)
+    expect(source).toMatch(/<button\s+v-else-if="msg\.type === 'file'"/)
+    expect(source).toMatch(
+      /<button\s+v-if="msg\.sender === 'self' && msg\.status === 'failed'"/
+    )
+    expect(source).toContain(':alt="msg.fileName || \'聊天图片\'"')
+  })
+
+  test('action labels are not prefixed by decorative icon names', () => {
+    const source = read('src/components/C_ActionBar/index.vue')
+    expect(source.match(/'aria-hidden': true/g)).toHaveLength(2)
+  })
+
+  test('editor focus does not mutate an application-owned container', () => {
+    const source = read('src/components/C_Editor/index.vue')
+    expect(source).not.toContain("closest('.form-demo')")
+    expect(source).not.toContain('container.style.maxWidth')
+    expect(source).toContain("'editor-focused': isFocused")
+  })
+
+  test('file preview auto mode opens and refreshes when its source changes', () => {
+    const source = read('src/components/C_FilePreview/index.vue')
+    expect(source).toContain('watch(')
+    expect(source).toContain('[file, url, autoPreview]')
+    expect(source).toContain('void openPreview()')
+    expect(source).toContain('void loadFile()')
+  })
 })

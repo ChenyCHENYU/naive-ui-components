@@ -54,6 +54,7 @@
           <NInput
             v-model:value="editForm.title"
             placeholder="请输入事件标题"
+            aria-label="事件标题"
           />
         </div>
 
@@ -66,6 +67,7 @@
             type="date"
             format="yyyy-MM-dd"
             style="width: 100%"
+            aria-label="事件日期"
           />
         </div>
 
@@ -77,6 +79,7 @@
             <NInput
               v-model:value="editForm.startTime"
               placeholder="09:00"
+              aria-label="开始时间（24 小时制）"
             />
           </div>
           <div>
@@ -86,6 +89,7 @@
             <NInput
               v-model:value="editForm.endTime"
               placeholder="10:00"
+              aria-label="结束时间（24 小时制）"
             />
           </div>
         </div>
@@ -95,22 +99,25 @@
             >事件颜色</label
           >
           <div style="display: flex; gap: 8px">
-            <div
+            <button
               v-for="color in eventColors"
               :key="color"
+              type="button"
+              class="event-color-swatch"
+              :aria-label="`事件颜色 ${color}`"
+              :aria-pressed="editForm.color === color"
               :style="{
                 width: '30px',
                 height: '30px',
                 backgroundColor: color,
                 borderRadius: '50%',
-                cursor: 'pointer',
                 border:
                   editForm.color === color
                     ? '3px solid #000'
                     : '2px solid #ddd',
               }"
               @click="editForm.color = color"
-            />
+            ></button>
           </div>
         </div>
       </div>
@@ -157,5 +164,14 @@
 <style scoped>
   .c-full-calendar {
     width: 100%;
+  }
+
+  .event-color-swatch {
+    cursor: pointer;
+  }
+
+  .event-color-swatch:focus-visible {
+    outline: 2px solid #3f86ff;
+    outline-offset: 2px;
   }
 </style>

@@ -38,7 +38,7 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
 
   const drawWatermark = (canvas: HTMLCanvasElement, text: string): void => {
     const ctx = canvas.getContext('2d')
-    if (!ctx || !watermark?.value?.show) return
+    if (!ctx || !watermark?.value) return
     const config = {
       fontSize: watermark.value.fontSize || 12,
       color: watermark.value.color || '#999999',
@@ -126,11 +126,16 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
     if (!canvas) throw new Error('Canvas 未初始化')
     if (isCanvasEmpty(canvas)) throw new Error('签名为空，请先签名后再导出')
     const { format = 'png', quality = 0.92 } = options
-    if (format === 'svg') {
-      return 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg"><text>SVG export placeholder</text></svg>'
-    }
-    const tempCanvas = prepareExportCanvas(canvas, options)
+    const tempCanvas = prepareExportCanvas(canvas, {
+      ...options,
+      includeBackground: options.includeBackground ?? format === 'jpeg',
+    })
     if (format === 'blob') return exportToBlob(tempCanvas, quality)
+    if (format === 'svg') {
+      const raster = tempCanvas.toDataURL('image/png')
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tempCanvas.width}" height="${tempCanvas.height}" viewBox="0 0 ${tempCanvas.width} ${tempCanvas.height}"><image href="${raster}" width="100%" height="100%"/></svg>`
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+    }
     const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png'
     return tempCanvas.toDataURL(mimeType, quality)
   }
@@ -145,14 +150,18 @@ export function useSignatureExport(options: UseSignatureExportOptions) {
       const url = URL.createObjectURL(result)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${filename}.${format}`
+      link.download = `${filename}.${format === 'blob' ? 'png' : format}`
+      document.body.appendChild(link)
       link.click()
-      URL.revokeObjectURL(url)
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } else if (typeof result === 'string') {
       const link = document.createElement('a')
       link.href = result
       link.download = `${filename}.${format}`
+      document.body.appendChild(link)
       link.click()
+      link.remove()
     }
   }
 

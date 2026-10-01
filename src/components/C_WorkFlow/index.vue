@@ -13,6 +13,7 @@
       <NButton
         size="small"
         type="primary"
+        :disabled="readonly"
         @click="saveWorkflow"
       >
         <template #icon>
@@ -64,6 +65,7 @@
       <NButton
         size="small"
         type="error"
+        :disabled="readonly"
         @click="clearWorkflow"
         title="清空画布"
       >
@@ -87,7 +89,10 @@
       :min-zoom="0.5"
       :max-zoom="2"
       :fit-view-on-init="true"
-      :nodes-draggable="true"
+      :nodes-draggable="!readonly"
+      :nodes-connectable="!readonly"
+      :edges-updatable="!readonly"
+      :delete-key-code="readonly ? null : undefined"
       :elements-selectable="true"
       @node-click="onNodeClick"
       @pane-click="closeAddMenu"
@@ -467,6 +472,7 @@
     resetValidation,
   } = useWorkflowValidation(nodes, edges, vueFlowRef, {
     onShowNodeConfig: node => {
+      if (props.readonly) return
       currentNode.value = node
       showNodeConfig.value = true
     },
@@ -479,6 +485,7 @@
 
   /* ─── 编排方法（跨 composable 协作） ────────────────────── */
   const saveWorkflow = (): void => {
+    if (props.readonly) return
     const errors = validateWorkflow()
     if (errors.length > 0) {
       message.error(`工作流验证失败: ${errors[0].message}`)
@@ -500,6 +507,7 @@
   }
 
   const clearWorkflow = (): void => {
+    if (props.readonly) return
     resetNodes()
     resetValidation()
   }

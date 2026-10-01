@@ -32,7 +32,8 @@
           <NInput
             v-if="item.type === 'input'"
             clearable
-            v-model:value="formParams[item.prop]"
+            :value="inputValue(item.prop)"
+            @update:value="value => setFieldValue(item.prop, value)"
             :placeholder="item.placeholder"
             v-bind="item.attrs"
             @focus="history.handleFocus(item.prop)"
@@ -74,7 +75,8 @@
 
           <NSelect
             v-if="item.type === 'select'"
-            v-model:value="formParams[item.prop]"
+            :value="selectValue(item.prop)"
+            @update:value="value => setFieldValue(item.prop, value)"
             :placeholder="item.placeholder || '请选择'"
             clearable
             :options="normalizeOptions(item.list) as any"
@@ -84,13 +86,12 @@
           <NDatePicker
             v-if="item.type === 'date-range'"
             type="datetimerange"
-            v-model:value="formParams[item.prop]"
+            v-bind="{ ...dateRangeBinding(item.prop), ...item.attrs }"
             format="yyyy-MM-dd HH:mm"
             value-format="yyyy-MM-dd HH:mm"
             start-placeholder="开始时间"
             end-placeholder="结束时间"
             clearable
-            v-bind="item.attrs"
           />
         </NFormItem>
       </div>
@@ -166,6 +167,7 @@
     NIcon,
   } from 'naive-ui'
   import { useSearchState } from './composables/useSearchState'
+  import { resolveDateRangeInput } from './dateRange'
   import type {
     SearchOptionItem,
     FormSearchEmits,
@@ -213,6 +215,34 @@
       value:
         opt.value !== undefined ? opt.value : (opt.label ?? opt.labelDefault),
     }))
+
+  const inputValue = (field: string): string | null => {
+    const value = formParams.value[field]
+    return typeof value === 'string' ? value : null
+  }
+
+  const selectValue = (field: string): string | number | null => {
+    const value = formParams.value[field]
+    return typeof value === 'string' || typeof value === 'number' ? value : null
+  }
+
+  const setFieldValue = (field: string, value: unknown): void => {
+    formParams.value[field] = value
+  }
+
+  const dateRangeBinding = (field: string) => {
+    const range = resolveDateRangeInput(formParams.value[field])
+    return range.mode === 'formatted'
+      ? {
+          formattedValue: range.value,
+          'onUpdate:formattedValue': (value: unknown) =>
+            setFieldValue(field, value),
+        }
+      : {
+          value: range.value,
+          'onUpdate:value': (value: unknown) => setFieldValue(field, value),
+        }
+  }
 
   watch(
     () =>

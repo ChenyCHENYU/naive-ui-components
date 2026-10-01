@@ -8,11 +8,21 @@
 
 <template>
   <div class="cron-field-editor">
-    <div class="cron-field-editor__grid" :style="{ '--cols': gridColumns }">
-      <div
+    <div
+      class="cron-field-editor__grid"
+      :style="{ '--cols': gridColumns }"
+    >
+      <button
         v-for="item in valueOptions"
         :key="item.value"
+        type="button"
         class="cron-field-editor__cell"
+        :disabled="disabled || modelValue.mode !== 'specific'"
+        :aria-pressed="
+          modelValue.mode === 'specific'
+            ? highlightedValues.has(item.value)
+            : undefined
+        "
         :class="{
           'cron-field-editor__cell--on': highlightedValues.has(item.value),
           'cron-field-editor__cell--pick': modelValue.mode === 'specific',
@@ -20,133 +30,148 @@
         @click="handleCellClick(item.value)"
       >
         {{ item.label }}
-      </div>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import type { CronFieldMeta, CronFieldValue } from "../types";
+  import { computed } from 'vue'
+  import type { CronFieldMeta, CronFieldValue } from '../types'
 
-interface Props {
-  modelValue: CronFieldValue;
-  meta: CronFieldMeta;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<{
-  "update:modelValue": [value: CronFieldValue];
-}>();
-
-/** 网格列数 */
-const gridColumns = computed(() => {
-  switch (props.meta.type) {
-    case "second":
-    case "minute":
-      return 10;
-    case "hour":
-      return 12;
-    case "day":
-      return 7;
-    case "month":
-      return 6;
-    case "week":
-      return 7;
-    default:
-      return 10;
+  interface Props {
+    modelValue: CronFieldValue
+    meta: CronFieldMeta
+    disabled?: boolean
   }
-});
 
-/** 可选值列表 */
-const valueOptions = computed(() => {
-  const items: { value: number; label: string }[] = [];
-  for (let i = props.meta.min; i <= props.meta.max; i++) {
-    items.push({
-      value: i,
-      label: props.meta.valueLabels?.[i] ?? String(i),
-    });
+  const props = defineProps<Props>()
+  const emit = defineEmits<{
+    'update:modelValue': [value: CronFieldValue]
+  }>()
+
+  /** 网格列数 */
+  const gridColumns = computed(() => {
+    switch (props.meta.type) {
+      case 'second':
+      case 'minute':
+        return 10
+      case 'hour':
+        return 12
+      case 'day':
+        return 7
+      case 'month':
+        return 6
+      case 'week':
+        return 7
+      default:
+        return 10
+    }
+  })
+
+  /** 可选值列表 */
+  const valueOptions = computed(() => {
+    const items: { value: number; label: string }[] = []
+    for (let i = props.meta.min; i <= props.meta.max; i++) {
+      items.push({
+        value: i,
+        label: props.meta.valueLabels?.[i] ?? String(i),
+      })
+    }
+    return items
+  })
+
+  /** 根据当前模式计算高亮值集合 */
+  const highlightedValues = computed(() => {
+    const { modelValue: f, meta } = props
+    const set = new Set<number>()
+    switch (f.mode) {
+      case 'every':
+        for (let i = meta.min; i <= meta.max; i++) set.add(i)
+        break
+      case 'none':
+        break
+      case 'range':
+        for (let i = f.rangeStart; i <= f.rangeEnd; i++) set.add(i)
+        break
+      case 'step':
+        for (
+          let i = f.stepStart;
+          i <= meta.max;
+          i += Math.max(1, f.stepInterval)
+        )
+          set.add(i)
+        break
+      case 'specific':
+        f.specificValues.forEach(v => set.add(v))
+        break
+    }
+    return set
+  })
+
+  /** 点击单元格（仅 specific 模式生效） */
+  function handleCellClick(value: number) {
+    if (props.disabled || props.modelValue.mode !== 'specific') return
+    const current = [...props.modelValue.specificValues]
+    const idx = current.indexOf(value)
+    if (idx >= 0) current.splice(idx, 1)
+    else current.push(value)
+    emit('update:modelValue', {
+      ...props.modelValue,
+      specificValues: current,
+    })
   }
-  return items;
-});
-
-/** 根据当前模式计算高亮值集合 */
-const highlightedValues = computed(() => {
-  const { modelValue: f, meta } = props;
-  const set = new Set<number>();
-  switch (f.mode) {
-    case "every":
-      for (let i = meta.min; i <= meta.max; i++) set.add(i);
-      break;
-    case "none":
-      break;
-    case "range":
-      for (let i = f.rangeStart; i <= f.rangeEnd; i++) set.add(i);
-      break;
-    case "step":
-      for (let i = f.stepStart; i <= meta.max; i += f.stepInterval) set.add(i);
-      break;
-    case "specific":
-      f.specificValues.forEach((v) => set.add(v));
-      break;
-  }
-  return set;
-});
-
-/** 点击单元格（仅 specific 模式生效） */
-function handleCellClick(value: number) {
-  if (props.modelValue.mode !== "specific") return;
-  const current = [...props.modelValue.specificValues];
-  const idx = current.indexOf(value);
-  if (idx >= 0) current.splice(idx, 1);
-  else current.push(value);
-  emit("update:modelValue", {
-    ...props.modelValue,
-    specificValues: current,
-  });
-}
 </script>
 
 <style lang="scss" scoped>
-.cron-field-editor {
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(var(--cols, 10), 1fr);
-    gap: 4px;
-  }
-
-  &__cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 34px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    transition: all var(--c-transition, 0.2s ease);
-    user-select: none;
-    color: var(--c-text-2);
-
-    /* 非交互高亮（every / range / step 的视觉反馈） */
-    &--on:not(&--pick) {
-      background: color-mix(in srgb, var(--c-primary) 12%, transparent);
-      color: var(--c-primary);
+  .cron-field-editor {
+    &__grid {
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 10), 1fr);
+      gap: 4px;
     }
 
-    /* 可交互模式（specific） */
-    &--pick {
-      cursor: pointer;
+    &__cell {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      transition: all var(--c-transition, 0.2s ease);
+      user-select: none;
+      color: var(--c-text-2);
 
-      &:hover:not(.cron-field-editor__cell--on) {
-        background: var(--c-bg-card);
+      &:focus-visible {
+        outline: 2px solid var(--c-primary);
+        outline-offset: 1px;
       }
 
-      &.cron-field-editor__cell--on {
-        background: var(--c-primary);
-        color: #fff;
-        font-weight: 600;
+      /* 非交互高亮（every / range / step 的视觉反馈） */
+      &--on:not(&--pick) {
+        background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+        color: var(--c-primary);
+      }
+
+      /* 可交互模式（specific） */
+      &--pick {
+        cursor: pointer;
+
+        &:hover:not(.cron-field-editor__cell--on) {
+          background: var(--c-bg-card);
+        }
+
+        &.cron-field-editor__cell--on {
+          background: var(--c-primary);
+          color: #fff;
+          font-weight: 600;
+        }
       }
     }
   }
-}
 </style>

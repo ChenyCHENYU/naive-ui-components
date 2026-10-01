@@ -28,7 +28,7 @@
               displayFileName
             }}</NEllipsis>
             <NTag
-              :type="fileConfig.tagType as any"
+              :type="fileConfig.tagType"
               size="small"
             >
               {{ fileType.toUpperCase() }}
@@ -292,6 +292,21 @@
   watch(showModal, isShow => {
     if (!isShow) exitFullscreen()
   })
+
+  watch(
+    [file, url, autoPreview],
+    ([currentFile, currentUrl], previous) => {
+      if (typeof window === 'undefined') return
+      if (showModal.value) {
+        if (currentFile !== previous?.[0] || currentUrl !== previous?.[1]) {
+          void loadFile()
+        }
+        return
+      }
+      if (autoPreview.value && (currentFile || currentUrl)) void openPreview()
+    },
+    { immediate: true }
+  )
 </script>
 
 <style lang="scss" scoped>

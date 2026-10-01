@@ -5,6 +5,7 @@
         v-for="item in ratioPresets"
         :key="item.value"
         :type="currentRatio === item.value ? 'primary' : 'default'"
+        :disabled="disabled"
         @click="$emit('ratio', item.value)"
       >
         {{ item.label }}
@@ -15,7 +16,12 @@
 
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('rotate', -90)">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('rotate', -90)"
+        >
           <template #icon><C_Icon name="mdi:rotate-left" /></template>
         </NButton>
       </template>
@@ -23,7 +29,12 @@
     </NTooltip>
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('rotate', 90)">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('rotate', 90)"
+        >
           <template #icon><C_Icon name="mdi:rotate-right" /></template>
         </NButton>
       </template>
@@ -34,7 +45,12 @@
 
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('flipX')">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('flipX')"
+        >
           <template #icon><C_Icon name="mdi:flip-horizontal" /></template>
         </NButton>
       </template>
@@ -42,7 +58,12 @@
     </NTooltip>
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('flipY')">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('flipY')"
+        >
           <template #icon><C_Icon name="mdi:flip-vertical" /></template>
         </NButton>
       </template>
@@ -53,7 +74,12 @@
 
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('zoom', 0.1)">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('zoom', 0.1)"
+        >
           <template #icon><C_Icon name="mdi:magnify-plus-outline" /></template>
         </NButton>
       </template>
@@ -61,7 +87,12 @@
     </NTooltip>
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('zoom', -0.1)">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('zoom', -0.1)"
+        >
           <template #icon><C_Icon name="mdi:magnify-minus-outline" /></template>
         </NButton>
       </template>
@@ -72,7 +103,12 @@
 
     <NTooltip>
       <template #trigger>
-        <NButton size="small" quaternary @click="$emit('reset')">
+        <NButton
+          size="small"
+          quaternary
+          :disabled="disabled"
+          @click="$emit('reset')"
+        >
           <template #icon><C_Icon name="mdi:refresh" /></template>
         </NButton>
       </template>
@@ -82,31 +118,32 @@
 </template>
 
 <script setup lang="ts">
-import { NButton, NButtonGroup, NDivider, NTooltip } from "naive-ui";
-import C_Icon from "../../C_Icon/index.vue";
-import type { AspectRatioPreset } from "../types";
+  import { NButton, NButtonGroup, NDivider, NTooltip } from 'naive-ui'
+  import C_Icon from '../../C_Icon/index.vue'
+  import type { AspectRatioPreset } from '../types'
 
-defineProps<{
-  currentRatio: number;
-  ratioPresets: AspectRatioPreset[];
-}>();
+  defineProps<{
+    currentRatio: number
+    ratioPresets: AspectRatioPreset[]
+    disabled?: boolean
+  }>()
 
-defineEmits<{
-  ratio: [value: number];
-  rotate: [angle: number];
-  flipX: [];
-  flipY: [];
-  zoom: [scale: number];
-  reset: [];
-}>();
+  defineEmits<{
+    ratio: [value: number]
+    rotate: [angle: number]
+    flipX: []
+    flipY: []
+    zoom: [scale: number]
+    reset: []
+  }>()
 </script>
 
 <style lang="scss" scoped>
-.cropper-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-  padding: 8px 0;
-}
+  .cropper-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    padding: 8px 0;
+  }
 </style>

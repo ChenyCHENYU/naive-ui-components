@@ -17,20 +17,24 @@
     <!-- 标题行 -->
     <div class="formula-input__header">
       <span class="formula-input__label">公式编辑</span>
-      <a
+      <button
         v-if="formula.trim() && !disabled"
+        type="button"
         class="formula-input__clear"
         @click="handleClear"
       >
         清空
-      </a>
+      </button>
     </div>
 
     <!-- 编辑器 -->
     <div
       ref="editorRef"
       class="formula-input__editor"
-      contenteditable="true"
+      :contenteditable="!disabled"
+      role="textbox"
+      :aria-label="placeholder"
+      :aria-disabled="disabled"
       :data-placeholder="placeholder"
       spellcheck="false"
       @input="handleInput"
@@ -326,7 +330,7 @@
 
   /** 输入事件 */
   function handleInput() {
-    if (isExternalUpdate) return
+    if (isExternalUpdate || props.disabled) return
     const formula = extractFormula()
     emit('update:formula', formula)
   }
@@ -337,15 +341,12 @@
       e.preventDefault()
       return
     }
-    /* Tab 键切换焦点而非插入 */
-    if (e.key === 'Tab') {
-      e.preventDefault()
-    }
   }
 
   /** 粘贴事件 — 只保留纯文本 */
   function handlePaste(e: ClipboardEvent) {
     e.preventDefault()
+    if (props.disabled) return
     const text = e.clipboardData?.getData('text/plain') ?? ''
     document.execCommand('insertText', false, text)
   }
@@ -361,6 +362,7 @@
 
   /** 清空 */
   function handleClear() {
+    if (props.disabled) return
     emit('update:formula', '')
     nextTick(() => {
       if (editorRef.value) {
@@ -371,19 +373,23 @@
 
   /* ─── 暴露方法 ──────────────────────────────── */
 
+  function restoreSavedSelection() {
+    if (!savedRange) return
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(savedRange)
+  }
+
   /** 在光标位置插入文本 */
   function insertAtCursor(text: string) {
+    if (props.disabled) return
     const el = editorRef.value
     if (!el) return
 
     el.focus()
 
     /* 恢复 blur 前保存的光标位置 */
-    if (savedRange) {
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(savedRange)
-    }
+    restoreSavedSelection()
 
     /* 如果是变量文本（[xxx]），插入 chip */
     const varMatch = text.match(/^\[(.+)\]$/)
@@ -426,7 +432,21 @@
   }
 
   /** 退格（删除光标前一个字符或 chip） */
+  function removePreviousChip(el: HTMLElement, range: Range): boolean {
+    if (range.startOffset <= 0 || range.startContainer !== el) return false
+    const prevNode = el.childNodes[range.startOffset - 1]
+    if (
+      !prevNode ||
+      prevNode.nodeType !== Node.ELEMENT_NODE ||
+      !(prevNode as HTMLElement).classList?.contains('formula-chip')
+    )
+      return false
+    prevNode.remove()
+    return true
+  }
+
   function backspace() {
+    if (props.disabled) return
     const el = editorRef.value
     if (!el) return
 
@@ -436,18 +456,9 @@
 
     const range = sel.getRangeAt(0)
 
-    /* 检查光标前一个节点是否是 chip */
-    if (range.startOffset > 0 && range.startContainer === el) {
-      const prevNode = el.childNodes[range.startOffset - 1]
-      if (
-        prevNode &&
-        prevNode.nodeType === Node.ELEMENT_NODE &&
-        (prevNode as HTMLElement).classList?.contains('formula-chip')
-      ) {
-        prevNode.remove()
-        emit('update:formula', extractFormula())
-        return
-      }
+    if (removePreviousChip(el, range)) {
+      emit('update:formula', extractFormula())
+      return
     }
 
     /* 普通退格 */

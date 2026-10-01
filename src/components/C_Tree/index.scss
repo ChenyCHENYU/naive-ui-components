@@ -79,6 +79,10 @@
               }
             }
 
+            &:focus-within .tree-actions {
+              opacity: 1 !important;
+            }
+
             .n-tree-node-content__prefix {
               margin-right: 0;
               display: flex;

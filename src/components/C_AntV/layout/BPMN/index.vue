@@ -222,7 +222,7 @@
 
   // ==================== 数据操作 ====================
   const loadData = (data: any[]) => {
-    if (!graph.value || !data.length) return
+    if (!graph.value) return
     const cells = data.map(item => {
       const { data: nodeData, ...cellProps } = item
       const cell =
@@ -233,7 +233,7 @@
       return cell
     })
     graph.value.resetCells(cells)
-    scheduleZoomToFit(200, 50)
+    if (cells.length) scheduleZoomToFit(200, 50)
   }
 
   const addElement = (type: string) => {
@@ -317,6 +317,7 @@
         source: edge.getSourceCellId() || '',
         target: edge.getTargetCellId() || '',
         label: getLabel(edge),
+        data: edge.getData() || {},
         x: 0,
         y: 0,
       })),
@@ -338,7 +339,9 @@
       }
 
       emit('ready', newGraph)
-      loadData(sampleData)
+      loadData(
+        props.data === undefined ? sampleData : normalizeData(props.data)
+      )
     },
     { immediate: true }
   )
@@ -346,9 +349,8 @@
   watch(
     () => props.data,
     newData => {
-      if (!newData || !graph.value) return
-      const normalized = normalizeData(newData)
-      if (normalized.length > 0) loadData(normalized)
+      if (!graph.value) return
+      loadData(newData === undefined ? sampleData : normalizeData(newData))
     },
     { deep: true }
   )

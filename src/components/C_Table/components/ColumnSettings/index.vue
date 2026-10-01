@@ -200,6 +200,11 @@
   import C_Icon from '../../../C_Icon/index.vue'
   import type { TableColumn } from '../../types'
   import { getFixedOptions, isSpecialColumn } from './data'
+  import {
+    cloneTableColumns,
+    mergeColumnPreferences,
+    serializeColumnPreferences,
+  } from './persistence'
 
   defineOptions({ name: 'ColumnSettings' })
 
@@ -216,39 +221,13 @@
 
   /** 从 localStorage 恢复持久化列配置 */
   const loadPersistedColumns = (columns: TableColumn[]): TableColumn[] => {
-    if (!props.persistKey) return [...columns]
+    if (!props.persistKey) return cloneTableColumns(columns)
     try {
       const stored = localStorage.getItem(`c_table_cols_${props.persistKey}`)
-      if (!stored) return [...columns]
-      const persisted: Array<{
-        key: string
-        visible?: boolean
-        width?: number | string
-        fixed?: string
-      }> = JSON.parse(stored)
-      if (!Array.isArray(persisted)) return [...columns]
-      const keyMap = new Map(
-        persisted.map((p, i) => [p.key, { ...p, order: i }])
-      )
-      const merged = columns.map(col => {
-        const saved = keyMap.get((col as any).key)
-        if (!saved) return { ...col }
-        return {
-          ...col,
-          visible: saved.visible ?? col.visible,
-          width: saved.width ?? col.width,
-          fixed: (saved.fixed as any) ?? col.fixed,
-        }
-      })
-      // 按持久化顺序排序
-      merged.sort((a, b) => {
-        const oa = keyMap.get((a as any).key)?.order ?? 999
-        const ob = keyMap.get((b as any).key)?.order ?? 999
-        return oa - ob
-      })
-      return merged
+      if (!stored) return cloneTableColumns(columns)
+      return mergeColumnPreferences(columns, stored)
     } catch {
-      return [...columns]
+      return cloneTableColumns(columns)
     }
   }
 
@@ -256,15 +235,9 @@
   const persistColumns = (columns: TableColumn[]) => {
     if (!props.persistKey) return
     try {
-      const data = columns.map(col => ({
-        key: (col as any).key,
-        visible: col.visible,
-        width: col.width,
-        fixed: col.fixed,
-      }))
       localStorage.setItem(
         `c_table_cols_${props.persistKey}`,
-        JSON.stringify(data)
+        serializeColumnPreferences(columns)
       )
     } catch {
       // localStorage 不可用时静默忽略
@@ -368,7 +341,7 @@
   }
 
   const resetColumns = () => {
-    localColumns.value = [...props.columns]
+    localColumns.value = cloneTableColumns(props.columns)
     applyChanges()
   }
 

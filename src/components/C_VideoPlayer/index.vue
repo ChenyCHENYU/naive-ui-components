@@ -74,22 +74,25 @@
     </ControlBar>
 
     <!-- 小窗关闭按钮 -->
-    <div
+    <button
       v-if="miniPlayer.isMiniMode.value"
+      type="button"
       class="c-video-player__mini-close"
+      aria-label="关闭小窗播放"
       @click="miniPlayer.closeMiniPlayer()"
     >
       ✕
-    </div>
+    </button>
 
     <!-- 小窗点击回原位 -->
-    <div
+    <button
       v-if="miniPlayer.isMiniMode.value"
+      type="button"
       class="c-video-player__mini-back"
       @click="miniPlayer.scrollToPlayer()"
     >
       回到原位
-    </div>
+    </button>
   </div>
 </template>
 
@@ -236,6 +239,7 @@
   /* ======================== 数据分析 ======================== */
 
   let analyticsDestroy: (() => void) | null = null
+  let disposed = false
 
   /* ======================== 扩展控制栏：书签始终可用，章节/清晰度按需 ======================== */
 
@@ -290,7 +294,16 @@
     core.containerRef.value = containerRef.value
 
     await nextTick()
-    await core.initPlayer()
+    if (disposed) return
+    try {
+      await core.initPlayer()
+    } catch (error) {
+      if (!disposed) {
+        emit('error', error instanceof Error ? error : new Error(String(error)))
+      }
+      return
+    }
+    if (disposed) return
 
     const player = playerRef.value
     if (!player) return
@@ -349,11 +362,10 @@
   })
 
   onBeforeUnmount(() => {
+    disposed = true
     analyticsDestroy?.()
     keyboard.stopListening()
     miniPlayer.destroyObserver()
-    progressTracker.stopTracking()
-    core.destroyPlayer()
   })
 
   /* ======================== 暴露方法 ======================== */

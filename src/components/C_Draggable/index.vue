@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-draggable-wrapper" :class="wrapperClass">
+  <div
+    class="c-draggable-wrapper"
+    :class="wrapperClass"
+  >
     <VueDraggable
       v-model="internalList"
       v-bind="draggableOptions"
@@ -21,7 +24,7 @@
       <div
         v-for="(item, index) in internalList"
         :key="getItemKey(item, index)"
-        :class="getItemClass(index)"
+        :class="getItemClass()"
         :data-index="index"
       >
         <slot
@@ -31,12 +34,18 @@
           :is-disabled="disabled"
         >
           <div class="default-item">
-            <div v-if="showHandle" class="drag-handle">
+            <div
+              v-if="showHandle"
+              class="drag-handle"
+            >
               <div class="i-mdi:drag-vertical"></div>
             </div>
             <div class="item-content">
               <div class="item-title">{{ getItemTitle(item) }}</div>
-              <div v-if="getItemDescription(item)" class="item-description">
+              <div
+                v-if="getItemDescription(item)"
+                class="item-description"
+              >
                 {{ getItemDescription(item) }}
               </div>
             </div>
@@ -45,7 +54,10 @@
       </div>
     </VueDraggable>
 
-    <div v-if="isEmpty && showEmptyState" class="empty-state">
+    <div
+      v-if="isEmpty && showEmptyState"
+      class="empty-state"
+    >
       <slot name="empty">
         <div class="default-empty">
           <div class="empty-icon i-mdi:inbox-outline"></div>
@@ -57,84 +69,84 @@
 </template>
 
 <script setup lang="ts">
-import { readonly } from "vue";
-import { VueDraggable } from "vue-draggable-plus";
-import { useDraggableLayout } from "./composables/useDraggableLayout";
-import type { DraggableProps, DraggableEmits } from "./types";
+  import { readonly } from 'vue'
+  import { VueDraggable } from 'vue-draggable-plus'
+  import { useDraggableLayout } from './composables/useDraggableLayout'
+  import type { DraggableProps, DraggableEmits } from './types'
 
-defineOptions({ name: "C_Draggable" });
+  defineOptions({ name: 'C_Draggable' })
 
-const props = withDefaults(defineProps<DraggableProps>(), {
-  modelValue: () => [],
-  disabled: false,
-  group: "default",
-  sort: true,
-  animation: 200,
-  delay: 0,
-  handle: "",
-  showHandle: false,
-  ghostClass: "sortable-ghost",
-  chosenClass: "sortable-chosen",
-  dragClass: "sortable-drag",
-  wrapperClass: "",
-  listClass: "",
-  itemClass: "",
-  showEmptyState: true,
-  emptyText: "暂无数据",
-  swapThreshold: 1,
-  invertSwap: false,
-  direction: "vertical",
-  layout: "vertical",
-  gridColumns: 4,
-  gridRows: undefined,
-  gap: "8px",
-  flexWrap: false,
-  justifyContent: "flex-start",
-  alignItems: "stretch",
-  customStyles: () => ({}),
-});
+  const props = withDefaults(defineProps<DraggableProps>(), {
+    modelValue: () => [],
+    disabled: false,
+    group: 'default',
+    sort: true,
+    animation: 200,
+    delay: 0,
+    handle: '',
+    showHandle: false,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    dragClass: 'sortable-drag',
+    wrapperClass: '',
+    listClass: '',
+    itemClass: '',
+    showEmptyState: true,
+    emptyText: '暂无数据',
+    swapThreshold: 1,
+    invertSwap: false,
+    direction: 'vertical',
+    layout: 'vertical',
+    gridColumns: 4,
+    gridRows: undefined,
+    gap: '8px',
+    flexWrap: false,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+    customStyles: () => ({}),
+  })
 
-const emit = defineEmits<DraggableEmits>();
+  const emit = defineEmits<DraggableEmits>()
 
-const {
-  isDragging,
-  internalList,
-  isEmpty,
-  listClasses,
-  listStyles,
-  draggableOptions,
-  getItemKey,
-  getItemTitle,
-  getItemDescription,
-  getItemClass,
-  handleStart,
-  handleEnd,
-  handleAdd,
-  handleRemove,
-  handleUpdate,
-  addItem,
-  removeItem,
-  moveItem,
-  updateList,
-  clear,
-  getItem,
-  findIndex,
-} = useDraggableLayout(props, emit);
+  const {
+    isDragging,
+    internalList,
+    isEmpty,
+    listClasses,
+    listStyles,
+    draggableOptions,
+    getItemKey,
+    getItemTitle,
+    getItemDescription,
+    getItemClass,
+    handleStart,
+    handleEnd,
+    handleAdd,
+    handleRemove,
+    handleUpdate,
+    addItem,
+    removeItem,
+    moveItem,
+    updateList,
+    clear,
+    getItem,
+    findIndex,
+  } = useDraggableLayout(props, emit)
 
-defineExpose({
-  isDragging: readonly(isDragging),
-  list: readonly(internalList),
-  isEmpty: readonly(isEmpty),
-  addItem,
-  removeItem,
-  moveItem,
-  updateList,
-  clear,
-  getItem,
-  findIndex,
-});
+  defineExpose({
+    isDragging: readonly(isDragging),
+    list: readonly(internalList),
+    isEmpty: readonly(isEmpty),
+    addItem,
+    removeItem,
+    moveItem,
+    updateList,
+    clear,
+    getItem,
+    findIndex,
+  })
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

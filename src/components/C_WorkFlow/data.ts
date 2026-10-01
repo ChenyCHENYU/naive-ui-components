@@ -115,8 +115,16 @@ export const getDefaultAvatar = (name: string): string => {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
 }
 
+let idSequence = 0
+
+/** IDs must remain unique when several nodes/conditions are added in one tick. */
+export const generateWorkflowId = (prefix: string): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? `${prefix}-${crypto.randomUUID()}`
+    : `${prefix}-${Date.now()}-${++idSequence}`
+
 /* 生成条件ID的函数 */
-export const generateConditionId = (): string => `condition-${Date.now()}`
+export const generateConditionId = (): string => generateWorkflowId('condition')
 
 /* 生成边ID的函数 */
 export const generateEdgeId = (sourceId: string, targetId: string): string =>

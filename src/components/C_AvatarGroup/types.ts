@@ -66,12 +66,13 @@ export const STATUS_COLOR_MAP: Record<string, string> = {
 
 /** 从名字中提取首字母 */
 export function getInitials(name: string): string {
-  if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
+  const trimmed = name.trim()
+  if (!trimmed) return '?'
+  const parts = trimmed.split(/\s+/)
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
   // 中文直接取最后一个字
-  if (/[\u4E00-\u9FFF]/.test(name)) return name.slice(-1)
-  return name.slice(0, 2).toUpperCase()
+  if (/[\u4E00-\u9FFF]/.test(trimmed)) return trimmed.slice(-1)
+  return trimmed.slice(0, 2).toUpperCase()
 }
 
 /** 根据名字生成稳定的背景色 */

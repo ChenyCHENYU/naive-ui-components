@@ -78,11 +78,11 @@
 <script setup lang="ts">
   import { ref, computed, watch, onMounted } from 'vue'
   import { NSpace, NButton, NDropdown } from 'naive-ui'
-  import { Graph, ObjectExt, type Node, type Cell } from '@antv/x6'
+  import { Graph, ObjectExt, type Node, type Cell, type Edge } from '@antv/x6'
   import { useGraphBase } from '../../composables/useGraphBase'
   import { useGraphExport } from '../../composables/useGraphExport'
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
-  import type { UMLClass, UMLDiagramData } from '../../types'
+  import type { UMLClass, UMLDiagramData, UMLRelation } from '../../types'
   import UMLClassEditor from './components/UMLClassEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
   import {
@@ -192,11 +192,12 @@
 
   // ==================== 数据加载 ====================
   const loadData = (data: any[]) => {
-    if (!graph.value || !data.length) return
+    if (!graph.value) return
     const edgeShapes = [
       'extends',
       'composition',
       'implement',
+      'dependency',
       'aggregation',
       'association',
     ]
@@ -204,7 +205,9 @@
 
     data.forEach(item => {
       if (edgeShapes.includes(item.shape)) {
-        cells.push(graph.value!.createEdge(item))
+        const edge = graph.value!.createEdge(item)
+        if (item.data) edge.setData(item.data)
+        cells.push(edge)
       } else {
         const { data: nodeData, ...displayProps } = item
         const node = graph.value!.createNode(displayProps)
@@ -214,7 +217,7 @@
     })
 
     graph.value.resetCells(cells)
-    scheduleZoomToFit(200, 10)
+    if (cells.length) scheduleZoomToFit(200, 10)
   }
 
   const formatClassDisplay = (cls: {
@@ -287,15 +290,53 @@
         position: node.getPosition(),
       })) || [],
     relations:
-      graph.value?.getEdges().map((edge: any) => ({
-        id: edge.id,
-        type: edge.shape as string,
-        source: edge.getSourceCellId() || '',
-        target: edge.getTargetCellId() || '',
-      })) || [],
+      graph.value?.getEdges().map((edge: Edge) => {
+        const metadata = edge.getData() as
+          Pick<UMLRelation, 'name' | 'multiplicity'> | undefined
+        return {
+          id: edge.id,
+          type: (edge.shape === 'extends'
+            ? 'inheritance'
+            : edge.shape === 'implement'
+              ? 'implementation'
+              : edge.shape) as UMLRelation['type'],
+          source: edge.getSourceCellId() || '',
+          target: edge.getTargetCellId() || '',
+          name: metadata?.name,
+          multiplicity: metadata?.multiplicity,
+        }
+      }) || [],
   })
 
   const emitDataChange = () => emit('data-change', getCurrentData())
+
+  const loadUmlData = (data: UMLDiagramData): void => {
+    loadData([
+      ...data.classes.map(cls => ({
+        id: cls.id,
+        shape: 'class',
+        x: cls.position?.x ?? 50,
+        y: cls.position?.y ?? 50,
+        ...formatClassDisplay(cls),
+        data: cls,
+      })),
+      ...data.relations.map(relation => ({
+        id: relation.id,
+        shape:
+          relation.type === 'inheritance'
+            ? 'extends'
+            : relation.type === 'implementation'
+              ? 'implement'
+              : relation.type,
+        source: relation.source,
+        target: relation.target,
+        data: {
+          name: relation.name,
+          multiplicity: relation.multiplicity,
+        },
+      })),
+    ])
+  }
 
   // ==================== Graph 事件绑定 ====================
   watch(
@@ -329,7 +370,8 @@
         })),
         ...sampleConnections,
       ]
-      loadData(defaultCells)
+      if (props.data) loadUmlData(props.data)
+      else loadData(defaultCells)
     },
     { immediate: true }
   )
@@ -337,33 +379,7 @@
   watch(
     () => props.data,
     newData => {
-      if (graph.value && newData?.classes) {
-        const edgeShapes = [
-          'extends',
-          'composition',
-          'implement',
-          'aggregation',
-          'association',
-        ]
-        const cells: any[] = [
-          ...newData.classes.map(cls => ({
-            id: cls.id,
-            shape: 'class',
-            x: cls.position?.x ?? 50,
-            y: cls.position?.y ?? 50,
-            ...formatClassDisplay(cls),
-            data: cls,
-          })),
-          ...(newData.relations || [])
-            .filter(r => edgeShapes.includes(r.type))
-            .map(r => ({
-              shape: r.type,
-              source: r.source,
-              target: r.target,
-            })),
-        ]
-        loadData(cells)
-      }
+      if (graph.value && newData) loadUmlData(newData)
     },
     { deep: true }
   )

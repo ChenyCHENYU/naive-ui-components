@@ -16,14 +16,27 @@ import type {
 import C_Icon from '../../C_Icon/index.vue'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
 
+/** Request-core reports action failures as values rather than rejected promises. */
+const actionResultError = (result: unknown): unknown =>
+  result && typeof result === 'object' && 'error' in result
+    ? result.error
+    : null
+
 /**
  * 表格操作Hook
  */
 export function useTableActions<T extends object = DataRecord>(
   options: UseTableActionsOptions<T>
 ): UseTableActionsReturn<T> {
-  const { actions, config, tableManager, rowKey, onRowDeleted, onViewDetail } =
-    options
+  const {
+    actions,
+    config,
+    tableManager,
+    rowKey,
+    onRowDeleted,
+    onViewDetail,
+    isDeleteFeedbackHandled,
+  } = options
   const feedback = useComponentFeedback(() => config.value.feedback)
   const { t } = useComponentLocale(() => config.value.locale)
 
@@ -91,12 +104,19 @@ export function useTableActions<T extends object = DataRecord>(
     row: T,
     index: number
   ) => {
+    const feedbackHandled = isDeleteFeedbackHandled?.(deleteAction) === true
     try {
-      await deleteAction(row, index)
-      feedback.success(t('table.deleteSuccess'))
+      const result = await deleteAction(row, index)
+      const resultError = actionResultError(result)
+      if (resultError !== null && resultError !== undefined) {
+        if (!feedbackHandled)
+          feedback.error(t('table.deleteFailed'), resultError)
+        return
+      }
+      if (!feedbackHandled) feedback.success(t('table.deleteSuccess'))
       onRowDeleted?.(row, index)
     } catch (error) {
-      feedback.error(t('table.deleteFailed'), error)
+      if (!feedbackHandled) feedback.error(t('table.deleteFailed'), error)
       throw error
     }
   }

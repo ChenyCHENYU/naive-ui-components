@@ -10,6 +10,56 @@ export interface UseTagsViewOptions {
 
 const STORAGE_KEY_DEFAULT = '__tags_view_list__'
 
+type StoredTag = Record<string, unknown> & { path: string; title: string }
+
+const isStoredTag = (value: unknown): value is StoredTag => {
+  if (!value || typeof value !== 'object') return false
+  const tag = value as Record<string, unknown>
+  return (
+    typeof tag.path === 'string' &&
+    tag.path.startsWith('/') &&
+    !tag.path.startsWith('//') &&
+    typeof tag.title === 'string'
+  )
+}
+
+const safeStoredMeta = (value: unknown): TagItem['meta'] | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([key, entry]) =>
+        !['__proto__', 'prototype', 'constructor'].includes(key) &&
+        (key !== 'affix' || typeof entry === 'boolean')
+    )
+  )
+}
+
+/** Treat persisted tags as untrusted data before they enter navigation state. */
+export function parseStoredTags(raw: string | null): TagItem[] {
+  if (!raw) return []
+  try {
+    const value: unknown = JSON.parse(raw)
+    if (!Array.isArray(value)) return []
+    return value.flatMap(item => {
+      if (!isStoredTag(item)) return []
+      return [
+        {
+          path: item.path,
+          title: item.title,
+          originalTitle:
+            typeof item.originalTitle === 'string'
+              ? item.originalTitle
+              : undefined,
+          icon: typeof item.icon === 'string' ? item.icon : undefined,
+          meta: safeStoredMeta(item.meta),
+        },
+      ]
+    })
+  } catch {
+    return []
+  }
+}
+
 /**
  * 标签页管理 composable
  *
@@ -29,7 +79,7 @@ export function useTagsView(options: UseTagsViewOptions = {}) {
     if (!persistKey) return []
     try {
       const raw = localStorage.getItem(persistKey)
-      return raw ? JSON.parse(raw) : []
+      return parseStoredTags(raw)
     } catch {
       return []
     }

@@ -72,13 +72,14 @@
   const tooltipText = computed(() => `${props.tooltip} (${currentLabel.value})`)
 
   const finalOptions = computed(() =>
-    props.options.map(opt => ({
-      key: opt.key,
-      label: opt.label,
-      icon: opt.iconClass
-        ? () => h(C_Icon, { name: opt.iconClass, size: 16 })
-        : undefined,
-    }))
+    props.options.map(opt => {
+      const icon = opt.iconClass
+      return {
+        key: opt.key,
+        label: opt.label,
+        icon: icon ? () => h(C_Icon, { name: icon, size: 16 }) : undefined,
+      }
+    })
   )
 
   const handleLanguageChange = (key: string) => {

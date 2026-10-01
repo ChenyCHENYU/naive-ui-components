@@ -204,6 +204,11 @@
   opacity: 0.9;
 }
 
+.c-orgchart__node-select:focus-visible {
+  outline: 2px solid var(--c-primary, #2080f0);
+  outline-offset: 3px;
+}
+
 /* ─── 默认节点布局 ─── */
 .c-orgchart__node-default {
   display: flex;

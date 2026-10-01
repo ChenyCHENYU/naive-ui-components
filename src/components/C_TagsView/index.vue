@@ -51,6 +51,7 @@
         >
           <template #icon>
             <C_Icon
+              v-if="tag.icon"
               :name="tag.icon"
               :size="12"
             />
@@ -186,9 +187,10 @@
 
   const scrollToTag = (path: string) => {
     nextTick(() => {
-      const targetTag = tagsContainer.value?.querySelector(
-        `[data-path="${path}"]`
-      ) as HTMLElement
+      const targetTag = [
+        ...(tagsContainer.value?.querySelectorAll<HTMLElement>('[data-path]') ??
+          []),
+      ].find(tag => tag.dataset.path === path)
       if (targetTag) {
         targetTag.scrollIntoView({
           behavior: 'smooth',

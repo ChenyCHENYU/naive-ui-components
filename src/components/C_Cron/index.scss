@@ -41,6 +41,11 @@
   }
 
   &__segment {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -51,6 +56,11 @@
     transition: all var(--c-transition, 0.2s ease);
     user-select: none;
     min-width: 0;
+
+    &:focus-visible {
+      outline: 2px solid var(--c-primary);
+      outline-offset: 1px;
+    }
 
     &:not(&--active):hover {
       background: color-mix(in srgb, var(--c-bg-card) 60%, transparent);
@@ -167,13 +177,23 @@
     gap: 4px;
     font-size: 13px;
 
-    a {
+    button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      font: inherit;
       color: var(--c-primary);
       cursor: pointer;
       user-select: none;
 
       &:hover {
         text-decoration: underline;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
       }
     }
   }

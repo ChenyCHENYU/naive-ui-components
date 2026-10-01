@@ -1,5 +1,9 @@
 <template>
-  <TransitionGroup name="file-list" tag="div" class="file-list">
+  <TransitionGroup
+    name="file-list"
+    tag="div"
+    class="file-list"
+  >
     <div
       v-for="file in fileList"
       :key="file.uid"
@@ -37,7 +41,10 @@
           >
             {{ STATUS_TEXT[file.status] || file.status }}
           </NTag>
-          <span v-if="file.status === 'instant'" class="file-list__instant">
+          <span
+            v-if="file.status === 'instant'"
+            class="file-list__instant"
+          >
             ⚡
           </span>
         </div>
@@ -45,7 +52,7 @@
         <!-- 进度条 -->
         <NProgress
           v-if="file.status === 'uploading' || file.status === 'hashing'"
-          :percentage="file.status === 'hashing' ? hashProgress : file.percent"
+          :percentage="file.percent"
           :height="4"
           :border-radius="2"
           :show-indicator="false"
@@ -78,6 +85,7 @@
           text
           type="warning"
           size="tiny"
+          aria-label="重试上传"
           @click="emit('retry', file.uid)"
         >
           <template #icon>
@@ -88,6 +96,7 @@
           text
           type="error"
           size="tiny"
+          aria-label="移除文件"
           @click="emit('remove', file.uid)"
         >
           <template #icon>
@@ -100,160 +109,162 @@
 </template>
 
 <script setup lang="ts">
-import { NProgress, NButton, NTag, NEllipsis } from "naive-ui";
-import C_Icon from "../../C_Icon/index.vue";
-import type { UploadFileItem } from "../types";
-import {
-  STATUS_TEXT,
-  STATUS_TYPE,
-  getFileIcon,
-  formatFileSize,
-} from "../constants";
+  import { NProgress, NButton, NTag, NEllipsis } from 'naive-ui'
+  import C_Icon from '../../C_Icon/index.vue'
+  import type { UploadFileItem } from '../types'
+  import {
+    STATUS_TEXT,
+    STATUS_TYPE,
+    getFileIcon,
+    formatFileSize,
+  } from '../constants'
 
-defineProps<{
-  /** 文件列表 */
-  fileList: UploadFileItem[];
-  /** 是否显示缩略图 */
-  showThumbnail?: boolean;
-  /** hash 进度（全局共享） */
-  hashProgress?: number;
-}>();
+  defineProps<{
+    /** 文件列表 */
+    fileList: UploadFileItem[]
+    /** 是否显示缩略图 */
+    showThumbnail?: boolean
+  }>()
 
-const emit = defineEmits<{
-  remove: [uid: string];
-  retry: [uid: string];
-}>();
+  const emit = defineEmits<{
+    remove: [uid: string]
+    retry: [uid: string]
+  }>()
 </script>
 
 <style scoped lang="scss">
-.file-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-
-  &__item {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--card-color);
-    transition: all 0.25s ease;
-
-    &:hover {
-      border-color: color-mix(
-        in srgb,
-        var(--primary-color) 40%,
-        var(--border-color)
-      );
-      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
-    }
-
-    &--error {
-      border-color: var(--error-color);
-      background: color-mix(in srgb, var(--error-color) 4%, var(--card-color));
-    }
-
-    &--success,
-    &--instant {
-      border-color: color-mix(
-        in srgb,
-        var(--success-color) 30%,
-        var(--border-color)
-      );
-    }
-  }
-
-  &__thumb {
-    flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--body-color);
-  }
-
-  &__thumb-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  &__thumb-icon {
-    font-size: 22px;
-    color: var(--text-color-3);
-  }
-
-  &__info {
-    flex: 1;
-    min-width: 0;
+  .file-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-  }
-
-  &__name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-color-1);
-  }
-
-  &__meta {
-    display: flex;
     gap: 8px;
-    align-items: center;
-    font-size: 12px;
+    margin-top: 12px;
+
+    &__item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--card-color);
+      transition: all 0.25s ease;
+
+      &:hover {
+        border-color: color-mix(
+          in srgb,
+          var(--primary-color) 40%,
+          var(--border-color)
+        );
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+      }
+
+      &--error {
+        border-color: var(--error-color);
+        background: color-mix(
+          in srgb,
+          var(--error-color) 4%,
+          var(--card-color)
+        );
+      }
+
+      &--success,
+      &--instant {
+        border-color: color-mix(
+          in srgb,
+          var(--success-color) 30%,
+          var(--border-color)
+        );
+      }
+    }
+
+    &__thumb {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--body-color);
+    }
+
+    &__thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    &__thumb-icon {
+      font-size: 22px;
+      color: var(--text-color-3);
+    }
+
+    &__info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    &__name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-color-1);
+    }
+
+    &__meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    &__size {
+      color: var(--text-color-3);
+    }
+
+    &__instant {
+      font-size: 14px;
+    }
+
+    &__chunk-info {
+      font-size: 11px;
+      color: var(--text-color-4);
+    }
+
+    &__error {
+      font-size: 12px;
+      color: var(--error-color);
+    }
+
+    &__actions {
+      flex-shrink: 0;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
   }
 
-  &__size {
-    color: var(--text-color-3);
+  /* ─── 过渡动画 ─────────────────────────────── */
+
+  .file-list-enter-active,
+  .file-list-leave-active {
+    transition: all 0.3s ease;
   }
 
-  &__instant {
-    font-size: 14px;
+  .file-list-enter-from {
+    opacity: 0;
+    transform: translateX(-20px);
   }
 
-  &__chunk-info {
-    font-size: 11px;
-    color: var(--text-color-4);
+  .file-list-leave-to {
+    opacity: 0;
+    transform: translateX(20px);
   }
 
-  &__error {
-    font-size: 12px;
-    color: var(--error-color);
+  .file-list-move {
+    transition: transform 0.3s ease;
   }
-
-  &__actions {
-    flex-shrink: 0;
-    display: flex;
-    gap: 4px;
-    align-items: center;
-  }
-}
-
-/* ─── 过渡动画 ─────────────────────────────── */
-
-.file-list-enter-active,
-.file-list-leave-active {
-  transition: all 0.3s ease;
-}
-
-.file-list-enter-from {
-  opacity: 0;
-  transform: translateX(-20px);
-}
-
-.file-list-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.file-list-move {
-  transition: transform 0.3s ease;
-}
 </style>

@@ -22,7 +22,7 @@ interface UseChunkUploadOptions {
   /** 请求头 */
   headers: Ref<Record<string, string>>
   /** 附加字段 */
-  data: Ref<Record<string, any>>
+  data: Ref<Record<string, unknown>>
   /** 自定义上传函数 */
   customRequest?: Ref<CustomUploadRequest | undefined>
   /** 已上传分片查询 */
@@ -39,8 +39,7 @@ interface UseChunkUploadOptions {
 export function useChunkUpload(options: UseChunkUploadOptions) {
   /** 正在进行的上传中止控制器映射 uid → abort[] */
   const abortMap = new Map<string, (() => void)[]>()
-  const cancelledUploads = new Set<string>()
-  const uploadVersions = new Map<string, number>()
+  const uploadVersions = new Map<string, symbol>()
 
   /**
    * 将文件切割为分片
@@ -97,6 +96,7 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     onProgress: (progress: ChunkProgress) => void
     setUploadedBytes: (bytes: number) => void
     setError: () => void
+    isCancelled: () => boolean
   }): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       let settled = false
@@ -131,6 +131,10 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
         },
         onSuccess: () => {
           if (settled) return
+          if (ctx.isCancelled()) {
+            resolveOnce()
+            return
+          }
           ctx.chunk.uploaded = true
           ctx.setUploadedBytes(ctx.chunk.size)
           ctx.onProgress({
@@ -150,7 +154,15 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
         const req = options.customRequest?.value
           ? options.customRequest.value(requestOptions)
           : defaultUploadRequest(requestOptions)
-        ctx.abortControllers.push(req.abort)
+        ctx.abortControllers.push(() => {
+          try {
+            req.abort()
+          } catch {
+            // A custom request may throw while aborting; cancellation still settles.
+          } finally {
+            resolveOnce()
+          }
+        })
       } catch (error) {
         rejectOnce(error)
       }
@@ -166,16 +178,17 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     file: File
     hash: string
     onProgress: (progress: ChunkProgress) => void
-    onSuccess: (response: any) => void
+    onSuccess: (response: unknown) => void
     onError: (error: Error) => void
     isPaused: () => boolean
   }) {
     const { uid, file, hash, onProgress, onSuccess, onError, isPaused } = params
-    const version = (uploadVersions.get(uid) ?? 0) + 1
+    const version = Symbol(uid)
     uploadVersions.set(uid, version)
-    cancelledUploads.delete(uid)
-    const isCancelled = () =>
-      cancelledUploads.has(uid) || uploadVersions.get(uid) !== version
+    const isCancelled = () => uploadVersions.get(uid) !== version
+    const finish = () => {
+      if (!isCancelled()) uploadVersions.delete(uid)
+    }
     const chunks = createChunks(file)
     const totalChunks = chunks.length
     const totalBytes = file.size
@@ -183,7 +196,10 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
 
     // 查询已上传分片（断点续传）
     await queryExistingChunks(hash, chunks)
-    if (isCancelled() || isPaused()) return
+    if (isCancelled() || isPaused()) {
+      finish()
+      return
+    }
     uploadedBytes = chunks
       .filter(c => c.uploaded)
       .reduce((sum, c) => sum + c.size, 0)
@@ -201,8 +217,19 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
 
     if (pendingChunks.length === 0) {
       // 全部已上传，直接合并
-      if (!isCancelled()) {
-        await mergeAndFinish(hash, file.name, totalChunks, onSuccess, onError)
+      try {
+        if (!isCancelled()) {
+          await mergeAndFinish(
+            hash,
+            file.name,
+            totalChunks,
+            onSuccess,
+            onError,
+            isCancelled
+          )
+        }
+      } finally {
+        finish()
       }
       return
     }
@@ -220,7 +247,12 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
 
     /** 上传下一个分片 */
     async function uploadNext(): Promise<void> {
-      while (current < pendingChunks.length && !hasError && !isPaused()) {
+      while (
+        current < pendingChunks.length &&
+        !hasError &&
+        !isPaused() &&
+        !isCancelled()
+      ) {
         const chunk = pendingChunks[current++]
 
         // eslint-disable-next-line no-await-in-loop -- 每个 worker 必须顺序认领并上传分片。
@@ -241,6 +273,7 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
           setError: () => {
             hasError = true
           },
+          isCancelled,
         })
       }
     }
@@ -266,13 +299,20 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
         )
       } else if (!hasError && !isPaused() && !isCancelled()) {
         // 全部分片完成 → 合并
-        await mergeAndFinish(hash, file.name, totalChunks, onSuccess, onError)
+        await mergeAndFinish(
+          hash,
+          file.name,
+          totalChunks,
+          onSuccess,
+          onError,
+          isCancelled
+        )
       }
     } finally {
-      if (uploadVersions.get(uid) === version) {
+      if (!isCancelled()) {
         abortMap.delete(uid)
-        cancelledUploads.delete(uid)
       }
+      finish()
     }
   }
 
@@ -281,8 +321,9 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     hash: string,
     filename: string,
     totalChunks: number,
-    onSuccess: (response: any) => void,
-    onError: (error: Error) => void
+    onSuccess: (response: unknown) => void,
+    onError: (error: Error) => void,
+    isCancelled: () => boolean
   ) {
     if (options.mergeChunks?.value) {
       try {
@@ -291,19 +332,22 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
           filename,
           totalChunks
         )
-        onSuccess(result)
+        if (!isCancelled()) onSuccess(result)
       } catch (err) {
-        onError(err instanceof Error ? err : new Error('分片合并失败'))
+        if (!isCancelled()) {
+          onError(err instanceof Error ? err : new Error('分片合并失败'))
+        }
       }
     } else {
-      onSuccess({ message: '分片上传完成（未配置合并函数）' })
+      if (!isCancelled()) {
+        onSuccess({ message: '分片上传完成（未配置合并函数）' })
+      }
     }
   }
 
   /** 中止指定文件的分片上传 */
   function abortUpload(uid: string) {
-    cancelledUploads.add(uid)
-    uploadVersions.set(uid, (uploadVersions.get(uid) ?? 0) + 1)
+    uploadVersions.delete(uid)
     const controllers = abortMap.get(uid)
     controllers?.forEach(abort => abort())
     abortMap.delete(uid)
@@ -311,8 +355,8 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
 
   /** 中止所有 */
   function abortAll() {
-    abortMap.forEach((controllers, uid) => {
-      cancelledUploads.add(uid)
+    uploadVersions.clear()
+    abortMap.forEach(controllers => {
       controllers.forEach(abort => abort())
     })
     abortMap.clear()

@@ -44,6 +44,8 @@
   }
 
   &__mini-close {
+    appearance: none;
+    border: 0;
     position: absolute;
     top: 4px;
     right: 4px;
@@ -65,6 +67,8 @@
   }
 
   &__mini-back {
+    appearance: none;
+    border: 0;
     position: absolute;
     bottom: 4px;
     left: 50%;

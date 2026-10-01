@@ -92,6 +92,7 @@
 <script lang="ts" setup>
   import { ref, watch, computed } from 'vue'
   import { NDatePicker } from 'naive-ui'
+  import { localDayStart } from './dateUtils'
   import type {
     DateProps,
     DateRangeValue,
@@ -223,7 +224,7 @@
       if (
         startVal !== null &&
         endVal !== null &&
-        new Date(endVal).getTime() < new Date(startVal).getTime()
+        localDayStart(endVal) < localDayStart(startVal)
       ) {
         endDate.value = null
         return
@@ -247,7 +248,7 @@
 
   const endDisabledDate = (timestamp: number): boolean => {
     if (startDate.value === null) return true
-    if (timestamp < new Date(startDate.value).getTime()) return true
+    if (timestamp < localDayStart(startDate.value)) return true
     return singleDisabledDate(timestamp)
   }
 
@@ -264,6 +265,7 @@
       emits('update:dateRange', null)
       emits('update:dateTimeRange', null)
       emits('update:smartRange', null)
+      emits('change', null)
     },
   })
 </script>

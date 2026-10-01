@@ -208,7 +208,7 @@
   const getMap = (): MapInstance | null => leafletMap || amapMap
 
   const refresh = (): void => {
-    leafletMap?.invalidateSize({ reset: true, pan: false })
+    leafletMap?.invalidateSize({ pan: false })
     amapMap?.resize?.()
   }
 

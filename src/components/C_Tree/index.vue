@@ -7,37 +7,60 @@
 -->
 <template>
   <div class="c-tree">
-    <div v-if="showToolbar" class="c-tree-toolbar">
+    <div
+      v-if="showToolbar"
+      class="c-tree-toolbar"
+    >
       <div class="toolbar-left">
         <NInput
           v-if="searchable"
           v-model:value="internalSearchPattern"
           :placeholder="searchPlaceholder"
+          aria-label="搜索树节点"
           clearable
           class="search-input"
         >
           <template #prefix>
-            <C_Icon name="mdi:magnify" :size="16" />
+            <C_Icon
+              name="mdi:magnify"
+              :size="16"
+            />
           </template>
         </NInput>
       </div>
       <div class="toolbar-right">
         <slot name="toolbar-actions">
-          <NButton v-if="addable" type="primary" @click="handleAdd()">
+          <NButton
+            v-if="addable"
+            type="primary"
+            @click="handleAdd()"
+          >
             <template #icon>
-              <C_Icon name="mdi:plus" :size="16" />
+              <C_Icon
+                name="mdi:plus"
+                :size="16"
+              />
             </template>
             {{ addText }}
           </NButton>
           <NButton @click="toggleExpandAll">
             <template #icon>
-              <C_Icon name="mdi:file-tree" :size="16" />
+              <C_Icon
+                name="mdi:file-tree"
+                :size="16"
+              />
             </template>
-            {{ isAllExpanded ? "收起全部" : "展开全部" }}
+            {{ isAllExpanded ? '收起全部' : '展开全部' }}
           </NButton>
-          <NButton v-if="refreshable" @click="handleRefresh">
+          <NButton
+            v-if="refreshable"
+            @click="handleRefresh"
+          >
             <template #icon>
-              <C_Icon name="mdi:refresh" :size="16" />
+              <C_Icon
+                name="mdi:refresh"
+                :size="16"
+              />
             </template>
             刷新
           </NButton>
@@ -69,64 +92,64 @@
 </template>
 
 <script setup lang="ts">
-import { NInput, NButton, NTree } from "naive-ui";
-import C_Icon from "../C_Icon/index.vue";
-import { useTreeOperations } from "./composables/useTreeOperations";
-import type { TreeProps, TreeEmits, TreeExpose } from "./types";
+  import { NInput, NButton, NTree } from 'naive-ui'
+  import C_Icon from '../C_Icon/index.vue'
+  import { useTreeOperations } from './composables/useTreeOperations'
+  import type { TreeProps, TreeEmits, TreeExpose } from './types'
 
-defineOptions({ name: "C_Tree" });
+  defineOptions({ name: 'C_Tree' })
 
-const props = withDefaults(defineProps<TreeProps>(), {
-  mode: "custom",
-  keyField: "id",
-  labelField: "name",
-  childrenField: "children",
-  searchPattern: "",
-  searchable: true,
-  searchPlaceholder: "搜索...",
-  draggable: false,
-  showLine: true,
-  showToolbar: true,
-  addable: true,
-  addText: "新增",
-  refreshable: true,
-  iconField: "icon",
-  iconConfig: () => ({
-    default: "mdi:circle-outline",
-    typeMap: {},
-    colorMap: {},
-  }),
-  statusConfigs: () => [],
-  actions: () => [],
-  defaultExpandAll: false,
-  defaultExpandedKeys: () => [],
-  defaultSelectedKeys: () => [],
-});
+  const props = withDefaults(defineProps<TreeProps>(), {
+    mode: 'custom',
+    keyField: 'id',
+    labelField: 'name',
+    childrenField: 'children',
+    searchPattern: '',
+    searchable: true,
+    searchPlaceholder: '搜索...',
+    draggable: false,
+    showLine: true,
+    showToolbar: true,
+    addable: true,
+    addText: '新增',
+    refreshable: true,
+    iconField: 'icon',
+    iconConfig: () => ({
+      default: 'mdi:circle-outline',
+      typeMap: {},
+      colorMap: {},
+    }),
+    statusConfigs: () => [],
+    actions: () => [],
+    defaultExpandAll: false,
+    defaultExpandedKeys: () => [],
+    defaultSelectedKeys: () => [],
+  })
 
-const emit = defineEmits<TreeEmits>();
+  const emit = defineEmits<TreeEmits>()
 
-const {
-  internalSearchPattern,
-  expandedKeys,
-  selectedKeys,
-  isAllExpanded,
-  treeData,
-  currentSearchPattern,
-  renderPrefix,
-  renderLabel,
-  renderSuffix,
-  toggleExpandAll,
-  handleExpandedKeysChange,
-  handleSelectedKeysChange,
-  handleDrop,
-  handleAdd,
-  handleRefresh,
-  expose,
-} = useTreeOperations(props, emit);
+  const {
+    internalSearchPattern,
+    expandedKeys,
+    selectedKeys,
+    isAllExpanded,
+    treeData,
+    currentSearchPattern,
+    renderPrefix,
+    renderLabel,
+    renderSuffix,
+    toggleExpandAll,
+    handleExpandedKeysChange,
+    handleSelectedKeysChange,
+    handleDrop,
+    handleAdd,
+    handleRefresh,
+    expose,
+  } = useTreeOperations(props, emit)
 
-defineExpose<TreeExpose>(expose);
+  defineExpose<TreeExpose>(expose)
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

@@ -93,8 +93,8 @@
         </template>
 
         <template
-          v-for="item in formItems"
-          :key="item.key"
+          v-for="(item, index) in formItems"
+          :key="item.key ?? index"
         >
           <component :is="item" />
         </template>
@@ -196,8 +196,8 @@
 
             <!-- 表单项 -->
             <template
-              v-for="item in group.items"
-              :key="item.key"
+              v-for="(item, index) in group.items"
+              :key="item.key ?? index"
             >
               <component :is="item" />
             </template>

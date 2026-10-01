@@ -292,7 +292,7 @@
   import C_Form from '../C_Form/index.vue'
   import { cloneData } from '../../utils/data'
   import { useComponentFeedback, useComponentLocale } from '../../config'
-  import { validateTableRowKeys } from './helpers'
+  import { collectTreeBranchKeys, validateTableRowKeys } from './helpers'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
 
@@ -365,7 +365,11 @@
     let cfg: TableConfig = (props.config as TableConfig | undefined) || {}
     if (props.crud) {
       const fromCrud: Partial<TableConfig> = {}
-      if (props.crud.actions) fromCrud.actions = props.crud.actions.value
+      if (props.crud.actions) {
+        // Internal config uses DataRecord; the public CRUD binding retains T.
+        fromCrud.actions = props.crud.actions
+          .value as unknown as TableConfig['actions']
+      }
       if (props.crud.pagination)
         fromCrud.pagination = props.crud.pagination.value ?? undefined
       cfg = { ...fromCrud, ...cfg }
@@ -402,6 +406,25 @@
   const normalizedLoading = computed<boolean>(
     () => unwrapRef(props.loading) ?? props.crud?.loading.value ?? false
   )
+
+  const treeDefaultKeys = computed(() =>
+    resolved.value.treeEnabled && resolved.value.treeDefaultExpandAll
+      ? collectTreeBranchKeys(
+          normalizedData.value,
+          resolved.value.treeChildrenKey,
+          resolvedRowKey
+        )
+      : []
+  )
+  const managerConfig = computed(() => ({
+    ...resolved.value,
+    defaultExpandedKeys: [
+      ...new Set([
+        ...(resolved.value.defaultExpandedKeys ?? []),
+        ...treeDefaultKeys.value,
+      ]),
+    ],
+  }))
 
   let lastRowKeyIssueSignature = ''
   watch(
@@ -447,12 +470,34 @@
   })
 
   const tableManager = useTableManager({
-    config: resolved,
+    config: managerConfig,
     data: () => normalizedData.value,
     rowKey: resolvedRowKey,
     emit: bridgedEmit,
     columns: () => effectiveColumns.value,
   })
+
+  const initializedTreeKeys = new Set<DataTableRowKey>()
+  watch(
+    treeDefaultKeys,
+    keys => {
+      if (!resolved.value.treeEnabled || !resolved.value.treeDefaultExpandAll) {
+        initializedTreeKeys.clear()
+        return
+      }
+      const newKeys = keys.filter(key => !initializedTreeKeys.has(key))
+      keys.forEach(key => initializedTreeKeys.add(key))
+      const expanded = tableManager.expandedKeys.value
+      const missing = newKeys.filter(key => !expanded.includes(key))
+      if (missing.length) {
+        void tableManager.expandState?.handleExpandChange([
+          ...expanded,
+          ...missing,
+        ])
+      }
+    },
+    { immediate: true }
+  )
 
   const tableActions = useTableActions({
     actions: computed(() => effectiveConfig.value.actions || {}),
@@ -460,6 +505,8 @@
     tableManager,
     rowKey: resolvedRowKey,
     onRowDeleted: (row, index) => emit('row-delete', row, index),
+    isDeleteFeedbackHandled: action =>
+      props.crud?.actions?.value.delete === action,
     onViewDetail: (data: DataRecord) => bridgedEmit('view-detail', data),
   })
 
@@ -480,7 +527,10 @@
     columnWidth: resolved.value.columnWidth,
     scrollX: resolved.value.scrollX,
     rowKey: resolvedRowKey,
-    tableManager,
+    // Column rendering consumes a non-generic manager view of the same rows.
+    tableManager: tableManager as unknown as Parameters<
+      typeof useTableColumns
+    >[0]['tableManager'],
     actionsRenderer: tableActions.renderActions,
     editModeChecker,
     showActionsColumn,
@@ -611,20 +661,7 @@
 
   /* ================= 合计行 ================= */
 
-  const summaryFn = computed(() => {
-    const cfg = resolved.value
-    if (!cfg.summaryRender) return undefined
-    return (data: DataRecord[]) => {
-      const result = cfg.summaryRender!(data)
-      return computedColumns.value.map((col: any) => {
-        const key = col.key as string
-        const def = result[key]
-        return def
-          ? { value: def.value, colSpan: def.colSpan ?? 1 }
-          : { value: '' }
-      })
-    }
-  })
+  const summaryFn = computed(() => resolved.value.summaryRender)
 
   /* ================= 列拖拽排序 ================= */
 
