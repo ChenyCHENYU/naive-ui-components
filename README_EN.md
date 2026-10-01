@@ -570,6 +570,8 @@ bun run verify          # Run all pre-publish checks
 bun run release         # Publish pending Changesets releases
 ```
 
+The GitHub changelog generator requires `GITHUB_TOKEN` for `bun run version`; never commit the token. On Windows, if `bun run release` stalls while npm repeats `prepublishOnly`, first confirm `bun run verify` succeeds, then publish from PowerShell with `$env:npm_config_ignore_scripts='true'; bun run release`. This skips only the repeated lifecycle check, not the prerequisite verification.
+
 ## 📄 License
 
 MIT License

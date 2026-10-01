@@ -630,6 +630,8 @@ bun run verify          # 发布前完整验证
 bun run release         # 发布 Changesets 中待发布版本
 ```
 
+本仓库的 GitHub 变更日志生成器要求在执行 `bun run version` 时提供 `GITHUB_TOKEN`，不要将令牌写入仓库。Windows 下如果 `bun run release` 在 npm 的 `prepublishOnly` 重复验证阶段停滞，可先单独确认 `bun run verify` 成功，再在 PowerShell 中用 `$env:npm_config_ignore_scripts='true'; bun run release` 发布；该设置仅跳过已手动完成的重复生命周期验证，不应省略前一步。
+
 ## 📄 许可证
 
 MIT License
