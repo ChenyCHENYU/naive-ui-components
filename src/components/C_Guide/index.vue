@@ -43,6 +43,8 @@
     doneBtnText: '完成',
     nextBtnText: '下一步',
     prevBtnText: '上一步',
+    showSkipButton: true,
+    skipBtnText: '跳过引导',
     showProgress: true,
     keyboard: true,
     animate: true,
@@ -57,6 +59,7 @@
     start: []
     complete: []
     close: [currentStep: number]
+    skip: [currentStep: number]
     'step-change': [stepIndex: number, step: GuideStep]
     error: [error: unknown]
   }>()
@@ -154,7 +157,7 @@
             resolveGuideTarget(step.element))
       )
       if (!activeSteps.length) return
-      let reason: 'close' | 'complete' | 'dispose' = 'close'
+      let reason: 'close' | 'complete' | 'dispose' | 'skip' = 'close'
       let currentStepIndex = 0
       let finalized = false
       let transitioning = false
@@ -174,7 +177,10 @@
         if (reason === 'complete') {
           markCompleted()
           emit('complete')
-        } else if (reason === 'close') emit('close', currentStepIndex)
+        } else if (reason !== 'dispose') {
+          if (reason === 'skip') emit('skip', currentStepIndex)
+          emit('close', currentStepIndex)
+        }
       }
       const destroyGuide = (): void => {
         driverObj.destroy()
@@ -227,6 +233,17 @@
         onPopoverRender: popover => {
           applyPopoverTheme(popover)
           updateNavigation(popover)
+          if (props.showSkipButton && props.allowClose) {
+            const skipButton = document.createElement('button')
+            skipButton.type = 'button'
+            skipButton.className = 'c-guide-skip-btn'
+            skipButton.textContent = props.skipBtnText
+            skipButton.addEventListener('click', () => {
+              reason = 'skip'
+              destroyGuide()
+            })
+            popover.footer.prepend(skipButton)
+          }
         },
         onNextClick: advanceGuide,
         onPrevClick: () => {

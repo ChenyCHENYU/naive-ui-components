@@ -54,6 +54,19 @@
   .driver-popover-footer {
     margin-top: 18px;
     padding: 0;
+    gap: 8px;
+  }
+
+  .driver-popover-footer .c-guide-skip-btn {
+    flex-shrink: 0;
+    padding: 5px 0;
+    color: var(--c-guide-text-muted, #767676);
+    background: transparent;
+    border: none;
+    &:hover {
+      color: var(--c-guide-primary, #2080f0);
+      background: transparent;
+    }
   }
 
   .driver-popover-footer button {

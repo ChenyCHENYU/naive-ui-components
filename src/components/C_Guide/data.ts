@@ -14,6 +14,18 @@ const FIGURES: Record<GuideIllustration, string> = {
   tabs: '<rect x="28" y="24" width="204" height="56" rx="6" fill="currentColor" opacity=".07"/><rect x="40" y="16" width="58" height="26" rx="6" fill="currentColor" opacity=".2"/><path d="M50 29h25m10-3 6 6m0-6-6 6M112 29h38M166 29h38M44 56h100M44 67h144"/>',
   account:
     '<circle cx="60" cy="48" r="22" fill="currentColor" opacity=".12"/><circle cx="60" cy="41" r="6"/><path d="M49 60c0-13 22-13 22 0M94 40h40m-8-6 8 6-8 6M94 58h40m-32-6-8 6 8 6"/><rect x="154" y="20" width="62" height="56" rx="6" fill="currentColor" opacity=".09"/><path d="M168 36h34M168 48h34M168 60h22"/>',
+  overview:
+    '<rect x="28" y="14" width="204" height="68" rx="8" fill="currentColor" opacity=".07"/><path d="M42 30h76M42 42h52"/><rect x="42" y="54" width="48" height="16" rx="4"/><rect x="106" y="54" width="48" height="16" rx="4"/><rect x="170" y="54" width="48" height="16" rx="4"/>',
+  notification:
+    '<circle cx="130" cy="48" r="36" fill="currentColor" opacity=".07"/><path d="M109 63h42l-6-10V40a15 15 0 0 0-30 0v13l-6 10ZM124 71h12"/><circle cx="150" cy="26" r="8" fill="currentColor" opacity=".3"/>',
+  fullscreen:
+    '<rect x="50" y="14" width="160" height="68" rx="8" fill="currentColor" opacity=".07"/><path d="M66 40V28h20M174 28h20v12M66 56v12h20M174 68h20V56"/><rect x="106" y="34" width="48" height="28" rx="4"/>',
+  language:
+    '<rect x="54" y="18" width="72" height="54" rx="8" fill="currentColor" opacity=".1"/><rect x="134" y="24" width="72" height="54" rx="8" fill="currentColor" opacity=".07"/><path d="M70 34h40M90 27v7M79 34c2 15 9 22 27 28M101 34c-3 15-13 24-28 29M151 64l16-27 16 27M158 53h18"/>',
+  theme:
+    '<circle cx="78" cy="48" r="15" fill="currentColor" opacity=".12"/><path d="M78 24v-6M78 78v-6M54 48h-6M108 48h-6M61 31l-5-5M100 70l-5-5M61 65l-5 5M100 26l-5 5M168 22a26 26 0 1 0 28 42 26 26 0 0 1-28-42Z"/>',
+  settings:
+    '<rect x="44" y="14" width="172" height="68" rx="8" fill="currentColor" opacity=".07"/><path d="M62 31h136M62 48h136M62 65h136"/><circle cx="94" cy="31" r="5" fill="currentColor"/><circle cx="168" cy="48" r="5" fill="currentColor"/><circle cx="124" cy="65" r="5" fill="currentColor"/>',
 }
 
 /** 判断目标矩形是否与当前视口相交。 */

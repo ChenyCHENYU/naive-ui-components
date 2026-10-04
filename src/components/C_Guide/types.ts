@@ -6,7 +6,17 @@
  */
 
 /** 通用功能示意图，不包含宿主业务数据。 */
-export type GuideIllustration = 'navigation' | 'search' | 'tabs' | 'account'
+export type GuideIllustration =
+  | 'navigation'
+  | 'search'
+  | 'tabs'
+  | 'account'
+  | 'overview'
+  | 'notification'
+  | 'fullscreen'
+  | 'language'
+  | 'theme'
+  | 'settings'
 
 /** 可使用选择器、真实元素或动态解析函数定位目标。 */
 export type GuideTarget = string | Element | (() => Element | null | undefined)
@@ -73,6 +83,10 @@ export interface GuideProps {
   nextBtnText?: string
   /** 上一步按钮文字 */
   prevBtnText?: string
+  /** 是否显示跳过按钮；allowClose 为 false 时不显示，默认 true。 */
+  showSkipButton?: boolean
+  /** 跳过按钮文字，默认“跳过引导”。 */
+  skipBtnText?: string
   /** 是否显示进度条 */
   showProgress?: boolean
   /** 是否启用键盘导航（← → Esc） */

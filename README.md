@@ -134,7 +134,7 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
-在 `NConfigProvider` 内会自动跟随亮暗主题和主色。目标支持选择器、元素或解析函数；默认跳过不可见目标，不传目标可展示居中步骤。引擎在打开时加载。启用 `persistence` 后，只有完成引导才记住状态；点击入口仍可重看。通过 `GuideExpose` 可调用 `startGuide(force?)`、`stopGuide()`、`isCompleted()` 和 `resetCompleted()`，宿主可在路由切换时主动停止。
+在 `NConfigProvider` 内会自动跟随亮暗主题和主色。目标支持选择器、元素或解析函数；默认跳过不可见目标，不传目标可展示居中步骤。引擎在打开时加载。启用 `persistence` 后，只有完成引导才记住状态；点击入口仍可重看。每一步默认显示“跳过引导”，跳过会发出 `skip` 和 `close` 事件，不记录为完成；可用 `showSkipButton` 和 `skipBtnText` 控制入口与文案。通过 `GuideExpose` 可调用 `startGuide(force?)`、`stopGuide()`、`isCompleted()` 和 `resetCompleted()`，宿主可在路由切换时主动停止。
 
 ### C_Form / C_Table 推荐用法
 

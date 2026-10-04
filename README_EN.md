@@ -134,7 +134,7 @@ Provide targets and steps; the component owns its theme, optional SVG illustrati
 </template>
 ```
 
-Inside `NConfigProvider`, the popover follows its light/dark theme and primary color. Targets accept selectors, elements, or resolver functions; invisible targets are skipped by default and omitting a target creates a centered step. The engine loads when opened. With `persistence` enabled, only completion is remembered; the trigger always allows replay. `GuideExpose` provides `startGuide(force?)`, `stopGuide()`, `isCompleted()`, and `resetCompleted()` for host lifecycle integration.
+Inside `NConfigProvider`, the popover follows its light/dark theme and primary color. Targets accept selectors, elements, or resolver functions; invisible targets are skipped by default and omitting a target creates a centered step. The engine loads when opened. With `persistence` enabled, only completion is remembered; the trigger always allows replay. Every step shows a skip button by default. Skipping emits `skip` and `close` without recording completion; configure it with `showSkipButton` and `skipBtnText`. `GuideExpose` provides `startGuide(force?)`, `stopGuide()`, `isCompleted()`, and `resetCompleted()` for host lifecycle integration.
 
 ### Recommended C_Form / C_Table setup
 

@@ -33,6 +33,8 @@
     :steps="steps"
     :persistence="{ enabled: true, keyPrefix: 'workspace-v2' }"
     :theme="{ overlayOpacity: 0.4 }"
+    skip-btn-text="暂时跳过"
+    show-skip-button
     skip-missing-elements
   />
 </template>
