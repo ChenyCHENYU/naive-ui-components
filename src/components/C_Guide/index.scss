@@ -1,0 +1,11 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-10-04
+ * @Description: 引导入口键盘焦点样式，不依赖宿主样式
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+:deep(.n-button:focus-visible) {
+  outline: 2px solid var(--c-primary, #2080f0);
+  outline-offset: 4px;
+  border-radius: 4px;
+}

@@ -105,6 +105,37 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 // 完整模式也可显式使用 C_Form/full.css、C_Table/full.css
 ```
 
+### C_Guide 配置引导
+
+项目只需要提供目标和步骤，组件内置主题、可选 SVG 示意图及退出清理，不依赖项目的路由或 Store：
+
+```vue
+<script setup lang="ts">
+  import {
+    C_Guide,
+    type GuideStep,
+  } from '@robot-admin/naive-ui-components/C_Guide'
+  import '@robot-admin/naive-ui-components/C_Guide/style.css'
+
+  const steps: GuideStep[] = [
+    {
+      element: '[data-guide="search"]',
+      popover: {
+        title: '搜索',
+        description: '快速查找功能。',
+        illustration: 'search',
+      },
+    },
+  ]
+</script>
+
+<template>
+  <C_Guide :steps="steps" />
+</template>
+```
+
+在 `NConfigProvider` 内会自动跟随亮暗主题和主色。目标支持选择器、元素或解析函数；默认跳过不可见目标，不传目标可展示居中步骤。引擎在打开时加载。启用 `persistence` 后，只有完成引导才记住状态；点击入口仍可重看。通过 `GuideExpose` 可调用 `startGuide(force?)`、`stopGuide()`、`isCompleted()` 和 `resetCompleted()`，宿主可在路由切换时主动停止。
+
 ### C_Form / C_Table 推荐用法
 
 推荐使用类型助手和绑定助手：业务模型只声明一次，字段路径、字段值、列 key、保存回调和实例方法即可保持同一套类型推导。字段支持 `profile.name`、`contacts.0.email` 这类嵌套路径。

@@ -5,15 +5,31 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
  */
 
+/** 通用功能示意图，不包含宿主业务数据。 */
+export type GuideIllustration = 'navigation' | 'search' | 'tabs' | 'account'
+
+/** 可使用选择器、真实元素或动态解析函数定位目标。 */
+export type GuideTarget = string | Element | (() => Element | null | undefined)
+
+/** 引导实例公开方法，用于宿主在路由变化时主动停止等场景。 */
+export interface GuideExpose {
+  startGuide: (force?: boolean) => Promise<void>
+  stopGuide: () => void
+  resetCompleted: () => void
+  isCompleted: () => boolean
+}
+
 /** 引导步骤定义 */
 export interface GuideStep {
-  /** 目标 DOM 选择器 */
-  element: string
+  /** 目标元素；不传时可展示居中的欢迎步骤。 */
+  element?: GuideTarget
   /** 弹出层配置 */
   popover: {
     title: string
     description: string
     side?: 'top' | 'right' | 'bottom' | 'left'
+    /** 可选的轻量示意图，使用组件主题色。 */
+    illustration?: GuideIllustration
   }
   /** 步骤所属分组（用于步骤分组展示） */
   group?: string
@@ -59,12 +75,14 @@ export interface GuideProps {
   prevBtnText?: string
   /** 是否显示进度条 */
   showProgress?: boolean
-  /** 是否启用键盘导航（← → Enter Esc） */
+  /** 是否启用键盘导航（← → Esc） */
   keyboard?: boolean
   /** 是否启用动画 */
   animate?: boolean
   /** 是否允许点击遮罩关闭 */
   allowClose?: boolean
+  /** 自动跳过不存在或不可见的目标，默认 true。 */
+  skipMissingElements?: boolean
   /** 主题配置 */
   theme?: GuideTheme
   /** 持久化配置 */

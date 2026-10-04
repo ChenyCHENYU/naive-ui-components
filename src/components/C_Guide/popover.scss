@@ -1,0 +1,116 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-10-04
+ * @FilePath: \naive-ui-components\src\components\C_Guide\popover.scss
+ * @Description: 组件库通用引导主题，弹层由 Driver.js 挂载到 body
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+.driver-popover.c-guide-popover {
+  box-sizing: border-box;
+  width: 328px;
+  min-width: 0;
+  max-width: calc(100vw - 24px);
+  padding: 20px;
+  color: var(--c-guide-text, var(--c-text-1, #262626));
+  background: var(--c-guide-bg, var(--c-bg-surface, #fff));
+  border: 1px solid var(--c-guide-border, var(--c-border, #e5e7eb));
+  border-radius: var(--c-guide-radius, 14px);
+  box-shadow: var(--c-shadow-lg, 0 12px 32px #0003);
+  font-family: inherit;
+
+  .driver-popover-title {
+    padding-right: 20px;
+    color: var(--c-guide-text, var(--c-text-1, #262626));
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.5;
+  }
+
+  .driver-popover-description {
+    color: var(--c-guide-text-secondary, var(--c-text-2, #525252));
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .c-guide-figure {
+    padding: 4px 0;
+    color: var(--c-guide-primary, var(--c-primary, #2080f0));
+    background: color-mix(
+      in srgb,
+      var(--c-guide-primary, var(--c-primary, #2080f0)) 8%,
+      var(--c-guide-bg, var(--c-bg-surface, #fff))
+    );
+    border-radius: 9px;
+    svg {
+      display: block;
+      width: 100%;
+      height: 96px;
+    }
+  }
+
+  .c-guide-copy {
+    margin: 14px 0 0;
+  }
+  .driver-popover-footer {
+    margin-top: 18px;
+    padding: 0;
+  }
+
+  .driver-popover-footer button {
+    min-height: 32px;
+    padding: 5px 12px;
+    color: var(--c-guide-text, var(--c-text-1, #262626));
+    background: var(--c-guide-bg, var(--c-bg-surface, #fff));
+    border: 1px solid var(--c-guide-border, var(--c-border, #e5e7eb));
+    border-radius: 7px;
+    font-size: 12px;
+    text-shadow: none;
+    &:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--c-guide-primary, #2080f0) 8%,
+        var(--c-guide-bg, #fff)
+      );
+    }
+    &:focus-visible {
+      outline: 2px solid var(--c-guide-primary, var(--c-primary, #2080f0));
+      outline-offset: 2px;
+    }
+  }
+
+  .driver-popover-footer .driver-popover-next-btn {
+    color: #fff;
+    background: var(--c-guide-primary, var(--c-primary, #2080f0));
+    border-color: var(--c-guide-primary, var(--c-primary, #2080f0));
+    &:hover {
+      background: var(--c-guide-primary-hover, #4098fc);
+    }
+  }
+
+  .driver-popover-close-btn {
+    top: 14px;
+    right: 12px;
+    color: var(--c-guide-text-muted, var(--c-text-3, #a3a3a3));
+    &:hover,
+    &:focus {
+      color: var(--c-guide-text, var(--c-text-1, #262626));
+    }
+  }
+
+  .driver-popover-arrow-side-left {
+    border-left-color: var(--c-guide-bg, var(--c-bg-surface, #fff));
+  }
+  .driver-popover-arrow-side-right {
+    border-right-color: var(--c-guide-bg, var(--c-bg-surface, #fff));
+  }
+  .driver-popover-arrow-side-top {
+    border-top-color: var(--c-guide-bg, var(--c-bg-surface, #fff));
+  }
+  .driver-popover-arrow-side-bottom {
+    border-bottom-color: var(--c-guide-bg, var(--c-bg-surface, #fff));
+  }
+}

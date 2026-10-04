@@ -12,4 +12,7 @@ export type {
   GuideTheme,
   GuidePersistence,
   GuideProps,
+  GuideIllustration,
+  GuideTarget,
+  GuideExpose,
 } from './types'

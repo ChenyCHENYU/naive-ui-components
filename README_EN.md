@@ -105,6 +105,37 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 // Full mode is also available as C_Form/full.css and C_Table/full.css.
 ```
 
+### Configure C_Guide
+
+Provide targets and steps; the component owns its theme, optional SVG illustrations, and cleanup without depending on a host router or store:
+
+```vue
+<script setup lang="ts">
+  import {
+    C_Guide,
+    type GuideStep,
+  } from '@robot-admin/naive-ui-components/C_Guide'
+  import '@robot-admin/naive-ui-components/C_Guide/style.css'
+
+  const steps: GuideStep[] = [
+    {
+      element: '[data-guide="search"]',
+      popover: {
+        title: 'Search',
+        description: 'Find a feature.',
+        illustration: 'search',
+      },
+    },
+  ]
+</script>
+
+<template>
+  <C_Guide :steps="steps" />
+</template>
+```
+
+Inside `NConfigProvider`, the popover follows its light/dark theme and primary color. Targets accept selectors, elements, or resolver functions; invisible targets are skipped by default and omitting a target creates a centered step. The engine loads when opened. With `persistence` enabled, only completion is remembered; the trigger always allows replay. `GuideExpose` provides `startGuide(force?)`, `stopGuide()`, `isCompleted()`, and `resetCompleted()` for host lifecycle integration.
+
 ### Recommended C_Form / C_Table setup
 
 Declare the business model once and keep nested field paths, values, column keys, callbacks, and exposed methods type-safe:
