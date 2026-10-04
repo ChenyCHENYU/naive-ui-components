@@ -676,3 +676,7 @@ MIT License
 - [Robot Admin 在线体验](https://www.robotadmin.cn)
 - [GitHub](https://github.com/ChenyCHENYU/naive-ui-components)
 - [NPM](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
+
+### C_Login 扩展表单
+
+`password-fields` 插槽位于密码输入框下方，提供 `username`、`loading`，可配置工作空间或其他业务字段。`username-change` 在初始预填、恢复记住的账号和输入变化时同步触发。宿主通过 `submitDisabled` 阻止扩展字段尚未就绪时的按钮与回车提交；`loading` 期间凭据输入禁用。公司查询、成员关系和权限始终由宿主认证服务处理，组件不保存业务上下文。

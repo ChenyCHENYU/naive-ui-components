@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.13.2
+
+### Patch Changes
+
+- C_Login 增加通用密码表单扩展插槽、账号变化事件和提交禁用状态，支持宿主在登录前配置业务字段。
+
 ## 0.13.1
 
 ### Patch Changes

@@ -616,3 +616,7 @@ MIT License
 - [Robot Admin Live Demo](https://www.robotadmin.cn)
 - [GitHub](https://github.com/ChenyCHENYU/naive-ui-components)
 - [NPM](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
+
+### C_Login form extension
+
+The `password-fields` slot appears below the password field and exposes `username` and `loading`. The synchronous `username-change` event covers initial defaults, remembered usernames and input changes. Use `submitDisabled` to block clicks and Enter while application fields are incomplete. Credential inputs are disabled while `loading`. Workspace discovery and authorization remain in the host application.

@@ -48,6 +48,7 @@
       >
         <NInput
           v-model:value="passwordForm.username"
+          :disabled="props.loading"
           :placeholder="t('cl_username_ph', '请输入用户名')"
           clearable
         >
@@ -67,6 +68,7 @@
       >
         <NInput
           v-model:value="passwordForm.password"
+          :disabled="props.loading"
           type="password"
           show-password-on="click"
           :placeholder="t('cl_password_ph', '请输入密码')"
@@ -82,6 +84,13 @@
           </template>
         </NInput>
       </NFormItem>
+
+      <!-- 宿主扩展字段只获得账号与忙碌状态，不暴露密码。 -->
+      <slot
+        name="password-fields"
+        :username="passwordForm.username"
+        :loading="props.loading"
+      />
 
       <!-- 记住我 + 忘记密码 -->
       <div
@@ -195,7 +204,9 @@
       block
       :loading="props.loading"
       :disabled="
-        activeTab === 'password' && feat.captchaVerify && !captchaValid
+        props.loading ||
+        props.submitDisabled ||
+        (activeTab === 'password' && feat.captchaVerify && !captchaValid)
       "
       class="c-login__submit-btn"
       @click="
@@ -556,6 +567,7 @@
     (e: 'register-submit', data: RegisterFormData): void
     (e: 'register-send-code', phone: string): void
     (e: 'captcha-visible-change', visible: boolean): void
+    (e: 'username-change', username: string): void
   }>()
 
   // ===== 合并 Props（填充默认值） =====
@@ -599,6 +611,13 @@
     ],
   }
 
+  // 初始预填、记住的账号和每次输入使用同一事件，宿主可同步扩展字段。
+  watch(
+    () => passwordForm.username,
+    username => emit('username-change', username),
+    { immediate: true, flush: 'sync' }
+  )
+
   // ===== 记住我 =====
   const rememberMe = ref(false)
 
@@ -620,11 +639,23 @@
 
   // ===== 密码登录提交 =====
   const handlePasswordSubmit = async () => {
+    if (
+      props.loading ||
+      props.submitDisabled ||
+      (feat.value.captchaVerify && !captchaValid.value)
+    )
+      return
     try {
       await passwordFormRef.value?.validate()
     } catch {
       return // 校验失败，表单会显示行内错误提示
     }
+    if (
+      props.loading ||
+      props.submitDisabled ||
+      (feat.value.captchaVerify && !captchaValid.value)
+    )
+      return
     emit('submit', {
       ...passwordForm,
       ...(captchaValid.value
@@ -693,6 +724,7 @@
   }
 
   const handleCaptchaSubmit = async () => {
+    if (props.loading || props.submitDisabled) return
     try {
       await captchaFormRef.value?.validate()
     } catch {

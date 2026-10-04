@@ -77,6 +77,8 @@ export interface LoginProps {
   storageKey?: string
   /** 外部传入的 loading 状态 */
   loading?: boolean
+  /** 宿主扩展字段未就绪时阻止按钮和回车提交 */
+  submitDisabled?: boolean
   /** 表单默认用户名（Demo / 预填场景） */
   defaultUsername?: string
   /** 表单默认密码（Demo / 预填场景） */
