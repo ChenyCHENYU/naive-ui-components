@@ -3,17 +3,17 @@
  */
 
 .c-audio-player {
-  --ap-bg: var(--card-color);
-  --ap-border: var(--border-color);
-  --ap-accent: var(--primary-color);
-  --ap-text: var(--text-color-1);
-  --ap-text-sub: var(--text-color-3);
+  --ap-bg: var(--c-bg-card, var(--card-color, #fff));
+  --ap-border: var(--c-border, var(--border-color, #e5e7eb));
+  --ap-accent: var(--c-primary, var(--primary-color, #2080f0));
+  --ap-text: var(--c-text-1, var(--text-color-1, #262626));
+  --ap-text-sub: var(--c-text-3, var(--text-color-3, #a3a3a3));
   --ap-progress-bg: color-mix(
     in srgb,
-    var(--primary-color) 15%,
-    var(--border-color)
+    var(--c-primary, var(--primary-color, #2080f0)) 15%,
+    var(--c-border, var(--border-color, #e5e7eb))
   );
-  --ap-progress-fill: var(--primary-color);
+  --ap-progress-fill: var(--c-primary, var(--primary-color, #2080f0));
 
   display: flex;
   flex-direction: column;

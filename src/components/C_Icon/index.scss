@@ -2,6 +2,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  vertical-align: middle;
   user-select: none;
   transition: all 0.2s ease-in-out;
 
@@ -29,12 +32,9 @@
     cursor: wait;
   }
 
-  &--error {
-    opacity: 0.5;
-  }
-
   &__loading {
-    position: relative;
+    position: absolute;
+    inset: 0;
   }
 
   &__spinner {

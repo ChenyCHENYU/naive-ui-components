@@ -177,7 +177,14 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+  import {
+    computed,
+    onBeforeUnmount,
+    onDeactivated,
+    onMounted,
+    ref,
+    watch,
+  } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import {
     DEFAULT_AUDIO_PLAYER_PROPS,
@@ -229,7 +236,7 @@
   )
   const isPlaying = ref(false)
   const currentTime = ref(0)
-  const totalDuration = ref(0)
+  const totalDuration = ref(props.tracks[activeIndex.value]?.duration ?? 0)
   const volume = ref(70)
   const prevVolume = ref(70)
   const playlistVisible = ref(props.showPlaylist)
@@ -486,6 +493,13 @@
       audio.removeEventListener('ended', onEnded)
       audio = null
     }
+  })
+
+  // KeepAlive 隐藏视图时停止播放，并使仍在等待的 play() 结果失效。
+  onDeactivated(() => {
+    playVersion += 1
+    audio?.pause()
+    isPlaying.value = false
   })
 </script>
 

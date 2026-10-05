@@ -13,6 +13,7 @@
   >
     <template #trigger>
       <NButton
+        class="c-guide-trigger"
         text
         :loading="loading"
         :aria-label="props.triggerTooltip"

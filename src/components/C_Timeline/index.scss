@@ -4,18 +4,22 @@
 .c-timeline {
   // ========== CSS 变量 ==========
   --tl-bg: transparent;
-  --tl-text-primary: var(--app-text-primary);
-  --tl-text-secondary: var(--text-color-2);
-  --tl-text-time: var(--text-color-3);
-  --tl-line-color: color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
+  --tl-text-primary: var(--c-text-1, var(--text-color-1, #262626));
+  --tl-text-secondary: var(--c-text-2, var(--text-color-2, #525252));
+  --tl-text-time: var(--c-text-3, var(--text-color-3, #a3a3a3));
+  --tl-line-color: color-mix(
+    in srgb,
+    var(--c-primary, var(--primary-color, #2080f0)) 20%,
+    var(--c-border, var(--border-color, #e5e7eb))
+  );
   --tl-line-width: 2px;
   // 可被 size 修饰符覆盖的动态变量
   --tl-dot-size: 12px;
   --tl-icon-size: 32px;
-  --tl-item-gap: 0px;       // 垂直模式：item 之间的间距由 line 高度控制
+  --tl-item-gap: 0px; // 垂直模式：item 之间的间距由 line 高度控制
   --tl-track-spacing: 24px; // 垂直模式：line 占据的最小高度（等效 item 间距）
-  --tl-track-width: 48px;   // 垂直模式：轨道列宽(含左右 padding)
-  --tl-content-gap: 12px;   // 轨道和内容之间的间距
+  --tl-track-width: 48px; // 垂直模式：轨道列宽(含左右 padding)
+  --tl-content-gap: 12px; // 轨道和内容之间的间距
   // 固定基础常量
   --tl-dot-size-sm: 8px;
   --tl-dot-size-lg: 16px;
@@ -25,13 +29,13 @@
   --tl-track-width-lg: 60px;
   --tl-track-spacing-sm: 16px;
   --tl-track-spacing-lg: 32px;
-  --tl-dot-default: var(--text-color-3);
+  --tl-dot-default: var(--c-text-3, var(--text-color-3, #a3a3a3));
   --tl-dot-success: #18a058;
   --tl-dot-warning: #f0a020;
   --tl-dot-error: #d03050;
   --tl-dot-info: #2080f0;
-  --tl-icon-bg: var(--card-color);
-  --tl-content-bg: var(--card-color);
+  --tl-icon-bg: var(--c-bg-card, var(--card-color, #fff));
+  --tl-content-bg: var(--c-bg-card, var(--card-color, #fff));
   --tl-content-radius: 8px;
   --tl-content-padding: 12px 16px;
   --tl-tag-radius: 4px;
@@ -96,7 +100,7 @@
       // 圆点在 icon-size 高度范围内垂直居中，使其与首行文字对齐
       margin-top: calc((var(--tl-icon-size) - var(--tl-dot-size)) / 2);
       background: var(--tl-dot-default);
-      border: 2px solid var(--card-color);
+      border: 2px solid var(--c-bg-card, var(--card-color, #fff));
       box-shadow: 0 0 0 2px var(--tl-dot-default);
     }
 
@@ -105,7 +109,9 @@
       height: var(--tl-icon-size);
       background: var(--tl-icon-bg);
       border: 1.5px solid var(--tl-line-color);
-      box-shadow: 0 0 0 3px var(--card-color), 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow:
+        0 0 0 3px var(--c-bg-card, var(--card-color, #fff)),
+        0 2px 8px rgba(0, 0, 0, 0.08);
       font-size: calc(var(--tl-icon-size) * 0.5);
     }
   }
@@ -158,13 +164,13 @@
     flex-direction: row;
     overflow-x: auto;
     scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
+    scrollbar-color: var(--c-border, var(--border-color, #e5e7eb)) transparent;
 
     &::-webkit-scrollbar {
       height: 4px;
     }
     &::-webkit-scrollbar-thumb {
-      background: var(--border-color);
+      background: var(--c-border, var(--border-color, #e5e7eb));
       border-radius: 2px;
     }
   }
@@ -204,7 +210,7 @@
       width: var(--tl-dot-size);
       height: var(--tl-dot-size);
       background: var(--tl-dot-default);
-      border: 2px solid var(--card-color);
+      border: 2px solid var(--c-bg-card, var(--card-color, #fff));
       box-shadow: 0 0 0 2px var(--tl-dot-default);
     }
 
@@ -213,7 +219,9 @@
       height: var(--tl-icon-size);
       background: var(--tl-icon-bg);
       border: 1.5px solid var(--tl-line-color);
-      box-shadow: 0 0 0 3px var(--card-color), 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow:
+        0 0 0 3px var(--c-bg-card, var(--card-color, #fff)),
+        0 2px 8px rgba(0, 0, 0, 0.08);
       font-size: calc(var(--tl-icon-size) * 0.5);
     }
   }
@@ -279,7 +287,11 @@
     font-size: 11px;
     color: var(--tl-text-time);
     white-space: nowrap;
-    background: color-mix(in srgb, var(--border-color) 40%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--c-border, var(--border-color, #e5e7eb)) 40%,
+      transparent
+    );
     border-radius: 4px;
     line-height: 1.6;
   }
@@ -297,16 +309,25 @@
     font-size: 11px;
     font-weight: 500;
     border-radius: var(--tl-tag-radius);
-    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-color));
-    color: var(--primary-color);
-    border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--primary-color, #2080f0)) 10%,
+      var(--c-bg-card, var(--card-color, #fff))
+    );
+    color: var(--c-primary, var(--primary-color, #2080f0));
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--c-primary, var(--primary-color, #2080f0)) 20%,
+        transparent
+      );
   }
 
   &__content {
     padding: var(--tl-content-padding);
     background: var(--tl-content-bg);
     border-radius: var(--tl-content-radius);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--c-border, var(--border-color, #e5e7eb));
     font-size: 13px;
     color: var(--tl-text-secondary);
     line-height: 1.7;
@@ -314,7 +335,9 @@
 
   &__detail {
     overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
+    transition:
+      max-height 0.3s ease,
+      opacity 0.3s ease;
 
     &.is-collapsed {
       max-height: 0;
@@ -332,7 +355,7 @@
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    color: var(--primary-color);
+    color: var(--c-primary, var(--primary-color, #2080f0));
     cursor: pointer;
     user-select: none;
     transition: opacity 0.2s;
@@ -346,11 +369,17 @@
       outline-offset: 2px;
     }
 
-    &:hover { opacity: 0.75; }
+    &:hover {
+      opacity: 0.75;
+    }
 
-    .collapse-arrow { transition: transform 0.25s; }
+    .collapse-arrow {
+      transition: transform 0.25s;
+    }
 
-    &.is-expanded .collapse-arrow { transform: rotate(180deg); }
+    &.is-expanded .collapse-arrow {
+      transform: rotate(180deg);
+    }
   }
 
   // ---- Pending ----
@@ -368,7 +397,8 @@
       flex-shrink: 0;
       border-radius: 50%;
       background: var(--tl-dot-info);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tl-dot-info) 20%, transparent);
+      box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--tl-dot-info) 20%, transparent);
       animation: tl-pulse 1.4s infinite;
     }
   }
@@ -381,7 +411,13 @@
 
 // ========== 动画 ==========
 @keyframes tl-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50%       { opacity: 1;   transform: scale(1.15); }
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
-

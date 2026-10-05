@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from "./leaflet-assets.js";
+import { assertComponentStyleBoundary } from './build/style-boundary.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +70,9 @@ for (const filename of originalCssFiles) {
     componentName,
     fs.readFileSync(path.join(distDir, filename), 'utf8')
   )
+}
+for (const [componentName, css] of componentCssSources) {
+  assertComponentStyleBoundary(css, componentName)
 }
 
 const vendorStyles = {

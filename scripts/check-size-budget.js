@@ -6,7 +6,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const distDir = path.join(root, 'dist')
 
 const budgets = {
-  'style.css': { min: 430 * 1024, max: 525 * 1024 },
+  // 组件自身的 scoped 工具类与图标随包发布，免除宿主生成约束。
+  'style.css': { min: 430 * 1024, max: 560 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
   'C_Table.base.css': { min: 30 * 1024, max: 65 * 1024 },

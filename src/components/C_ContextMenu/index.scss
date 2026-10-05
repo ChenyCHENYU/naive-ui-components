@@ -3,25 +3,33 @@
 
 .c-context-menu {
   // ========== CSS 变量（基于项目主题变量，自动适配明暗） ==========
-  --ctx-bg: var(--card-color);
+  --ctx-bg: var(--c-bg-card, #fff);
   --ctx-bg-blur: 12px;
-  --ctx-border: var(--border-color);
+  --ctx-border: var(--c-border, #e5e7eb);
   --ctx-radius: 10px;
   --ctx-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   --ctx-padding: 6px;
-  --ctx-text-primary: var(--app-text-primary);
-  --ctx-text-secondary: var(--text-color-3);
+  --ctx-text-primary: var(--c-text-1, #262626);
+  --ctx-text-secondary: var(--c-text-3, #a3a3a3);
   --ctx-text-danger: #d03050;
-  --ctx-text-disabled: var(--text-color-3);
+  --ctx-text-disabled: var(--c-text-3, #a3a3a3);
   --ctx-item-height: 32px;
   --ctx-item-padding: 0 12px;
   --ctx-item-radius: 6px;
-  --ctx-item-hover-bg: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  --ctx-item-active-bg: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  --ctx-item-hover-bg: color-mix(
+    in srgb,
+    var(--c-primary, #2080f0) 8%,
+    transparent
+  );
+  --ctx-item-active-bg: color-mix(
+    in srgb,
+    var(--c-primary, #2080f0) 14%,
+    transparent
+  );
   --ctx-icon-size: 16px;
   --ctx-icon-gap: 10px;
-  --ctx-shortcut-color: var(--text-color-3);
-  --ctx-divider-color: var(--border-color);
+  --ctx-shortcut-color: var(--c-text-3, #a3a3a3);
+  --ctx-divider-color: var(--c-border, #e5e7eb);
   --ctx-divider-margin: 4px 8px;
 
   position: fixed;

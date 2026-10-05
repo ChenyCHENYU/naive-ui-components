@@ -1,125 +1,101 @@
 <!--
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2025-05-14
- * @Description: 支持多种图标使用方式，默认使用Iconify图标，统一错误处理
- * @Migration: naive-ui-components 组件库迁移版本
- * Copyright (c) 2025 by CHENY, All Rights Reserved.
+ * @Date: 2026-10-06
+ * @Description: 多来源图标，具备请求取消、真实加载状态及离线错误回退
+ * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div
+  <span
     ref="iconRef"
     class="c-icon"
     :class="[
       `c-icon--${type}`,
       {
         'c-icon--clickable': clickable,
-        'c-icon--loading': loading,
+        'c-icon--loading': loading || pending,
         'c-icon--error': hasError,
       },
     ]"
     :style="rootStyle"
-    :title="title || undefined"
+    :title="title || (hasError ? errorMessage : undefined)"
     :aria-label="ariaLabel || iconDisplayName"
+    :aria-busy="loading || pending || undefined"
     :role="clickable ? 'button' : 'img'"
-    :tabindex="clickable ? 0 : -1"
+    :tabindex="clickable ? 0 : undefined"
     @click="handleClick"
     @keydown="handleKeydown"
   >
-    <!-- 方式1：Iconify图标（默认方式） -->
     <Icon
-      v-if="
-        (type === 'iconify' || !type) && !hasError && typeof name === 'string'
-      "
-      :icon="name"
-      :width="size"
-      :height="size"
+      v-if="type === 'iconify' && !hasError"
+      :icon="iconData || OFFLINE_ICON"
+      :style="iconStyle"
       :color="color"
-      :style="iconStyle"
-      @error="() => handleError('iconify', 'Iconify图标加载失败')"
     />
-
-    <!-- 方式2：UnoCSS图标 -->
-    <div
-      v-else-if="type === 'unocss' && !hasError && typeof name === 'string'"
-      :class="[name, iconClasses]"
+    <span
+      v-else-if="type === 'unocss' && !hasError"
+      ref="unoRef"
+      :class="[name, customClass]"
       :style="iconStyle"
-      @error="() => handleError('unocss', 'UnoCSS图标渲染失败')"
     />
-
-    <!-- 方式3：组件挂载方式 -->
     <component
-      v-else-if="type === 'component' && resolvedComponent && !hasError"
       :is="resolvedComponent"
+      v-else-if="type === 'component' && resolvedComponent && !hasError"
       :style="iconStyle"
       v-bind="componentProps"
-      @error="() => handleError('component', '组件图标渲染失败')"
     />
-
-    <!-- 方式4：SVG路径方式 -->
     <svg
-      v-else-if="type === 'svg' && svgPath && !hasError"
-      :width="size"
-      :height="size"
+      v-else-if="type === 'svg' && !hasError"
       :viewBox="viewBox"
       :style="iconStyle"
       :fill="color"
-      @error="() => handleError('svg', 'SVG图标渲染失败')"
+      aria-hidden="true"
     >
-      <path
-        :d="svgPath"
-        :fill="color"
-      />
+      <path :d="svgPath" />
     </svg>
-
-    <!-- 方式5：图片方式 - 修复异步加载 -->
     <img
-      v-else-if="type === 'image' && imageSrc && !hasError && !imageLoading"
+      v-else-if="type === 'image' && imageSrc && !hasError"
+      :key="imageSrc"
       :src="imageSrc"
       :alt="alt || iconDisplayName"
-      :width="size"
-      :height="size"
-      style="display: inline-block; vertical-align: middle"
-      @error="() => handleError('image', '图片图标加载失败')"
-      @load="handleImageLoad"
+      :style="iconStyle"
+      @error="fail('image', '图片图标加载失败')"
+      @load="complete"
     />
-
-    <!-- 图片加载状态 -->
-    <div
-      v-if="(loading || imageLoading) && !hasError"
+    <Icon
+      v-else
+      :icon="fallbackData || OFFLINE_ICON"
+      :style="iconStyle"
+      :color="color"
+    />
+    <span
+      v-if="loading"
       class="c-icon__loading"
       :style="iconStyle"
+      aria-hidden="true"
     >
-      <div class="c-icon__spinner" />
-    </div>
-
-    <!-- 统一错误状态显示 -->
-    <Icon
-      v-else-if="hasError && fallbackIcon"
-      :icon="fallbackIcon"
-      :width="size"
-      :height="size"
-      :color="color"
-      :style="iconStyle"
-    />
-    <div
-      v-else-if="hasError"
-      class="c-icon__error"
-      :style="iconStyle"
-      :title="`图标解析失败: ${iconDisplayName} (${errorMessage})`"
-    >
-      ⚠️
-    </div>
-  </div>
+      <span class="c-icon__spinner" />
+    </span>
+  </span>
 </template>
 
 <script lang="ts" setup>
-  import { Icon } from '@iconify/vue'
+  import { Icon, getIcon, loadIcons, type IconifyIcon } from '@iconify/vue'
   import { useImage } from '../../hooks/useImage'
-  import { computed, nextTick, onMounted, readonly, ref, watch } from 'vue'
+  import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    readonly,
+    ref,
+    shallowRef,
+    watch,
+  } from 'vue'
+  import { normalizeIconSize, OFFLINE_ICON } from './core'
   import type { IconProps } from './types'
 
+  defineOptions({ name: 'C_Icon' })
   const props = withDefaults(defineProps<IconProps>(), {
-    name: undefined,
     type: 'iconify',
     color: 'currentColor',
     size: 18,
@@ -129,6 +105,7 @@
     clickable: false,
     loading: false,
     fallbackIcon: '',
+    loadTimeout: 5000,
     title: '',
     ariaLabel: '',
     customClass: '',
@@ -136,237 +113,263 @@
     flip: undefined,
     componentProps: () => ({}),
   })
-
   const emit = defineEmits<{
     click: [event: MouseEvent | KeyboardEvent]
     error: [type: string, error?: unknown]
     load: []
   }>()
-
   const iconRef = ref<HTMLElement>()
+  const unoRef = ref<HTMLElement>()
+  const iconData = shallowRef<IconifyIcon | null>(null)
+  const fallbackData = shallowRef<IconifyIcon | null>(null)
   const hasError = ref(false)
   const errorMessage = ref('')
-  const imageSrc = ref<string>('') // 存储异步加载的图片URL
-  const imageLoading = ref(false) // 图片加载状态
-
-  // 计算根元素样式
+  const imageSrc = ref('')
+  const pending = ref(false)
+  let mounted = false
+  let generation = 0
+  let imageTimer: ReturnType<typeof setTimeout> | undefined
+  const cleanups = new Set<() => void>()
+  const cssSize = computed(() => normalizeIconSize(props.size))
   const rootStyle = computed(() => ({
-    fontSize: typeof props.size === 'number' ? `${props.size}px` : props.size,
+    fontSize: cssSize.value,
     color: props.color,
-    cursor: props.clickable ? 'pointer' : 'inherit',
+    width: cssSize.value,
+    height: cssSize.value,
   }))
-
-  // 计算图标样式
-  const iconStyle = computed(() => {
-    const style: Record<string, string> = {
-      display: 'inline-flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: typeof props.size === 'number' ? `${props.size}px` : props.size,
-      height: typeof props.size === 'number' ? `${props.size}px` : props.size,
-    }
-
-    // 旋转
-    if (props.rotate) {
-      style.transform = `rotate(${props.rotate}deg)`
-    }
-
-    // 翻转
-    if (props.flip) {
-      const scaleX =
-        props.flip === 'horizontal' || props.flip === 'both' ? -1 : 1
-      const scaleY = props.flip === 'vertical' || props.flip === 'both' ? -1 : 1
-      style.transform = `${
-        style.transform || ''
-      } scaleX(${scaleX}) scaleY(${scaleY})`.trim()
-    }
-
-    return style
-  })
-
-  // 获取图标名称用于显示
+  const iconStyle = computed(() => ({
+    display: 'inline-flex',
+    width: cssSize.value,
+    height: cssSize.value,
+    transform:
+      [
+        props.rotate ? `rotate(${props.rotate}deg)` : '',
+        props.flip
+          ? `scaleX(${props.flip === 'horizontal' || props.flip === 'both' ? -1 : 1}) scaleY(${props.flip === 'vertical' || props.flip === 'both' ? -1 : 1})`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' ') || undefined,
+  }))
   const iconDisplayName = computed(() => {
-    if (typeof props.name === 'string') {
-      return props.name
-    }
-    const componentName = props.name as { __name?: string; name?: string }
-    if (componentName?.__name) return componentName.__name
-    if (componentName?.name) return componentName.name
-    return 'Component Icon'
+    if (typeof props.name === 'string') return props.name
+    const component = props.name as
+      { __name?: string; name?: string } | undefined
+    return (
+      component?.__name ||
+      component?.name ||
+      (props.type === 'svg' ? 'SVG Icon' : 'Icon')
+    )
   })
+  const resolvedComponent = computed(() =>
+    props.type === 'component' && typeof props.name !== 'string'
+      ? props.name
+      : null
+  )
 
-  // 图标类名
-  const iconClasses = computed(() => [
-    props.customClass,
-    {
-      'c-icon__rotatable': props.rotate !== 0,
-      'c-icon__flippable': !!props.flip,
-    },
-  ])
+  /** 清理回调与定时器；已发出的共享 Iconify 网络请求由 Iconify 自己去重。 */
+  const cancel = () => {
+    generation++
+    clearTimeout(imageTimer)
+    for (const cleanup of cleanups) cleanup()
+    cleanups.clear()
+  }
 
-  // 解析组件名称（纯计算属性，无副作用）
-  const resolvedComponent = computed(() => {
-    if (props.type !== 'component' || !props.name) return null
-    return props.name
-  })
-
-  // 统一错误处理函数
-  const handleError = (
-    type: string,
-    message: string,
-    originalError?: unknown
+  /** 加载真实图标数据，处理不存在的名称、超时以及旧请求晚到。 */
+  const requestIcon = (
+    name: string,
+    onSuccess: (icon: IconifyIcon) => void,
+    onFailure: () => void
   ) => {
-    console.warn(`[C_Icon] ${message}:`, iconDisplayName.value, originalError)
-    errorMessage.value = message
-    imageLoading.value = false // 错误时停止加载状态
-    emit('error', type, originalError)
-
-    // 如果有回退图标，尝试切换为 fallback Iconify 图标
-    if (props.fallbackIcon && !hasError.value) {
-      hasError.value = false
-      // 将 name 重写为 fallbackIcon 并重置状态
-      // 因为 props 不可变，通过模板中的 fallback 分支渲染
+    const current = generation
+    const cached = getIcon(name)
+    if (cached) {
+      onSuccess(cached)
       return
     }
+    let finished = false
+    const cleanup = () => {
+      finished = true
+      clearTimeout(timer)
+      abort?.()
+      cleanups.delete(cleanup)
+    }
+    const finish = (icon?: IconifyIcon | null) => {
+      if (finished || current !== generation) return
+      cleanup()
+      if (icon) onSuccess(icon)
+      else onFailure()
+    }
+    const timer = setTimeout(() => finish(), Math.max(100, props.loadTimeout))
+    cleanups.add(cleanup)
+    const abort = loadIcons([name], (_loaded, _missing, waiting) => {
+      if (waiting.length === 0) finish(getIcon(name))
+    })
+  }
 
+  /** 错误始终进入回退分支；回退也失败时保留内置离线图形。 */
+  const fail = (type: string, message: string, error?: unknown) => {
+    if (hasError.value) return
+    clearTimeout(imageTimer)
+    pending.value = false
     hasError.value = true
+    errorMessage.value = message
+    emit('error', type, error)
+    if (props.fallbackIcon)
+      requestIcon(
+        props.fallbackIcon.replace(/^i-([^:-]+)[:-]/, '$1:'),
+        icon => {
+          fallbackData.value = icon
+        },
+        () => {}
+      )
+  }
+  const complete = () => {
+    if (hasError.value) return
+    clearTimeout(imageTimer)
+    pending.value = false
+    emit('load')
   }
 
-  // 处理点击事件
+  /** UnoCSS 由宿主静态生成；检查实际 CSS，短暂 HMR 延迟允许有界重试。 */
+  const checkUnoStyle = async () => {
+    const current = generation
+    await nextTick()
+    const check = (attempt: number) => {
+      if (current !== generation || !unoRef.value) return
+      const style = getComputedStyle(unoRef.value)
+      const mask =
+        style.maskImage || style.getPropertyValue('-webkit-mask-image')
+      if (
+        (mask && mask !== 'none') ||
+        (style.backgroundImage && style.backgroundImage !== 'none')
+      ) {
+        complete()
+        return
+      }
+      if (attempt === 3) {
+        fail('unocss', 'UnoCSS 图标样式未生成')
+        return
+      }
+      const timer = setTimeout(() => {
+        cleanups.delete(cleanup)
+        check(attempt + 1)
+      }, [50, 150, 400][attempt])
+      const cleanup = () => clearTimeout(timer)
+      cleanups.add(cleanup)
+    }
+    check(0)
+  }
+
+  /** 图标数据由共享缓存去重，实际成功后才通知宿主。 */
+  const validateIconify = (name: string) => {
+    iconData.value = getIcon(name) || null
+    if (!mounted) return
+    pending.value = !iconData.value
+    requestIcon(
+      name,
+      icon => {
+        iconData.value = icon
+        complete()
+      },
+      () => fail('iconify', 'Iconify 图标不存在或请求超时')
+    )
+  }
+
+  /** 图片路径异步解析后，只允许当前来源更新视图。 */
+  const validateImage = async (name: string) => {
+    const current = generation
+    pending.value = true
+    imageTimer = setTimeout(
+      () => {
+        if (current === generation) fail('image', '图片图标加载超时')
+      },
+      Math.max(100, props.loadTimeout)
+    )
+    try {
+      const source = await useImage(name)
+      if (current !== generation || hasError.value) return
+      if (source) imageSrc.value = source
+      else fail('image', '图片路径解析失败')
+    } catch (error) {
+      if (current === generation) fail('image', '图片路径解析失败', error)
+    }
+  }
+
+  /** 根据字符串来源调用对应校验器。 */
+  const validateNamedSource = (name: string) => {
+    if (props.type === 'iconify') validateIconify(name)
+    else if (props.type === 'unocss') {
+      if (!name.startsWith('i-')) fail('unocss', 'UnoCSS 图标名称应以 i- 开头')
+      else if (mounted) void checkUnoStyle()
+    } else if (props.type === 'image') void validateImage(name)
+    else fail('type', '不支持的图标类型')
+  }
+
+  /** 重置并验证当前来源。异步结果只允许写入当前配置。 */
+  const validateProps = () => {
+    cancel()
+    hasError.value = false
+    errorMessage.value = ''
+    iconData.value = null
+    fallbackData.value = null
+    imageSrc.value = ''
+    pending.value = false
+    if (props.type === 'svg') {
+      if (!props.svgPath) fail('svg', 'SVG 路径不能为空')
+      else if (mounted) complete()
+      return
+    }
+    if (!props.name) {
+      fail('validation', '图标名称不能为空')
+      return
+    }
+    if (props.type === 'component') {
+      if (!resolvedComponent.value) fail('component', '无法解析图标组件')
+      else if (mounted) complete()
+      return
+    }
+    if (typeof props.name !== 'string') {
+      fail(props.type, '图标名称必须为字符串')
+      return
+    }
+    validateNamedSource(props.name)
+  }
   const handleClick = (event: MouseEvent) => {
-    if (!props.clickable || props.loading) return
-    emit('click', event)
+    if (props.clickable && !props.loading) emit('click', event)
   }
-
-  // 处理键盘事件
   const handleKeydown = (event: KeyboardEvent) => {
-    if (!props.clickable || props.loading) return
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (
+      props.clickable &&
+      !props.loading &&
+      (event.key === 'Enter' || event.key === ' ')
+    ) {
       event.preventDefault()
       emit('click', event)
     }
   }
-
-  // 处理图片加载成功
-  const handleImageLoad = () => {
-    imageLoading.value = false
-    emit('load')
-  }
-
-  // 异步加载图片 - 修复关键函数
-  const loadImageSrc = async () => {
-    if (props.type !== 'image' || typeof props.name !== 'string') {
-      imageSrc.value = ''
-      return
-    }
-
-    // 如果是完整URL，直接设置
-    if (
-      props.name.startsWith('http://') ||
-      props.name.startsWith('https://') ||
-      props.name.startsWith('//') ||
-      props.name.startsWith('/')
-    ) {
-      imageSrc.value = props.name
-      return
-    }
-
-    // 其他情况都当作本地图片处理
-    try {
-      imageLoading.value = true
-      const imageUrl = await useImage(props.name)
-      if (imageUrl) {
-        imageSrc.value = imageUrl
-      } else {
-        handleError('image', '图片路径解析失败')
-      }
-    } catch (error) {
-      handleError('image', '图片加载失败', error)
-    } finally {
-      imageLoading.value = false
-    }
-  }
-
-  // 验证规则映射
-  const validationRules = {
-    iconify: (): string | null => {
-      if (typeof props.name !== 'string') {
-        return 'Iconify图标名称必须为字符串'
-      }
-      if (!props.name.includes(':')) {
-        console.warn(
-          '[C_Icon] Iconify图标名称格式应为 "prefix:name"，如 "mdi:home"'
-        )
-      }
-      return null
-    },
-    unocss: (): string | null => {
-      if (typeof props.name !== 'string' || !props.name.startsWith('i-')) {
-        console.warn('[C_Icon] UnoCSS图标名称应以 "i-" 开头')
-      }
-      return null
-    },
-    component: (): string | null =>
-      !resolvedComponent.value ? '无法解析组件' : null,
-    svg: (): string | null => (!props.svgPath ? 'SVG路径不能为空' : null),
-    image: (): string | null => {
-      // 对于image类型，异步验证在loadImageSrc中处理
-      return null
-    },
-  }
-
-  // 验证配置
-  const validateProps = () => {
-    hasError.value = false
-    errorMessage.value = ''
-
-    // 基础验证
-    if (!props.name) {
-      return handleError('validation', '图标名称不能为空')
-    }
-
-    // 类型验证
-    const validator = validationRules[props.type]
-    if (!validator) {
-      return handleError('type', '不支持的图标类型')
-    }
-
-    const errorMsg = validator()
-    if (errorMsg) {
-      handleError(props.type, errorMsg)
-    }
-
-    // 如果是图片类型，异步加载图片
-    if (props.type === 'image') {
-      loadImageSrc()
-    }
-  }
-
-  // 监听关键属性变化
   watch(
-    () => [props.name, props.type, props.svgPath],
+    () => [
+      props.name,
+      props.type,
+      props.svgPath,
+      props.fallbackIcon,
+      props.loadTimeout,
+    ],
     () => {
-      nextTick(validateProps)
+      void validateProps()
     },
     { immediate: true }
   )
-
-  // 组件挂载后：仅对非 image 类型触发 load 事件（watch immediate 已完成验证）
   onMounted(() => {
-    if (!hasError.value && props.type !== 'image') {
-      emit('load')
-    }
+    mounted = true
+    void validateProps()
   })
-
-  // 暴露方法给父组件
+  onBeforeUnmount(cancel)
   defineExpose({
-    /** 重新验证配置 */
     validate: validateProps,
-    /** 是否有错误 */
     hasError: readonly(hasError),
-    /** 错误信息 */
     errorMessage: readonly(errorMessage),
-    /** DOM引用 */
     el: iconRef,
   })
 </script>

@@ -42,7 +42,7 @@
     align-items: var(--align-items, stretch);
     justify-content: var(--justify-content, stretch);
 
-    >.c-draggable-item {
+    > .c-draggable-item {
       width: 100%;
       box-sizing: border-box;
     }
@@ -161,21 +161,21 @@
 }
 
 /* ===== 拖拽状态样式 ===== */
-:global(.sortable-ghost) {
+:global(.c-draggable-ghost) {
   opacity: 0.5 !important;
   background: var(--n-primary-color-suppl) !important;
   border: 2px dashed var(--n-primary-color) !important;
   transform: scale(0.98) !important;
 }
 
-:global(.sortable-chosen) {
+:global(.c-draggable-chosen) {
   outline: 2px solid var(--n-primary-color) !important;
   outline-offset: 2px !important;
   transform: scale(1.02) !important;
   z-index: 999 !important;
 }
 
-:global(.sortable-drag) {
+:global(.c-draggable-drag) {
   opacity: 0.9 !important;
   transform: rotate(2deg) scale(1.05) !important;
   z-index: 1000 !important;
@@ -196,7 +196,7 @@
     }
   }
 
-  +.empty-state {
+  + .empty-state {
     grid-column: 1 / -1;
     padding: 40px 20px;
 

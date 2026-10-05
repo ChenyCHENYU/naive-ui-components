@@ -6,6 +6,7 @@ import Vue from 'unplugin-vue/rolldown'
 import Components from 'unplugin-vue-components/rolldown'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import * as sass from 'sass'
+import { componentUtilitiesPlugin } from './scripts/build/unocss-sfc.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -83,6 +84,8 @@ export default defineConfig({
     exports: 'named',
   }),
   plugins: [
+    // 工具类先进入 SFC，再由 Vue 注入作用域，发布包不依赖宿主的 UnoCSS。
+    componentUtilitiesPlugin(),
     // ⚠️ 插件顺序关键（unplugin-vue 7.1.x 兼容）：
     // 1. scssPrePlugin：编译 SCSS → CSS（在 Vue 之前，避免 PostCSS 解析 SCSS 报错）
     // 2. Vue：编译模板 → 产生 resolveComponent()，处理 scoped 属性注入
@@ -111,6 +114,8 @@ export default defineConfig({
   // v0.20+ 自动外部化所有 node_modules 依赖（含 CSS 深层导入），
   // 无需手动维护 external 列表，新增依赖也自动生效
   skipNodeModulesBundle: true,
+  // CSS 内联图标是 URI，直接保留；无需进入 Node 依赖解析。
+  external: [/^data:/],
   // All runtime packages stay external; disable the false-positive transitive warning.
   inlineOnly: false,
   minify: true,

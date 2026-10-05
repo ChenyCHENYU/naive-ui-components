@@ -9,7 +9,7 @@
 import type { Component } from 'vue'
 
 export interface IconProps {
-  name: string | Component
+  name?: string | Component
   type?: 'iconify' | 'unocss' | 'component' | 'svg' | 'image'
   color?: string
   size?: number | string
@@ -19,6 +19,8 @@ export interface IconProps {
   clickable?: boolean
   loading?: boolean
   fallbackIcon?: string
+  /** 图标 API 请求超时（毫秒）；超时后显示离线占位或配置的回退图标。 */
+  loadTimeout?: number
   title?: string
   ariaLabel?: string
   customClass?: string

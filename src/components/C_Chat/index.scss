@@ -1,28 +1,28 @@
 /* ─── CSS 变量（基于项目主题变量，自动适配明暗） ───────────────────────── */
 .c-chat {
-  --chat-bg: var(--card-color);
-  --chat-sidebar-bg: var(--body-color);
+  --chat-bg: var(--c-bg-card, var(--card-color, #fff));
+  --chat-sidebar-bg: var(--c-bg-body, var(--body-color, #f8fafc));
   --chat-sidebar-width: 280px;
-  --chat-header-bg: var(--card-color);
+  --chat-header-bg: var(--c-bg-card, var(--card-color, #fff));
   --chat-header-height: 56px;
-  --chat-input-bg: var(--body-color);
+  --chat-input-bg: var(--c-bg-body, var(--body-color, #f8fafc));
   --chat-input-height: 56px;
-  --chat-bubble-self: var(--primary-color);
-  --chat-bubble-other: var(--body-color);
+  --chat-bubble-self: var(--c-primary, var(--primary-color, #2080f0));
+  --chat-bubble-other: color-mix(in srgb, var(--c-text-1, #262626) 5%, var(--c-bg-card, #fff));
   --chat-bubble-system: transparent;
-  --chat-text-primary: var(--app-text-primary);
-  --chat-text-secondary: var(--text-color-3);
+  --chat-text-primary: var(--c-text-1, var(--text-color-1, #262626));
+  --chat-text-secondary: var(--c-text-3, var(--text-color-3, #a3a3a3));
   --chat-text-self: #fff;
-  --chat-border: var(--border-color);
+  --chat-border: var(--c-border, var(--border-color, #e5e7eb));
   --chat-online-color: #22c55e;
-    --chat-unread-bg: #ef4444;
-    --chat-unread-color: #fff;
-    --chat-failed-color: #ef4444;
-    --chat-shadow: rgba(0, 0, 0, 0.06);
-    --chat-shadow-light: rgba(0, 0, 0, 0.03);
+  --chat-unread-bg: #ef4444;
+  --chat-unread-color: #fff;
+  --chat-failed-color: #ef4444;
+  --chat-shadow: rgba(0, 0, 0, 0.06);
+  --chat-shadow-light: rgba(0, 0, 0, 0.03);
   --chat-radius: 12px;
   --chat-avatar-size: 36px;
-  --chat-scrollbar-thumb: var(--border-color);
+  --chat-scrollbar-thumb: var(--c-border, var(--border-color, #e5e7eb));
 
   display: flex;
   width: 100%;
@@ -87,11 +87,19 @@
   transition: background 0.15s;
 
   &:hover {
-    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--primary-color, #2080f0)) 6%,
+      transparent
+    );
   }
 
   &.is-active {
-    background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--primary-color, #2080f0)) 12%,
+      transparent
+    );
   }
 }
 
@@ -105,20 +113,28 @@
   height: var(--chat-avatar-size);
   border-radius: 50%;
   object-fit: cover;
-  background: color-mix(in srgb, var(--border-color) 50%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--c-border, var(--border-color, #e5e7eb)) 50%,
+    transparent
+  );
 }
 
 .c-chat__avatar-fallback {
   width: var(--chat-avatar-size);
   height: var(--chat-avatar-size);
   border-radius: 50%;
-  background: color-mix(in srgb, var(--primary-color) 25%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--c-primary, var(--primary-color, #2080f0)) 25%,
+    transparent
+  );
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 600;
-  color: var(--app-text-primary);
+  color: var(--c-text-1, var(--text-color-1, #262626));
 }
 
 .c-chat__online-dot {
@@ -167,7 +183,7 @@
   padding: 0 5px;
   border-radius: 9px;
   background: var(--chat-unread-bg);
-    color: var(--chat-unread-color);
+  color: var(--chat-unread-color);
   font-size: 11px;
   font-weight: 600;
   display: flex;
@@ -212,7 +228,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: color-mix(in srgb, var(--body-color) 50%, var(--card-color));
+  background: color-mix(
+    in srgb,
+    var(--c-bg-body, var(--body-color, #f8fafc)) 50%,
+    var(--c-bg-card, var(--card-color, #fff))
+  );
 
   &::-webkit-scrollbar {
     width: 4px;

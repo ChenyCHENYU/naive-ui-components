@@ -163,9 +163,8 @@
   font-size: 13px;
 }
 
-/* 编辑图标 - 使用全局选择器确保动态创建的元素也能被选中 */
-.cell-edit-icon,
-:global(.cell-edit-icon) {
+/* 动态渲染单元格也只在当前表格边界内匹配。 */
+.c-table-wrapper :deep(.cell-edit-icon) {
   flex-shrink: 0;
   width: 24px;
   height: 24px;

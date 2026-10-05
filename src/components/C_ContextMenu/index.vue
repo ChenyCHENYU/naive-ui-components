@@ -71,6 +71,35 @@
   const position = ref({ x: 0, y: 0 })
   const menuRef = ref<HTMLElement>()
   let previousFocus: HTMLElement | null = null
+  const scrollPositions = new Map<EventTarget, [number, number]>()
+
+  /** 只跟踪影响调用位置的祖先；打开前已发生的滚动通知不应关闭新菜单。 */
+  const rememberScrollPositions = (x: number, y: number) => {
+    scrollPositions.clear()
+    let element: Element | null =
+      document
+        .elementsFromPoint(x, y)
+        .find(
+          item => !item.closest('.c-context-menu, .c-context-menu-overlay')
+        ) ?? null
+    while (element) {
+      scrollPositions.set(element, [element.scrollLeft, element.scrollTop])
+      element = element.parentElement
+    }
+    scrollPositions.set(window, [window.scrollX, window.scrollY])
+    scrollPositions.set(document, [window.scrollX, window.scrollY])
+  }
+
+  const closeOnScroll = (event: Event) => {
+    const { target } = event
+    const previous = target && scrollPositions.get(target)
+    if (!previous) return
+    const current =
+      target instanceof Element
+        ? [target.scrollLeft, target.scrollTop]
+        : [window.scrollX, window.scrollY]
+    if (current[0] !== previous[0] || current[1] !== previous[1]) close()
+  }
 
   function focusableItems(): HTMLElement[] {
     return Array.from(
@@ -83,7 +112,7 @@
   function focusBoundary(boundary: 'first' | 'last') {
     const items = focusableItems()
     const item = boundary === 'first' ? items[0] : items[items.length - 1]
-    item?.focus()
+    item?.focus({ preventScroll: true })
   }
 
   function moveFocus(delta: number) {
@@ -96,7 +125,7 @@
           ? 0
           : items.length - 1
         : (index + delta + items.length) % items.length
-    items[next]?.focus()
+    items[next]?.focus({ preventScroll: true })
   }
 
   // ===== 菜单定位样式 =====
@@ -136,11 +165,12 @@
       x: Number.isFinite(x) ? Math.max(0, x) : 0,
       y: Number.isFinite(y) ? Math.max(0, y) : 0,
     }
+    rememberScrollPositions(position.value.x, position.value.y)
     visible.value = true
     emit('open', { ...position.value })
     adjustPosition()
     window.addEventListener('resize', close)
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', closeOnScroll, true)
 
     nextTick(() => focusBoundary('first'))
   }
@@ -149,10 +179,12 @@
     if (!visible.value) return
     visible.value = false
     window.removeEventListener('resize', close)
-    window.removeEventListener('scroll', close, true)
+    window.removeEventListener('scroll', closeOnScroll, true)
+    scrollPositions.clear()
     emit('close')
     nextTick(() => {
-      if (previousFocus?.isConnected) previousFocus.focus()
+      if (previousFocus?.isConnected)
+        previousFocus.focus({ preventScroll: true })
       previousFocus = null
     })
   }
@@ -165,7 +197,8 @@
 
   onBeforeUnmount(() => {
     window.removeEventListener('resize', close)
-    window.removeEventListener('scroll', close, true)
+    window.removeEventListener('scroll', closeOnScroll, true)
+    scrollPositions.clear()
     visible.value = false
   })
 

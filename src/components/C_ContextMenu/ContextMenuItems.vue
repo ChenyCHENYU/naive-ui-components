@@ -121,13 +121,13 @@
     if (item.disabled || !item.children?.length) return
     clearSubTimer()
     activeSubKey.value = item.key
+    const container = event.currentTarget as HTMLElement | null
     nextTick(() => {
-      const container = event.currentTarget as HTMLElement | null
       container
         ?.querySelector<HTMLElement>(
           '.c-context-menu__submenu [role="menuitem"]:not([aria-disabled="true"])'
         )
-        ?.focus()
+        ?.focus({ preventScroll: true })
     })
   }
 
@@ -140,7 +140,8 @@
     const item = event.currentTarget as HTMLElement | null
     const submenu = item?.closest('.c-context-menu__submenu')
     const parent = submenu?.parentElement
-    if (parent?.getAttribute('role') === 'menuitem') parent.focus()
+    if (parent?.getAttribute('role') === 'menuitem')
+      parent.focus({ preventScroll: true })
   }
 
   const handleMouseEnter = (item: ContextMenuItem) => {
