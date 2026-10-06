@@ -188,9 +188,9 @@
     "vue-tsc": "^3.3.11"
   },
   "overrides": {
-    "@xmldom/xmldom": "0.8.13",
+    "@xmldom/xmldom": "0.8.15",
     "defu": "6.1.7",
-    "fast-uri": "3.1.5",
+    "fast-uri": "3.1.8",
     "flatted": "3.4.2",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
