@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.13.5
+
+### Patch Changes
+
+- 发布构建同时校验第三方 CSS：将 Markdown 的通用动画类与关键帧、富文本编辑器的 no-scroll、地图的旧 VML 类限定在所属组件命名空间。兼容挂载在 body 的编辑器弹层；全量和按需样式共用同一隔离流程，宿主无需新增覆盖规则。供应商升级引入裸全局选择器时阻止发布。
+
 ## 0.13.4
 
 ### Patch Changes

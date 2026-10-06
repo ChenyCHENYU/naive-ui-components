@@ -14,6 +14,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from "./leaflet-assets.js";
 import { assertComponentStyleBoundary } from './build/style-boundary.js'
+import { isolateVendorStyles } from './build/vendor-style-boundary.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,12 +110,16 @@ const baseStyleDependencies = {
   C_Form: [],
   C_Table: ['C_Icon', 'C_Form'],
 }
+const vendorStyleCache = new Map()
 const readVendorStyle = packagePath => {
+  if (vendorStyleCache.has(packagePath)) return vendorStyleCache.get(packagePath)
   const filename = path.resolve(__dirname, '../node_modules', packagePath)
   if (!fs.existsSync(filename)) {
     throw new Error(`Missing vendor style: ${packagePath}`)
   }
-  return fs.readFileSync(filename, 'utf8')
+  const css = isolateVendorStyles(fs.readFileSync(filename, 'utf8'), packagePath)
+  vendorStyleCache.set(packagePath, css)
+  return css
 }
 
 const leafletImageDir = path.resolve(
