@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.13.4
+
+### Patch Changes
+
+- 移除 C_GlobalSearch 常驻导航按钮的背景模糊，保留渐变、边框和交互状态，修复 Chrome 高分屏窗口放大后正文区域被错误裁切的合成异常；搜索弹层仍保留独立的模糊效果，宿主无需添加样式覆盖或业务配置。
+
 ## 0.13.3
 
 ### Patch Changes

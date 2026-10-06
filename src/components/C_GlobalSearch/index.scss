@@ -20,7 +20,7 @@
     gap: 12px;
     padding: 4px 14px;
     background: linear-gradient(145deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.08));
-    backdrop-filter: blur(20px);
+    // 常驻导航按钮以渐变表现层次，避免背景采样导致 Chrome 高分屏合成裁切。
     border: 1px solid rgba(99, 102, 241, 0.2);
     border-radius: 14px;
     font-size: 13px;
