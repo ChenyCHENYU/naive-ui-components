@@ -98,7 +98,7 @@ const fullStyleDependencies = {
   C_Guide: ['C_Icon'],
   C_Language: ['C_Icon'],
   C_Login: ['C_Icon', 'C_Captcha', 'C_QRCode'],
-  C_Table: ['C_Icon', 'C_Form'],
+  C_Table: ['C_Icon', 'C_Form', 'C_Loading'],
   C_TagsView: ['C_Icon'],
   C_Theme: ['C_Icon'],
   C_Timeline: ['C_Icon'],
@@ -108,7 +108,7 @@ const fullStyleDependencies = {
 const baseStyleDependencies = {
   ...fullStyleDependencies,
   C_Form: [],
-  C_Table: ['C_Icon', 'C_Form'],
+  C_Table: ['C_Icon', 'C_Form', 'C_Loading'],
 }
 const vendorStyleCache = new Map()
 const readVendorStyle = packagePath => {

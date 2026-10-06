@@ -1,0 +1,125 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-10-06
+ * @FilePath: \naive-ui-components\src\components\C_Loading\index.scss
+ * @Description: 机器人扫描与数据流动画，仅在组件挂载时运行
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+.c-loading {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  vertical-align: middle;
+  line-height: 1;
+  pointer-events: none;
+  &--labeled {
+    flex-direction: row;
+    gap: 8px;
+    max-width: 100%;
+    padding: 8px 14px;
+    box-sizing: border-box;
+    border: 1px solid var(--c-loading-border);
+    border-radius: 14px;
+    background: var(--c-loading-surface);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
+  }
+  &__glyph {
+    width: var(--c-loading-size, 48px);
+    height: var(--c-loading-size, 48px);
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  &__frame {
+    opacity: 0.35;
+    animation: c-loading-frame 2.4s ease-in-out infinite;
+  }
+  &__scan {
+    opacity: 0;
+    animation: c-loading-scan 2.4s ease-in-out infinite;
+  }
+  &__eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: c-loading-eyes 3.6s ease-in-out infinite;
+  }
+  &__packet {
+    opacity: 0.25;
+    animation: c-loading-data 2.4s ease-in-out infinite;
+  }
+  &__packet--out {
+    animation-delay: 0.8s;
+  }
+  &__label {
+    color: var(--c-loading-text, currentColor);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &__frame,
+    &__scan,
+    &__eyes,
+    &__packet {
+      animation: none;
+    }
+    &__scan {
+      display: none;
+    }
+    &__frame,
+    &__packet {
+      opacity: 0.55;
+    }
+  }
+}
+@keyframes c-loading-scan {
+  0%,
+  12% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.2;
+  }
+  70% {
+    transform: translateY(14px);
+    opacity: 0.2;
+  }
+  88%,
+  100% {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+@keyframes c-loading-frame {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes c-loading-eyes {
+  0%,
+  72%,
+  82%,
+  100% {
+    transform: scaleY(1);
+  }
+  77% {
+    transform: scaleY(0.25);
+  }
+}
+@keyframes c-loading-data {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  40%,
+  60% {
+    opacity: 0.85;
+  }
+}

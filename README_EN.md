@@ -4,7 +4,7 @@
 
 **Enterprise-grade Vue 3 component library built on Naive UI**
 
-53 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
+54 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
 
 [![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 [![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
@@ -374,7 +374,18 @@ With `require-server-verification`, a successful response must include a server 
 
 `C_Login` remembers only the username, never the password. SMS events require a valid phone number; the local countdown starts immediately, while delivery results and server-side rate limits remain the host's responsibility. `C_City` loads its city index on first open and scopes letter navigation to its own instance; the default trigger, letters, and city items are keyboard-operable.
 
-### 📋 Component List (53 Components)
+### Table loading
+
+`C_Table` uses a robot SVG loading indicator in the theme's primary color by default, retains existing data, and respects reduced-motion preferences. No page configuration is required. Override the `loading` slot for custom content. The standalone `C_Loading` accepts `size` (16–120, default 48), optional `label`, and optional `color`. Disable rotation when using it with native `NSpin`:
+
+```vue
+<NSpin :show="loading" :size="48" :rotate="false">
+  <template #icon><C_Loading /></template>
+  <section>Page content</section>
+</NSpin>
+```
+
+### 📋 Component List (54 Components)
 
 > 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).
 
@@ -383,6 +394,7 @@ With `require-server-verification`, a successful response must include a server 
 | Component        | Description               | External Deps                 |
 | ---------------- | ------------------------- | ----------------------------- |
 | `C_Icon`         | Iconify icon wrapper      | `@iconify/vue`                |
+| `C_Loading`      | Theme-aware SVG loading   | -                             |
 | `C_Code`         | Code highlighting         | `highlight.js`                |
 | `C_Barcode`      | Barcode generator         | `@chenfengyuan/vue-barcode`   |
 | `C_Captcha`      | Puzzle / ALTCHA captcha   | `vue3-puzzle-vcode`, `altcha` |
@@ -495,7 +507,7 @@ Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`
 
 ```
 bun run build
-  ├── 1. tsdown          → Multi-entry bundling (53 components ESM/CJS/DTS)
+  ├── 1. tsdown          → Multi-entry bundling (54 components ESM/CJS/DTS)
   ├── 2. sass CLI        → Compile the shared-variable entry → global-scss.css
   ├── 3. merge-css.js    → Merge Vue-compiled SFC CSS + global variables → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
@@ -505,7 +517,7 @@ bun run build
 
 #### Key Technical Details
 
-- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 53 independent entries compiled in parallel
+- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 54 independent entries compiled in parallel
 - **SCSS processing**: Custom `scssTransformPlugin` compiles SFC SCSS within the Rolldown pipeline; standalone Sass CLI only compiles the shared-variable entry
 - **CSS merging**: Post-build merges Vue scoped-compiled per-chunk CSS with shared variables into a single `style.css`, avoiding duplicate styles and leaked raw `:deep()` selectors
 - **Type exports**: Unified `export *` barrel pattern with auto-generated `.d.ts`
@@ -520,7 +532,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # Main entry
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (53 components)
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (54 components)
 ├── C_Form.base.css / C_Form.full.css      # Base/full style tiers
 ├── C_Table.base.css / C_Table.full.css    # Base/full style tiers
 ├── style.css                              # Merged full styles

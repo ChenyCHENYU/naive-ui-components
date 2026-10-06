@@ -4,7 +4,7 @@
 
 **基于 Naive UI 的 Vue 3 企业级组件库**
 
-从 Robot Admin 中提炼的 53 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
+从 Robot Admin 中提炼的 54 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
 
 [![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 [![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
@@ -433,7 +433,18 @@ const config = defineTableConfig({
 
 `C_Login` 的“记住我”只保存用户名，不保存密码。短信验证码仅对格式正确的手机号触发事件；组件会立即开始本地倒计时，发送结果和服务端限流仍由宿主处理。`C_City` 在首次打开时才加载城市索引，字母跳转只作用于当前实例；默认触发器、字母和城市项均可用键盘操作。
 
-### 📋 组件清单（53 个）
+### 表格加载态
+
+`C_Table` 默认显示跟随主题主色的机器人 SVG 加载动画，保留已有数据，并遵循系统减少动态效果设置，无需页面配置。可通过 `loading` 插槽替换默认内容。独立的 `C_Loading` 支持 `size`（16–120，默认 48）、`label`（可选说明）和 `color`（可选颜色）；原生 `NSpin` 使用时请关闭旋转，避免 SVG 整体转动：
+
+```vue
+<NSpin :show="loading" :size="48" :rotate="false">
+  <template #icon><C_Loading /></template>
+  <section>页面内容</section>
+</NSpin>
+```
+
+### 📋 组件清单（54 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
@@ -442,6 +453,7 @@ const config = defineTableConfig({
 | 组件             | 说明                    | 外部依赖                      |
 | ---------------- | ----------------------- | ----------------------------- |
 | `C_Icon`         | Iconify 图标封装        | `@iconify/vue`                |
+| `C_Loading`      | 主题化 SVG 加载态       | -                             |
 | `C_Code`         | 代码高亮显示            | `highlight.js`                |
 | `C_Barcode`      | 条形码生成器            | `@chenfengyuan/vue-barcode`   |
 | `C_Captcha`      | 拼图/ALTCHA 人机验证    | `vue3-puzzle-vcode`、`altcha` |
@@ -554,7 +566,7 @@ bun add vue naive-ui
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（53 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（54 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
   ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -564,7 +576,7 @@ bun run build
 
 #### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），53 个独立入口并行编译
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），54 个独立入口并行编译
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 仅编译共享变量入口
 - **CSS 合并**：构建后将 Vue 已完成 scoped 转换的 per-chunk CSS 与共享变量合并为单一 `style.css`，避免重复样式和原始 `:deep()` 选择器泄漏
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
@@ -579,7 +591,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（53 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（54 组件）
 ├── C_Form.base.css / C_Form.full.css      # 基础/完整样式层级
 ├── C_Table.base.css / C_Table.full.css    # 基础/完整样式层级
 ├── style.css                              # 合并后的全量样式

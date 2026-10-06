@@ -166,7 +166,11 @@
         resolved.treeEnabled ? resolved.treeDefaultExpandAll : undefined
       "
       style="width: 100%"
-    />
+    >
+      <template #loading>
+        <slot name="loading"><C_Loading :label="t('table.loading')" /></slot>
+      </template>
+    </NDataTable>
 
     <!-- 分页 -->
     <NPagination
@@ -292,6 +296,7 @@
   import C_Form from '../C_Form/index.vue'
   import { cloneData } from '../../utils/data'
   import { useComponentFeedback, useComponentLocale } from '../../config'
+  import { C_Loading } from '../C_Loading'
   import { collectTreeBranchKeys, validateTableRowKeys } from './helpers'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })

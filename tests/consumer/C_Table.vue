@@ -1,5 +1,14 @@
 <template>
   <C_Table :crud="crud" />
+  <C_Table :crud="crud">
+    <template #loading>
+      <C_Loading
+        :size="40"
+        label="Loading records"
+        color="#7080ff"
+      />
+    </template>
+  </C_Table>
   <C_Table
     :crud="externalCrud"
     :config="{
@@ -15,6 +24,7 @@
   import { h, type ComputedRef, type Ref } from 'vue'
   import {
     C_Table,
+    C_Loading,
     type CrudBinding,
     type DataRecord,
     type TableColumn,

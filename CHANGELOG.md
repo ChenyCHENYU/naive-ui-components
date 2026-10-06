@@ -1,5 +1,12 @@
 # @robot-admin/naive-ui-components
 
+## 0.13.6
+
+### Patch Changes
+
+- 新增 `C_Loading`：内置机器人数据扫描 SVG，随 Naive UI 主色变化，支持尺寸、文案和颜色配置，无在线图标、定时器或新增依赖。动画尊重系统减少动态效果设置，提供读屏状态说明。
+- `C_Table` 默认使用新的加载态，并开放 `loading` 插槽；全量、按需及 base 样式入口均包含加载组件样式。加载过程继续保留已有表格内容，不改变请求或交互锁定逻辑。
+
 ## 0.13.5
 
 ### Patch Changes

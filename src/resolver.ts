@@ -61,6 +61,7 @@ export const componentNames = [
   'C_ImageCropper',
   'C_Language',
   'C_Login',
+  'C_Loading',
   'C_Map',
   'C_Markdown',
   'C_Menu',
