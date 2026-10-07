@@ -5,6 +5,11 @@
     :config="config"
     @submit="handleSubmit"
   >
+    <template #action-extra="{ model: draft, submitting }">
+      <button :disabled="submitting">{{
+        draft.profile.name.toUpperCase()
+      }}</button>
+    </template>
     <template #tab-actions="{ currentTab, validateTab }">
       <button @click="validateTab">{{ currentTab.toUpperCase() }}</button>
     </template>
@@ -29,8 +34,10 @@
     C_Form,
     defineFormConfig,
     defineFormOptions,
+    PRESET_RULES,
+    SPEC_RULES,
     type SubmitEventPayload,
-  } from '@robot-admin/naive-ui-components'
+  } from '@robot-admin/naive-ui-components/C_Form'
 
   interface EmployeeForm {
     id: string
@@ -45,13 +52,23 @@
   })
 
   const options = defineFormOptions<EmployeeForm>([
-    { type: 'input', prop: 'id' },
-    { type: 'input', prop: 'profile.name' },
+    {
+      type: 'input',
+      prop: 'id',
+      rules: [PRESET_RULES.optional(PRESET_RULES.email('邮箱'))],
+    },
+    {
+      type: 'input',
+      prop: 'profile.name',
+      rules: [PRESET_RULES.required('名称'), SPEC_RULES.length('名称', 2, 20)],
+    },
   ])
 
   const config = defineFormConfig<EmployeeForm>({
-    onSubmit: payload => {
+    submitSuccessText: 'Saved',
+    onSubmit: (payload, context) => {
       payload.model.profile.name.toUpperCase()
+      context?.signal.throwIfAborted()
     },
   })
 

@@ -46,7 +46,6 @@
     type FormConfig,
     type FormInstance,
     type FormRecord,
-    type SubmitEventPayload,
   } from '../C_Form'
   import type { FormModalEmits, FormModalProps } from './types'
 
@@ -88,10 +87,11 @@
     mode: props.editor.mode.value,
     initialValues: props.editor.model.value ?? undefined,
     showActions: false,
-    onSubmit: async (payload: SubmitEventPayload<T>) => {
-      await props.config?.onSubmit?.(payload)
+    onSubmit: async (payload, context) => {
+      await props.config?.onSubmit?.(payload, context)
+      if (context?.signal.aborted) return
       const saved = await props.editor.submit(payload.model as T)
-      emit('submit', payload, saved)
+      if (!context?.signal.aborted) emit('submit', payload, saved)
     },
   }))
 

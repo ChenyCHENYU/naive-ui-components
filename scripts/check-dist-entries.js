@@ -34,6 +34,9 @@ const requiredRootExports = [
   'FieldPath',
   'TableInstance',
   'useCForm',
+  'CronConfig',
+  'FormulaEditorConfig',
+  'FormulaTemplate',
   'useTableQuery',
   'validateTableRowKeys',
 ]
@@ -93,6 +96,26 @@ for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
 }
 
 const componentStyleContracts = {
+  'C_Cron.css': [
+    '.c-cron[',
+    '.cron-field-editor[',
+    '.cron-preview[',
+    '.c-loading[',
+    '--c-primary:',
+  ],
+  'C_FormulaEditor.css': [
+    '.c-formula[',
+    '.formula-input__editor[',
+    '.formula-preview[',
+    '.variable-panel[',
+    '.c-icon[',
+    '--c-primary:',
+  ],
+  'C_PageLoading.css': [
+    '.c-page-loading[',
+    '.c-page-loading__card[',
+    '.c-page-loading__wave[',
+  ],
   'C_Captcha.css': ['.c-icon['],
   'C_Guide.css': ['.c-icon['],
   'C_Login.css': [
@@ -102,9 +125,7 @@ const componentStyleContracts = {
     '.vue-puzzle-vcode',
   ],
 }
-for (const [styleEntry, selectors] of Object.entries(
-  componentStyleContracts
-)) {
+for (const [styleEntry, selectors] of Object.entries(componentStyleContracts)) {
   const css = fs.readFileSync(path.join(distDir, styleEntry), 'utf8')
   const missingSelectors = selectors.filter(selector => !css.includes(selector))
   if (missingSelectors.length > 0) {

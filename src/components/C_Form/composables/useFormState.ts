@@ -31,6 +31,10 @@ import {
   setDataPath,
 } from '../../../utils/data'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
+import {
+  createRequiredFormRule,
+  resolveFormRules,
+} from '../utils/formValidation'
 
 const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   input: '',
@@ -95,6 +99,9 @@ export function useFormState(
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncErrorMap = ref<Record<string, unknown>>({})
   const isSubmitting = ref(false)
+  const ruleErrors = new Map<string, unknown>()
+  let disposed = false
+  let submitController: AbortController | undefined
 
   const requestVersions = new Map<string, number>()
   const requestControllers = new Map<string, AbortController>()
@@ -119,12 +126,26 @@ export function useFormState(
     source: Parameters<NonNullable<ResolvedFormConfig['onError']>>[1]['source'],
     field?: string
   ): void {
-    if (config.value.onError) config.value.onError(error, { source, field })
-    else {
-      feedback.error(
-        error instanceof Error ? error.message : String(error),
-        error
-      )
+    if (disposed) return
+    try {
+      if (config.value.onError) config.value.onError(error, { source, field })
+      else
+        feedback.error(
+          error instanceof Error ? error.message : String(error),
+          error
+        )
+    } catch {
+      // 提示适配器失败不能打断加载/提交的清理，也不能制造未处理异常。
+    }
+  }
+
+  /** 提示插件异常不能把已经完成的业务提交改判为失败。 */
+  function notify(type: 'success' | 'info', message: string): void {
+    if (disposed || !message) return
+    try {
+      feedback[type](message)
+    } catch {
+      // 消息呈现与业务提交结果独立，清理流程继续执行。
     }
   }
 
@@ -165,16 +186,16 @@ export function useFormState(
 
   function syncRulesForField(item: FormOption): void {
     try {
-      const rules: FormItemRule[] = item.rulesWhen
-        ? [...item.rulesWhen(formModel)]
-        : [...(item.rules ?? [])]
+      const rules: FormItemRule[] = resolveFormRules(
+        item.rulesWhen ? item.rulesWhen(formModel) : item.rules
+      )
+      ruleErrors.delete(item.prop)
 
       if (item.required && !rules.some(rule => rule.required)) {
-        rules.unshift({
-          required: true,
-          message: t('form.required', { label: item.label || item.prop }),
-          trigger: ['input', 'change', 'blur'],
-        })
+        const label = item.label || item.prop
+        rules.unshift(
+          createRequiredFormRule(label, t('form.required', { label }))
+        )
       }
 
       if (item.crossFieldValidator) {
@@ -199,6 +220,7 @@ export function useFormState(
       }))
     } catch (error) {
       delete formRules[item.prop]
+      ruleErrors.set(item.prop, error)
       reportError(error, 'callback', item.prop)
     }
   }
@@ -214,6 +236,7 @@ export function useFormState(
       if (nextProps.has(prop)) return
       formItemRefs.delete(prop)
       delete formRules[prop]
+      ruleErrors.delete(prop)
       delete asyncOptionsCache.value[prop]
       delete asyncLoadingMap.value[prop]
       delete asyncErrorMap.value[prop]
@@ -382,10 +405,15 @@ export function useFormState(
   async function validate(): Promise<void> {
     if (!formRef.value) throw new Error('[C_Form] 表单引用不存在')
     try {
+      const invalidRule = visibleOptions.value.find(item =>
+        ruleErrors.has(item.prop)
+      )
+      if (invalidRule) throw ruleErrors.get(invalidRule.prop)
       await formRef.value.validate()
+      if (disposed) throw new Error('[C_Form] 表单已卸载')
       emit('validate-success', getModel())
     } catch (errors) {
-      emit('validate-error', errors)
+      if (!disposed) emit('validate-error', errors)
       throw errors
     }
   }
@@ -394,6 +422,8 @@ export function useFormState(
     if (!formRef.value) throw new Error('[C_Form] 表单引用不存在')
 
     const fields = [...new Set(Array.isArray(field) ? field : [field])]
+    const invalidRule = fields.find(fieldName => ruleErrors.has(fieldName))
+    if (invalidRule) throw ruleErrors.get(invalidRule)
     const missingFields: string[] = []
     const validations: Promise<unknown>[] = fields.flatMap(fieldName => {
       const itemRef = formItemRefs.get(fieldName)
@@ -475,6 +505,7 @@ export function useFormState(
     replaceFormRecord(formModel, getCleanModel())
     clearValidation()
     refreshDynamicRules()
+    notify('info', config.value.resetSuccessText)
   }
 
   async function setFieldValue(
@@ -499,23 +530,39 @@ export function useFormState(
     if (shouldValidate) await validateField(Object.keys(fields))
   }
 
+  /** 实例提交与默认操作按钮遵守相同的可用状态。 */
+  function isSubmissionBlocked(): boolean {
+    return (
+      disposed ||
+      isSubmitting.value ||
+      config.value.disabled ||
+      config.value.readonly
+    )
+  }
+
   async function submit(): Promise<boolean> {
-    if (isSubmitting.value) return false
+    if (isSubmissionBlocked()) return false
+    const controller = new AbortController()
+    submitController = controller
     isSubmitting.value = true
     try {
       await validate()
+      if (controller.signal.aborted) return false
       const payload = { model: getModel(), form: formRef.value! }
       try {
-        await config.value.onSubmit?.(payload)
+        await config.value.onSubmit?.(payload, { signal: controller.signal })
       } catch (error) {
-        reportError(error, 'submit')
+        if (!controller.signal.aborted) reportError(error, 'submit')
         return false
       }
+      if (controller.signal.aborted) return false
       emit('submit', payload)
+      notify('success', config.value.submitSuccessText)
       return true
     } catch {
       return false
     } finally {
+      if (submitController === controller) submitController = undefined
       isSubmitting.value = false
     }
   }
@@ -578,6 +625,8 @@ export function useFormState(
   )
 
   onScopeDispose(() => {
+    disposed = true
+    submitController?.abort()
     requestControllers.forEach(controller => controller.abort())
     requestControllers.clear()
     formItemRefs.clear()

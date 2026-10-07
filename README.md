@@ -4,7 +4,7 @@
 
 **基于 Naive UI 的 Vue 3 企业级组件库**
 
-从 Robot Admin 中提炼的 54 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
+从 Robot Admin 中提炼的 55 个高质量业务组件，支持全量注册、按需导入（Tree-Shaking）和子路径独立导入。
 
 [![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 [![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
@@ -105,6 +105,47 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 // 完整模式也可显式使用 C_Form/full.css、C_Table/full.css
 ```
 
+### Cron 与公式工作区
+
+一个模型加一份扁平配置即可。原有独立属性继续兼容，组件内部统一处理模板、校验、预览与初始状态重置。
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_Cron,
+    type CronConfig,
+  } from '@robot-admin/naive-ui-components/C_Cron'
+  import {
+    C_FormulaEditor,
+    type FormulaEditorConfig,
+  } from '@robot-admin/naive-ui-components/C_FormulaEditor'
+  import '@robot-admin/naive-ui-components/C_Cron/style.css'
+  import '@robot-admin/naive-ui-components/C_FormulaEditor/style.css'
+
+  const expression = ref('0 30 8 * * ?')
+  const cronConfig: CronConfig = { previewCount: 5 }
+  const formula = ref('IF([完成值] > 0, 100 / [完成值], 0)')
+  const formulaConfig: FormulaEditorConfig = {
+    variables: [{ name: '完成值', field: 'completed', type: 'number' }],
+    sampleData: { completed: 5 },
+    editableSampleData: true,
+  }
+</script>
+<template>
+  <C_Cron
+    v-model="expression"
+    :config="cronConfig"
+  />
+  <C_FormulaEditor
+    v-model="formula"
+    :config="formulaConfig"
+  />
+</template>
+```
+
+Cron 支持秒到星期的六个数字字段、范围、间隔、列表及日/星期 `?` 互斥，不实现 L/W/# 扩展；预览按浏览器本地时区计算，不会调度任务。公式试算只在本地进行，不修改传入的 `sampleData`；校验和计算复用有界解析器，条件分支按需执行。通过 `showPreview`、`showKeyboard`、`showVariablePanel` 控制嵌入布局，`disabled` 同时保护试算输入。重置恢复初始模型及数据；切换独立记录时使用新 key 重新挂载。
+
 ### C_Guide 配置引导
 
 项目只需要提供目标和步骤，组件内置主题、可选 SVG 示意图及退出清理，不依赖项目的路由或 Store：
@@ -198,7 +239,42 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 </template>
 ```
 
-自定义操作栏应调用 `action` 插槽的 `submit()`，不要用 `validate()` 代替提交。步骤布局的 `step-actions` 插槽同时提供 `isLastStep`、`submit()` 和 `submitting`，可在最后一步直接放置提交按钮。异步保存放在 `config.onSubmit` 中并等待完成；`@submit` 是保存成功后的通知事件，不承诺等待监听器返回的 Promise。
+表单已内置 `@robot-admin/form-validate`，使用侧无需另写类型适配，也不用重复安装验证依赖。`rules` / `rulesWhen` 直接接受 Naive UI 原生规则、验证库的 `NaiveRule` 和框架无关的 `RuleSpec`，可以混用；`required: true` 同样复用验证库的空值判断，`0` 和 `false` 不会被误判为空。
+
+```ts
+import {
+  defineFormOptions,
+  PRESET_RULES,
+  NAIVE_COMBOS,
+  SPEC_RULES,
+} from '@robot-admin/naive-ui-components/C_Form'
+
+const fields = defineFormOptions([
+  {
+    type: 'input',
+    prop: 'name',
+    label: '名称',
+    required: true,
+    rules: [SPEC_RULES.length('名称', 2, 20)],
+  },
+  {
+    type: 'input',
+    prop: 'email',
+    label: '邮箱',
+    rules: NAIVE_COMBOS.email('邮箱'),
+  },
+  {
+    type: 'input',
+    prop: 'mobile',
+    label: '手机号',
+    rules: [PRESET_RULES.mobile('手机号')],
+  },
+])
+```
+
+普通表单默认提供提交与重置，步骤表单最后一步默认提供提交按钮。只需配置 `submitText`、`resetText` 和 `onSubmit`；要增加预览等业务操作，使用 `action-extra` 插槽即可保留默认按钮和加载管理。需要完全定制时仍可覆盖 `action` / `step-actions`，并调用插槽的 `submit()`，不要用 `validate()` 代替提交。
+
+异步保存放在 `config.onSubmit` 中并等待完成；`@submit` 是完成后的通知事件，不等待监听器返回的 Promise。第二参数提供 `context?.signal`，可直接传给支持取消的请求；组件卸载会发出取消信号，并停止晚到的提交事件和提示。`submitSuccessText` / `resetSuccessText` 为可选反馈文案，默认不显示成功提示，也不代表数据已持久化。
 
 新增/编辑场景推荐用 `C_FormModal` 直接消费 Headless CRUD 的结构化 `editor`。字段、校验和布局继续由 `C_Form` 配置驱动，页面不再重复编写 Modal、按钮、loading 和草稿状态；默认采用紧凑小尺寸表单和右下角带图标操作按钮，宽度、表单尺寸与动作文案仍可覆盖：
 
@@ -435,7 +511,7 @@ const config = defineTableConfig({
 
 ### 表格加载态
 
-`C_Table` 默认显示跟随主题主色的机器人 SVG 加载动画，保留已有数据，并遵循系统减少动态效果设置，无需页面配置。可通过 `loading` 插槽替换默认内容。独立的 `C_Loading` 支持 `size`（16–120，默认 48）、`label`（可选说明）和 `color`（可选颜色）；原生 `NSpin` 使用时请关闭旋转，避免 SVG 整体转动：
+`C_Table` 默认显示跟随主题主色的数据光环 SVG 加载动画：环形轨道、数据行和细光束提示等待状态，保留已有数据，并遵循系统减少动态效果设置，无需页面配置。内置异步展开行同样复用 `C_Loading`；自定义展开内容仍由使用侧决定展示。可通过 `loading` 插槽替换默认内容。独立的 `C_Loading` 支持 `size`（16–120，默认 48）、`label`（可选说明）和 `color`（可选颜色）；原生 `NSpin` 使用时请关闭旋转，避免 SVG 整体转动：
 
 ```vue
 <NSpin :show="loading" :size="48" :rotate="false">
@@ -444,7 +520,7 @@ const config = defineTableConfig({
 </NSpin>
 ```
 
-### 📋 组件清单（54 个）
+### 📋 组件清单（55 个）
 
 > 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
 
@@ -454,6 +530,7 @@ const config = defineTableConfig({
 | ---------------- | ----------------------- | ----------------------------- |
 | `C_Icon`         | Iconify 图标封装        | `@iconify/vue`                |
 | `C_Loading`      | 主题化 SVG 加载态       | -                             |
+| `C_PageLoading`  | 主题化页面切换加载      | -                             |
 | `C_Code`         | 代码高亮显示            | `highlight.js`                |
 | `C_Barcode`      | 条形码生成器            | `@chenfengyuan/vue-barcode`   |
 | `C_Captcha`      | 拼图/ALTCHA 人机验证    | `vue3-puzzle-vcode`、`altcha` |
@@ -566,7 +643,7 @@ bun add vue naive-ui
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（54 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（55 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
   ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -576,7 +653,7 @@ bun run build
 
 #### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），54 个独立入口并行编译
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），55 个独立入口并行编译
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 仅编译共享变量入口
 - **CSS 合并**：构建后将 Vue 已完成 scoped 转换的 per-chunk CSS 与共享变量合并为单一 `style.css`，避免重复样式和原始 `:deep()` 选择器泄漏
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
@@ -591,7 +668,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（54 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（55 组件）
 ├── C_Form.base.css / C_Form.full.css      # 基础/完整样式层级
 ├── C_Table.base.css / C_Table.full.css    # 基础/完整样式层级
 ├── style.css                              # 合并后的全量样式
@@ -700,3 +777,19 @@ MIT License
 ### C_Login 扩展表单
 
 `password-fields` 插槽位于密码输入框下方，提供 `username`、`loading`，可配置工作空间或其他业务字段。`username-change` 在初始预填、恢复记住的账号和输入变化时同步触发。宿主通过 `submitDisabled` 阻止扩展字段尚未就绪时的按钮与回车提交；`loading` 期间凭据输入禁用。公司查询、成员关系和权限始终由宿主认证服务处理，组件不保存业务上下文。
+
+### 页面切换加载
+
+路由生命周期只需要关联 `start()` / `finish(id)`；动画、主题和减少动态效果由组件库处理。默认延迟 160ms 显示，快速切换不闪烁，旧任务完成不会关闭新任务。
+
+```vue
+<C_PageLoading :show="loading.visible.value" />
+```
+
+```ts
+import { createPageLoading } from '@robot-admin/naive-ui-components/C_PageLoading'
+const loading = createPageLoading({ delay: 160 })
+const id = loading.start()
+// 路由完成、取消或失败后
+loading.finish(id)
+```

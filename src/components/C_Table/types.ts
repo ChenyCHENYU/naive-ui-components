@@ -5,7 +5,11 @@
  */
 
 import type { MaybeRef, VNodeChild, Ref, ComputedRef } from 'vue'
-import type { DataTableColumns, DataTableRowKey, FormItemRule } from 'naive-ui'
+import type {
+  DataTableBaseColumn,
+  DataTableRowKey,
+  FormItemRule,
+} from 'naive-ui'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
 
@@ -209,7 +213,7 @@ export interface EditProps {
  * - TableColumn：以上二者联合
  */
 interface BaseTableColumn<T extends object = DataRecord> extends Omit<
-  DataTableColumns<T>[number],
+  DataTableBaseColumn<T>,
   'key' | 'title' | 'render' | 'type'
 > {
   key?: DataTableRowKey
@@ -485,6 +489,8 @@ export interface UseTableExpandOptions<
   data: Ref<T[]> | ComputedRef<T[]>
   rowKey: (row: T) => DataTableRowKey
   childRowKey?: (child: C) => DataTableRowKey
+  /** 展开数据等待时的加载内容，C_Table 内置统一 SVG；独立引擎可按需提供。 */
+  renderLoading?: () => VNodeChild
   defaultExpandedKeys?: DataTableRowKey[]
   onExpandChange?: (
     expandedKeys: DataTableRowKey[],

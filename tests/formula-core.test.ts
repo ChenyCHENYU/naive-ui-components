@@ -12,7 +12,7 @@ describe('C_FormulaEditor input contracts', () => {
     expect(parser.validate('NOT TRUE').valid).toBe(true)
   })
 
-  test('disabled editor removes contenteditable and exposes native controls', async () => {
+  test('disabled editor is a read-only native textarea and exposes native controls', async () => {
     const input = await Bun.file(
       new URL(
         '../src/components/C_FormulaEditor/components/FormulaInput.vue',
@@ -25,7 +25,9 @@ describe('C_FormulaEditor input contracts', () => {
         import.meta.url
       )
     ).text()
-    expect(input).toContain(':contenteditable="!disabled"')
+    expect(input).toContain('<textarea')
+    expect(input).toContain(':readonly="disabled"')
+    expect(input).not.toContain('contenteditable=')
     expect(input).not.toContain("if (e.key === 'Tab')")
     expect(panel).toContain(':disabled="disabled"')
     expect(panel).toContain('type="button"')

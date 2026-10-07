@@ -1,0 +1,123 @@
+/* 执行时间预览：只在组件作用域内使用主题变量。 */
+.cron-preview {
+  min-width: 0;
+  padding: 24px;
+  background: color-mix(in srgb, var(--c-primary) 3%, var(--c-bg-card));
+  border-left: 1px solid var(--c-border);
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  h3,
+  p {
+    margin: 0;
+  }
+  h3 {
+    font-size: 15px;
+    color: var(--c-text-1);
+  }
+  header p {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--c-text-2);
+  }
+  &__step {
+    font:
+      600 12px ui-monospace,
+      monospace;
+    color: var(--c-primary);
+  }
+  &__next {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 128px;
+    margin: 24px 0;
+    padding: 20px;
+    border: 1px solid color-mix(in srgb, var(--c-primary) 20%, var(--c-border));
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--c-primary) 7%, var(--c-bg-card));
+    strong {
+      font:
+        600 20px/1.5 ui-monospace,
+        monospace;
+      overflow-wrap: anywhere;
+      color: var(--c-text-1);
+    }
+    p {
+      font-size: 13px;
+      color: var(--c-text-2);
+    }
+  }
+  &__label {
+    font-size: 12px;
+    color: var(--c-primary);
+  }
+  &__waiting {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+  }
+  &__list-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    span {
+      font-weight: 400;
+      color: var(--c-text-3);
+    }
+  }
+  ol {
+    list-style: none;
+    margin: 12px 0 20px;
+    padding: 0;
+    max-height: 300px;
+    overflow: auto;
+  }
+  li {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 11px;
+    time {
+      font-family: ui-monospace, monospace;
+      color: var(--c-text-1);
+    }
+    > span:last-child {
+      color: var(--c-text-3);
+    }
+  }
+  &__idx {
+    color: var(--c-primary);
+    font:
+      500 11px ui-monospace,
+      monospace;
+  }
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--c-text-3);
+    code {
+      overflow-wrap: anywhere;
+    }
+    p {
+      width: 100%;
+      line-height: 1.6;
+    }
+  }
+}
+@container cron-editor (max-width: 820px) {
+  .cron-preview {
+    border-left: 0;
+    border-top: 1px solid var(--c-border);
+  }
+}

@@ -7,7 +7,8 @@ const distDir = path.join(root, 'dist')
 
 const budgets = {
   // 组件自身的 scoped 工具类与图标随包发布，免除宿主生成约束。
-  'style.css': { min: 430 * 1024, max: 560 * 1024 },
+  // 0.14 的两个完整编辑工作区增加约 20 KB；预算仍约束全部组件及供应商样式。
+  'style.css': { min: 430 * 1024, max: 580 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
   'C_Table.base.css': { min: 30 * 1024, max: 65 * 1024 },
@@ -36,7 +37,10 @@ for (const [relativePath, { min, max }] of Object.entries(budgets)) {
 }
 
 const files = walk(distDir)
-const totalSize = files.reduce((sum, filename) => sum + fs.statSync(filename).size, 0)
+const totalSize = files.reduce(
+  (sum, filename) => sum + fs.statSync(filename).size,
+  0
+)
 const totalLimit = 4 * 1024 * 1024
 if (totalSize > totalLimit) {
   failures.push(

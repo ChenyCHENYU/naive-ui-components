@@ -1,100 +1,82 @@
 <!--
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2026-02-25
- * @Description: Cron 执行时间预览（紧凑布局）
- * @Migration: naive-ui-components 组件库迁移版本
+ * @Date: 2026-10-07
+ * @Description: 执行计划预览，非法和待应用规则不显示过期结果
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
-
 <template>
-  <div class="cron-preview">
-    <div class="cron-preview__header">
-      <C_Icon name="mdi:calendar-clock" :size="15" />
-      <span>未来执行</span>
-      <NSpin v-if="computing" :size="14" />
+  <aside
+    class="cron-preview"
+    aria-label="执行计划预览"
+  >
+    <header
+      ><span class="cron-preview__step">02</span
+      ><div><h3>确认执行计划</h3><p>按浏览器本地时区预览</p></div></header
+    >
+    <div
+      class="cron-preview__next"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="cron-preview__label">下一次执行</span>
+      <template v-if="validation.valid && !pending && nextExecutions.length">
+        <strong>{{ formatDate(nextExecutions[0]!) }}</strong
+        ><span>{{ formatWeekDay(nextExecutions[0]!) }}</span>
+      </template>
+      <div
+        v-else-if="computing"
+        class="cron-preview__waiting"
+        ><C_Loading :size="32" /><span>正在计算执行时间</span></div
+      >
+      <p v-else>{{
+        !validation.valid
+          ? '修正规则后重新预览'
+          : pending
+            ? '应用表达式后更新计划'
+            : '未来一年内没有匹配的执行时间'
+      }}</p>
     </div>
-
-    <NScrollbar style="max-height: 220px">
-      <div v-if="nextExecutions.length > 0" class="cron-preview__list">
-        <div
+    <div
+      v-if="validation.valid && !pending && nextExecutions.length"
+      class="cron-preview__list"
+    >
+      <div class="cron-preview__list-heading"
+        >接下来的执行时间
+        <span>{{ nextExecutions.length }} / {{ count }}</span></div
+      >
+      <ol
+        ><li
           v-for="(date, index) in nextExecutions"
-          :key="index"
-          class="cron-preview__item"
-        >
-          <span class="cron-preview__idx">{{ index + 1 }}</span>
-          <span class="cron-preview__date">{{ formatDate(date) }}</span>
-          <span class="cron-preview__week">{{ formatWeekDay(date) }}</span>
-        </div>
-      </div>
-      <NEmpty v-else size="small" description="暂无匹配" />
-    </NScrollbar>
-  </div>
+          :key="date.getTime()"
+          ><span class="cron-preview__idx">{{
+            String(index + 1).padStart(2, '0')
+          }}</span
+          ><time :datetime="date.toISOString()">{{ formatDate(date) }}</time
+          ><span>{{ formatWeekDay(date) }}</span></li
+        ></ol
+      >
+    </div>
+    <footer
+      ><span>时区</span><code>{{ timeZone }}</code
+      ><p>仅预览时间，不会创建或启动定时任务。</p></footer
+    >
+  </aside>
 </template>
-
 <script setup lang="ts">
-import C_Icon from "../../C_Icon/index.vue";
-
-interface Props {
-  nextExecutions: Date[];
-  computing: boolean;
-  count: number;
-  formatDate: (date: Date) => string;
-  formatWeekDay: (date: Date) => string;
-}
-
-defineProps<Props>();
+  import C_Loading from '../../C_Loading/index.vue'
+  import type { CronValidation } from '../types'
+  defineOptions({ name: 'CronPreview' })
+  defineProps<{
+    nextExecutions: Date[]
+    computing: boolean
+    count: number
+    validation: CronValidation
+    pending: boolean
+    formatDate: (date: Date) => string
+    formatWeekDay: (date: Date) => string
+  }>()
+  const { timeZone } = Intl.DateTimeFormat().resolvedOptions()
 </script>
-
 <style lang="scss" scoped>
-.cron-preview {
-  &__header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 6px;
-    color: var(--c-text-1);
-  }
-
-  &__list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 4px;
-    border-radius: 4px;
-    font-size: 12px;
-    transition: background var(--c-transition, 0.2s ease);
-
-    &:hover {
-      background: var(--c-bg-card);
-    }
-  }
-
-  &__idx {
-    width: 16px;
-    text-align: center;
-    color: var(--c-text-4);
-    flex-shrink: 0;
-    font-size: 11px;
-  }
-
-  &__date {
-    font-family: "Courier New", Courier, monospace;
-    flex: 1;
-    font-size: 12px;
-  }
-
-  &__week {
-    color: var(--c-text-4);
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-}
+  @use './CronPreview.scss';
 </style>

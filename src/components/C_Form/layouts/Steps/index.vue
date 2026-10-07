@@ -39,7 +39,7 @@
           :key="step.config.key"
           :title="step.config.title"
           :description="step.config.description"
-          :disabled="step.config.disabled"
+          :disabled="step.config.disabled || loading || submitting || disabled"
         />
       </NSteps>
 
@@ -84,7 +84,7 @@
         <NSpace justify="space-between">
           <NButton
             v-if="currentStep > 0"
-            :disabled="loading"
+            :disabled="loading || submitting || disabled"
             @click="handlePreviousStep"
           >
             <C_Icon
@@ -102,6 +102,7 @@
               v-if="currentStep < stepsWithItems.length - 1"
               type="primary"
               :loading="loading"
+              :disabled="submitting || disabled"
               @click="handleNextStep"
             >
               {{ stepsConfig.nextButtonText }}
@@ -163,12 +164,16 @@
       targetStep: number
     ) => boolean | void | Promise<boolean | void>
     validateStep?: (stepIndex: number) => boolean | Promise<boolean>
+    submitting?: boolean
+    disabled?: boolean
   }
 
   /* ================= 组件属性和事件 ================= */
   const props = withDefaults(defineProps<Props>(), {
     layoutConfig: () => ({}),
     options: () => [],
+    submitting: false,
+    disabled: false,
   })
 
   const emit = defineEmits<{
@@ -282,6 +287,7 @@
     targetStep: number,
     needValidation = false
   ): Promise<boolean> => {
+    if (loading.value || props.submitting || props.disabled) return false
     if (targetStep < 0 || targetStep >= stepsWithItems.value.length) {
       return false
     }

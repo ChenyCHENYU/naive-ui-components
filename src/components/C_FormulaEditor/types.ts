@@ -9,20 +9,20 @@
 /* ─── 变量定义 ─────────────────────────────────── */
 
 /** 变量数据类型 */
-export type FormulaVariableType = "number" | "text" | "boolean";
+export type FormulaVariableType = 'number' | 'text' | 'boolean'
 
 /** 变量定义 */
 export interface FormulaVariable {
   /** 显示名称（如「完成值」「目标额」） */
-  name: string;
+  name: string
   /** 字段标识（如 'completion_value'），用于存储和求值 */
-  field: string;
+  field: string
   /** 数据类型 */
-  type: FormulaVariableType;
+  type: FormulaVariableType
   /** 分组名称（如「目标档参数」「目标值」） */
-  group?: string;
+  group?: string
   /** 变量描述 */
-  description?: string;
+  description?: string
 }
 
 /* ─── 函数定义 ─────────────────────────────────── */
@@ -30,38 +30,38 @@ export interface FormulaVariable {
 /** 内置函数定义 */
 export interface FormulaFunction {
   /** 函数名（如 'IF'、'SUM'） */
-  name: string;
+  name: string
   /** 函数签名（如 'IF(条件, 真值, 假值)'） */
-  signature: string;
+  signature: string
   /** 函数描述 */
-  description: string;
+  description: string
   /** 分类（如「逻辑」「数学」「聚合」） */
-  category?: string;
+  category?: string
 }
 
 /* ─── Token 定义 ──────────────────────────────── */
 
 /** Token 类型 */
 export type FormulaTokenType =
-  | "variable"
-  | "operator"
-  | "number"
-  | "function"
-  | "paren"
-  | "comma"
-  | "text"
-  | "space";
+  | 'variable'
+  | 'operator'
+  | 'number'
+  | 'function'
+  | 'paren'
+  | 'comma'
+  | 'text'
+  | 'space'
 
 /** 公式中的单个 Token */
 export interface FormulaToken {
   /** Token 类型 */
-  type: FormulaTokenType;
+  type: FormulaTokenType
   /** 显示值 */
-  value: string;
+  value: string
   /** 在原始字符串中的起始位置 */
-  start: number;
+  start: number
   /** 在原始字符串中的结束位置 */
-  end: number;
+  end: number
 }
 
 /* ─── 校验结果 ─────────────────────────────────── */
@@ -69,83 +69,93 @@ export interface FormulaToken {
 /** 公式校验结果 */
 export interface FormulaValidation {
   /** 是否合法 */
-  valid: boolean;
+  valid: boolean
   /** 消息 */
-  message: string;
+  message: string
   /** 错误位置（字符索引） */
-  position?: number;
+  position?: number
 }
 
 /* ─── 虚拟键盘 ─────────────────────────────────── */
 
 /** 键盘按键类型 */
 export type FormulaKeyType =
-  | "operator"
-  | "number"
-  | "paren"
-  | "logic"
-  | "compare"
-  | "action";
+  'operator' | 'number' | 'paren' | 'logic' | 'compare' | 'action'
 
 /** 单个键盘按键定义 */
 export interface FormulaKeyboardKey {
   /** 按键显示文本 */
-  label: string;
+  label: string
   /** 按键输出值 */
-  value: string;
+  value: string
   /** 按键类型 */
-  type: FormulaKeyType;
+  type: FormulaKeyType
   /** 高亮色（可选） */
-  color?: "primary" | "warning" | "error" | "info";
+  color?: 'primary' | 'warning' | 'error' | 'info'
   /** 是否是动作键（如退格、清空） */
-  isAction?: boolean;
+  isAction?: boolean
 }
 
 /* ─── Props / Emits / Expose ──────────────────── */
 
 /** 公式编辑器 Props */
-export interface FormulaEditorProps {
-  /** 公式字符串 (v-model) */
-  modelValue?: string;
+export interface FormulaEditorConfig {
   /** 可选变量列表 */
-  variables?: FormulaVariable[];
+  variables?: FormulaVariable[]
   /** 可用函数列表（为空则使用内置默认函数） */
-  functions?: FormulaFunction[];
+  functions?: FormulaFunction[]
   /** 样例数据（用于预览计算结果） */
-  sampleData?: Record<string, number | string | boolean>;
+  sampleData?: Record<string, number | string | boolean>
   /** 是否禁用 */
-  disabled?: boolean;
+  disabled?: boolean
   /** 占位文本 */
-  placeholder?: string;
+  placeholder?: string
   /** 容器高度 */
-  height?: string | number;
+  height?: string | number
   /** 是否显示预览 */
-  showPreview?: boolean;
+  showPreview?: boolean
   /** 是否显示虚拟键盘 */
-  showKeyboard?: boolean;
+  showKeyboard?: boolean
   /** 是否显示变量面板 */
-  showVariablePanel?: boolean;
+  showVariablePanel?: boolean
+  /** 允许调整试算值；不会修改传入的 sampleData */
+  editableSampleData?: boolean
+  /** 可直接应用的公式模板 */
+  templates?: FormulaTemplate[]
+}
+
+/** 模板仅包含展示信息与公式，不绑定项目业务。 */
+export interface FormulaTemplate {
+  label: string
+  value: string
+  description?: string
+}
+
+/** 推荐使用 v-model + 扁平 config；独立配置属性继续兼容。 */
+export interface FormulaEditorProps extends FormulaEditorConfig {
+  modelValue?: string
+  config?: FormulaEditorConfig
 }
 
 /** 公式编辑器 Emits */
 export interface FormulaEditorEmits {
-  "update:modelValue": [value: string];
-  change: [value: string];
-  "validation-change": [result: FormulaValidation];
+  'update:modelValue': [value: string]
+  change: [value: string]
+  'validation-change': [result: FormulaValidation]
 }
 
 /** 公式编辑器暴露方法 */
 export interface FormulaEditorExpose {
   /** 获取当前公式字符串 */
-  getValue: () => string;
+  getValue: () => string
   /** 设置公式 */
-  setValue: (expr: string) => void;
+  setValue: (expr: string) => void
   /** 重置为初始值 */
-  reset: () => void;
+  reset: () => void
   /** 校验公式 */
-  validate: () => FormulaValidation;
+  validate: () => FormulaValidation
   /** 在光标位置插入文本 */
-  insertAtCursor: (text: string) => void;
+  insertAtCursor: (text: string) => void
   /** 聚焦输入区 */
-  focus: () => void;
+  focus: () => void
 }

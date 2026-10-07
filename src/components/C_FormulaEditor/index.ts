@@ -1,4 +1,4 @@
-export { default as C_FormulaEditor } from "./index.vue";
+export { default as C_FormulaEditor } from './index.vue'
 export type {
   FormulaVariable,
   FormulaVariableType,
@@ -9,9 +9,11 @@ export type {
   FormulaKeyType,
   FormulaKeyboardKey,
   FormulaEditorProps,
+  FormulaEditorConfig,
+  FormulaTemplate,
   FormulaEditorEmits,
   FormulaEditorExpose,
-} from "./types";
-export { useFormulaParser } from "./composables/useFormulaParser";
-export { useFormulaEvaluator } from "./composables/useFormulaEvaluator";
-export * from "./constants";
+} from './types'
+export { useFormulaParser } from './composables/useFormulaParser'
+export { useFormulaEvaluator } from './composables/useFormulaEvaluator'
+export * from './constants'

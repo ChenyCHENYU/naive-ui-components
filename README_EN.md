@@ -4,7 +4,7 @@
 
 **Enterprise-grade Vue 3 component library built on Naive UI**
 
-54 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
+55 production-ready business components extracted from Robot Admin, supporting global registration, on-demand imports (Tree-Shaking), and subpath imports.
 
 [![NPM Version](https://img.shields.io/npm/v/@robot-admin/naive-ui-components)](https://www.npmjs.com/package/@robot-admin/naive-ui-components)
 [![License](https://img.shields.io/npm/l/@robot-admin/naive-ui-components)](./LICENSE)
@@ -105,6 +105,47 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 // Full mode is also available as C_Form/full.css and C_Table/full.css.
 ```
 
+### Cron and formula workspaces
+
+Use a model and one flat config. Existing individual props remain supported; templates, validation, previews and initial-state reset are owned by the components.
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_Cron,
+    type CronConfig,
+  } from '@robot-admin/naive-ui-components/C_Cron'
+  import {
+    C_FormulaEditor,
+    type FormulaEditorConfig,
+  } from '@robot-admin/naive-ui-components/C_FormulaEditor'
+  import '@robot-admin/naive-ui-components/C_Cron/style.css'
+  import '@robot-admin/naive-ui-components/C_FormulaEditor/style.css'
+
+  const expression = ref('0 30 8 * * ?')
+  const cronConfig: CronConfig = { previewCount: 5 }
+  const formula = ref('IF([完成值] > 0, 100 / [完成值], 0)')
+  const formulaConfig: FormulaEditorConfig = {
+    variables: [{ name: '完成值', field: 'completed', type: 'number' }],
+    sampleData: { completed: 5 },
+    editableSampleData: true,
+  }
+</script>
+<template>
+  <C_Cron
+    v-model="expression"
+    :config="cronConfig"
+  />
+  <C_FormulaEditor
+    v-model="formula"
+    :config="formulaConfig"
+  />
+</template>
+```
+
+Cron supports six numeric fields, ranges, steps, lists and day/weekday exclusion with `?`; L/W/# extensions are not supported. Preview dates use the browser local timezone and never schedule jobs. Formula trials do not mutate caller `sampleData`; validation and calculation share a bounded parser with lazy conditions. Compact modes use `showPreview`, `showKeyboard` and `showVariablePanel`. Read-only mode protects trial inputs too. Reset restores the initial model and data; remount with a new key when switching independent records.
+
 ### Configure C_Guide
 
 Provide targets and steps; the component owns its theme, optional SVG illustrations, and cleanup without depending on a host router or store:
@@ -166,7 +207,42 @@ const { model, formRef, bindings } = useCForm({
 })
 ```
 
-Custom action bars should call the `action` slot's `submit()` rather than treating `validate()` as submission. The step-layout `step-actions` slot also provides `isLastStep`, `submit()`, and `submitting`. Put asynchronous persistence in `config.onSubmit`; the `@submit` event is a post-success notification and does not await an event listener's promise.
+`C_Form` includes `@robot-admin/form-validate`; consumers need no local type adapter or separate validation installation. `rules` and `rulesWhen` accept native Naive UI rules, the package's `NaiveRule`, and framework-independent `RuleSpec` objects, including mixed lists. `required: true` uses the same empty-value rules and preserves valid `0` and `false` values.
+
+```ts
+import {
+  defineFormOptions,
+  PRESET_RULES,
+  NAIVE_COMBOS,
+  SPEC_RULES,
+} from '@robot-admin/naive-ui-components/C_Form'
+
+const fields = defineFormOptions([
+  {
+    type: 'input',
+    prop: 'name',
+    label: 'Name',
+    required: true,
+    rules: [SPEC_RULES.length('Name', 2, 20)],
+  },
+  {
+    type: 'input',
+    prop: 'email',
+    label: 'Email',
+    rules: NAIVE_COMBOS.email('Email'),
+  },
+  {
+    type: 'input',
+    prop: 'mobile',
+    label: 'Mobile',
+    rules: [PRESET_RULES.mobile('Mobile')],
+  },
+])
+```
+
+Normal forms provide submit/reset controls; step forms provide a submit button on their last step. Configure `submitText`, `resetText`, and `onSubmit`. Use `action-extra` for business controls such as previews while retaining the built-in buttons and loading state. Full customization remains available through `action` and `step-actions`; call the slot's `submit()` rather than treating `validate()` as submission.
+
+Put asynchronous work in `config.onSubmit`; `@submit` is a completion notification and does not await an event listener's promise. The second argument provides `context?.signal` for cancellable requests. Unmount aborts that signal and suppresses late submit events and feedback. `submitSuccessText` and `resetSuccessText` opt in to feedback; no success message is shown by default, and validation alone does not imply persistence.
 
 For create/edit flows, `C_FormModal` consumes a structural headless `editor` directly. Fields, validation, and layout remain data-driven by `C_Form`, while pages no longer own duplicate modal, draft, or loading state:
 
@@ -376,7 +452,7 @@ With `require-server-verification`, a successful response must include a server 
 
 ### Table loading
 
-`C_Table` uses a robot SVG loading indicator in the theme's primary color by default, retains existing data, and respects reduced-motion preferences. No page configuration is required. Override the `loading` slot for custom content. The standalone `C_Loading` accepts `size` (16–120, default 48), optional `label`, and optional `color`. Disable rotation when using it with native `NSpin`:
+`C_Table` uses a data-orbit SVG indicator in the theme's primary color, with an orbit, data rows, and a subtle beam to indicate waiting. It retains existing data and respects reduced-motion preferences without page configuration. Built-in asynchronous expansion also uses `C_Loading`; custom expansion renderers retain control of their content. Override the `loading` slot for custom content. The standalone `C_Loading` accepts `size` (16–120, default 48), optional `label`, and optional `color`. Disable rotation when using it with native `NSpin`:
 
 ```vue
 <NSpin :show="loading" :size="48" :rotate="false">
@@ -385,7 +461,7 @@ With `require-server-verification`, a successful response must include a server 
 </NSpin>
 ```
 
-### 📋 Component List (54 Components)
+### 📋 Component List (55 Components)
 
 > 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).
 
@@ -395,6 +471,7 @@ With `require-server-verification`, a successful response must include a server 
 | ---------------- | ------------------------- | ----------------------------- |
 | `C_Icon`         | Iconify icon wrapper      | `@iconify/vue`                |
 | `C_Loading`      | Theme-aware SVG loading   | -                             |
+| `C_PageLoading`  | Theme-aware page loading  | -                             |
 | `C_Code`         | Code highlighting         | `highlight.js`                |
 | `C_Barcode`      | Barcode generator         | `@chenfengyuan/vue-barcode`   |
 | `C_Captcha`      | Puzzle / ALTCHA captcha   | `vue3-puzzle-vcode`, `altcha` |
@@ -507,7 +584,7 @@ Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`
 
 ```
 bun run build
-  ├── 1. tsdown          → Multi-entry bundling (54 components ESM/CJS/DTS)
+  ├── 1. tsdown          → Multi-entry bundling (55 components ESM/CJS/DTS)
   ├── 2. sass CLI        → Compile the shared-variable entry → global-scss.css
   ├── 3. merge-css.js    → Merge Vue-compiled SFC CSS + global variables → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
@@ -517,7 +594,7 @@ bun run build
 
 #### Key Technical Details
 
-- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 54 independent entries compiled in parallel
+- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 55 independent entries compiled in parallel
 - **SCSS processing**: Custom `scssTransformPlugin` compiles SFC SCSS within the Rolldown pipeline; standalone Sass CLI only compiles the shared-variable entry
 - **CSS merging**: Post-build merges Vue scoped-compiled per-chunk CSS with shared variables into a single `style.css`, avoiding duplicate styles and leaked raw `:deep()` selectors
 - **Type exports**: Unified `export *` barrel pattern with auto-generated `.d.ts`
@@ -532,7 +609,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # Main entry
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (54 components)
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (55 components)
 ├── C_Form.base.css / C_Form.full.css      # Base/full style tiers
 ├── C_Table.base.css / C_Table.full.css    # Base/full style tiers
 ├── style.css                              # Merged full styles
@@ -632,3 +709,19 @@ MIT License
 ### C_Login form extension
 
 The `password-fields` slot appears below the password field and exposes `username` and `loading`. The synchronous `username-change` event covers initial defaults, remembered usernames and input changes. Use `submitDisabled` to block clicks and Enter while application fields are incomplete. Credential inputs are disabled while `loading`. Workspace discovery and authorization remain in the host application.
+
+### Page navigation loading
+
+Connect navigation lifecycles through `start()` / `finish(id)`. The component handles visuals, themes and reduced motion. A 160ms default delay avoids flashes; stale completions cannot hide a newer task.
+
+```vue
+<C_PageLoading :show="loading.visible.value" />
+```
+
+```ts
+import { createPageLoading } from '@robot-admin/naive-ui-components/C_PageLoading'
+const loading = createPageLoading({ delay: 160 })
+const id = loading.start()
+// After completion, cancellation or failure
+loading.finish(id)
+```

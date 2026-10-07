@@ -1,0 +1,99 @@
+/* 字段规则控件：离散值可点选，模式与选择状态同步显示。 */
+.cron-field-editor {
+  padding: 18px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  &__heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    strong {
+      font-size: 13px;
+      color: var(--c-text-1);
+    }
+    span {
+      color: var(--c-text-3);
+      font-size: 11px;
+    }
+  }
+  &__modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 16px 0;
+    button {
+      padding: 6px 12px;
+      border: 1px solid var(--c-border);
+      border-radius: 7px;
+      font-size: 12px;
+      &[aria-pressed='true'] {
+        border-color: var(--c-primary);
+        background: color-mix(in srgb, var(--c-primary) 8%, transparent);
+        color: var(--c-primary);
+      }
+    }
+  }
+  button {
+    appearance: none;
+    font: inherit;
+    color: var(--c-text-2);
+    background: transparent;
+    cursor: pointer;
+    &:focus-visible {
+      outline: 2px solid var(--c-primary);
+      outline-offset: 2px;
+    }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+  }
+  &__parameters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 34px;
+    font-size: 12px;
+    color: var(--c-text-2);
+    :deep(.n-input-number) {
+      width: 96px;
+    }
+    button {
+      border: 0;
+      font-size: 12px;
+      color: var(--c-primary);
+    }
+  }
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(36px, 1fr));
+    gap: 6px;
+    margin-top: 16px;
+    &--week {
+      grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+    }
+  }
+  &__cell {
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    padding: 7px 3px;
+    font:
+      12px ui-monospace,
+      monospace !important;
+    &:hover:enabled {
+      border-color: var(--c-primary);
+    }
+    &--on {
+      border-color: color-mix(in srgb, var(--c-primary) 25%, var(--c-border));
+      background: color-mix(in srgb, var(--c-primary) 7%, transparent);
+      color: var(--c-primary) !important;
+    }
+  }
+  &__hint {
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--c-text-3);
+    margin: 14px 0 0;
+  }
+}

@@ -1,161 +1,120 @@
-/* FormulaInput 组件样式 */
-
+/* 原生文本输入与转义后的结构预览，避免 contenteditable 光标和样式副作用。 */
 .formula-input {
-  background: var(--c-bg-card);
-  transition: background var(--c-transition, 0.2s ease);
-  border-bottom: 1px solid var(--c-border);
-
-  &--error {
-    background: color-mix(in srgb, var(--error-color) 3%, var(--c-bg-card));
-  }
-
-  &--disabled {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-
   &__header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 10px 16px 0;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
   }
-
   &__label {
+    color: var(--c-text-1);
     font-size: 13px;
     font-weight: 600;
-    color: var(--c-text-2);
   }
-
   &__clear {
     appearance: none;
     border: 0;
     background: transparent;
-    padding: 0;
+    color: var(--c-primary);
     font: inherit;
     font-size: 12px;
-    color: var(--c-primary);
     cursor: pointer;
-    user-select: none;
-
-    &:focus-visible {
-      outline: 2px solid var(--c-primary);
-      outline-offset: 2px;
-    }
-
-    &:hover {
-      opacity: 0.8;
-    }
   }
-
   &__editor {
-    min-height: 72px;
-    max-height: 180px;
-    padding: 8px 16px 12px;
-    font-size: 14px;
-    line-height: 2;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 168px;
+    resize: vertical;
+    padding: 18px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--c-primary) 2%, var(--c-bg-card));
     color: var(--c-text-1);
+    font:
+      15px/1.9 ui-monospace,
+      'SFMono-Regular',
+      Consolas,
+      monospace;
     outline: none;
-    overflow-y: auto;
-    word-break: break-all;
+    overflow-wrap: anywhere;
+    &:focus {
+      border-color: var(--c-primary);
+      box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--c-primary) 12%, transparent);
+    }
+    &::placeholder {
+      font-size: 13px;
+      color: var(--c-text-3);
+    }
+    &:read-only {
+      background: color-mix(in srgb, var(--c-border) 25%, var(--c-bg-card));
+    }
+  }
+  &--error &__editor {
+    border-color: var(--c-error);
+  }
+  &__tokens {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: 1px dashed var(--c-border);
+    border-radius: 10px;
+    font:
+      12px/2 ui-monospace,
+      monospace;
     white-space: pre-wrap;
-
-    &:empty::before {
-      content: attr(data-placeholder);
-      color: var(--c-text-4);
-      pointer-events: none;
-    }
-
-    /* 变量 chip */
-    :deep(.formula-chip) {
-      display: inline-flex;
-      align-items: center;
-      padding: 1px 8px;
-      margin: 0 2px;
-      border-radius: 4px;
-      background: color-mix(in srgb, var(--c-primary) 12%, transparent);
-      color: var(--c-primary);
-      font-weight: 500;
-      font-size: 13px;
-      line-height: 22px;
-      vertical-align: baseline;
-      user-select: none;
-      cursor: default;
-    }
-
-    /* 函数名 */
-    :deep(.formula-func) {
-      color: color-mix(in srgb, var(--c-primary) 80%, #8b5cf6);
-      font-weight: 600;
-    }
-
-    /* 运算符 */
-    :deep(.formula-op) {
-      color: var(--warning-color, #f0a020);
-      font-weight: 600;
-    }
-
-    /* 数字 */
-    :deep(.formula-num) {
-      color: color-mix(in srgb, var(--success-color, #18a058) 90%, transparent);
-    }
-
-    /* 括号 */
-    :deep(.formula-paren) {
-      color: var(--c-text-2);
-      font-weight: 600;
+    overflow-wrap: anywhere;
+    > span:first-child {
+      display: block;
+      font: 11px/1.5 sans-serif;
+      margin-bottom: 8px;
+      color: var(--c-text-3);
     }
   }
-
-  &__error {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 16px 8px;
-    font-size: 12px;
-    color: var(--error-color);
-  }
-
-  /* ─── 校验信息区 ────────────── */
-
   &__validation {
-    padding: 10px 16px 12px;
-    border-top: 1px solid var(--c-border);
-    min-height: 40px;
     display: flex;
     align-items: center;
-    gap: 12px;
-
-    &-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--c-text-2);
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--c-text-3);
+    line-height: 1.7;
+    button {
+      appearance: none;
       flex-shrink: 0;
-      min-width: 28px;
+      border: 0;
+      padding: 2px 0;
+      color: var(--c-primary);
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
     }
-
-    &-hint {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--c-text-4);
+  }
+  &--error &__validation {
+    color: var(--c-error);
+  }
+  button:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 3px;
+  }
+  .formula-token {
+    &--variable {
+      color: var(--c-primary);
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--c-primary) 9%, transparent);
     }
-
-    &-success {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--success-color, #18a058);
+    &--function {
+      color: var(--c-success);
+      font-weight: 600;
     }
-
-    &-error {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--error-color);
+    &--operator {
+      color: var(--c-primary);
+    }
+    &--number {
+      color: var(--c-warning);
     }
   }
 }

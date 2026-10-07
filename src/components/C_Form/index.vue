@@ -49,11 +49,10 @@
       @fields-change="handleFieldsChange"
     >
       <template
-        v-for="(_, slotName) in $slots"
+        v-for="slotName in getForwardedSlotNames()"
         #[slotName]="slotProps"
       >
         <slot
-          v-if="slotName !== 'action' && slotName !== 'step-actions'"
           :name="slotName"
           v-bind="slotProps"
         />
@@ -64,7 +63,16 @@
           v-bind="slotProps"
           :submit="submit"
           :submitting="isSubmitting"
-        />
+        >
+          <NButton
+            v-if="slotProps.isLastStep && resolved.showActions"
+            type="primary"
+            :loading="isSubmitting"
+            :disabled="isSubmitting || resolved.disabled || resolved.readonly"
+            @click="submit"
+            >{{ resolved.submitText || t('common.submit') }}</NButton
+          >
+        </slot>
       </template>
     </component>
 
@@ -75,30 +83,27 @@
     >
       <slot
         name="action"
-        :form="formRef"
-        :model="typedModel"
-        :validate="validate"
-        :validateField="validateField"
-        :reset="resetFields"
-        :setFields="setFields"
-        :getModel="typedGetModel"
-        :clearValidation="clearValidation"
-        :submit="submit"
-        :reloadOptions="reloadOptions"
-        :submitting="isSubmitting"
+        v-bind="actionSlotProps"
       >
-        <NSpace>
+        <NSpace
+          justify="end"
+          style="width: 100%"
+        >
+          <NButton
+            :disabled="isSubmitting || resolved.disabled || resolved.readonly"
+            @click="handleReset"
+            >{{ resolved.resetText || t('common.reset') }}</NButton
+          >
+          <slot
+            name="action-extra"
+            v-bind="actionSlotProps"
+          />
           <NButton
             type="primary"
             :loading="isSubmitting"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || resolved.disabled || resolved.readonly"
             @click="handleSubmit"
             >{{ resolved.submitText || t('common.submit') }}</NButton
-          >
-          <NButton
-            :disabled="isSubmitting"
-            @click="handleReset"
-            >{{ resolved.resetText || t('common.reset') }}</NButton
           >
         </NSpace>
       </slot>
@@ -147,6 +152,7 @@
     FormSlots,
     FormModel,
     FormRecord,
+    FormActionSlotProps,
   } from './types'
   import {
     type FormConfig,
@@ -309,9 +315,27 @@
 
   const typedModel = computed(() => formModel.value as FormModel<T>)
   const typedGetModel = (): FormModel<T> => getModel() as FormModel<T>
+  const actionSlotProps = computed<FormActionSlotProps<T>>(() => ({
+    form: formRef.value,
+    model: typedModel.value,
+    validate,
+    validateField,
+    reset: resetFields,
+    setFields,
+    getModel: typedGetModel,
+    clearValidation,
+    submit,
+    reloadOptions,
+    submitting: isSubmitting.value,
+  }))
 
   /* ===== 渲染引擎 ===== */
   const currentInstance = getCurrentInstance()
+  /** 操作插槽由外层统一承接，避免动态转发覆盖默认步骤按钮和自定义操作。 */
+  const getForwardedSlotNames = (): string[] =>
+    Object.keys(currentInstance?.slots ?? {}).filter(
+      name => !['action', 'action-extra', 'step-actions'].includes(name)
+    )
   const { formItems } = useFormRenderer({
     formModel,
     visibleOptions,
@@ -351,6 +375,8 @@
       ? {
           beforeStepChange: handleStepBeforeChange,
           validateStep: handleStepValidate,
+          submitting: isSubmitting.value,
+          disabled: resolved.value.disabled || resolved.value.readonly,
         }
       : resolved.value.layout === 'tabs'
         ? {

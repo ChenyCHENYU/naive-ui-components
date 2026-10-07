@@ -1,106 +1,127 @@
 <!--
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2026-02-25
- * @Description: 公式计算结果预览
- * @Migration: naive-ui-components 组件库迁移版本
+ * @Date: 2026-10-07
+ * @Description: 可编辑试算值与明确的计算结果，输入为空不会被当作零
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
-
 <template>
-  <div class="formula-preview">
-    <div class="formula-preview__header">
-      <C_Icon name="mdi:calculator-variant-outline" :size="15" />
-      <span>计算预览</span>
+  <aside
+    class="formula-preview"
+    aria-label="公式试算"
+  >
+    <header
+      ><span class="formula-preview__step">02</span
+      ><div
+        ><h3>验证计算结果</h3><p>调整试算值，观察规则是否符合预期。</p></div
+      ></header
+    >
+    <div
+      class="formula-preview__result"
+      :class="{ 'formula-preview__result--error': !!evalResult.error }"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="formula-preview__result-label">{{
+        evalResult.error ? '暂时无法计算' : '试算结果'
+      }}</span>
+      <output
+        v-if="evalResult.success && evalResult.result !== undefined"
+        class="formula-preview__result-value"
+        >{{ formatResult(evalResult.result) }}</output
+      >
+      <span
+        v-else
+        class="formula-preview__result-empty"
+        >{{
+          !formula.trim()
+            ? '输入公式后展示结果'
+            : evalResult.error || '等待数据'
+        }}</span
+      >
     </div>
-
-    <!-- 当没有公式时 -->
-    <div v-if="!formula.trim()" class="formula-preview__empty">
-      输入公式后可预览计算结果
-    </div>
-
-    <!-- 没有样例数据时 -->
-    <div v-else-if="!hasSampleData" class="formula-preview__empty">
-      传入 sampleData 后可预览计算结果
-    </div>
-
-    <!-- 有结果 -->
-    <template v-else>
-      <!-- 使用到的变量值 -->
-      <div v-if="usedVariables.length > 0" class="formula-preview__vars">
-        <div class="formula-preview__vars-title">变量值</div>
-        <div
-          v-for="item in usedVariables"
-          :key="item.name"
-          class="formula-preview__var-row"
+    <div class="formula-preview__vars"
+      ><div class="formula-preview__vars-title"
+        >本次使用的试算值 <span>{{ usedVariables.length }} 项</span></div
+      >
+      <div
+        v-for="item in usedVariables"
+        :key="item.field"
+        class="formula-preview__var-row"
+        ><div class="formula-preview__var-heading"
+          ><label :for="`${inputId}-${item.field}`">{{ item.name }}</label
+          ><code>{{ item.field }}</code></div
         >
-          <span class="formula-preview__var-name">{{ item.name }}</span>
-          <span class="formula-preview__var-eq">=</span>
-          <span class="formula-preview__var-value">{{ item.value }}</span>
-        </div>
-      </div>
-
-      <NDivider style="margin: 8px 0" />
-
-      <!-- 计算结果 -->
-      <div class="formula-preview__result">
-        <span class="formula-preview__result-label">结果</span>
+        <NInputNumber
+          v-if="editable && item.type === 'number'"
+          :value="typeof item.value === 'number' ? item.value : null"
+          :input-props="{
+            id: `${inputId}-${item.field}`,
+            'aria-label': `试算值：${item.name}`,
+          }"
+          placeholder="请输入数值"
+          @update:value="value => emit('update-value', item.field, value)"
+        />
+        <NSwitch
+          v-else-if="editable && item.type === 'boolean'"
+          :value="item.value === true"
+          :aria-label="`试算值：${item.name}`"
+          @update:value="value => emit('update-value', item.field, value)"
+        />
+        <NInput
+          v-else-if="editable && item.type === 'text'"
+          :value="typeof item.value === 'string' ? item.value : ''"
+          :input-props="{
+            id: `${inputId}-${item.field}`,
+            'aria-label': `试算值：${item.name}`,
+          }"
+          @update:value="value => emit('update-value', item.field, value)"
+        />
         <span
-          v-if="evalResult.success && evalResult.result !== undefined"
-          class="formula-preview__result-value"
-        >
-          {{ formatResult(evalResult.result) }}
-        </span>
-        <span
-          v-else-if="evalResult.error"
-          class="formula-preview__result-error"
-        >
-          <C_Icon name="mdi:alert-circle-outline" :size="14" />
-          {{ evalResult.error }}
-        </span>
-        <span v-else class="formula-preview__result-empty"> — </span>
+          v-else
+          class="formula-preview__var-value"
+          >{{ item.value ?? '未提供' }}</span
+        ><p v-if="item.description">{{ item.description }}</p>
       </div>
-    </template>
-  </div>
+      <p
+        v-if="!usedVariables.length"
+        class="formula-preview__empty"
+        >{{
+          formula.trim()
+            ? '当前公式没有引用变量。'
+            : '引用变量后，对应数据会出现在这里。'
+        }}</p
+      >
+    </div>
+    <p class="formula-preview__note"
+      >试算值仅用于本次验证，修改不会写入业务数据。</p
+    >
+  </aside>
 </template>
-
 <script setup lang="ts">
-import { NDivider } from "naive-ui";
-import C_Icon from "../../C_Icon/index.vue";
-
-interface EvalResult {
-  success: boolean;
-  result: unknown;
-  error?: string;
-}
-
-interface UsedVariable {
-  name: string;
-  value: unknown;
-}
-
-interface Props {
-  formula: string;
-  evalResult: EvalResult;
-  usedVariables: UsedVariable[];
-  hasSampleData: boolean;
-}
-
-defineProps<Props>();
-
-/** 格式化计算结果 */
-function formatResult(value: unknown): string {
-  if (typeof value === "number") {
-    /* 数字保留合理精度 */
-    if (Number.isInteger(value)) return String(value);
-    return Number(value.toFixed(6)).toString();
+  import { useId } from 'vue'
+  import { NInput, NInputNumber, NSwitch } from 'naive-ui'
+  import type { FormulaVariable } from '../types'
+  defineOptions({ name: 'FormulaPreview' })
+  defineProps<{
+    formula: string
+    evalResult: { success: boolean; result: unknown; error?: string }
+    usedVariables: (FormulaVariable & { value?: number | string | boolean })[]
+    editable: boolean
+  }>()
+  const emit = defineEmits<{
+    'update-value': [field: string, value: number | string | boolean | null]
+  }>()
+  const inputId = `formula-sample-${useId()}`
+  /** 保留布尔和文本结果；数值最多保留六位小数，不伪装成业务单位。 */
+  function formatResult(value: unknown): string {
+    if (typeof value === 'number')
+      return new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: 6,
+      }).format(value)
+    if (typeof value === 'boolean') return value ? '真 · true' : '假 · false'
+    return String(value)
   }
-  if (typeof value === "boolean") {
-    return value ? "真 (true)" : "假 (false)";
-  }
-  return String(value);
-}
 </script>
-
 <style lang="scss" scoped>
-@use "./FormulaPreview.scss";
+  @use './FormulaPreview.scss';
 </style>

@@ -1,11 +1,9 @@
 <!--
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2026-02-25
- * @Description: 公式输入区（contenteditable + Token 渲染）
- * @Migration: naive-ui-components 组件库迁移版本
+ * @Date: 2026-10-07
+ * @Description: 原生公式输入与独立高亮预览，保留输入法、文本选择与键盘体验
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
-
 <template>
   <div
     class="formula-input"
@@ -14,501 +12,170 @@
       'formula-input--error': !validation.valid && formula.trim(),
     }"
   >
-    <!-- 标题行 -->
-    <div class="formula-input__header">
-      <span class="formula-input__label">公式编辑</span>
-      <button
+    <div class="formula-input__header"
+      ><span class="formula-input__label">01 / 编辑公式</span
+      ><button
         v-if="formula.trim() && !disabled"
         type="button"
         class="formula-input__clear"
-        @click="handleClear"
-      >
-        清空
-      </button>
-    </div>
-
-    <!-- 编辑器 -->
-    <div
+        @click="clear"
+        >清空公式</button
+      ></div
+    >
+    <textarea
       ref="editorRef"
+      v-model="draft"
       class="formula-input__editor"
-      :contenteditable="!disabled"
-      role="textbox"
-      :aria-label="placeholder"
-      :aria-disabled="disabled"
-      :data-placeholder="placeholder"
+      :readonly="disabled"
+      aria-label="公式输入"
+      :aria-invalid="!validation.valid && !!formula.trim()"
+      :aria-describedby="feedbackId"
+      :placeholder="placeholder"
       spellcheck="false"
-      @input="handleInput"
-      @keydown="handleKeyDown"
-      @paste="handlePaste"
-      @focus="isFocused = true"
-      @blur="handleBlur"
+      @select="saveSelection"
+      @click="saveSelection"
+      @keyup="saveSelection"
+      @blur="saveSelection"
     />
-
-    <!-- 问题（校验信息）三态：空 / 合法 / 错误 -->
-    <div class="formula-input__validation">
-      <span class="formula-input__validation-label">问题</span>
-
-      <!-- 空公式：提示占位 -->
-      <span
-        v-if="!formula.trim()"
-        class="formula-input__validation-hint"
+    <div
+      v-if="tokens.length"
+      class="formula-input__tokens"
+      aria-label="公式结构预览"
+    >
+      <span class="formula-input__tokens-label">结构预览</span
+      ><span
+        v-for="(token, index) in tokens"
+        :key="index"
+        :class="`formula-token formula-token--${token.type}`"
+        >{{
+          token.type === 'variable' ? `[${token.value}]` : token.value
+        }}</span
       >
-        <C_Icon
-          name="mdi:information-outline"
-          :size="13"
-        />
-        请输入公式，公式合法后可计算预览
-      </span>
-
-      <!-- 合法：绿色通过 -->
+    </div>
+    <div
+      :id="feedbackId"
+      class="formula-input__validation"
+      role="status"
+    >
       <span
-        v-else-if="validation.valid"
-        class="formula-input__validation-success"
+        :class="
+          !formula.trim()
+            ? 'formula-input__validation-hint'
+            : validation.valid
+              ? 'formula-input__validation-success'
+              : 'formula-input__validation-error'
+        "
+        >{{
+          !formula.trim()
+            ? '点击左侧变量开始，也可以直接输入 [变量名]。'
+            : validation.valid
+              ? '语法校验通过，可在右侧调整数据试算。'
+              : validation.message
+        }}</span
       >
-        <C_Icon
-          name="mdi:check-circle-outline"
-          :size="13"
-        />
-        公式合法，语法正确
-      </span>
-
-      <!-- 错误：红色提示 -->
-      <span
-        v-else
-        class="formula-input__validation-error"
+      <button
+        v-if="validation.position !== undefined"
+        type="button"
+        class="formula-input__locate"
+        @click="locateError"
+        >定位错误</button
       >
-        <C_Icon
-          name="mdi:alert-circle-outline"
-          :size="13"
-        />
-        {{ validation.message }}
-      </span>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
-  import { ref, watch, onMounted, nextTick } from 'vue'
+  import { ref, watch, nextTick, useId } from 'vue'
   import type { FormulaToken, FormulaValidation } from '../types'
-  import C_Icon from '../../C_Icon/index.vue'
-
-  interface Props {
-    formula: string
-    tokens: FormulaToken[]
-    validation: FormulaValidation
-    variableNames: Set<string>
-    disabled?: boolean
-    placeholder?: string
-  }
-
-  interface Emits {
-    (e: 'update:formula', value: string): void
-    (e: 'focus'): void
-    (e: 'blur'): void
-  }
-
-  const props = withDefaults(defineProps<Props>(), {
-    disabled: false,
-    placeholder: '点击变量或使用键盘输入公式，变量用 [变量名] 包裹',
-  })
-
-  const emit = defineEmits<Emits>()
-
-  const editorRef = ref<HTMLDivElement>()
-  const isFocused = ref(false)
-
-  /** 是否正在由外部更新内容（防止循环触发） */
-  let isExternalUpdate = false
-
-  /** 保存 blur 前的光标 Range，供外部调用 insertAtCursor 时恢复 */
-  let savedRange: Range | null = null
-
-  /* ─── 渲染公式为 HTML ───────────────────────── */
-
-  /** 将公式字符串渲染为 HTML（变量显示为 chip） */
-  function renderFormula(formula: string): string {
-    if (!formula) return ''
-
-    /* 使用分词结果构建 HTML */
-    const { tokens } = props
-    if (tokens.length === 0 && formula.trim()) {
-      return escapeHtml(formula)
-    }
-
-    let html = ''
-    for (const token of tokens) {
-      switch (token.type) {
-        case 'variable':
-          html += `<span class="formula-chip" contenteditable="false" data-variable="${escapeAttr(token.value)}">${escapeHtml(token.value)}</span>`
-          break
-        case 'function':
-          html += `<span class="formula-func">${escapeHtml(token.value)}</span>`
-          break
-        case 'operator':
-          html += `<span class="formula-op">${escapeHtml(token.value)}</span>`
-          break
-        case 'number':
-          html += `<span class="formula-num">${escapeHtml(token.value)}</span>`
-          break
-        case 'paren':
-          html += `<span class="formula-paren">${escapeHtml(token.value)}</span>`
-          break
-        default:
-          html += escapeHtml(token.value)
-      }
-    }
-    return html
-  }
-
-  /** HTML 转义 */
-  function escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-  }
-
-  /** 属性值转义 */
-  function escapeAttr(str: string): string {
-    return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-  }
-
-  /* ─── 从 DOM 提取公式 ───────────────────────── */
-
-  /** 从 contenteditable DOM 提取纯公式字符串 */
-  function extractFormula(): string {
-    const el = editorRef.value
-    if (!el) return ''
-
-    let result = ''
-    for (const node of el.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        result += node.textContent ?? ''
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as HTMLElement
-        if (element.classList.contains('formula-chip')) {
-          const varName =
-            element.getAttribute('data-variable') ?? element.textContent
-          result += `[${varName}]`
-        } else {
-          result += element.textContent ?? ''
-        }
-      }
-    }
-    return result
-  }
-
-  /* ─── 光标管理 ──────────────────────────────── */
-
-  /** 保存当前光标位置 */
-  function saveCursorPosition(): number {
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0 || !editorRef.value) return -1
-
-    const range = sel.getRangeAt(0)
-    const preRange = document.createRange()
-    preRange.selectNodeContents(editorRef.value)
-    preRange.setEnd(range.startContainer, range.startOffset)
-    return preRange.toString().length
-  }
-
-  /** 在文本节点中查找目标位置 */
-  function findInTextNode(
-    node: Node,
-    currentPos: number,
-    charPos: number
-  ): { found: boolean; node: Node; offset: number; pos: number } {
-    const len = node.textContent?.length ?? 0
-    if (currentPos + len >= charPos) {
-      return {
-        found: true,
-        node,
-        offset: charPos - currentPos,
-        pos: currentPos,
-      }
-    }
-    return { found: false, node, offset: 0, pos: currentPos + len }
-  }
-
-  /** 在 chip 节点中查找目标位置 */
-  function findInChipNode(
-    node: Node,
-    currentPos: number,
-    charPos: number,
-    walker: TreeWalker
-  ): { found: boolean; node: Node | null; offset: number; pos: number } {
-    const chipLen =
-      (node as HTMLElement).getAttribute('data-variable')?.length ?? 0
-    const fullLen = chipLen + 2
-    if (currentPos + fullLen >= charPos) {
-      const parent = node.parentNode
-      const idx =
-        Array.from(parent?.childNodes ?? []).indexOf(node as ChildNode) + 1
-      return { found: true, node: parent, offset: idx, pos: currentPos }
-    }
-    walker.nextNode()
-    return { found: false, node: null, offset: 0, pos: currentPos + fullLen }
-  }
-
-  /** 恢复光标到指定字符位置 */
-  function restoreCursorPosition(charPos: number) {
-    const el = editorRef.value
-    if (!el || charPos < 0) return
-
-    const walker = document.createTreeWalker(
-      el,
-      NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT
-    )
-    let currentPos = 0
-    let targetNode: Node | null = null
-    let targetOffset = 0
-
-    while (walker.nextNode()) {
-      const node = walker.currentNode
-      if (node.nodeType === Node.TEXT_NODE) {
-        const result = findInTextNode(node, currentPos, charPos)
-        if (result.found) {
-          targetNode = result.node
-          targetOffset = result.offset
-          break
-        }
-        currentPos = result.pos
-      } else if (
-        node.nodeType === Node.ELEMENT_NODE &&
-        (node as HTMLElement).classList?.contains('formula-chip')
-      ) {
-        const result = findInChipNode(node, currentPos, charPos, walker)
-        if (result.found) {
-          targetNode = result.node
-          targetOffset = result.offset
-          break
-        }
-        currentPos = result.pos
-      }
-    }
-
-    setCursorAt(el, targetNode, targetOffset)
-  }
-
-  /** 设置光标到目标节点或末尾 */
-  function setCursorAt(
-    container: HTMLElement,
-    node: Node | null,
-    offset: number
-  ) {
-    const range = document.createRange()
-    if (!node) {
-      range.selectNodeContents(container)
-      range.collapse(false)
-    } else {
-      try {
-        range.setStart(node, offset)
-        range.collapse(true)
-      } catch {
-        range.selectNodeContents(container)
-        range.collapse(false)
-      }
-    }
-    const sel = window.getSelection()
-    sel?.removeAllRanges()
-    sel?.addRange(range)
-  }
-
-  /** 将光标移到末尾 */
-  function moveCursorToEnd() {
-    const el = editorRef.value
-    if (!el) return
-    const range = document.createRange()
-    range.selectNodeContents(el)
-    range.collapse(false)
-    const sel = window.getSelection()
-    sel?.removeAllRanges()
-    sel?.addRange(range)
-  }
-
-  /* ─── 事件处理 ──────────────────────────────── */
-
-  /** 输入事件 */
-  function handleInput() {
-    if (isExternalUpdate || props.disabled) return
-    const formula = extractFormula()
-    emit('update:formula', formula)
-  }
-
-  /** 键盘事件 */
-  function handleKeyDown(e: KeyboardEvent) {
-    if (props.disabled) {
-      e.preventDefault()
-      return
-    }
-  }
-
-  /** 粘贴事件 — 只保留纯文本 */
-  function handlePaste(e: ClipboardEvent) {
-    e.preventDefault()
-    if (props.disabled) return
-    const text = e.clipboardData?.getData('text/plain') ?? ''
-    document.execCommand('insertText', false, text)
-  }
-
-  /** blur 时保存光标位置 Range */
-  function handleBlur() {
-    isFocused.value = false
-    const sel = window.getSelection()
-    if (sel && sel.rangeCount > 0) {
-      savedRange = sel.getRangeAt(0).cloneRange()
-    }
-  }
-
-  /** 清空 */
-  function handleClear() {
-    if (props.disabled) return
-    emit('update:formula', '')
-    nextTick(() => {
-      if (editorRef.value) {
-        editorRef.value.innerHTML = ''
-      }
-    })
-  }
-
-  /* ─── 暴露方法 ──────────────────────────────── */
-
-  function restoreSavedSelection() {
-    if (!savedRange) return
-    const selection = window.getSelection()
-    selection?.removeAllRanges()
-    selection?.addRange(savedRange)
-  }
-
-  /** 在光标位置插入文本 */
-  function insertAtCursor(text: string) {
-    if (props.disabled) return
-    const el = editorRef.value
-    if (!el) return
-
-    el.focus()
-
-    /* 恢复 blur 前保存的光标位置 */
-    restoreSavedSelection()
-
-    /* 如果是变量文本（[xxx]），插入 chip */
-    const varMatch = text.match(/^\[(.+)\]$/)
-    if (varMatch) {
-      const chip = document.createElement('span')
-      chip.className = 'formula-chip'
-      chip.contentEditable = 'false'
-      chip.setAttribute('data-variable', varMatch[1])
-      chip.textContent = varMatch[1]
-
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0)
-        range.deleteContents()
-        range.insertNode(chip)
-
-        /* 在 chip 后插入一个空格 */
-        const space = document.createTextNode(' ')
-        range.setStartAfter(chip)
-        range.insertNode(space)
-        range.setStartAfter(space)
-        range.collapse(true)
-        sel.removeAllRanges()
-        sel.addRange(range)
-        savedRange = range.cloneRange()
-      }
-    } else {
-      /* 普通文本直接插入 */
-      document.execCommand('insertText', false, text)
-      /* 更新保存的光标 */
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount > 0) {
-        savedRange = sel.getRangeAt(0).cloneRange()
-      }
-    }
-
-    /* 触发更新 */
-    const formula = extractFormula()
-    emit('update:formula', formula)
-  }
-
-  /** 退格（删除光标前一个字符或 chip） */
-  function removePreviousChip(el: HTMLElement, range: Range): boolean {
-    if (range.startOffset <= 0 || range.startContainer !== el) return false
-    const prevNode = el.childNodes[range.startOffset - 1]
-    if (
-      !prevNode ||
-      prevNode.nodeType !== Node.ELEMENT_NODE ||
-      !(prevNode as HTMLElement).classList?.contains('formula-chip')
-    )
-      return false
-    prevNode.remove()
-    return true
-  }
-
-  function backspace() {
-    if (props.disabled) return
-    const el = editorRef.value
-    if (!el) return
-
-    el.focus()
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
-
-    const range = sel.getRangeAt(0)
-
-    if (removePreviousChip(el, range)) {
-      emit('update:formula', extractFormula())
-      return
-    }
-
-    /* 普通退格 */
-    document.execCommand('delete', false)
-    emit('update:formula', extractFormula())
-  }
-
-  /** 聚焦 */
-  function focus() {
-    editorRef.value?.focus()
-    moveCursorToEnd()
-  }
-
-  /* ─── 监听外部公式变化更新显示 ─────────────── */
-
+  defineOptions({ name: 'FormulaInput' })
+  const props = withDefaults(
+    defineProps<{
+      formula: string
+      tokens: FormulaToken[]
+      validation: FormulaValidation
+      variableNames?: Set<string>
+      disabled?: boolean
+      placeholder?: string
+    }>(),
+    { disabled: false, placeholder: '例如：[完成值] / [目标值] * 100' }
+  )
+  const emit = defineEmits<{ 'update:formula': [value: string] }>()
+  const editorRef = ref<HTMLTextAreaElement>()
+  const draft = ref(props.formula)
+  const feedbackId = `formula-feedback-${useId()}`
+  let start = draft.value.length
+  let end = start
+  watch(draft, value => emit('update:formula', value), { flush: 'sync' })
   watch(
     () => props.formula,
-    newFormula => {
-      const el = editorRef.value
-      if (!el) return
-
-      /* 检查当前 DOM 内容是否已经一致（避免循环） */
-      const current = extractFormula()
-      if (current === newFormula) return
-
-      isExternalUpdate = true
-      const pos = saveCursorPosition()
-      el.innerHTML = renderFormula(newFormula)
-      nextTick(() => {
-        restoreCursorPosition(pos)
-        isExternalUpdate = false
-      })
+    value => {
+      if (value === draft.value) return
+      draft.value = value
+      start = end = value.length
     }
   )
-
-  /* 初始化渲染 */
-  onMounted(() => {
-    if (editorRef.value && props.formula) {
-      editorRef.value.innerHTML = renderFormula(props.formula)
+  /** 记录原生字符索引，不把高亮标签的长度误当作公式长度。 */
+  function saveSelection(): void {
+    if (!editorRef.value) return
+    start = editorRef.value.selectionStart
+    end = editorRef.value.selectionEnd
+  }
+  /** 插入与退格都使用同一个文本替换流程，变量名称可以包含中文。 */
+  function replaceSelection(text: string, from = start, to = end): void {
+    if (props.disabled) return
+    const position = Math.max(0, Math.min(from, draft.value.length))
+    draft.value =
+      draft.value.slice(0, position) +
+      text +
+      draft.value.slice(Math.max(position, to))
+    start = end = position + text.length
+    nextTick(() => {
+      editorRef.value?.focus({ preventScroll: true })
+      editorRef.value?.setSelectionRange(start, end)
+    })
+  }
+  /** 在保存的选择区插入纯文本，无 HTML、Range 或 execCommand。 */
+  function insertAtCursor(text: string): void {
+    replaceSelection(text)
+  }
+  /** 变量作为一个整体删除，普通文本按完整 Unicode 字符删除。 */
+  function backspace(): void {
+    if (start !== end) {
+      replaceSelection('')
+      return
     }
-  })
-
-  defineExpose({
-    insertAtCursor,
-    backspace,
-    focus,
-    moveCursorToEnd,
-  })
+    if (start === 0) return
+    const variable = props.tokens.find(
+      token => token.type === 'variable' && token.end === start
+    )
+    const width = Array.from(draft.value.slice(0, start)).pop()?.length ?? 1
+    replaceSelection('', variable?.start ?? start - width, end)
+  }
+  /** 清空公式后继续输入。 */
+  function clear(): void {
+    replaceSelection('', 0, draft.value.length)
+  }
+  /** 将光标移到末尾，兼容现有公开实例方法。 */
+  function moveCursorToEnd(): void {
+    start = end = draft.value.length
+    editorRef.value?.setSelectionRange(start, end)
+  }
+  /** 显式聚焦保持自然的末尾位置。 */
+  function focus(): void {
+    editorRef.value?.focus({ preventScroll: true })
+    moveCursorToEnd()
+  }
+  /** 精确选中解析器报告的字符，方便修正问题。 */
+  function locateError(): void {
+    const position = props.validation.position ?? 0
+    editorRef.value?.focus({ preventScroll: true })
+    editorRef.value?.setSelectionRange(
+      position,
+      Math.min(position + 1, draft.value.length)
+    )
+    saveSelection()
+  }
+  defineExpose({ insertAtCursor, backspace, focus, moveCursorToEnd })
 </script>
-
 <style lang="scss" scoped>
   @use './FormulaInput.scss';
 </style>

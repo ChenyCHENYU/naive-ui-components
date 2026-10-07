@@ -1,11 +1,9 @@
 /*
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2026-02-25
- * @Description: 公式解析、分词、校验引擎
- * @Migration: naive-ui-components 组件库迁移版本
+ * @Date: 2026-10-07
+ * @Description: 公式高亮与校验复用安全编译器，语法规则只维护一份
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
-
 import { computed, type Ref } from 'vue'
 import type {
   FormulaFunction,
@@ -13,227 +11,181 @@ import type {
   FormulaValidation,
   FormulaVariable,
 } from '../types'
-import { OPERATORS } from '../constants'
+import {
+  compileSafeExpression,
+  tokenizeSafeExpression,
+} from '../utils/safeExpression'
 
-/* ─── 分词正则 ─────────────────────────────────── */
+interface FormulaAnalysis {
+  tokens: FormulaToken[]
+  validation: FormulaValidation
+  compiled: ReturnType<typeof compileSafeExpression> | null
+}
 
-/**
- * 匹配规则（有优先级）：
- *  1. [变量名]  → variable
- *  2. >= <= == != → operator（多字符运算符优先）
- *  3. AND OR NOT → operator（逻辑关键词）
- *  4. 数字(含小数) → number
- *  5. 函数名(     → function（字母序列接左括号）
- *  6. + - * / % > < ? : → operator
- *  7. ( ) ,       → paren/comma
- *  8. 空白         → space
- *  9. 其他         → text
- */
-const TOKEN_REGEX =
-  /(\[([^\]]+)\])|(>=|<=|==|!=)|\b(AND|OR|NOT)\b|(\d+(?:\.\d+)?)|([A-Za-z_]\w*)(?=\s*\()|([+\-*/%><?:])|([(),])|(\s+)/g
-
-/**
- * 公式解析 & 校验引擎
- */
+/** 在不执行公式、不需要试算值的情况下完成完整语法检查。 */
 export function useFormulaParser(
   variables: Ref<FormulaVariable[]>,
   functions: Ref<FormulaFunction[]>
 ) {
-  /* ─── 构建查找集 ────────────────────────────── */
-
-  /** 有效变量名集合 */
   const variableNames = computed(
-    () => new Set(variables.value.map(v => v.name))
+    () => new Set(variables.value.map(variable => variable.name))
   )
-
-  /** 有效函数名集合（大写） */
+  const variableFields = computed(
+    () => new Set(variables.value.map(variable => variable.field))
+  )
   const functionNames = computed(
-    () => new Set(functions.value.map(f => f.name.toUpperCase()))
+    () => new Set(functions.value.map(fn => fn.name.toUpperCase()))
   )
+  let cached: {
+    formula: string
+    names: Set<string>
+    fields: Set<string>
+    functions: Set<string>
+    analysis: FormulaAnalysis
+  } | null = null
 
-  /* ─── 分词 ──────────────────────────────────── */
-
-  /** 根据正则匹配组分类 Token */
-  function classifyMatch(
-    match: RegExpExecArray,
-    start: number,
-    end: number
-  ): FormulaToken {
-    if (match[1]) return { type: 'variable', value: match[2], start, end }
-    if (match[3]) return { type: 'operator', value: match[3], start, end }
-    if (match[4]) return { type: 'operator', value: match[4], start, end }
-    if (match[5]) return { type: 'number', value: match[5], start, end }
-    if (match[6]) return { type: 'function', value: match[6], start, end }
-    if (match[7]) return { type: 'operator', value: match[7], start, end }
-    if (match[8]) {
-      const v = match[8]
-      return { type: v === ',' ? 'comma' : 'paren', value: v, start, end }
-    }
-    return { type: 'space', value: match[9] ?? ' ', start, end }
-  }
-
-  /** 将公式字符串解析为 Token 数组 */
+  /** 用原始字符区间保留空白和引号，字符串内的方括号不会变成变量标签。 */
   function tokenize(formula: string): FormulaToken[] {
-    const tokens: FormulaToken[] = []
-    const regex = new RegExp(TOKEN_REGEX.source, 'g')
-    let match: RegExpExecArray | null
-    let lastIndex = 0
-
-    while ((match = regex.exec(formula)) !== null) {
-      if (match.index > lastIndex) {
+    try {
+      const lexical = tokenizeSafeExpression(formula)
+      const tokens: FormulaToken[] = []
+      let end = 0
+      lexical.forEach((token, index) => {
+        if (token.type === 'eof') return
+        if (token.position > end)
+          tokens.push({
+            type: 'space',
+            value: formula.slice(end, token.position),
+            start: end,
+            end: token.position,
+          })
+        const raw = formula
+          .slice(token.position, lexical[index + 1]?.position ?? formula.length)
+          .trimEnd()
+        end = token.position + raw.length
+        const next = lexical[index + 1]
+        const type =
+          token.type === 'variable'
+            ? 'variable'
+            : token.type === 'number'
+              ? 'number'
+              : next?.value === '(' &&
+                  (token.type === 'identifier' ||
+                    ['AND', 'OR', 'NOT'].includes(token.value))
+                ? 'function'
+                : token.type === 'operator'
+                  ? 'operator'
+                  : token.type === 'punctuation'
+                    ? token.value === ','
+                      ? 'comma'
+                      : 'paren'
+                    : 'text'
         tokens.push({
-          type: 'text',
-          value: formula.slice(lastIndex, match.index),
-          start: lastIndex,
-          end: match.index,
+          type,
+          value: type === 'variable' ? token.value : raw,
+          start: token.position,
+          end,
         })
-      }
-
-      tokens.push(
-        classifyMatch(match, match.index, match.index + match[0].length)
-      )
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < formula.length) {
-      tokens.push({
-        type: 'text',
-        value: formula.slice(lastIndex),
-        start: lastIndex,
-        end: formula.length,
       })
+      if (end < formula.length)
+        tokens.push({
+          type: 'space',
+          value: formula.slice(end),
+          start: end,
+          end: formula.length,
+        })
+      return tokens
+    } catch {
+      return formula
+        ? [{ type: 'text', value: formula, start: 0, end: formula.length }]
+        : []
     }
-
-    return tokens
   }
 
-  /* ─── 校验 ──────────────────────────────────── */
-
-  /** 校验括号平衡 */
-  function checkParentheses(formula: string): FormulaValidation {
-    let depth = 0
-    for (let i = 0; i < formula.length; i++) {
-      if (formula[i] === '(') depth++
-      else if (formula[i] === ')') depth--
-      if (depth < 0) {
-        return {
-          valid: false,
-          message: `第 ${i + 1} 个字符处有多余的右括号 )`,
-          position: i,
-        }
-      }
-    }
-    if (depth > 0) {
-      return {
-        valid: false,
-        message: `缺少 ${depth} 个右括号 )`,
-      }
-    }
-    return { valid: true, message: '' }
-  }
-
-  /** 校验变量是否都已定义 */
-  function checkVariables(tokens: FormulaToken[]): FormulaValidation {
-    for (const token of tokens) {
-      if (token.type === 'variable' && !variableNames.value.has(token.value)) {
-        return {
-          valid: false,
-          message: `未知变量「${token.value}」`,
-          position: token.start,
-        }
-      }
-    }
-    return { valid: true, message: '' }
-  }
-
-  /** 校验函数是否已注册 */
-  function checkFunctions(tokens: FormulaToken[]): FormulaValidation {
-    for (const token of tokens) {
-      if (
-        token.type === 'function' &&
-        !functionNames.value.has(token.value.toUpperCase())
-      ) {
-        return {
-          valid: false,
-          message: `未知函数「${token.value}」`,
-          position: token.start,
-        }
-      }
-    }
-    return { valid: true, message: '' }
-  }
-
-  /** 完整校验公式 */
-  function checkOperatorBoundaries(tokens: FormulaToken[]): FormulaValidation {
-    const meaningful = tokens.filter(token => token.type !== 'space')
-    const first = meaningful[0]
-    const last = meaningful[meaningful.length - 1]
+  /** 对相同公式与变量定义复用编译结果，调整试算值时不重新解析。 */
+  function analyze(formula: string): FormulaAnalysis {
+    const names = variableNames.value
+    const fields = variableFields.value
+    const allowedFunctions = functionNames.value
     if (
-      first?.type === 'operator' &&
-      !['-', '+', 'NOT'].includes(first.value) &&
-      OPERATORS.has(first.value)
-    ) {
-      return {
-        valid: false,
-        message: `公式不能以运算符「${first.value}」开头`,
-        position: first.start,
+      cached?.formula === formula &&
+      cached.names === names &&
+      cached.fields === fields &&
+      cached.functions === allowedFunctions
+    )
+      return cached.analysis
+    const analysis: FormulaAnalysis = {
+      tokens: tokenize(formula),
+      validation: {
+        valid: true,
+        message: formula.trim() ? '语法校验通过' : '尚未输入公式',
+      },
+      compiled: null,
+    }
+    if (formula.trim()) {
+      try {
+        analysis.compiled = compileSafeExpression(formula)
+        for (const token of analysis.tokens) {
+          if (token.type === 'variable' && !names.has(token.value))
+            throw new Error(
+              `第 ${token.start + 1} 个字符处：未知变量「${token.value}」`
+            )
+          if (
+            token.type === 'function' &&
+            !allowedFunctions.has(token.value.toUpperCase())
+          )
+            throw new Error(
+              `第 ${token.start + 1} 个字符处：未知函数「${token.value}」`
+            )
+          if (
+            token.type === 'text' &&
+            /^[A-Za-z_]\w*$/.test(token.value) &&
+            !['TRUE', 'FALSE'].includes(token.value.toUpperCase()) &&
+            !fields.has(token.value)
+          )
+            throw new Error(
+              `第 ${token.start + 1} 个字符处：未知字段「${token.value}」`
+            )
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        const position = /第 (\d+) 个字符/.exec(message)
+        analysis.validation = {
+          valid: false,
+          message,
+          ...(position ? { position: Number(position[1]) - 1 } : {}),
+        }
+        analysis.compiled = null
       }
     }
-    if (last?.type === 'operator' || last?.value === ',') {
-      return {
-        valid: false,
-        message: '公式不能以运算符或逗号结尾',
-        position: last.start,
-      }
-    }
-    return { valid: true, message: '' }
+    cached = { formula, names, fields, functions: allowedFunctions, analysis }
+    return analysis
   }
 
+  /** 保持既有校验 API。 */
   function validate(formula: string): FormulaValidation {
-    if (!formula.trim()) {
-      return { valid: true, message: '公式为空' }
-    }
-
-    /* 1. 括号平衡 */
-    const parenCheck = checkParentheses(formula)
-    if (!parenCheck.valid) return parenCheck
-
-    /* 2. 分词 */
-    const tokens = tokenize(formula)
-
-    /* 3. 变量校验 */
-    const varCheck = checkVariables(tokens)
-    if (!varCheck.valid) return varCheck
-
-    /* 4. 函数校验 */
-    const funcCheck = checkFunctions(tokens)
-    if (!funcCheck.valid) return funcCheck
-
-    /* 5. 基本语法边界 */
-    const boundaryCheck = checkOperatorBoundaries(tokens)
-    if (!boundaryCheck.valid) return boundaryCheck
-
-    return { valid: true, message: '公式合法' }
+    return analyze(formula).validation
   }
-
-  /* ─── 公式 → 可求值表达式 ───────────────────── */
-
-  /**
-   * 将公式字符串转换为字段标识表达式
-   * [变量名] → 变量.field 标识符
-   */
+  /** 仅替换真实变量引用，保留字符串字面值与全部原始空白。 */
   function toEvalExpression(
     formula: string,
     variableMap: Map<string, string>
   ): string {
-    return formula.replace(/\[([^\]]+)\]/g, (_, name: string) => {
-      const field = variableMap.get(name)
-      return field ?? `__unknown_${name}__`
-    })
+    let end = 0
+    let result = ''
+    for (const token of tokenize(formula).filter(
+      item => item.type === 'variable'
+    )) {
+      result +=
+        formula.slice(end, token.start) +
+        (variableMap.get(token.value) ?? `__unknown_${token.value}__`)
+      end = token.end
+    }
+    return result + formula.slice(end)
   }
-
   return {
     tokenize,
+    analyze,
     validate,
     toEvalExpression,
     variableNames,

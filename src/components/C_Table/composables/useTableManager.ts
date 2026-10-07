@@ -4,7 +4,13 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { shallowRef, computed, toValue, type MaybeRefOrGetter } from 'vue'
+import {
+  shallowRef,
+  computed,
+  toValue,
+  type MaybeRefOrGetter,
+  type VNodeChild,
+} from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, ParentChildLinkMode } from '../types'
 import { useRowEdit } from './useRowEdit'
@@ -71,6 +77,8 @@ interface TableManagerParams {
   emit: (...args: any[]) => unknown
   /** 列配置（用于编辑校验） */
   columns?: () => import('../types').TableColumn[]
+  /** UI 壳提供加载内容，状态引擎保持可独立调用。 */
+  renderLoading?: () => VNodeChild
 }
 
 /**
@@ -252,6 +260,7 @@ export function useTableManager(params: TableManagerParams) {
       data: computed(() => data()),
       rowKey,
       childRowKey: (child: DataRecord) => child.id as DataTableRowKey,
+      renderLoading: params.renderLoading,
 
       get defaultExpandedKeys() {
         return getConfig().defaultExpandedKeys

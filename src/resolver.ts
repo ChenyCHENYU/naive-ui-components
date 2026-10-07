@@ -67,6 +67,7 @@ export const componentNames = [
   'C_Menu',
   'C_NotificationCenter',
   'C_OrgChart',
+  'C_PageLoading',
   'C_Progress',
   'C_QRCode',
   'C_Signature',

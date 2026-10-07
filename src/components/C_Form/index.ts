@@ -17,6 +17,7 @@ export type {
   OptionItem,
   AsyncOptionsContext,
   FormErrorContext,
+  FormSubmitContext,
   FormRecord,
   FieldPath,
   FieldPathValue,
@@ -33,6 +34,9 @@ export type {
   InlineLayoutConfig,
   CustomLayoutConfig,
 } from './types'
+
+export { PRESET_RULES, NAIVE_COMBOS, SPEC_RULES } from './utils/formValidation'
+export type { FormValidationRule, RuleSpec } from './utils/formValidation'
 
 export { defineFormConfig, defineFormOptions, useCForm } from './helpers'
 export type { UseCFormOptions } from './helpers'

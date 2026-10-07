@@ -2,7 +2,7 @@
  * @Author: ChenYu ycyplus@gmail.com
  * @Date: 2026-10-06
  * @FilePath: \naive-ui-components\src\components\C_Loading\index.vue
- * @Description: 机器人数据扫描加载态，纯 SVG 与 CSS，跟随主题并尊重减少动画设置
+ * @Description: 数据光环加载态，纯 SVG 与 CSS，跟随主题并尊重减少动画设置
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
 -->
 <template>
@@ -10,6 +10,8 @@
     class="c-loading"
     :class="{ 'c-loading--labeled': !!label }"
     role="status"
+    aria-live="polite"
+    aria-atomic="true"
     :aria-label="label || t('common.loading')"
     :style="{
       '--c-loading-size': `${safeSize}px`,
@@ -26,95 +28,110 @@
       aria-hidden="true"
       focusable="false"
     >
-      <rect
-        x="10"
-        y="10"
-        width="44"
-        height="44"
-        rx="14"
-        fill="currentColor"
-        opacity=".045"
-      />
-      <path
-        class="c-loading__frame"
-        d="M13 21v-4a4 4 0 0 1 4-4h4m22 0h4a4 4 0 0 1 4 4v4m0 22v4a4 4 0 0 1-4 4h-4m-22 0h-4a4 4 0 0 1-4-4v-4"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-      />
-      <rect
-        x="20"
-        y="22"
-        width="24"
-        height="21"
-        rx="6"
-        fill="currentColor"
-        fill-opacity=".08"
-        stroke="currentColor"
-        stroke-width="1.7"
-      />
-      <path
-        d="M32 17v5M24 47h16"
-        stroke="currentColor"
-        stroke-width="1.7"
-        stroke-linecap="round"
-        opacity=".65"
-      />
+      <defs>
+        <linearGradient
+          :id="orbitGradientId"
+          x1="8"
+          y1="8"
+          x2="56"
+          y2="56"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            stop-color="currentColor"
+            stop-opacity=".06"
+          />
+          <stop
+            offset=".5"
+            stop-color="currentColor"
+            stop-opacity=".45"
+          />
+          <stop
+            offset="1"
+            stop-color="currentColor"
+          />
+        </linearGradient>
+        <linearGradient
+          :id="surfaceGradientId"
+          x1="16"
+          y1="16"
+          x2="48"
+          y2="48"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            stop-color="currentColor"
+            stop-opacity=".13"
+          />
+          <stop
+            offset="1"
+            stop-color="currentColor"
+            stop-opacity=".03"
+          />
+        </linearGradient>
+      </defs>
       <circle
         cx="32"
-        cy="15"
-        r="2"
-        fill="currentColor"
+        cy="32"
+        r="24"
+        stroke="currentColor"
+        stroke-width="1.5"
+        opacity=".1"
       />
       <g
-        class="c-loading__eyes"
-        fill="currentColor"
+        class="c-loading__orbit"
+        :stroke="`url(#${orbitGradientId})`"
+        stroke-width="2.25"
+        stroke-linecap="round"
       >
-        <rect
-          x="25.5"
-          y="29"
-          width="3"
-          height="4"
-          rx="1.5"
-        />
-        <rect
-          x="35.5"
-          y="29"
-          width="3"
-          height="4"
-          rx="1.5"
+        <path d="M8 32a24 24 0 1 1 24 24" />
+        <circle
+          cx="32"
+          cy="56"
+          r="2.5"
+          fill="currentColor"
+          stroke="none"
         />
       </g>
-      <path
-        d="M28 37h8"
-        stroke="currentColor"
-        stroke-width="1.7"
-        stroke-linecap="round"
-        opacity=".65"
-      />
+      <g class="c-loading__orbit c-loading__orbit--inner">
+        <path
+          d="M18 46a20 20 0 0 1 0-28"
+          stroke="currentColor"
+          stroke-width="1"
+          stroke-linecap="round"
+          opacity=".18"
+        />
+      </g>
       <rect
-        class="c-loading__scan"
-        x="23"
-        y="25"
-        width="18"
-        height="2"
-        rx="1"
+        x="16"
+        y="16"
+        width="32"
+        height="32"
+        rx="11"
+        :fill="`url(#${surfaceGradientId})`"
+        stroke="currentColor"
+        stroke-opacity=".16"
+      />
+      <g
+        v-for="(y, index) in [25, 32, 39]"
+        :key="y"
+        class="c-loading__row"
+        :style="{ animationDelay: `${index * 160}ms` }"
         fill="currentColor"
-      />
-      <path
-        class="c-loading__packet c-loading__packet--in"
-        d="M9 30h4m-4 4h7"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-      />
-      <path
-        class="c-loading__packet c-loading__packet--out"
-        d="M48 30h7m-4 4h4"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-      />
+      >
+        <circle
+          cx="24"
+          :cy="y"
+          r="1.5"
+        />
+        <rect
+          x="29"
+          :y="y - 1.25"
+          :width="index === 1 ? 8 : 12"
+          height="2.5"
+          rx="1.25"
+        />
+      </g>
     </svg>
     <span
       v-if="label"
@@ -125,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, useId } from 'vue'
   import { useThemeVars } from 'naive-ui'
   import { useComponentLocale } from '../../config'
   import type { LoadingProps } from './types'
@@ -136,6 +153,10 @@
     label: '',
   })
   const themeVars = useThemeVars()
+  // 每个实例拥有独立渐变，多个表格同时加载时也不会互相串色。
+  const id = useId()
+  const orbitGradientId = `c-loading-orbit-${id}`
+  const surfaceGradientId = `c-loading-surface-${id}`
   const { t } = useComponentLocale()
   const safeSize = computed(() =>
     Number.isFinite(props.size) ? Math.min(120, Math.max(16, props.size)) : 48

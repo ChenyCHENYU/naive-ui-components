@@ -17,7 +17,7 @@
         :aria-pressed="activeTab === 'variable'"
         @click="activeTab = 'variable'"
       >
-        表单项目
+        可用变量
       </button>
       <button
         type="button"
@@ -35,7 +35,8 @@
       <NInput
         v-model:value="searchText"
         size="small"
-        placeholder="搜索..."
+        placeholder="搜索变量或函数"
+        :input-props="{ 'aria-label': '搜索变量或函数' }"
         clearable
       >
         <template #prefix>
@@ -91,7 +92,12 @@
                 :size="15"
                 class="variable-panel__item-icon"
               />
-              <span>{{ variable.name }}</span>
+              <span
+                >{{ variable.name
+                }}<small v-if="variable.description">{{
+                  variable.description
+                }}</small></span
+              >
             </button>
           </div>
         </div>

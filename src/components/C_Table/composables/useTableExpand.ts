@@ -135,11 +135,11 @@ const useExpandLogic = <T extends object, C>(
 
     if (expanded) {
       desiredExpandedKeys.add(key)
-      await loadData(row)
-      if (!desiredExpandedKeys.has(key)) return
       if (!state.expandedKeys.value.includes(key)) {
         state.expandedKeys.value = [...state.expandedKeys.value, key]
       }
+      await loadData(row)
+      if (!desiredExpandedKeys.has(key)) return
     } else {
       desiredExpandedKeys.delete(key)
       state.expandedKeys.value = state.expandedKeys.value.filter(k => k !== key)
@@ -152,6 +152,7 @@ const useExpandLogic = <T extends object, C>(
     const version = ++transitionVersion
     const expandableRows = utils.data.value.filter(utils.isRowExpandable)
     desiredExpandedKeys = new Set(expandableRows.map(utils.getRowKey))
+    state.expandedKeys.value = [...desiredExpandedKeys]
     await Promise.allSettled(expandableRows.map(loadData))
     if (version !== transitionVersion) return
     state.expandedKeys.value = expandableRows.map(utils.getRowKey)
@@ -176,6 +177,12 @@ const useExpandLogic = <T extends object, C>(
       key => !keys.includes(key)
     )
 
+    // 等待数据时先打开内容区；随后收起或切换的操作优先于迟到响应。
+    for (const key of collapsedKeys) {
+      state.childSelections.value.delete(key)
+    }
+    state.expandedKeys.value = [...keys]
+
     await Promise.all(
       newExpandedKeys.map(async key => {
         const row = utils.findRow(key)
@@ -186,11 +193,6 @@ const useExpandLogic = <T extends object, C>(
     )
     if (version !== transitionVersion) return
 
-    for (const key of collapsedKeys) {
-      state.childSelections.value.delete(key)
-    }
-
-    state.expandedKeys.value = keys
     options.onExpandChange?.(keys)
   }
 
@@ -408,11 +410,17 @@ const createChildSelectionState = <T extends object, C>(
   }
 }
 
-const createLoadingView = (): VNodeChild => {
-  return h('div', { class: 'flex justify-center items-center py-8' }, [
-    h(NSpin, { size: 'small' }),
-    h('span', { class: 'ml-2 text-gray-500' }, '加载中...'),
-  ])
+const createLoadingView = (renderLoading?: () => VNodeChild): VNodeChild => {
+  return h(
+    'div',
+    { class: 'flex justify-center items-center py-8' },
+    renderLoading
+      ? [renderLoading()]
+      : [
+          h(NSpin, { size: 'small' }),
+          h('span', { class: 'ml-2 text-gray-500' }, '加载中...'),
+        ]
+  )
 }
 
 const createEmptyView = (): VNodeChild => {
@@ -434,12 +442,16 @@ const createDefaultColumns = (expandData: DataRecord[]): DataRecord[] => {
       title: '序号',
       key: '_index',
       width: 60,
+      align: 'center',
+      titleAlign: 'center',
       render: (_: unknown, index: number) => index + 1,
     },
     ...dataKeys.map(key => ({
       key,
       title: key.charAt(0).toUpperCase() + key.slice(1),
       width: 120,
+      align: 'center',
+      titleAlign: 'center',
       ellipsis: { tooltip: true },
     })),
   ]
@@ -523,7 +535,7 @@ const useRenderer = <T extends object, C>(
       )
     }
 
-    if (loading) return createLoadingView()
+    if (loading) return createLoadingView(options.renderLoading)
     if (!expandData.length) return createEmptyView()
 
     return createDefaultTable(
@@ -608,7 +620,11 @@ export function useTableExpand<T extends object = DataRecord, C = DataRecord>(
   }
 
   const expandRow = async (key: DataTableRowKey): Promise<void> => {
-    if (state.expandedKeys.value.includes(key)) return
+    if (
+      state.expandedKeys.value.includes(key) &&
+      !state.loadingMap.value.get(key)
+    )
+      return
 
     const row = utils.findRow(key)
     if (!row) return

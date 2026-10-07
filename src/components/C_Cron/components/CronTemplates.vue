@@ -30,6 +30,9 @@
         @click="$emit('select', template.value)"
       >
         <div class="cron-templates__card-name">{{ template.label }}</div>
+        <div class="cron-templates__card-description">{{
+          template.description
+        }}</div>
         <div class="cron-templates__card-expr">{{ template.value }}</div>
       </button>
     </div>
@@ -66,13 +69,15 @@
 
     &__cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
       gap: 8px;
     }
 
     &__card {
       appearance: none;
       font: inherit;
+      color: var(--c-text-1);
+      background: transparent;
       text-align: left;
       padding: 10px 12px;
       border-radius: 8px;
@@ -105,6 +110,12 @@
       font-size: 13px;
       font-weight: 500;
       line-height: 1.4;
+    }
+
+    &__card-description {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--c-text-2);
     }
 
     &__card-expr {

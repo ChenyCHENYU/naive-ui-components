@@ -16,6 +16,7 @@
   <div
     ref="tableWrapperRef"
     class="c-table-wrapper"
+    :aria-busy="normalizedLoading"
   >
     <!-- 动态行工具栏 -->
     <component
@@ -246,6 +247,7 @@
 
 <script setup lang="ts" generic="T extends object = DataRecord">
   import {
+    h,
     ref,
     computed,
     watch,
@@ -480,6 +482,7 @@
     rowKey: resolvedRowKey,
     emit: bridgedEmit,
     columns: () => effectiveColumns.value,
+    renderLoading: () => h(C_Loading, { size: 32, label: t('table.loading') }),
   })
 
   const initializedTreeKeys = new Set<DataTableRowKey>()

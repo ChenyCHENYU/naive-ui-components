@@ -10,18 +10,31 @@ const requireCondition = (condition, message) => {
   if (!condition) failures.push(message)
 }
 
-requireCondition(pkg.packageManager === 'bun@1.3.14', 'packageManager must stay pinned')
-requireCondition(pkg.engines?.node === '>=20.19.0', 'Node engine baseline changed')
+requireCondition(
+  pkg.packageManager === 'bun@1.3.14',
+  'packageManager must stay pinned'
+)
+requireCondition(
+  pkg.engines?.node === '>=20.19.0',
+  'Node engine baseline changed'
+)
 requireCondition(pkg.engines?.bun === '>=1.3.14', 'Bun engine baseline changed')
-requireCondition(!pkg.optionalDependencies, 'Use optional peer dependencies, not hidden installs')
-requireCondition(pkg.scripts?.['check:audit'] === 'bun audit', 'Dependency audit gate is missing')
+requireCondition(
+  !pkg.optionalDependencies,
+  'Use optional peer dependencies, not hidden installs'
+)
+requireCondition(
+  pkg.scripts?.['check:audit'] === 'bun audit',
+  'Dependency audit gate is missing'
+)
 requireCondition(pkg.overrides?.tmp === '0.2.7', 'Secure tmp override changed')
 requireCondition(
   Boolean(pkg.dependencies?.['@types/leaflet']),
   '@types/leaflet must remain a dependency because C_Map publishes Leaflet types'
 )
 requireCondition(
-  fs.readFileSync(path.join(root, '.node-version'), 'utf8').trim() === '20.19.0',
+  fs.readFileSync(path.join(root, '.node-version'), 'utf8').trim() ===
+    '20.19.0',
   '.node-version must match the Node engine baseline'
 )
 const ciWorkflow = fs.readFileSync(
@@ -37,23 +50,34 @@ requireCondition(
 )
 
 for (const peer of ['sortablejs', 'vue-router']) {
-  requireCondition(Boolean(pkg.peerDependencies?.[peer]), `${peer} must be a peer`)
+  requireCondition(
+    Boolean(pkg.peerDependencies?.[peer]),
+    `${peer} must be a peer`
+  )
   requireCondition(
     pkg.peerDependenciesMeta?.[peer]?.optional === true,
     `${peer} must remain an optional peer`
   )
 }
 
-for (const staleDependency of [
-  '@robot-admin/form-validate',
-  '@tato30/vue-pdf',
-  '@vueuse/core',
-]) {
+for (const staleDependency of ['@tato30/vue-pdf', '@vueuse/core']) {
   requireCondition(
-    !pkg.dependencies?.[staleDependency] && !pkg.devDependencies?.[staleDependency],
+    !pkg.dependencies?.[staleDependency] &&
+      !pkg.devDependencies?.[staleDependency],
     `Unused dependency ${staleDependency} was reintroduced`
   )
 }
+
+requireCondition(
+  pkg.dependencies?.['@robot-admin/form-validate'] === '3.4.2' &&
+    fs
+      .readFileSync(
+        path.join(root, 'src/components/C_Form/utils/formValidation.ts'),
+        'utf8'
+      )
+      .includes("from '@robot-admin/form-validate'"),
+  'C_Form must consume the published validation adapter with a pinned dependency'
+)
 
 for (const entry of [
   './C_Form/base.css',
@@ -128,4 +152,6 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log('Package metadata, dependency boundaries, and source contracts are valid.')
+console.log(
+  'Package metadata, dependency boundaries, and source contracts are valid.'
+)

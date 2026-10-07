@@ -1,125 +1,122 @@
 /*
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2026-10-06
+ * @Date: 2026-10-07
  * @FilePath: \naive-ui-components\src\components\C_Loading\index.scss
- * @Description: 机器人扫描与数据流动画，仅在组件挂载时运行
+ * @Description: 数据光环与细光束动画，作用域隔离并支持减少动态效果
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
  */
 .c-loading {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   vertical-align: middle;
   line-height: 1;
   pointer-events: none;
+
   &--labeled {
-    flex-direction: row;
-    gap: 8px;
+    position: relative;
+    gap: 10px;
     max-width: 100%;
-    padding: 8px 14px;
+    padding: 8px 16px 9px 10px;
     box-sizing: border-box;
     border: 1px solid var(--c-loading-border);
-    border-radius: 14px;
+    border-radius: 16px;
     background: var(--c-loading-surface);
-    box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
+    background-image: linear-gradient(
+      135deg,
+      color-mix(in srgb, currentColor 4%, var(--c-loading-surface)),
+      var(--c-loading-surface)
+    );
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, currentColor 4%, transparent),
+      0 8px 28px rgb(0 0 0 / 6%);
+    overflow: hidden;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 50%;
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        currentColor,
+        transparent
+      );
+      opacity: 0.5;
+      animation: c-loading-beam 1.8s ease-in-out infinite;
+    }
   }
+
   &__glyph {
     width: var(--c-loading-size, 48px);
     height: var(--c-loading-size, 48px);
     flex-shrink: 0;
-    overflow: visible;
   }
-  &__frame {
-    opacity: 0.35;
-    animation: c-loading-frame 2.4s ease-in-out infinite;
-  }
-  &__scan {
-    opacity: 0;
-    animation: c-loading-scan 2.4s ease-in-out infinite;
-  }
-  &__eyes {
-    transform-box: fill-box;
+
+  &__orbit {
+    transform-box: view-box;
     transform-origin: center;
-    animation: c-loading-eyes 3.6s ease-in-out infinite;
+    animation: c-loading-orbit 1.6s linear infinite;
+
+    &--inner {
+      animation-duration: 3.2s;
+      animation-direction: reverse;
+    }
   }
-  &__packet {
-    opacity: 0.25;
-    animation: c-loading-data 2.4s ease-in-out infinite;
+
+  &__row {
+    opacity: 0.75;
+    animation: c-loading-row 1.6s ease-in-out infinite;
   }
-  &__packet--out {
-    animation-delay: 0.8s;
-  }
+
   &__label {
+    min-width: 0;
     color: var(--c-loading-text, currentColor);
     font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.03em;
     line-height: 1.6;
+    overflow-wrap: anywhere;
   }
+
   @media (prefers-reduced-motion: reduce) {
-    &__frame,
-    &__scan,
-    &__eyes,
-    &__packet {
+    &__orbit,
+    &__row,
+    &--labeled::after {
       animation: none;
     }
-    &__scan {
+
+    &--labeled::after {
       display: none;
     }
-    &__frame,
-    &__packet {
-      opacity: 0.55;
-    }
   }
 }
-@keyframes c-loading-scan {
-  0%,
-  12% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  25% {
-    opacity: 0.2;
-  }
-  70% {
-    transform: translateY(14px);
-    opacity: 0.2;
-  }
-  88%,
-  100% {
-    transform: translateY(14px);
-    opacity: 0;
+
+@keyframes c-loading-orbit {
+  to {
+    transform: rotate(360deg);
   }
 }
-@keyframes c-loading-frame {
+
+@keyframes c-loading-row {
   0%,
   100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-@keyframes c-loading-eyes {
-  0%,
-  72%,
-  82%,
-  100% {
-    transform: scaleY(1);
-  }
-  77% {
-    transform: scaleY(0.25);
-  }
-}
-@keyframes c-loading-data {
-  0%,
-  100% {
-    opacity: 0.2;
+    opacity: 0.4;
   }
   40%,
   60% {
-    opacity: 0.85;
+    opacity: 1;
+  }
+}
+
+@keyframes c-loading-beam {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(200%);
   }
 }

@@ -9,16 +9,16 @@
  *   dist/C_Table.css         — 组件独立样式（按需导入）
  *   dist/C_Form.css          — ...
  */
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from "./leaflet-assets.js";
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 import { assertComponentStyleBoundary } from './build/style-boundary.js'
 import { isolateVendorStyles } from './build/vendor-style-boundary.js'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const distDir = path.resolve(__dirname, "../dist");
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const distDir = path.resolve(__dirname, '../dist')
 const componentsDir = path.resolve(__dirname, '../src/components')
 const componentNames = fs
   .readdirSync(componentsDir, { withFileTypes: true })
@@ -33,11 +33,8 @@ const stableCssEntries = new Set(
   ])
 )
 
-// 1. 收集 SFC scoped CSS。双格式产物内容相同，按组件名去重。
-// 共享 chunk 偶尔以 composable 命名，必须显式归属到公共组件样式入口。
-const cssChunkAliases = {
-  useTableQuery: 'C_Table',
-}
+// 1. 使用构建器记录的源模块归属，chunk 名称变化不会丢失组件样式。
+const styleManifestFile = path.join(distDir, 'component-styles.json')
 const originalCssFiles = fs
   .readdirSync(distDir)
   .filter(
@@ -58,19 +55,17 @@ if (originalCssFiles.length === 0) {
   )
   process.exit(0)
 }
-const getComponentName = filename => {
-  const base = filename.replace(/-[^.]+\.css$/, '')
-  if (base.startsWith('C_')) return base
-  return cssChunkAliases[base]
-}
-const componentCssSources = new Map()
-for (const filename of originalCssFiles) {
-  const componentName = getComponentName(filename)
-  if (!componentName || componentCssSources.has(componentName)) continue
-  componentCssSources.set(
-    componentName,
-    fs.readFileSync(path.join(distDir, filename), 'utf8')
+if (!fs.existsSync(styleManifestFile)) {
+  throw new Error(
+    'Missing compiled component style manifest; rebuild before merging CSS'
   )
+}
+const componentCssSources = new Map(
+  Object.entries(JSON.parse(fs.readFileSync(styleManifestFile, 'utf8')))
+)
+for (const componentName of componentCssSources.keys()) {
+  if (!componentNames.includes(componentName))
+    throw new Error(`Unknown component style owner: ${componentName}`)
 }
 for (const [componentName, css] of componentCssSources) {
   assertComponentStyleBoundary(css, componentName)
@@ -93,6 +88,8 @@ const fullStyleDependencies = {
   C_Code: ['C_Icon'],
   C_CollapsePanel: ['C_Icon'],
   C_ContextMenu: ['C_Icon'],
+  C_Cron: ['C_Icon', 'C_Loading'],
+  C_FormulaEditor: ['C_Icon'],
   C_Captcha: ['C_Icon'],
   C_Form: ['C_Editor'],
   C_Guide: ['C_Icon'],
@@ -112,12 +109,16 @@ const baseStyleDependencies = {
 }
 const vendorStyleCache = new Map()
 const readVendorStyle = packagePath => {
-  if (vendorStyleCache.has(packagePath)) return vendorStyleCache.get(packagePath)
+  if (vendorStyleCache.has(packagePath))
+    return vendorStyleCache.get(packagePath)
   const filename = path.resolve(__dirname, '../node_modules', packagePath)
   if (!fs.existsSync(filename)) {
     throw new Error(`Missing vendor style: ${packagePath}`)
   }
-  const css = isolateVendorStyles(fs.readFileSync(filename, 'utf8'), packagePath)
+  const css = isolateVendorStyles(
+    fs.readFileSync(filename, 'utf8'),
+    packagePath
+  )
   vendorStyleCache.set(packagePath, css)
   return css
 }
@@ -164,14 +165,16 @@ const resolveComponentStyles = (
 }
 
 // 2. 读取全局 SCSS 编译产物
-const globalScssFile = path.join(distDir, "global-scss.css");
+const globalScssFile = path.join(distDir, 'global-scss.css')
 const globalScss = fs.existsSync(globalScssFile)
-  ? fs.readFileSync(globalScssFile, "utf-8")
-  : "";
+  ? fs.readFileSync(globalScssFile, 'utf-8')
+  : ''
 
 // 3. 为所有公共组件生成稳定 CSS 入口；无样式组件生成空入口，保证 resolver 可用。
 for (const componentName of componentNames) {
-  const content = resolveComponentStyles(componentName).join('\n')
+  const content = [globalScss, ...resolveComponentStyles(componentName)]
+    .filter(Boolean)
+    .join('\n')
   fs.writeFileSync(
     path.join(distDir, `${componentName}.css`),
     content || `/* ${componentName} has no component-specific styles. */\n`
@@ -182,20 +185,22 @@ for (const componentName of componentNames) {
 // compatible entry, while exposing a smaller opt-in entry for consumers that
 // render custom fields/editors and already own those styles.
 for (const componentName of ['C_Form', 'C_Table']) {
-  const baseContent = resolveComponentStyles(
-    componentName,
-    baseStyleDependencies
-  ).join('\n')
+  const baseContent = [
+    globalScss,
+    ...resolveComponentStyles(componentName, baseStyleDependencies),
+  ]
+    .filter(Boolean)
+    .join('\n')
   fs.writeFileSync(path.join(distDir, `${componentName}.base.css`), baseContent)
   const staleFullEntry = path.join(distDir, `${componentName}.full.css`)
   if (fs.existsSync(staleFullEntry)) fs.unlinkSync(staleFullEntry)
 }
 
 // 4. 合并全量：全局变量/样式在前，SFC scoped 在后
-const parts = [];
+const parts = []
 if (globalScss) {
-  parts.push(`/* ========== Global SCSS Styles ========== */`);
-  parts.push(globalScss);
+  parts.push(`/* ========== Global SCSS Styles ========== */`)
+  parts.push(globalScss)
 }
 const globalVendorStyles = [...new Set(Object.values(vendorStyles).flat())]
 if (globalVendorStyles.length > 0) {
@@ -205,28 +210,29 @@ if (globalVendorStyles.length > 0) {
   })
 }
 if (componentCssSources.size > 0) {
-  parts.push(`\n/* ========== SFC Scoped Styles ========== */`);
+  parts.push(`\n/* ========== SFC Scoped Styles ========== */`)
   for (const [componentName, content] of componentCssSources) {
-    parts.push(`\n/* --- ${componentName} --- */`);
-    parts.push(content);
+    parts.push(`\n/* --- ${componentName} --- */`)
+    parts.push(content)
   }
 }
 
-const merged = parts.join("\n");
-const outFile = path.join(distDir, "style.css");
-fs.writeFileSync(outFile, merged);
+const merged = parts.join('\n')
+const outFile = path.join(distDir, 'style.css')
+fs.writeFileSync(outFile, merged)
 
 // 5. 清理中间的 hash 文件（保留无 hash 的独立 CSS 和全量 style.css）
-fs.unlinkSync(globalScssFile);
+fs.unlinkSync(globalScssFile)
+fs.unlinkSync(styleManifestFile)
 for (const filename of originalCssFiles) {
   const file = path.join(distDir, filename)
   if (fs.existsSync(file)) fs.unlinkSync(file)
 }
 
-const sizeKB = (Buffer.byteLength(merged) / 1024).toFixed(1);
+const sizeKB = (Buffer.byteLength(merged) / 1024).toFixed(1)
 console.log(
-  `✅ Merged ${componentCssSources.size} SFC CSS + vendor/global styles → dist/style.css (${sizeKB} KB)`,
-);
+  `✅ Merged ${componentCssSources.size} SFC CSS + vendor/global styles → dist/style.css (${sizeKB} KB)`
+)
 console.log(
   `✅ Generated ${componentNames.length} stable component CSS entries for on-demand import`
 )

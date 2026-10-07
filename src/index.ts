@@ -12,6 +12,7 @@ import {
 import { C_Code } from './components/C_Code'
 import { C_Icon } from './components/C_Icon'
 import { C_Loading } from './components/C_Loading'
+import { C_PageLoading } from './components/C_PageLoading'
 import { C_Upload } from './components/C_Upload'
 import { C_Barcode } from './components/C_Barcode'
 import { C_Captcha } from './components/C_Captcha'
@@ -89,6 +90,7 @@ const components: Component[] = [
   C_Code,
   C_Icon,
   C_Loading,
+  C_PageLoading,
   C_Upload,
   C_Barcode,
   C_Captcha,
@@ -146,6 +148,7 @@ const components: Component[] = [
 export * from './components/C_Code'
 export * from './components/C_Icon'
 export * from './components/C_Loading'
+export * from './components/C_PageLoading'
 export * from './components/C_Upload'
 export * from './components/C_Barcode'
 export * from './components/C_Captcha'

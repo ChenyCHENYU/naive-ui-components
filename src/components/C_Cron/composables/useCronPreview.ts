@@ -17,7 +17,8 @@ import { findNextCronExecutions } from '../cronSchedule'
 export function useCronPreview(
   expression: Ref<string>,
   validation: Ref<CronValidation>,
-  count: Ref<number>
+  count: Ref<number>,
+  enabled: Ref<boolean> = ref(true)
 ) {
   /** 预测的执行时间列表 */
   const nextExecutions = ref<Date[]>([])
@@ -30,17 +31,18 @@ export function useCronPreview(
   /* ─── 监听表达式变化自动计算 ─────────────────── */
 
   watch(
-    [expression, count, validation],
+    [expression, count, validation, enabled],
     () => {
       computationVersion += 1
       const version = computationVersion
       if (computationTimer) clearTimeout(computationTimer)
-      if (!validation.value.valid) {
+      if (!validation.value.valid || !enabled.value) {
         nextExecutions.value = []
         computing.value = false
         computationTimer = null
         return
       }
+      nextExecutions.value = []
       computing.value = true
       computationTimer = setTimeout(async () => {
         const result = await findNextCronExecutions(

@@ -169,3 +169,14 @@
     opacity: 0.6;
   }
 }
+
+.variable-panel__item span {
+  text-align: left;
+  min-width: 0;
+}
+.variable-panel__item small {
+  display: block;
+  font-size: 10px;
+  color: var(--c-text-3);
+  margin-top: 3px;
+}

@@ -15,6 +15,7 @@ import type {
   Ref,
 } from 'vue'
 import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui'
+import type { FormValidationRule } from './utils/formValidation'
 
 export type MaybePromise<T> = T | Promise<T>
 
@@ -145,6 +146,11 @@ export interface FormErrorContext {
   field?: string
 }
 
+/** 组件卸载时取消当前提交，业务请求可直接使用 signal。 */
+export interface FormSubmitContext {
+  signal: AbortSignal
+}
+
 /* =================== 布局配置类型 =================== */
 
 /**
@@ -202,7 +208,7 @@ export interface DynamicFieldConfig {
   created: number
   placeholder?: string
   layout?: { span?: number }
-  rules?: FormItemRule[]
+  rules?: readonly FormValidationRule[]
 }
 
 /**
@@ -359,7 +365,7 @@ export interface FormOption<T extends object = FormRecord> {
   label?: string
   value?: unknown
   placeholder?: string
-  rules?: FormItemRule[]
+  rules?: readonly FormValidationRule[]
   attrs?: Record<string, unknown>
   children?: OptionItem[]
   show?: boolean
@@ -386,7 +392,7 @@ export interface FormOption<T extends object = FormRecord> {
   ) => Promise<readonly OptionItem[]>
 
   /** 联动校验规则：根据表单数据动态返回校验规则 */
-  rulesWhen?: (formModel: FormModel<T>) => FormItemRule[]
+  rulesWhen?: (formModel: FormModel<T>) => readonly FormValidationRule[]
 
   /** 跨字段校验：需要引用多个字段值的验证函数，返回错误消息或 null */
   crossFieldValidator?: (formModel: FormModel<T>) => MaybePromise<string | null>
@@ -519,6 +525,8 @@ export interface FormSlots<T extends object = FormRecord> {
   /** Field-specific named slots are intentionally open-ended. */
   [slotName: string]: ((props: any) => unknown) | undefined
   action?: (props: FormActionSlotProps<T>) => unknown
+  /** 增加业务按钮，保留组件默认的提交、重置和加载管理。 */
+  'action-extra'?: (props: FormActionSlotProps<T>) => unknown
   'tab-actions'?: (props: FormTabActionsSlotProps) => unknown
   'step-actions'?: (props: FormStepActionsSlotProps) => unknown
 }

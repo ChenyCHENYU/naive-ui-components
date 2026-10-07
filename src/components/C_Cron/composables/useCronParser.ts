@@ -50,7 +50,7 @@ export function useCronParser() {
       case 'specific':
         return field.specificValues.length > 0
           ? [...field.specificValues].sort((a, b) => a - b).join(',')
-          : '*'
+          : ''
       case 'none':
         return '?'
       default:
@@ -148,10 +148,14 @@ export function useCronParser() {
     if (changedField === 'day') {
       if (cronValue.value.day.mode !== 'none') {
         cronValue.value.week = { ...cronValue.value.week, mode: 'none' }
+      } else if (cronValue.value.week.mode === 'none') {
+        cronValue.value.week = { ...cronValue.value.week, mode: 'every' }
       }
     } else {
       if (cronValue.value.week.mode !== 'none') {
         cronValue.value.day = { ...cronValue.value.day, mode: 'none' }
+      } else if (cronValue.value.day.mode === 'none') {
+        cronValue.value.day = { ...cronValue.value.day, mode: 'every' }
       }
     }
   }
@@ -160,6 +164,19 @@ export function useCronParser() {
 
   /** 校验 Cron 表达式合法性 */
   function validate(expression?: string): CronValidation {
+    if (expression === undefined) {
+      const empty = FIELD_ORDER.find(
+        type =>
+          cronValue.value[type].mode === 'specific' &&
+          cronValue.value[type].specificValues.length === 0
+      )
+      if (empty)
+        return {
+          valid: false,
+          message: `${CRON_FIELD_META.find(meta => meta.type === empty)!.label}字段至少选择一个值`,
+          field: empty,
+        }
+    }
     const expr = expression ?? generate()
     const parts = expr.trim().split(/\s+/)
 

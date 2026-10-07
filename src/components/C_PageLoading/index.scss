@@ -1,0 +1,171 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-10-07
+ * @Description: 页面加载的主题卡片、波形和轨道动画，所有选择器限定作用域
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+.c-page-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 1999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--c-page-loading-body) 65%, transparent);
+  backdrop-filter: blur(3px);
+  // 保留菜单操作能力，用户可以取消当前跳转并选择其他页面。
+  pointer-events: none;
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 224px;
+    max-width: 100%;
+    padding: 26px 24px 22px;
+    box-sizing: border-box;
+    border-radius: 22px;
+    border: 1px solid var(--c-page-loading-border);
+    background: var(--c-page-loading-surface);
+    background-image: radial-gradient(
+      ellipse at 50% 0,
+      color-mix(in srgb, currentColor 6%, transparent),
+      transparent 70%
+    );
+    box-shadow: 0 16px 56px rgb(0 0 0 / 10%);
+    text-align: center;
+  }
+
+  &__glyph {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
+
+  &__outer,
+  &__inner,
+  &__pulse {
+    transform-box: view-box;
+    transform-origin: center;
+  }
+
+  &__outer {
+    animation: c-page-loading-orbit 2s linear infinite;
+  }
+  &__inner {
+    animation: c-page-loading-orbit 2.8s linear infinite reverse;
+  }
+  &__pulse {
+    animation: c-page-loading-pulse 2s ease-in-out infinite alternate;
+  }
+  &__wave {
+    stroke-dasharray: 100;
+    animation: c-page-loading-wave 2s ease-in-out infinite;
+  }
+
+  &__label {
+    color: var(--c-page-loading-text);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  &__description {
+    color: var(--c-page-loading-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  &__track {
+    width: 88px;
+    height: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+
+    &::after {
+      content: '';
+      display: block;
+      width: 50%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        currentColor,
+        transparent
+      );
+      animation: c-page-loading-track 1.6s ease-in-out infinite;
+    }
+  }
+}
+
+.c-page-loading-fade-enter-active,
+.c-page-loading-fade-leave-active {
+  transition: opacity 0.16s ease;
+}
+.c-page-loading-fade-enter-from,
+.c-page-loading-fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes c-page-loading-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes c-page-loading-pulse {
+  from {
+    transform: scale(0.9);
+  }
+  to {
+    transform: scale(1.15);
+  }
+}
+@keyframes c-page-loading-wave {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0.3;
+  }
+  45%,
+  65% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -100;
+    opacity: 0.3;
+  }
+}
+@keyframes c-page-loading-track {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(200%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-page-loading__outer,
+  .c-page-loading__inner,
+  .c-page-loading__pulse,
+  .c-page-loading__wave,
+  .c-page-loading__track::after {
+    animation: none;
+  }
+  .c-page-loading__track::after {
+    transform: translateX(50%);
+  }
+  .c-page-loading-fade-enter-active,
+  .c-page-loading-fade-leave-active {
+    transition: none;
+  }
+}

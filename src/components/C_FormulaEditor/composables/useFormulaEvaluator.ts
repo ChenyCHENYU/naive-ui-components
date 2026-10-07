@@ -8,7 +8,10 @@
 
 import { computed, type Ref } from 'vue'
 import type { FormulaVariable } from '../types'
-import { evaluateSafeExpression } from '../utils/safeExpression'
+import {
+  compileSafeExpression,
+  tokenizeSafeExpression,
+} from '../utils/safeExpression'
 
 /**
  * 公式求值引擎
@@ -24,6 +27,9 @@ export function useFormulaEvaluator(variables: Ref<FormulaVariable[]>) {
     return map
   })
 
+  let cachedFormula: string | undefined
+  let compiled: ReturnType<typeof compileSafeExpression> | undefined
+
   /**
    * 求值：用样例数据计算公式结果
    */
@@ -36,11 +42,11 @@ export function useFormulaEvaluator(variables: Ref<FormulaVariable[]>) {
     }
 
     try {
-      const result = evaluateSafeExpression(
-        formula,
-        variableMap.value,
-        sampleData
-      )
+      if (!compiled || cachedFormula !== formula) {
+        compiled = compileSafeExpression(formula)
+        cachedFormula = formula
+      }
+      const result = compiled.evaluate(variableMap.value, sampleData)
       return { success: true, result }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -52,15 +58,17 @@ export function useFormulaEvaluator(variables: Ref<FormulaVariable[]>) {
    * 从公式中提取使用到的变量名列表
    */
   function extractVariableNames(formula: string): string[] {
-    const names: string[] = []
-    const regex = /\[([^\]]+)\]/g
-    let match: RegExpExecArray | null
-    while ((match = regex.exec(formula)) !== null) {
-      if (!names.includes(match[1])) {
-        names.push(match[1])
-      }
+    try {
+      return [
+        ...new Set(
+          tokenizeSafeExpression(formula)
+            .filter(token => token.type === 'variable')
+            .map(token => token.value)
+        ),
+      ]
+    } catch {
+      return []
     }
-    return names
   }
 
   return {

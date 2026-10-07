@@ -60,6 +60,7 @@ function scssPrePlugin() {
  * 使 Rolldown 正确提取到独立 CSS 文件。
  */
 function cssPostPlugin() {
+  const componentStyles = new Map<string, Set<string>>()
   return {
     name: 'css-post',
     transform(code: string, id: string) {
@@ -68,7 +69,30 @@ function cssPostPlugin() {
         id.includes('lang.scss') ||
         id.includes('lang.css')
       if (!isStyleModule) return null
+
+      // 按编译模块的源目录归属最终 scoped CSS，不能依赖可变的 chunk 名称。
+      const owner = /\/src\/components\/(C_[^/]+)\//.exec(
+        id.replaceAll('\\', '/')
+      )?.[1]
+      if (owner) {
+        const styles = componentStyles.get(owner) ?? new Set<string>()
+        styles.add(code)
+        componentStyles.set(owner, styles)
+      }
       return { code, moduleType: 'css' }
+    },
+    writeBundle() {
+      fs.writeFileSync(
+        path.resolve(__dirname, 'dist/component-styles.json'),
+        JSON.stringify(
+          Object.fromEntries(
+            [...componentStyles].map(([name, styles]) => [
+              name,
+              [...styles].join('\n'),
+            ])
+          )
+        )
+      )
     },
   }
 }

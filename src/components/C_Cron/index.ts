@@ -1,4 +1,4 @@
-export { default as C_Cron } from "./index.vue";
+export { default as C_Cron } from './index.vue'
 export type {
   CronFieldType,
   CronFieldMode,
@@ -7,11 +7,12 @@ export type {
   CronFieldMeta,
   CronTemplate,
   CronValidation,
+  CronConfig,
   CronProps,
   CronExpose,
   CronEmits,
-} from "./types";
-export { useCronParser } from "./composables/useCronParser";
-export { useCronPreview } from "./composables/useCronPreview";
-export { useCronDescription } from "./composables/useCronDescription";
-export * from "./constants";
+} from './types'
+export { useCronParser } from './composables/useCronParser'
+export { useCronPreview } from './composables/useCronPreview'
+export { useCronDescription } from './composables/useCronDescription'
+export * from './constants'

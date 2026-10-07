@@ -1,3 +1,9 @@
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-10-07
+ * @Description: 有界公式语言的唯一词法、语法与安全求值实现
+ * Copyright (c) 2026 by CHENY, All Rights Reserved.
+ */
 type Primitive = number | string | boolean
 
 type Token = {
@@ -167,178 +173,158 @@ function tokenize(expression: string): Token[] {
   return tokens
 }
 
+type ExpressionNode =
+  | { kind: 'literal'; value: Primitive }
+  | { kind: 'variable' | 'identifier'; name: string }
+  | {
+      kind: 'binary'
+      operator: string
+      left: ExpressionNode
+      right: ExpressionNode
+    }
+  | { kind: 'unary'; operator: string; value: ExpressionNode }
+  | {
+      kind: 'conditional'
+      condition: ExpressionNode
+      truthy: ExpressionNode
+      falsy: ExpressionNode
+    }
+  | { kind: 'call'; name: string; args: ExpressionNode[] }
+
+/** 一个语法树同时用于校验和求值；条件分支按需计算。 */
 class SafeExpressionParser {
   private cursor = 0
   private nestingDepth = 0
+  constructor(private readonly tokens: Token[]) {}
 
-  constructor(
-    private readonly tokens: Token[],
-    private readonly variableFields: ReadonlyMap<string, string>,
-    private readonly values: Readonly<Record<string, Primitive>>
-  ) {}
-
-  parse(): Primitive {
+  /** 解析完整输入，禁止忽略尾部表达式。 */
+  parse(): ExpressionNode {
     const result = this.parseConditional()
     this.expect('eof')
     return result
   }
-
+  /** 当前词元。 */
   private current(): Token {
     return this.tokens[this.cursor]
   }
-
+  /** 消费当前词元。 */
   private advance(): Token {
-    const token = this.current()
-    this.cursor += 1
-    return token
+    return this.tokens[this.cursor++]
   }
-
-  private matches(value: string): boolean {
-    return this.current().value === value
-  }
-
+  /** 尝试消费指定符号。 */
   private consume(value: string): boolean {
-    if (!this.matches(value)) return false
+    if (this.current().value !== value) return false
     this.advance()
     return true
   }
-
+  /** 消费必需词元并报告实际错误位置。 */
   private expect(type: Token['type'], value?: string): Token {
     const token = this.current()
-    if (token.type !== type || (value !== undefined && token.value !== value)) {
-      const expected = value ?? type
-      throw new Error(`第 ${token.position + 1} 个字符处应为 ${expected}`)
-    }
+    if (token.type !== type || (value !== undefined && token.value !== value))
+      throw new Error(`第 ${token.position + 1} 个字符处应为 ${value ?? type}`)
     return this.advance()
   }
-
-  private parseConditional(): Primitive {
-    this.nestingDepth += 1
-    if (this.nestingDepth > MAX_NESTING_DEPTH) {
+  /** 三元条件表达式保持右结合，并限制嵌套。 */
+  private parseConditional(): ExpressionNode {
+    if (++this.nestingDepth > MAX_NESTING_DEPTH)
       throw new Error(`公式嵌套不能超过 ${MAX_NESTING_DEPTH} 层`)
-    }
     try {
       const condition = this.parseOr()
       if (!this.consume('?')) return condition
       const truthy = this.parseConditional()
       this.expect('operator', ':')
-      const falsy = this.parseConditional()
-      return condition ? truthy : falsy
-    } finally {
-      this.nestingDepth -= 1
-    }
-  }
-
-  private parseOr(): Primitive {
-    let value = this.parseAnd()
-    while (this.consume('OR')) {
-      const right = this.parseAnd()
-      value = Boolean(value) || Boolean(right)
-    }
-    return value
-  }
-
-  private parseAnd(): Primitive {
-    let value = this.parseEquality()
-    while (this.consume('AND')) {
-      const right = this.parseEquality()
-      value = Boolean(value) && Boolean(right)
-    }
-    return value
-  }
-
-  private parseEquality(): Primitive {
-    let value = this.parseComparison()
-    while (this.matches('==') || this.matches('!=')) {
-      const operator = this.advance().value
-      const right = this.parseComparison()
-      value = operator === '==' ? value === right : value !== right
-    }
-    return value
-  }
-
-  private parseComparison(): Primitive {
-    let value = this.parseAdditive()
-    while (['>', '>=', '<', '<='].includes(this.current().value)) {
-      const operator = this.advance().value
-      const right = this.parseAdditive()
-      if (typeof value === 'boolean' || typeof right === 'boolean') {
-        throw new Error(`运算符 ${operator} 不支持布尔值`)
+      return {
+        kind: 'conditional',
+        condition,
+        truthy,
+        falsy: this.parseConditional(),
       }
-      if (operator === '>') value = value > right
-      else if (operator === '>=') value = value >= right
-      else if (operator === '<') value = value < right
-      else value = value <= right
+    } finally {
+      this.nestingDepth--
     }
-    return value
   }
-
-  private parseAdditive(): Primitive {
-    let value = this.parseMultiplicative()
-    while (this.matches('+') || this.matches('-')) {
+  /** 按优先级构造左结合二元表达式。 */
+  private parseBinary(
+    next: () => ExpressionNode,
+    operators: readonly string[]
+  ): ExpressionNode {
+    let left = next()
+    while (operators.includes(this.current().value)) {
       const operator = this.advance().value
-      const right = this.parseMultiplicative()
-      value =
-        operator === '+'
-          ? toNumber(value) + toNumber(right)
-          : toNumber(value) - toNumber(right)
+      left = { kind: 'binary', operator, left, right: next() }
     }
-    return value
+    return left
   }
-
-  private parseMultiplicative(): Primitive {
-    let value = this.parseUnary()
-    while (['*', '/', '%'].includes(this.current().value)) {
-      const operator = this.advance().value
-      const right = toNumber(this.parseUnary())
-      const left = toNumber(value)
-      if (operator === '*') value = left * right
-      else if (operator === '/') value = left / right
-      else value = left % right
-    }
-    return value
+  /** 逻辑或。 */
+  private parseOr(): ExpressionNode {
+    return this.parseBinary(() => this.parseAnd(), ['OR'])
   }
-
-  private parseUnary(): Primitive {
-    if (this.consume('-')) return -toNumber(this.parseUnary())
-    if (this.consume('+')) return toNumber(this.parseUnary())
-    if (this.consume('NOT')) return !this.parseUnary()
-    return this.parsePrimary()
+  /** 逻辑与。 */
+  private parseAnd(): ExpressionNode {
+    return this.parseBinary(() => this.parseEquality(), ['AND'])
   }
-
-  // eslint-disable-next-line complexity -- 基础表达式的互斥语法分派集中在此处便于安全审计。
-  private parsePrimary(): Primitive {
-    const token = this.current()
-    if (
-      token.type === 'operator' &&
-      ['AND', 'OR'].includes(token.value) &&
-      this.tokens[this.cursor + 1]?.value === '('
+  /** 相等比较。 */
+  private parseEquality(): ExpressionNode {
+    return this.parseBinary(() => this.parseComparison(), ['==', '!='])
+  }
+  /** 大小比较。 */
+  private parseComparison(): ExpressionNode {
+    return this.parseBinary(() => this.parseAdditive(), ['>', '>=', '<', '<='])
+  }
+  /** 加减法。 */
+  private parseAdditive(): ExpressionNode {
+    return this.parseBinary(() => this.parseMultiplicative(), ['+', '-'])
+  }
+  /** 乘除与余数。 */
+  private parseMultiplicative(): ExpressionNode {
+    return this.parseBinary(() => this.parseUnary(), ['*', '/', '%'])
+  }
+  /** 用迭代消费一元符号，避免连续 NOT 或负号造成调用栈溢出。 */
+  private parseUnary(): ExpressionNode {
+    const operators: string[] = []
+    while (
+      ['-', '+', 'NOT'].includes(this.current().value) &&
+      !(
+        this.current().value === 'NOT' &&
+        this.tokens[this.cursor + 1]?.value === '('
+      )
     ) {
-      this.advance()
-      this.advance()
-      return this.callFunction(token.value, token)
+      operators.push(this.advance().value)
+      if (operators.length > MAX_NESTING_DEPTH)
+        throw new Error(`一元运算不能超过 ${MAX_NESTING_DEPTH} 层`)
     }
-    if (token.type === 'number') {
+    let value = this.parsePrimary()
+    for (const operator of operators.reverse())
+      value = { kind: 'unary', operator, value }
+    return value
+  }
+  /** 字面值、引用、括号或函数。 */
+  private parsePrimary(): ExpressionNode {
+    const token = this.current()
+    if (token.type === 'number' || token.type === 'string') {
       this.advance()
-      return Number(token.value)
-    }
-    if (token.type === 'string') {
-      this.advance()
-      return token.value
+      return {
+        kind: 'literal',
+        value: token.type === 'number' ? Number(token.value) : token.value,
+      }
     }
     if (token.type === 'variable') {
       this.advance()
-      const field = this.variableFields.get(token.value)
-      if (!field) throw new Error(`未知变量“${token.value}”`)
-      return this.readValue(field, token)
+      return { kind: 'variable', name: token.value }
     }
-    if (token.type === 'identifier') {
+    if (
+      token.type === 'identifier' ||
+      (token.type === 'operator' && ['AND', 'OR', 'NOT'].includes(token.value))
+    ) {
       this.advance()
-      const upperValue = token.value.toUpperCase()
-      if (upperValue === 'TRUE') return true
-      if (upperValue === 'FALSE') return false
-      if (this.consume('(')) return this.callFunction(upperValue, token)
-      return this.readValue(token.value, token)
+      const name = token.value.toUpperCase()
+      if (name === 'TRUE' || name === 'FALSE')
+        return { kind: 'literal', value: name === 'TRUE' }
+      if (this.consume('(')) return this.parseFunction(name, token)
+      if (name === 'NOT')
+        return { kind: 'unary', operator: 'NOT', value: this.parseUnary() }
+      if (token.type === 'identifier')
+        return { kind: 'identifier', name: token.value }
     }
     if (this.consume('(')) {
       const value = this.parseConditional()
@@ -347,48 +333,162 @@ class SafeExpressionParser {
     }
     throw new Error(`第 ${token.position + 1} 个字符处缺少有效值`)
   }
-
-  private readValue(field: string, token: Token): Primitive {
-    if (!Object.prototype.hasOwnProperty.call(this.values, field)) {
-      throw new Error(`变量“${token.value}”缺少样例数据`)
-    }
-    const value = this.values[field]
-    if (!['number', 'string', 'boolean'].includes(typeof value)) {
-      throw new Error(`变量“${token.value}”的数据类型不受支持`)
-    }
-    return value
-  }
-
-  private callFunction(name: string, token: Token): Primitive {
-    const fn = FUNCTIONS[name]
-    if (!fn) throw new Error(`未知函数“${token.value}”`)
-    const args: Primitive[] = []
+  /** 函数只允许内置白名单，参数个数在语法阶段检查。 */
+  private parseFunction(name: string, token: Token): ExpressionNode {
+    if (!Object.prototype.hasOwnProperty.call(FUNCTIONS, name))
+      throw new Error(
+        `第 ${token.position + 1} 个字符处：未知函数“${token.value}”`
+      )
+    const args: ExpressionNode[] = []
     if (!this.consume(')')) {
       do {
         args.push(this.parseConditional())
       } while (this.consume(','))
       this.expect('punctuation', ')')
     }
-    return fn(...args)
+    const [min, max] =
+      name === 'IF'
+        ? [3, 3]
+        : name === 'ROUND'
+          ? [1, 2]
+          : ['AND', 'OR', 'SUM', 'AVG', 'MAX', 'MIN'].includes(name)
+            ? [1, Infinity]
+            : [1, 1]
+    if (args.length < min || args.length > max)
+      throw new Error(
+        `第 ${token.position + 1} 个字符处：${name} 需要 ${min === max ? min : `${min}–${max === Infinity ? '多个' : max}`} 个参数`
+      )
+    return { kind: 'call', name, args }
   }
 }
 
-/**
- * Evaluate the component's small formula language without dynamic code execution,
- * object traversal, or access to caller-provided functions.
- */
+/** 验证存在且仅允许有限的基础类型数据，不读取原型链。 */
+function readValue(
+  name: string,
+  values: Readonly<Record<string, Primitive>>
+): Primitive {
+  if (
+    !Object.prototype.hasOwnProperty.call(values, name) ||
+    values[name] == null
+  )
+    throw new Error(`变量“${name}”缺少样例数据`)
+  const value = values[name]
+  if (
+    !['number', 'string', 'boolean'].includes(typeof value) ||
+    (typeof value === 'number' && !Number.isFinite(value))
+  )
+    throw new Error(`变量“${name}”的数据类型不受支持`)
+  return value
+}
+
+/** 普通二元运算；逻辑短路由语法树执行器处理。 */
+function calculateBinary(
+  operator: string,
+  left: Primitive,
+  right: Primitive
+): Primitive {
+  switch (operator) {
+    case '==':
+      return left === right
+    case '!=':
+      return left !== right
+    case '+':
+      return toNumber(left) + toNumber(right)
+    case '-':
+      return toNumber(left) - toNumber(right)
+    case '*':
+      return toNumber(left) * toNumber(right)
+    case '/':
+      return toNumber(left) / toNumber(right)
+    case '%':
+      return toNumber(left) % toNumber(right)
+    default:
+      if (typeof left === 'boolean' || typeof right === 'boolean')
+        throw new Error(`运算符 ${operator} 不支持布尔值`)
+      if (operator === '>') return left > right
+      if (operator === '>=') return left >= right
+      if (operator === '<') return left < right
+      return left <= right
+  }
+}
+
+/** 执行已解析的语法树；IF、三元、AND、OR 均采用真实短路语义。 */
+function execute(
+  node: ExpressionNode,
+  fields: ReadonlyMap<string, string>,
+  values: Readonly<Record<string, Primitive>>,
+  depth = 0
+): Primitive {
+  if (depth > MAX_NESTING_DEPTH * 2) throw new Error('公式计算层数超过安全限制')
+  const run = (child: ExpressionNode): Primitive =>
+    execute(child, fields, values, depth + 1)
+  switch (node.kind) {
+    case 'literal':
+      return node.value
+    case 'variable': {
+      const field = fields.get(node.name)
+      if (!field) throw new Error(`未知变量“${node.name}”`)
+      return readValue(field, values)
+    }
+    case 'identifier':
+      return readValue(node.name, values)
+    case 'conditional':
+      return run(node.condition) ? run(node.truthy) : run(node.falsy)
+    case 'unary': {
+      const value = run(node.value)
+      return node.operator === 'NOT'
+        ? !value
+        : node.operator === '-'
+          ? -toNumber(value)
+          : toNumber(value)
+    }
+    case 'binary': {
+      const left = run(node.left)
+      if (node.operator === 'AND')
+        return Boolean(left) && Boolean(run(node.right))
+      if (node.operator === 'OR')
+        return Boolean(left) || Boolean(run(node.right))
+      return calculateBinary(node.operator, left, run(node.right))
+    }
+    case 'call':
+      if (node.name === 'IF')
+        return run(node.args[0]) ? run(node.args[1]) : run(node.args[2])
+      if (node.name === 'AND')
+        return node.args.every(child => Boolean(run(child)))
+      if (node.name === 'OR')
+        return node.args.some(child => Boolean(run(child)))
+      return FUNCTIONS[node.name](...node.args.map(run))
+  }
+}
+
+/** 编译一次后可对多组试算值复用，不执行 JavaScript。 */
+export function compileSafeExpression(expression: string) {
+  const tokens = tokenize(expression)
+  const node = new SafeExpressionParser(tokens).parse()
+  return {
+    tokens,
+    evaluate(
+      fields: ReadonlyMap<string, string>,
+      values: Readonly<Record<string, Primitive>>
+    ): Primitive {
+      const result = execute(node, fields, values)
+      if (typeof result === 'number' && !Number.isFinite(result))
+        throw new Error('公式计算结果必须是有限数值')
+      return result
+    },
+  }
+}
+
+/** 保持公开求值 API，语法校验与试算使用同一个编译器。 */
 export function evaluateSafeExpression(
   expression: string,
   variableFields: ReadonlyMap<string, string>,
   values: Readonly<Record<string, Primitive>>
 ): Primitive {
-  const result = new SafeExpressionParser(
-    tokenize(expression),
-    variableFields,
-    values
-  ).parse()
-  if (typeof result === 'number' && !Number.isFinite(result)) {
-    throw new Error('公式计算结果必须是有限数值')
-  }
-  return result
+  return compileSafeExpression(expression).evaluate(variableFields, values)
+}
+
+/** 高亮与引用分析复用相同词法器，字符串中的方括号不会被识别为变量。 */
+export function tokenizeSafeExpression(expression: string): Token[] {
+  return tokenize(expression)
 }

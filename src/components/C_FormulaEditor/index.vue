@@ -1,289 +1,191 @@
 <!--
  * @Author: ChenYu ycyplus@gmail.com
- * @Date: 2026-02-25
- * @Description: 公式编辑器组件
- * @Migration: naive-ui-components 组件库迁移版本
+ * @Date: 2026-10-07
+ * @Description: 公式工作区，项目只需要 v-model 与扁平配置
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
-
 <template>
-  <div
+  <section
     class="c-formula"
-    :style="{ height: containerHeight }"
+    :style="{
+      height:
+        typeof options.height === 'number'
+          ? `${options.height}px`
+          : options.height,
+    }"
+    aria-label="公式编辑器"
   >
-    <!-- ═══════ 顶部标题行 ═══════ -->
-    <div class="c-formula__title-row">
-      <div class="c-formula__title">
-        <C_Icon
-          name="mdi:function-variant"
-          :size="18"
-        />
-        <span>公式编辑器</span>
-      </div>
-      <NTag
-        :type="validation.valid ? 'success' : 'error'"
-        size="small"
-        round
-      >
-        <template #icon>
-          <C_Icon
-            :name="validation.valid ? 'mdi:check-circle' : 'mdi:alert-circle'"
-            :size="14"
-          />
-        </template>
-        {{ validation.valid ? '合法' : '错误' }}
-      </NTag>
-    </div>
-
-    <!-- ═══════ 主内容区域 ═══════ -->
-    <div class="c-formula__body">
-      <!-- 左侧：变量面板 -->
+    <header class="c-formula__title-row">
       <div
-        v-if="props.showVariablePanel"
-        class="c-formula__sidebar"
+        ><span class="c-formula__eyebrow">FORMULA WORKBENCH</span
+        ><h2>规则与试算</h2><p>插入变量、编辑公式，再用试算值验证结果。</p></div
       >
-        <VariablePanel
-          :variables="variableList"
-          :functions="functionList"
-          :disabled="props.disabled"
-          @select-variable="handleSelectVariable"
-          @select-function="handleSelectFunction"
-        />
-      </div>
-
-      <!-- 右侧：编辑区 + 键盘 + 预览 -->
+      <div class="c-formula__actions"
+        ><NTag
+          :type="
+            !formula.trim()
+              ? 'default'
+              : analysis.validation.valid
+                ? 'success'
+                : 'error'
+          "
+          size="small"
+          >{{
+            !formula.trim()
+              ? '等待输入'
+              : analysis.validation.valid
+                ? '语法有效'
+                : '需要修正'
+          }}</NTag
+        ><NButton
+          size="small"
+          :disabled="options.disabled"
+          @click="reset"
+          >重置</NButton
+        ></div
+      >
+    </header>
+    <div
+      v-if="options.templates.length"
+      class="c-formula__templates"
+      aria-label="公式模板"
+    >
+      <button
+        v-for="template in options.templates"
+        :key="template.value"
+        type="button"
+        :disabled="options.disabled"
+        :aria-pressed="formula === template.value"
+        @click="formula = template.value"
+        ><strong>{{ template.label }}</strong
+        ><span>{{ template.description }}</span></button
+      >
+    </div>
+    <div
+      class="c-formula__body"
+      :class="{
+        'c-formula__body--no-sidebar': !options.showVariablePanel,
+        'c-formula__body--no-preview': !options.showPreview,
+      }"
+    >
+      <aside
+        v-if="options.showVariablePanel"
+        class="c-formula__sidebar"
+        ><VariablePanel
+          :variables="options.variables"
+          :functions="options.functions"
+          :disabled="options.disabled"
+          @select-variable="variable => insert(`[${variable.name}]`)"
+          @select-function="fn => insert(`${fn.name}(`)"
+      /></aside>
       <div class="c-formula__main">
-        <!-- 公式输入区 -->
         <FormulaInput
           ref="formulaInputRef"
           :formula="formula"
-          :tokens="tokens"
-          :validation="validation"
-          :variable-names="parser.variableNames.value"
-          :disabled="props.disabled"
-          :placeholder="props.placeholder"
-          @update:formula="handleFormulaUpdate"
+          :tokens="analysis.tokens"
+          :validation="analysis.validation"
+          :disabled="options.disabled"
+          :placeholder="options.placeholder"
+          @update:formula="updateFormula"
         />
-
-        <!-- 虚拟键盘 -->
-        <div
-          v-if="props.showKeyboard"
+        <details
+          v-if="options.showKeyboard"
           class="c-formula__keyboard"
-        >
-          <VirtualKeyboard
-            :disabled="props.disabled"
-            @key-press="handleKeyPress"
+          ><summary>辅助键盘 <span>运算符、数字与退格</span></summary
+          ><VirtualKeyboard
+            :disabled="options.disabled"
+            @key-press="key => insert(key.value)"
             @action="handleAction"
-          />
-        </div>
-
-        <!-- 计算预览 -->
-        <FormulaPreview
-          v-if="props.showPreview && hasSampleData"
-          :formula="formula"
-          :eval-result="evalResult"
-          :used-variables="usedVariableValues"
-          :has-sample-data="hasSampleData"
-        />
+        /></details>
+        <div class="c-formula__guide"
+          ><C_Icon
+            name="mdi:information-outline"
+            :size="16"
+          /><p
+            >变量使用
+            <code>[变量名]</code
+            >，支持括号、比较和条件函数。右侧结果是当前数据的本地试算。</p
+          ></div
+        >
       </div>
+      <FormulaPreview
+        v-if="options.showPreview"
+        :formula="formula"
+        :eval-result="evalResult"
+        :used-variables="usedVariables"
+        :editable="options.editableSampleData && !options.disabled"
+        @update-value="updateSample"
+      />
     </div>
-  </div>
+  </section>
 </template>
-
 <script setup lang="ts">
-  import { ref, computed, watch, onMounted } from 'vue'
-  import { NTag } from 'naive-ui'
+  import { ref, watch } from 'vue'
+  import { NButton, NTag } from 'naive-ui'
   import type {
+    FormulaEditorProps,
     FormulaEditorEmits,
     FormulaEditorExpose,
-    FormulaEditorProps,
-    FormulaFunction,
-    FormulaKeyboardKey,
-    FormulaVariable,
   } from './types'
-  import { DEFAULT_FUNCTIONS } from './constants'
-  import { useFormulaParser } from './composables/useFormulaParser'
-  import { useFormulaEvaluator } from './composables/useFormulaEvaluator'
+  import { useFormulaEditor } from './composables/useFormulaEditor'
   import C_Icon from '../C_Icon/index.vue'
   import FormulaInput from './components/FormulaInput.vue'
   import VariablePanel from './components/VariablePanel.vue'
   import VirtualKeyboard from './components/VirtualKeyboard.vue'
   import FormulaPreview from './components/FormulaPreview.vue'
-
   defineOptions({ name: 'C_FormulaEditor' })
-
-  /* ─── Props & Emits ─────────────────────────── */
-
   const props = withDefaults(defineProps<FormulaEditorProps>(), {
-    modelValue: '',
-    variables: () => [],
-    functions: undefined,
-    sampleData: undefined,
     disabled: false,
-    placeholder: '点击变量或使用键盘输入公式，变量用 [变量名] 包裹',
-    height: 'auto',
     showPreview: true,
     showKeyboard: true,
     showVariablePanel: true,
+    editableSampleData: true,
   })
-
   const emit = defineEmits<FormulaEditorEmits>()
-
-  /* ─── 组件引用 ──────────────────────────────── */
-
+  const {
+    options,
+    formula,
+    analysis,
+    evalResult,
+    usedVariables,
+    updateSample,
+    reset,
+  } = useFormulaEditor(props)
   const formulaInputRef = ref<InstanceType<typeof FormulaInput>>()
-
-  /* ─── 变量与函数列表 ────────────────────────── */
-
-  const variableList = computed(() => props.variables ?? [])
-  const functionList = computed(() => props.functions ?? DEFAULT_FUNCTIONS)
-
-  /* ─── 初始化组合函数 ────────────────────────── */
-
-  const parser = useFormulaParser(variableList, functionList)
-  const evaluator = useFormulaEvaluator(variableList)
-
-  /* ─── 本地状态 ──────────────────────────────── */
-
-  /** 公式字符串 */
-  const formula = ref(props.modelValue || '')
-
-  /** Token 列表 */
-  const tokens = computed(() => parser.tokenize(formula.value))
-
-  /** 校验结果 */
-  const validation = computed(() => parser.validate(formula.value))
-
-  /* ─── 容器高度 ──────────────────────────────── */
-
-  const containerHeight = computed(() => {
-    if (typeof props.height === 'number') return `${props.height}px`
-    return props.height
+  watch(formula, value => {
+    emit('update:modelValue', value)
+    emit('change', value)
   })
-
-  /* ─── 求值相关 ──────────────────────────────── */
-
-  /** 是否有样例数据 */
-  const hasSampleData = computed(
-    () => !!props.sampleData && Object.keys(props.sampleData).length > 0
-  )
-
-  /** 求值结果 */
-  const evalResult = computed(() => {
-    if (
-      !formula.value.trim() ||
-      !hasSampleData.value ||
-      !validation.value.valid
-    ) {
-      return { success: true, result: undefined }
-    }
-    return evaluator.evaluate(formula.value, props.sampleData!)
-  })
-
-  /** 提取公式中使用到的变量 + 对应样例数据值 */
-  const usedVariableValues = computed(() => {
-    if (!hasSampleData.value) return []
-    const names = evaluator.extractVariableNames(formula.value)
-    return names.map(name => {
-      const variable = variableList.value.find(v => v.name === name)
-      const field = variable?.field ?? name
-      const value = props.sampleData?.[field]
-      return { name, value: value ?? '未提供' }
-    })
-  })
-
-  /* ─── 初始化 ────────────────────────────────── */
-
-  onMounted(() => {
-    if (props.modelValue) {
-      formula.value = props.modelValue
-    }
-  })
-
-  /* ─── 监听外部 v-model ─────────────────────── */
-
   watch(
-    () => props.modelValue,
-    newVal => {
-      if (newVal !== undefined && newVal !== formula.value) {
-        formula.value = newVal
-      }
-    }
+    () => analysis.value.validation,
+    value => emit('validation-change', value),
+    { immediate: true }
   )
-
-  /* ─── 监听内部公式变更 → 同步外部 ──────────── */
-
-  watch(formula, newFormula => {
-    emit('update:modelValue', newFormula)
-    emit('change', newFormula)
-  })
-
-  /* ─── 监听校验状态 ─────────────────────────── */
-
-  watch(validation, v => {
-    emit('validation-change', v)
-  })
-
-  /* ─── 公式更新处理 ─────────────────────────── */
-
-  /** FormulaInput 输入更新 */
-  function handleFormulaUpdate(value: string) {
-    if (props.disabled) return
-    formula.value = value
+  /** 编辑行为全部经过禁用状态检查。 */
+  function updateFormula(value: string): void {
+    if (!options.value.disabled) formula.value = value
   }
-
-  /* ─── 变量面板交互 ─────────────────────────── */
-
-  /** 选择变量 → 插入到光标 */
-  function handleSelectVariable(variable: FormulaVariable) {
-    if (props.disabled) return
-    formulaInputRef.value?.insertAtCursor(`[${variable.name}]`)
+  /** 项目和内部面板共用原生字符索引插入流程。 */
+  function insert(text: string): void {
+    if (!options.value.disabled) formulaInputRef.value?.insertAtCursor(text)
   }
-
-  /** 选择函数 → 插入到光标 */
-  function handleSelectFunction(func: FormulaFunction) {
-    if (props.disabled) return
-    formulaInputRef.value?.insertAtCursor(`${func.name}(`)
+  /** 辅助键盘只负责编辑，不拥有第二份公式状态。 */
+  function handleAction(action: string): void {
+    if (options.value.disabled) return
+    if (action === 'BACKSPACE') formulaInputRef.value?.backspace()
+    if (action === 'CLEAR') formula.value = ''
   }
-
-  /* ─── 虚拟键盘交互 ─────────────────────────── */
-
-  /** 按键 → 插入值到光标 */
-  function handleKeyPress(key: FormulaKeyboardKey) {
-    if (props.disabled) return
-    formulaInputRef.value?.insertAtCursor(key.value)
-  }
-
-  /** 动作键处理 */
-  function handleAction(action: string) {
-    if (props.disabled) return
-    if (action === 'BACKSPACE') {
-      formulaInputRef.value?.backspace()
-    } else if (action === 'CLEAR') {
-      formula.value = ''
-    }
-  }
-
-  /* ─── 暴露方法 ─────────────────────────────── */
-
   defineExpose<FormulaEditorExpose>({
     getValue: () => formula.value,
-    setValue: (expr: string) => {
-      formula.value = expr
+    setValue: value => {
+      formula.value = value
     },
-    reset: () => {
-      formula.value = props.modelValue || ''
-    },
-    validate: () => parser.validate(formula.value),
-    insertAtCursor: (text: string) => {
-      formulaInputRef.value?.insertAtCursor(text)
-    },
-    focus: () => {
-      formulaInputRef.value?.focus()
-    },
+    reset,
+    validate: () => analysis.value.validation,
+    insertAtCursor: insert,
+    focus: () => formulaInputRef.value?.focus(),
   })
 </script>
-
 <style lang="scss" scoped>
   @use './index.scss';
 </style>

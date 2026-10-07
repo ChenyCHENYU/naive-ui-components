@@ -18,6 +18,11 @@
       },
     }"
   />
+  <C_Table
+    :data="childRows"
+    :columns="searchableColumns"
+    :config="{ toolbar: { show: false }, pagination: false }"
+  />
 </template>
 
 <script setup lang="ts">
@@ -59,6 +64,17 @@
 
   declare const childRows: ChildRow[]
   declare const childColumns: TableColumn<ChildRow>[]
+
+  // 原生表格迁移后继续提供排序与筛选的强类型配置。
+  const searchableColumns: TableColumn<ChildRow>[] = [
+    {
+      key: 'name',
+      title: '姓名',
+      sorter: 'default',
+      filterOptions: [{ label: 'Chen', value: 'Chen' }],
+      filter: (value, row) => row.name === value,
+    },
+  ]
 
   const childTableVNode = h(C_Table<ChildRow>, {
     data: childRows,

@@ -1,84 +1,111 @@
-/* FormulaPreview 组件样式 */
-
+/* 隔离试算值与明确结果，组件宽度变化时自然换行。 */
 .formula-preview {
-  padding: 12px 16px 14px;
-  border-top: 1px solid var(--c-border);
-  background: color-mix(in srgb, var(--c-text-2) 2%, var(--c-bg-card));
-
-  &__header {
+  min-width: 0;
+  padding: 24px;
+  border-left: 1px solid var(--c-border);
+  background: color-mix(in srgb, var(--c-primary) 3%, var(--c-bg-card));
+  header {
     display: flex;
+    gap: 12px;
     align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 8px;
+  }
+  h3,
+  p {
+    margin: 0;
+  }
+  h3 {
+    font-size: 15px;
+    color: var(--c-text-1);
+  }
+  header p {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.7;
     color: var(--c-text-2);
   }
-
-  &__empty {
-    font-size: 12px;
-    color: var(--c-text-4);
-    padding: 8px 0;
-  }
-
-  &__vars-title {
-    font-size: 11px;
-    color: var(--c-text-4);
-    margin-bottom: 4px;
-  }
-
-  &__var-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 0;
-    font-size: 12px;
-  }
-
-  &__var-name {
+  &__step {
+    font:
+      600 12px ui-monospace,
+      monospace;
     color: var(--c-primary);
-    font-weight: 500;
   }
-
-  &__var-eq {
-    color: var(--c-text-4);
-  }
-
-  &__var-value {
-    font-family: 'Courier New', Courier, monospace;
-    color: var(--c-text-1);
-    font-weight: 500;
-  }
-
   &__result {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 12px;
+    margin: 24px 0;
+    padding: 20px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--c-primary) 7%, var(--c-bg-card));
+    border: 1px solid color-mix(in srgb, var(--c-primary) 20%, var(--c-border));
+    min-height: 120px;
+    &--error {
+      border-color: color-mix(in srgb, var(--c-error) 30%, var(--c-border));
+      background: color-mix(in srgb, var(--c-error) 4%, var(--c-bg-card));
+    }
   }
-
   &__result-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--c-text-2);
-  }
-
-  &__result-value {
-    font-size: 18px;
-    font-weight: 700;
-    font-family: 'Courier New', Courier, monospace;
     color: var(--c-primary);
-  }
-
-  &__result-error {
-    display: flex;
-    align-items: center;
-    gap: 4px;
     font-size: 12px;
-    color: var(--error-color);
   }
-
+  &__result-value {
+    color: var(--c-text-1);
+    font:
+      600 32px/1.5 ui-monospace,
+      monospace;
+    overflow-wrap: anywhere;
+  }
   &__result-empty {
-    font-size: 14px;
-    color: var(--c-text-4);
+    color: var(--c-text-2);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  &__vars-title {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    span {
+      color: var(--c-text-3);
+      font-weight: 400;
+    }
+  }
+  &__var-row {
+    padding-top: 16px;
+    p {
+      color: var(--c-text-3);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+  }
+  &__var-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 7px;
+    label {
+      font-size: 12px;
+      color: var(--c-text-1);
+    }
+    code {
+      color: var(--c-text-3);
+      font-size: 10px;
+      overflow-wrap: anywhere;
+    }
+  }
+  &__var-value {
+    font-family: ui-monospace, monospace;
+  }
+  &__empty,
+  &__note {
+    font-size: 11px;
+    color: var(--c-text-3);
+    line-height: 1.8;
+    margin-top: 16px !important;
+  }
+  &__note {
+    margin-top: 24px !important;
+    padding-top: 16px;
+    border-top: 1px solid var(--c-border);
   }
 }

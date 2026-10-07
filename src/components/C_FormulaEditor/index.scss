@@ -1,71 +1,171 @@
-/* C_FormulaEditor 主组件样式 */
-
+/* 公式工作区：变量、原生输入与试算结果共享一个模型。 */
 .c-formula {
-  display: flex;
-  flex-direction: column;
-  border-radius: 12px;
+  container: formula-editor / inline-size;
+  overflow: auto;
   border: 1px solid var(--c-border);
+  border-radius: 16px;
   background: var(--c-bg-card);
-  overflow: hidden;
-
-  /* ═══════ 标题行 ═══════ */
-
+  color: var(--c-text-2);
+  h2,
+  p {
+    margin: 0;
+  }
   &__title-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 24px;
     border-bottom: 1px solid var(--c-border);
+    h2 {
+      margin-top: 8px;
+      color: var(--c-text-1);
+      font-size: 22px;
+      letter-spacing: -0.4px;
+    }
+    p {
+      margin-top: 6px;
+      font-size: 13px;
+    }
   }
-
-  &__title {
+  &__eyebrow {
+    color: var(--c-primary);
+    font:
+      600 10px ui-monospace,
+      monospace;
+    letter-spacing: 2px;
+  }
+  &__actions {
     display: flex;
     align-items: center;
+    gap: 12px;
+  }
+  &__templates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
     gap: 8px;
-    font-weight: 600;
-    font-size: 15px;
-    color: var(--c-text-1);
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--c-border);
+    button {
+      appearance: none;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      gap: 4px;
+      border: 1px solid var(--c-border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      background: transparent;
+      color: var(--c-text-2);
+      font: inherit;
+      cursor: pointer;
+      strong {
+        color: var(--c-text-1);
+        font-size: 12px;
+      }
+      span {
+        font-size: 11px;
+      }
+      &[aria-pressed='true'],
+      &:hover:enabled {
+        border-color: var(--c-primary);
+        background: color-mix(in srgb, var(--c-primary) 6%, transparent);
+      }
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      &:focus-visible {
+        outline: 2px solid var(--c-primary);
+        outline-offset: 2px;
+      }
+    }
   }
-
-  /* ═══════ 主内容 ═══════ */
-
   &__body {
-    display: flex;
-    flex: 1;
-    min-height: 0;
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr) 300px;
+    align-items: stretch;
+    &--no-sidebar {
+      grid-template-columns: minmax(0, 1fr) 300px;
+    }
+    &--no-preview {
+      grid-template-columns: 210px minmax(0, 1fr);
+    }
+    &--no-sidebar#{&}--no-preview {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
-
   &__sidebar {
-    width: 210px;
-    flex-shrink: 0;
+    min-width: 0;
     border-right: 1px solid var(--c-border);
   }
-
   &__main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
     min-width: 0;
+    padding: 24px;
   }
-
   &__keyboard {
-    padding: 14px 18px;
+    margin-top: 20px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    summary {
+      padding: 12px 16px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--c-text-1);
+      span {
+        margin-left: 8px;
+        color: var(--c-text-3);
+        font-size: 11px;
+      }
+      &:focus-visible {
+        outline: 2px solid var(--c-primary);
+      }
+    }
+    :deep(.virtual-keyboard) {
+      padding: 0 16px 16px;
+    }
+  }
+  &__guide {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 20px;
+    font-size: 11px;
+    color: var(--c-text-3);
+    line-height: 1.8;
+    > :first-child {
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    code {
+      color: var(--c-primary);
+    }
+  }
+}
+@container formula-editor (max-width: 980px) {
+  .c-formula__body {
+    grid-template-columns: 190px minmax(0, 1fr);
+    &--no-sidebar {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .c-formula__body > :deep(.formula-preview) {
+    grid-column: 1 / -1;
+    border-left: 0;
     border-top: 1px solid var(--c-border);
   }
 }
-
-/* ═══════ 响应式 ═══════ */
-
-@media (max-width: 768px) {
-  .c-formula {
-    &__body {
-      flex-direction: column;
-    }
-
-    &__sidebar {
-      width: 100%;
-      border-right: none;
-      border-bottom: 1px solid var(--c-border);
-    }
+@container formula-editor (max-width: 580px) {
+  .c-formula__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .c-formula__sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .c-formula__title-row,
+  .c-formula__main {
+    padding: 18px;
   }
 }

@@ -23,6 +23,7 @@ import type {
   MaybePromise,
   SubmitEventPayload,
   FormRecord,
+  FormSubmitContext,
 } from '../types'
 import { getCurrentInstance, inject, type InjectionKey } from 'vue'
 import type { ComponentFeedback, ComponentLocale } from '../../../config'
@@ -60,7 +61,10 @@ export interface LayoutCallbacks<T extends object = FormRecord> {
   onFieldsChange?: (fields: FormOption<T>[]) => void
 
   /* lifecycle callbacks */
-  onSubmit?: (payload: SubmitEventPayload<T>) => MaybePromise<void>
+  onSubmit?: (
+    payload: SubmitEventPayload<T>,
+    context?: FormSubmitContext
+  ) => MaybePromise<void>
   onError?: (error: unknown, context: FormErrorContext) => void
 }
 
@@ -96,6 +100,10 @@ export interface FormConfig<
   submitText?: string
   /** 默认重置按钮文案 */
   resetText?: string
+  /** 提交完成后的提示；默认不显示，由业务明确配置。 */
+  submitSuccessText?: string
+  /** 重置完成后的提示；默认不显示。 */
+  resetSuccessText?: string
 
   /* ===== v0.8.0 新增 ===== */
 
@@ -213,6 +221,8 @@ export const FORM_DEFAULTS: ResolvedFormConfig = {
   preserveRemovedFields: false,
   submitText: '',
   resetText: '',
+  submitSuccessText: '',
+  resetSuccessText: '',
   mode: 'create',
 } as const
 

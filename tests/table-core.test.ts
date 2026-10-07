@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import fs from 'node:fs'
 import path from 'node:path'
-import { computed, effectScope, nextTick, ref, type VNode } from 'vue'
+import { computed, effectScope, h, nextTick, ref, type VNode } from 'vue'
 import { useCellEdit } from '../src/components/C_Table/composables/useCellEdit'
 import { useCrossPageSelection } from '../src/components/C_Table/composables/useCrossPageSelection'
 import { useModalEdit } from '../src/components/C_Table/composables/useModalEdit'
@@ -205,6 +205,49 @@ describe('C_Table delete action contract', () => {
 })
 
 describe('C_Table async expansion', () => {
+  test('pending expansion renders the supplied status and clears it when data arrives', async () => {
+    const row = { id: 1, name: 'parent' }
+    let resolveLoad: (rows: DataRecord[]) => void = () => undefined
+    const expanded = useTableExpand({
+      data: ref([row]),
+      rowKey: value => value.id,
+      onLoadData: () =>
+        new Promise<DataRecord[]>(resolve => {
+          resolveLoad = resolve
+        }),
+      renderLoading: () => h('span', { role: 'status' }, 'Loading children'),
+    })
+    const column = expanded.getTableColumns([{ type: 'expand' }])[0] as {
+      renderExpand: (record: typeof row) => VNode
+    }
+    const pending = expanded.expandRow(1)
+    expect(expanded.expandedKeys.value).toEqual([1])
+    const loadingView = column.renderExpand(row)
+    const children = loadingView.children as VNode[]
+    expect(children[0].props?.role).toBe('status')
+    expect(children[0].children).toBe('Loading children')
+
+    resolveLoad([{ id: 'child', name: 'Ready' }])
+    await pending
+    const loadedView = column.renderExpand(row)
+    expect(expanded.loadingMap.value.get(1)).toBe(false)
+    expect((loadedView.children as VNode[])[0].props?.role).toBeUndefined()
+    expect(expanded.expandDataMap.value.get(1)).toEqual([
+      { id: 'child', name: 'Ready' },
+    ])
+    const childTable = (loadedView.children as VNode[])[1]
+    const childColumns = childTable.props?.columns as Array<{
+      align: string
+      titleAlign: string
+    }>
+    expect(childColumns.length).toBeGreaterThan(0)
+    expect(
+      childColumns.every(
+        column => column.align === 'center' && column.titleAlign === 'center'
+      )
+    ).toBe(true)
+  })
+
   test('deduplicates pending loads and a later collapse wins the race', async () => {
     const data = ref([{ id: 1, name: 'parent' }])
     let resolveLoad: (rows: DataRecord[]) => void = () => undefined
@@ -223,12 +266,37 @@ describe('C_Table async expansion', () => {
     const first = expanded.expandRow(1)
     const second = expanded.expandRow(1)
     expect(calls).toBe(1)
+    expect(expanded.expandedKeys.value).toEqual([1])
     expanded.collapseAll()
     resolveLoad([{ id: 'child' }])
     await Promise.all([first, second])
 
     expect(expanded.expandedKeys.value).toEqual([])
     expect(expanded.expandDataMap.value.get(1)).toEqual([{ id: 'child' }])
+  })
+
+  test('controlled expansion can collapse before a pending response arrives', async () => {
+    const row = { id: 1 }
+    let resolveLoad: (rows: DataRecord[]) => void = () => undefined
+    const events: Array<Array<string | number>> = []
+    const expanded = useTableExpand({
+      data: ref([row]),
+      rowKey: value => value.id,
+      onLoadData: () =>
+        new Promise<DataRecord[]>(resolve => {
+          resolveLoad = resolve
+        }),
+      onExpandChange: keys => events.push([...keys]),
+    })
+    const pending = expanded.handleExpandChange([1])
+    expect(expanded.expandedKeys.value).toEqual([1])
+    expect(expanded.loadingMap.value.get(1)).toBe(true)
+    await expanded.handleExpandChange([])
+    expect(expanded.expandedKeys.value).toEqual([])
+    resolveLoad([{ id: 'child' }])
+    await pending
+    expect(expanded.expandedKeys.value).toEqual([])
+    expect(events).toEqual([[]])
   })
 })
 
