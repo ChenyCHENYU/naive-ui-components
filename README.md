@@ -146,6 +146,8 @@ import '@robot-admin/naive-ui-components/C_Table/base.css'
 
 Cron 支持秒到星期的六个数字字段、范围、间隔、列表及日/星期 `?` 互斥，不实现 L/W/# 扩展；预览按浏览器本地时区计算，不会调度任务。公式试算只在本地进行，不修改传入的 `sampleData`；校验和计算复用有界解析器，条件分支按需执行。通过 `showPreview`、`showKeyboard`、`showVariablePanel` 控制嵌入布局，`disabled` 同时保护试算输入。重置恢复初始模型及数据；切换独立记录时使用新 key 重新挂载。
 
+公式键盘默认展开，可手动收起。数字、运算、比较与条件按键直接插入当前光标位置；选中文字会被替换，退格可整体删除变量，清空后继续输入。函数快捷键复用 `functions` 配置及签名说明，不需要项目额外配置；隐藏键盘仍使用 `showKeyboard: false`。
+
 ### C_Guide 配置引导
 
 项目只需要提供目标和步骤，组件内置主题、可选 SVG 示意图及退出清理，不依赖项目的路由或 Store：

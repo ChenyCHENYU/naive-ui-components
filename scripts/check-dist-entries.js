@@ -106,6 +106,7 @@ const componentStyleContracts = {
   'C_FormulaEditor.css': [
     '.c-formula[',
     '.formula-input__editor[',
+    '.virtual-keyboard__key[',
     '.formula-preview[',
     '.variable-panel[',
     '.c-icon[',

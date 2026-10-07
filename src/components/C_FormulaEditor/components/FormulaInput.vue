@@ -174,7 +174,7 @@
     )
     saveSelection()
   }
-  defineExpose({ insertAtCursor, backspace, focus, moveCursorToEnd })
+  defineExpose({ insertAtCursor, backspace, clear, focus, moveCursorToEnd })
 </script>
 <style lang="scss" scoped>
   @use './FormulaInput.scss';

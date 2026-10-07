@@ -91,10 +91,27 @@
         <details
           v-if="options.showKeyboard"
           class="c-formula__keyboard"
-          ><summary>辅助键盘 <span>运算符、数字与退格</span></summary
+          open
+          ><summary
+            ><C_Icon
+              type="svg"
+              svg-path="M4 5h16v14H4zM6 7v10h12V7zM7 8h2v2H7zM10 8h2v2h-2zM13 8h2v2h-2zM16 8h1v2h-1zM7 11h2v2H7zM10 11h2v2h-2zM13 11h2v2h-2zM16 11h1v2h-1zM8 14h8v2H8z"
+              :size="18"
+            />
+            <span class="c-formula__keyboard-title"
+              >公式键盘<small>数字、运算与函数 · 点击插入</small></span
+            >
+            <C_Icon
+              class="c-formula__keyboard-chevron"
+              type="svg"
+              svg-path="M6 8l6 6 6-6 1.4 1.4L12 16.8 4.6 9.4z"
+              :size="18"
+            /> </summary
           ><VirtualKeyboard
             :disabled="options.disabled"
+            :functions="options.functions"
             @key-press="key => insert(key.value)"
+            @insert-function="fn => insert(`${fn.name}(`)"
             @action="handleAction"
         /></details>
         <div class="c-formula__guide"
@@ -173,7 +190,7 @@
   function handleAction(action: string): void {
     if (options.value.disabled) return
     if (action === 'BACKSPACE') formulaInputRef.value?.backspace()
-    if (action === 'CLEAR') formula.value = ''
+    if (action === 'CLEAR') formulaInputRef.value?.clear()
   }
   defineExpose<FormulaEditorExpose>({
     getValue: () => formula.value,
