@@ -1,5 +1,9 @@
 <template>
-  <C_Table :crud="crud" />
+  <C_Table
+    :crud="crud"
+    flex-height
+    :wrapper-class="['consumer-table', { compact: true }]"
+  />
   <C_Table :crud="crud">
     <template #loading>
       <C_Loading

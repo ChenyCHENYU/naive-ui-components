@@ -422,6 +422,26 @@ const config = defineTableConfig({
 })
 ```
 
+固定高度场景使用 `flex-height + wrapper-class`，根容器负责工具栏、表格与分页的高度分配。根容器自身或父容器必须有确定高度；组件不猜测页面可用高度。`wrapper-class` 支持 Vue 字符串、数组和对象 class 绑定，应用 scoped 样式可直接命中根容器，无需引用内部 CSS 类。普通 `class` / `style` 与其他原生表格属性保持原行为，继续传给内部 `NDataTable`。
+
+```vue
+<template>
+  <C_Table
+    wrapper-class="inventory-table"
+    flex-height
+    :columns="columns"
+    :data="rows"
+  />
+</template>
+<style scoped>
+  .inventory-table {
+    height: 480px;
+  }
+</style>
+```
+
+选择列须显式配置 `{ type: 'selection' }`，通过 `@selection-change="(keys, rows) => ..."` 接收结果；主动清空时使用公开实例方法 `clearSelection()`，不观察内部 manager 状态。
+
 `C_Table` 继续由当前 Naive UI 表格实现负责；需要 MachTable 时应由业务入口完整渲染 MachTable 及其原生配置，避免在两套列定义、事件和实例 API 之间做隐式转换。二者只共享 `C_ActionBar` 这类框架无关的页面动作模型，不互相污染。
 
 ### C_Map 推荐用法

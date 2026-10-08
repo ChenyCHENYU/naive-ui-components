@@ -16,6 +16,7 @@
   <div
     ref="tableWrapperRef"
     class="c-table-wrapper"
+    :class="[wrapperClass, { 'c-table-wrapper--flex': flexHeight }]"
     :aria-busy="normalizedLoading"
   >
     <!-- 动态行工具栏 -->
@@ -141,6 +142,7 @@
       v-if="!resolved.error?.show"
       ref="tableRef"
       v-bind="{ ...computedTableProps, ...$attrs }"
+      :flex-height="flexHeight"
       :columns="computedColumns"
       :data="pagination.paginatedData.value"
       :loading="normalizedLoading"
@@ -307,6 +309,10 @@
 
   const props = withDefaults(
     defineProps<{
+      /** 根容器 class；普通 class/style 仍按既有契约转发到 NDataTable。 */
+      wrapperClass?: import('vue').HTMLAttributes['class']
+      /** 填满已确定高度的根容器，并为工具栏和分页预留空间。 */
+      flexHeight?: boolean
       /** 列配置（crud 模式下可省略） */
       columns?: TableColumn<T>[]
       /** 数据源（crud 模式下可省略） */

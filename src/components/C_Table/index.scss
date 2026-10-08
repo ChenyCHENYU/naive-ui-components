@@ -11,6 +11,25 @@
   position: relative;
 }
 
+// 只在显式 flex-height 模式建立高度链，不影响自然高度表格。
+.c-table-wrapper--flex {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+
+  > :deep(.n-data-table),
+  > .table-error-state {
+    flex: 1;
+    min-height: 0;
+  }
+  > .table-toolbar,
+  > .batch-actions-bar,
+  > .pagination-wrapper {
+    flex-shrink: 0;
+  }
+}
+
 /* ================= 列拖拽排序 ================= */
 .column-drag-ghost {
   opacity: var(--c-table-drag-ghost-opacity);

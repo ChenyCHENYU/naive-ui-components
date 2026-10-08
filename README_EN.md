@@ -361,6 +361,26 @@ const config = defineTableConfig({
 })
 ```
 
+For fixed-height tables, use `flex-height` with `wrapper-class`. The root wrapper allocates height between toolbars, the table and pagination. Give the wrapper or its parent a definite height; the component does not guess the page height. `wrapper-class` accepts Vue string, array and object class bindings, so scoped consumer styles can target the root directly. Existing `class`, `style` and native table attributes continue to reach the internal `NDataTable`.
+
+```vue
+<template>
+  <C_Table
+    wrapper-class="inventory-table"
+    flex-height
+    :columns="columns"
+    :data="rows"
+  />
+</template>
+<style scoped>
+  .inventory-table {
+    height: 480px;
+  }
+</style>
+```
+
+Add `{ type: 'selection' }` explicitly. Receive keys and rows through `@selection-change="(keys, rows) => ..."`; use the public `clearSelection()` instance method instead of observing internal manager state.
+
 `C_Table` remains owned by its current Naive UI table implementation. A MachTable mode should render MachTable with its native columns, events, and instance API as a complete engine boundary rather than translating between the two engines. They only share engine-neutral page actions such as `C_ActionBar`.
 
 ### Recommended C_Map setup

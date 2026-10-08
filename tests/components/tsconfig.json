@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "./**/*.ts",
+    "../../src/**/*.ts",
+    "../../src/**/*.vue",
+    "../../types/**/*.d.ts"
+  ],
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  }
+}

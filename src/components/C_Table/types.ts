@@ -363,6 +363,10 @@ export interface TableProps<T extends object = DataRecord, C = DataRecord>
     TableSelectionProps<T, C> {
   pagination?: PaginationConfig | boolean
   actions?: SimpleTableActions<T>
+  /** 根容器 class，原生 class/style 仍转发到内部表格。 */
+  wrapperClass?: import('vue').HTMLAttributes['class']
+  /** 填满确定高度的容器，保留工具栏和分页空间。 */
+  flexHeight?: boolean
 }
 
 /* ================= 事件系统 ================= */

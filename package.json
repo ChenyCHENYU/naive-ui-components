@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.14.2",
+  "version": "0.14.3",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "packageManager": "bun@1.3.14",
   "engines": {
@@ -83,7 +83,7 @@
     "check:package": "node scripts/check-package-contract.js",
     "check:quality": "node scripts/check-source-quality.js",
     "check:consumer-types": "vue-tsc --noEmit -p tests/consumer/tsconfig.json",
-    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run check:exports && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-types",
+    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-types",
     "prepublishOnly": "bun run verify",
     "release": "changeset publish",
     "changeset": "changeset",
@@ -95,7 +95,9 @@
     "lint:eslint": "eslint . --no-fix",
     "lint:staged": "lint-staged",
     "commitlint": "commitlint",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "test:components": "vitest run --config vitest.config.ts",
+    "type-check:components": "vue-tsc --noEmit -p tests/components/tsconfig.json"
   },
   "peerDependencies": {
     "vue": "^3.5.0",
@@ -166,12 +168,14 @@
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/language-core": "^3.3.11",
+    "@vue/test-utils": "^2.5.1",
     "commitizen": "^4.3.2",
     "cz-customizable": "^7.5.4",
     "eslint": "^10.9.1",
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-oxlint": "^1.80.0",
     "eslint-plugin-vue": "^10.10.0",
+    "happy-dom": "^20.14.5",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "naive-ui": "^2.45.3",
@@ -185,6 +189,7 @@
     "unplugin-vue": "^7.2.0",
     "unplugin-vue-components": "^31.1.0",
     "vite": "^8.2.2",
+    "vitest": "^4.1.11",
     "vue": "^3.5.42",
     "vue-tsc": "^3.3.11"
   },
