@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title description">
+  <title id="title">Robot Naive UI Components logo</title>
+  <desc id="description">The Robot R monogram with two robot eyes, an antenna and a modular mint-green tile.</desc>
+  <defs>
+    <linearGradient id="tile" x1="8" y1="4" x2="120" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#249D70"/>
+      <stop offset="1" stop-color="#0C5E47"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="20" y1="0" x2="110" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="124" height="124" rx="30" fill="url(#tile)"/>
+  <rect x="2.5" y="2.5" width="123" height="123" rx="29.5" fill="url(#shine)" stroke="#FFF" stroke-opacity=".2"/>
+  <path d="M35 99V35H69C86 35 96 44 96 60C96 72 90 80 81 83L99 99H78L61 85H51V99H35ZM51 51V69H68C75 69 79 66 79 60C79 54 75 51 68 51H51Z" fill="#F2FFF7"/>
+  <path d="M66 34V28" stroke="#F2FFF7" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="66" cy="23" r="4" fill="#A7F3CB"/>
+  <rect x="55" y="56" width="5" height="7" rx="2.5" fill="#64D8A0"/>
+  <rect x="67" y="56" width="5" height="7" rx="2.5" fill="#64D8A0"/>
+  <rect x="103" y="99" width="21" height="21" rx="6" fill="#B5F5D3" stroke="#0C5E47" stroke-width="3"/>
+</svg>
