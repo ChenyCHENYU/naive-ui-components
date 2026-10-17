@@ -6,13 +6,17 @@
 
 import {
   computed,
+  getCurrentInstance,
   h,
+  inject,
   mergeProps,
+  shallowReactive,
   type VNode,
   type ComputedRef,
   type Component,
   type Ref,
   type Slots,
+  type InjectionKey,
 } from 'vue'
 import type { FormItemInst } from 'naive-ui'
 
@@ -42,6 +46,45 @@ export type FormRenderer = (
   context: FormRendererContext
 ) => VNode | null
 
+/** A renderer collection owned by one application or explicitly shared scope. */
+export interface FormRendererRegistry {
+  get(type: string): FormRenderer | undefined
+  register(type: string, renderer: FormRenderer): () => boolean
+  unregister(type: string, renderer?: FormRenderer): boolean
+}
+
+export const FORM_RENDERER_REGISTRY_KEY: InjectionKey<FormRendererRegistry> =
+  Symbol('c-form-renderer-registry')
+
+/** Create an isolated, reactive registry without copying legacy registrations. */
+export function createFormRendererRegistry(
+  initial: Readonly<Record<string, FormRenderer>> = {}
+): FormRendererRegistry {
+  const entries = shallowReactive(new Map<string, { renderer: FormRenderer }>())
+  const registry: FormRendererRegistry = {
+    get: type => entries.get(type)?.renderer,
+    register: (type, renderer) => {
+      if (!type.trim()) throw new TypeError('[C_Form] renderer type 不能为空')
+      if (typeof renderer !== 'function') {
+        throw new TypeError(`[C_Form] renderer ${type} 必须是函数`)
+      }
+      const entry = { renderer }
+      entries.set(type, entry)
+      // A disposer owns this registration, even if the same function is registered again.
+      return () => entries.get(type) === entry && entries.delete(type)
+    },
+    unregister: (type, renderer) => {
+      const entry = entries.get(type)
+      if (!entry || (renderer && entry.renderer !== renderer)) return false
+      return entries.delete(type)
+    },
+  }
+  Object.entries(initial).forEach(([type, renderer]) => {
+    registry.register(type, renderer)
+  })
+  return registry
+}
+
 /* =================== 渲染器参数 =================== */
 
 export interface UseFormRendererOptions {
@@ -54,6 +97,8 @@ export interface UseFormRendererOptions {
   asyncOptionsCache: Ref<Record<string, OptionItem[]>>
   asyncLoadingMap: Ref<Record<string, boolean>>
   renderers?: ComputedRef<Record<string, FormRenderer> | undefined>
+  /** Overrides application injection. An isolated registry never reads legacy globals. */
+  registry?: FormRendererRegistry
   setFormItemRef?: (field: string, instance: FormItemInst | null) => void
   onError?: (error: unknown, field: string) => void
 }
@@ -183,32 +228,29 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
   }
 }
 
-/** 自定义渲染器扩展存储 */
-const customRenderers: Record<string, FormRenderer> = {}
+/** Compatibility scope for consumers that have not installed/provided an app registry. */
+const legacyRendererRegistry = createFormRendererRegistry()
 
 /**
- * 运行时注册自定义渲染器 — 开闭原则
+ * Register a legacy process-wide renderer, used only without an isolated registry.
+ * @deprecated Prefer createFormRendererRegistry and application injection.
  */
 export function registerRenderer(
   type: string,
   renderer: FormRenderer
 ): () => boolean {
-  if (!type.trim()) throw new TypeError('[C_Form] renderer type 不能为空')
-  if (typeof renderer !== 'function') {
-    throw new TypeError(`[C_Form] renderer ${type} 必须是函数`)
-  }
-  customRenderers[type] = renderer
-  return () => unregisterRenderer(type, renderer)
+  return legacyRendererRegistry.register(type, renderer)
 }
 
-/** Remove a global renderer. Passing the renderer prevents deleting a newer registration. */
+/**
+ * Remove a legacy process-wide renderer, optionally checking its function identity.
+ * @deprecated Prefer an application-owned FormRendererRegistry.
+ */
 export function unregisterRenderer(
   type: string,
   renderer?: FormRenderer
 ): boolean {
-  if (!customRenderers[type]) return false
-  if (renderer && customRenderers[type] !== renderer) return false
-  return delete customRenderers[type]
+  return legacyRendererRegistry.unregister(type, renderer)
 }
 
 /* =================== 带选项类型集合 =================== */
@@ -243,10 +285,14 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
 
   const C = componentMap
   const builtInRenderers = buildRenderers(C)
+  const injectedRegistry = getCurrentInstance()
+    ? inject(FORM_RENDERER_REGISTRY_KEY, undefined)
+    : undefined
+  const registry = opts.registry ?? injectedRegistry ?? legacyRendererRegistry
 
   const getRenderer = (type: string): FormRenderer | undefined =>
     instanceRenderers?.value?.[type] ??
-    customRenderers[type] ??
+    registry.get(type) ??
     builtInRenderers[type]
 
   /* ===== 基础 Props 生成 ===== */

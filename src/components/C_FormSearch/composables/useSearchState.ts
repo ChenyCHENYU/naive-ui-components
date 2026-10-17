@@ -6,6 +6,7 @@ import {
   toValue,
   watch,
   type MaybeRefOrGetter,
+  type Ref,
 } from 'vue'
 import type { SearchFormItem, SearchFormParams, SearchConfig } from '../types'
 import type { FormInst } from 'naive-ui'
@@ -35,11 +36,13 @@ export function useSearchState(
   const config = computed(() => toValue(options.config) ?? {})
   const feedback = useComponentFeedback(() => config.value.feedback)
   const { t } = useComponentLocale(() => config.value.locale)
-  const formRef = ref<FormInst | null>(null)
+  const formRef: Ref<FormInst | null> = ref<FormInst | null>(null)
   const foldThreshold = computed(() => config.value.foldThreshold ?? 7)
   const requireValue = computed(() => config.value.requireValue ?? true)
 
-  const fields = ref<SearchFormItem[]>(cloneData(options.formItemList))
+  const fields: Ref<SearchFormItem[]> = ref<SearchFormItem[]>(
+    cloneData(options.formItemList)
+  )
   const formParams = ref<SearchFormParams>(cloneData(options.formParams))
   const expanded = ref(false)
   const searching = ref(false)

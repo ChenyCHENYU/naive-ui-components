@@ -15,6 +15,7 @@ Import strategies, component configuration and integration examples.
 - [Table loading](#table-loading)
 - [C_Login form extension](#c_login-form-extension)
 - [Page navigation loading](#page-navigation-loading)
+- [Application extensions and migration](#application-extensions-and-migration)
 
 ## Import strategies
 
@@ -30,6 +31,8 @@ const app = createApp(App)
 app.use(NaiveUIComponents)
 app.mount('#app')
 ```
+
+Root imports aggregate all components and need `vue-router` at runtime. Prefer component subpaths when navigation is not needed.
 
 ### On-demand Import (Tree-Shaking)
 
@@ -488,3 +491,9 @@ const id = loading.start()
 // After completion, cancellation or failure
 loading.finish(id)
 ```
+
+## Application extensions and migration
+
+`createHighlight()` and `setupHighlight()` own isolated highlighters. Component `useHighlight()` reads the app injection; standalone calls create separate APIs. Default installation does not write `window.hljs`; use `exposeToWindow: true` only for explicit legacy integration.
+
+The full plugin owns one form registry per application. Migrate global `registerRenderer()` usage to `createFormRendererRegistry()` and the plugin's `formRenderers` option. With component subpaths, provide `FORM_RENDERER_REGISTRY_KEY` explicitly. See [architecture and isolation](../architecture.en.md) for examples, precedence and ownership rules.

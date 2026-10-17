@@ -1,4 +1,3 @@
-
 /**
  * 构建后自动更新 package.json 的 exports 映射
  * 使用 Node.js subpath patterns（通配符 *）统一匹配所有 C_ 组件
@@ -22,24 +21,23 @@ const componentNames = fs
   .map(f => f.replace('.js', ''))
   .sort()
 
+const scriptEntry = name => ({
+  import: {
+    types: `./dist/${name}.d.ts`,
+    default: `./dist/${name}.js`,
+  },
+  require: {
+    types: `./dist/${name}.d.cts`,
+    default: `./dist/${name}.cjs`,
+  },
+})
+
 // 使用 subpath patterns —— 一条通配规则覆盖所有 C_* 组件
 pkg.exports = {
-  '.': {
-    types: './dist/index.d.ts',
-    import: './dist/index.js',
-    require: './dist/index.cjs',
-  },
+  '.': scriptEntry('index'),
   './style.css': './dist/style.css',
-  './resolver': {
-    types: './dist/resolver.d.ts',
-    import: './dist/resolver.js',
-    require: './dist/resolver.cjs',
-  },
-  './C_*': {
-    types: './dist/C_*.d.ts',
-    import: './dist/C_*.js',
-    require: './dist/C_*.cjs',
-  },
+  './resolver': scriptEntry('resolver'),
+  './C_*': scriptEntry('C_*'),
   './C_*/style.css': './dist/C_*.css',
   './C_Form/base.css': './dist/C_Form.base.css',
   './C_Form/full.css': './dist/C_Form.css',
@@ -47,11 +45,7 @@ pkg.exports = {
   './C_Table/full.css': './dist/C_Table.css',
 }
 
-pkg.sideEffects = [
-  'dist/style.css',
-  'dist/C_*.css',
-  'dist/C_*.base.css',
-]
+pkg.sideEffects = ['dist/style.css', 'dist/C_*.css', 'dist/C_*.base.css']
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 console.log(

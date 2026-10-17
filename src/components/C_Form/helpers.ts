@@ -1,4 +1,11 @@
-import { computed, shallowRef, toValue, type MaybeRefOrGetter } from 'vue'
+import {
+  computed,
+  shallowRef,
+  toValue,
+  type ComputedRef,
+  type MaybeRefOrGetter,
+  type ShallowRef,
+} from 'vue'
 import type { FormConfig } from './composables/useFormConfig'
 import type { FormInstance, FormModel, FormOption, FormRecord } from './types'
 import { cloneData } from '../../utils/data'
@@ -23,9 +30,27 @@ export interface UseCFormOptions<T extends object> {
   config?: MaybeRefOrGetter<FormConfig<T> | undefined>
 }
 
+export interface UseCFormReturn<T extends object> {
+  model: ShallowRef<FormModel<T>>
+  formRef: ShallowRef<FormInstance<T> | null>
+  bindings: ComputedRef<{
+    modelValue: FormModel<T>
+    options: FormOption<T>[]
+    config: FormConfig<T> | undefined
+    'onUpdate:modelValue': (value: FormModel<T>) => void
+  }>
+  validate: () => Promise<void>
+  submit: () => Promise<boolean>
+  reset: () => void
+}
+
 /** Small binding helper for the common controlled C_Form setup. */
-export function useCForm<T extends object>(setup: UseCFormOptions<T>) {
-  const model = shallowRef<FormModel<T>>(cloneData(setup.initialValues))
+export function useCForm<T extends object>(
+  setup: UseCFormOptions<T>
+): UseCFormReturn<T> {
+  const model = shallowRef<FormModel<T>>(
+    cloneData(setup.initialValues)
+  ) as ShallowRef<FormModel<T>>
   const formRef = shallowRef<FormInstance<T> | null>(null)
   const bindings = computed(() => ({
     modelValue: model.value,

@@ -6,9 +6,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
-import { createSSRApp, h } from 'vue'
+import assert from 'node:assert/strict'
+import { createSSRApp, h, inject } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
+import { assertDeclarationBoundary } from './build/declaration-boundary.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(
@@ -76,13 +78,13 @@ for (const name of componentNames) {
     console.error(`❌ ${name} 子路径声明未导出同名组件`)
     process.exit(1)
   }
-  if (declaration.includes('naive-ui/es')) {
-    console.error(
-      `Published declaration ${name}.d.ts uses a Naive UI internal path`
-    )
-    process.exit(1)
-  }
 }
+
+const reachableDeclarations = assertDeclarationBoundary(distDir, [
+  'index',
+  'resolver',
+  ...componentNames,
+])
 
 for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
   const filename = path.join(distDir, styleEntry)
@@ -189,6 +191,89 @@ const cjsTable = require(path.join(distDir, 'C_Table.cjs'))
 const cjsMarkdown = require(path.join(distDir, 'C_Markdown.cjs'))
 const esmRoot = await import(pathToFileURL(path.join(distDir, 'index.js')).href)
 const cjsRoot = require(path.join(distDir, 'index.cjs'))
+
+const checkRootInstallation = (namespace, format) => {
+  assert.equal(
+    typeof namespace.createHighlight,
+    'function',
+    `${format} root must export createHighlight`
+  )
+  const createApp = options => {
+    const app = createSSRApp({ render: () => null })
+    const hostIndex = { render: () => h('span', 'host-index') }
+    const hostComponent = { render: () => h('span', 'host-component') }
+    app.component('index', hostIndex)
+    app.component('HostOnlyComponent', hostComponent)
+
+    const originalWarn = console.warn
+    const duplicateWarnings = []
+    // app.component warns outside a component instance, so an app warnHandler
+    // cannot observe installation warnings. Forward every warning unchanged.
+    console.warn = (...args) => {
+      const message = args.map(String).join(' ')
+      if (
+        /Component ".*" has already been registered in target app|Plugin has already been applied to target app/.test(
+          message
+        )
+      ) {
+        duplicateWarnings.push(message)
+      }
+      Reflect.apply(originalWarn, console, args)
+    }
+    try {
+      app.use(namespace.default, options)
+    } finally {
+      console.warn = originalWarn
+    }
+    assert.deepEqual(
+      duplicateWarnings,
+      [],
+      `${format} root must install without duplicate component/plugin registrations`
+    )
+    for (const name of componentNames) {
+      assert.ok(namespace[name], `${format} root must export ${name}`)
+      assert.equal(
+        app.component(name),
+        namespace[name],
+        `${format} root must register ${name} under its public component name`
+      )
+    }
+    assert.equal(
+      app.component('index'),
+      hostIndex,
+      `${format} installation must preserve the host's index component`
+    )
+    assert.equal(
+      app.component('HostOnlyComponent'),
+      hostComponent,
+      `${format} installation must preserve other host components`
+    )
+    return app
+  }
+  const getRegistry = app =>
+    app.runWithContext(() => inject(namespace.FORM_RENDERER_REGISTRY_KEY))
+  const first = getRegistry(createApp())
+  const second = getRegistry(createApp())
+  assert.ok(first, `${format} root must provide a renderer registry`)
+  assert.ok(second, `${format} root must provide a renderer registry`)
+  assert.notEqual(first, second, `${format} apps must own separate registries`)
+  first.register('input', () => h('span', 'first-app'))
+  assert.equal(
+    second.get('input'),
+    undefined,
+    `${format} registration must stay in its owning application`
+  )
+
+  const shared = namespace.createFormRendererRegistry()
+  const sharedAppA = createApp({ formRenderers: shared })
+  const sharedAppB = createApp({ formRenderers: shared })
+  assert.equal(getRegistry(sharedAppA), shared)
+  assert.equal(getRegistry(sharedAppB), shared)
+}
+
+checkRootInstallation(esmRoot, 'ESM')
+checkRootInstallation(cjsRoot, 'CJS')
+
 if (
   !esmDate.C_Date ||
   !esmForm.C_Form ||
@@ -236,5 +321,5 @@ if (
 }
 
 console.log(
-  `✅ ${componentNames.length} component JS / CJS / DTS entries are valid.`
+  `✅ ${componentNames.length} component JS / CJS entries and ${reachableDeclarations} reachable declarations are valid.`
 )

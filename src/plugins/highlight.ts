@@ -1,4 +1,4 @@
-import type { App } from 'vue'
+import { hasInjectionContext, inject, type App } from 'vue'
 import type { HLJSApi, LanguageFn } from 'highlight.js'
 import hljs from 'highlight.js/lib/core'
 
@@ -39,6 +39,8 @@ const OPTIONAL_LANGUAGES: Record<
 export interface HighlightPluginOptions {
   autoDetect?: boolean
   extraLanguages?: string[]
+  /** Explicit compatibility bridge; restored when the owning app unmounts. */
+  exposeToWindow?: boolean
   /** Enable lifecycle diagnostics through the supplied logger. */
   debug?: boolean
   logger?: Pick<Console, 'info' | 'warn' | 'error'>
@@ -48,10 +50,18 @@ export interface HighlightPluginOptions {
   ) => void
 }
 
-// 状态管理
-const loadedLanguages = new Set<string>()
-const pendingLanguageLoads = new Map<string, Promise<boolean>>()
-const hlJsInstance: HLJSApi = hljs
+export interface HighlightAPI {
+  getHljs: () => HLJSApi
+  loadLanguage: (language: string) => Promise<boolean>
+  loadLanguages: (languages: string[]) => Promise<string[]>
+  getLoadedLanguages: () => string[]
+}
+
+interface HighlightState {
+  instance: HLJSApi
+  loadedLanguages: Set<string>
+  pendingLanguageLoads: Map<string, Promise<boolean>>
+}
 
 /**
  * * @description 注册语言包到 highlight.js 实例
@@ -59,9 +69,13 @@ const hlJsInstance: HLJSApi = hljs
  * ? @param languageFn - 语言定义函数
  * ! @return void
  */
-function registerLanguage(name: string, languageFn: LanguageFn): void {
-  hlJsInstance.registerLanguage(name, languageFn)
-  loadedLanguages.add(name)
+function registerLanguage(
+  state: HighlightState,
+  name: string,
+  languageFn: LanguageFn
+): void {
+  state.instance.registerLanguage(name, languageFn)
+  state.loadedLanguages.add(name)
 }
 
 /**
@@ -69,7 +83,10 @@ function registerLanguage(name: string, languageFn: LanguageFn): void {
  * ? @param options - 插件配置选项
  * ! @return void
  */
-function initializeCore(options: HighlightPluginOptions): void {
+function initializeCore(
+  state: HighlightState,
+  options: HighlightPluginOptions
+): void {
   // 注册默认语言包
   const defaultLanguages = [
     ['javascript', javascript],
@@ -90,18 +107,18 @@ function initializeCore(options: HighlightPluginOptions): void {
   ] as const
 
   defaultLanguages.forEach(([name, langFn]) => {
-    registerLanguage(name, langFn)
+    registerLanguage(state, name, langFn)
   })
 
   // 配置 highlight.js
-  hlJsInstance.configure({
+  state.instance.configure({
     ignoreUnescapedHTML: true,
     languages: options.autoDetect ? undefined : [],
   })
 
   // 预加载额外语言
   if (options.extraLanguages?.length) {
-    void loadLanguages(options.extraLanguages, options)
+    void loadLanguages(state, options.extraLanguages, options)
   }
 }
 
@@ -111,10 +128,11 @@ function initializeCore(options: HighlightPluginOptions): void {
  * ! @return Promise<string[]> 成功加载的语言名称数组
  */
 async function loadLanguages(
+  state: HighlightState,
   languages: string[],
   options: HighlightPluginOptions = {}
 ): Promise<string[]> {
-  const loadPromises = languages.map(lang => loadLanguage(lang, options))
+  const loadPromises = languages.map(lang => loadLanguage(state, lang, options))
   const results = await Promise.allSettled(loadPromises)
 
   return results
@@ -130,15 +148,16 @@ async function loadLanguages(
  * ! @return Promise<boolean> 是否加载成功
  */
 async function loadLanguage(
+  state: HighlightState,
   language: string,
   options: HighlightPluginOptions = {}
 ): Promise<boolean> {
   const normalizedLanguage = language.toLowerCase()
-  if (loadedLanguages.has(normalizedLanguage)) {
+  if (state.loadedLanguages.has(normalizedLanguage)) {
     return true
   }
 
-  const pendingLoad = pendingLanguageLoads.get(normalizedLanguage)
+  const pendingLoad = state.pendingLanguageLoads.get(normalizedLanguage)
   if (pendingLoad) return pendingLoad
 
   const loader = OPTIONAL_LANGUAGES[normalizedLanguage]
@@ -152,7 +171,7 @@ async function loadLanguage(
   const request = (async () => {
     try {
       const languageModule = await loader()
-      registerLanguage(normalizedLanguage, languageModule.default)
+      registerLanguage(state, normalizedLanguage, languageModule.default)
       if (options.debug) {
         options.logger?.info(
           `[HighlightPlugin] Language '${normalizedLanguage}' loaded successfully`
@@ -170,64 +189,200 @@ async function loadLanguage(
       })
       return false
     } finally {
-      pendingLanguageLoads.delete(normalizedLanguage)
+      state.pendingLanguageLoads.delete(normalizedLanguage)
     }
   })()
-  pendingLanguageLoads.set(normalizedLanguage, request)
+  state.pendingLanguageLoads.set(normalizedLanguage, request)
   return request
 }
 
-/**
- * * @description 获取 highlight 功能的 API 接口
- * ! @return highlight API 对象，包含所有可用方法
- */
-export const useHighlight = (options: HighlightPluginOptions = {}) => {
-  return {
-    // 核心方法
-    getHljs: () => hlJsInstance,
-
-    // 语言管理
-    loadLanguage: (language: string) => loadLanguage(language, options),
-    loadLanguages: (languages: string[]) => loadLanguages(languages, options),
-    getLoadedLanguages: () => Array.from(loadedLanguages),
+/** Create an independent highlighter, including its language registry and loaders. */
+export function createHighlight(
+  options: HighlightPluginOptions = {}
+): HighlightAPI {
+  const state: HighlightState = {
+    instance: hljs.newInstance(),
+    loadedLanguages: new Set(),
+    pendingLanguageLoads: new Map(),
   }
+  initializeCore(state, options)
+
+  return {
+    getHljs: () => state.instance,
+    loadLanguage: language => loadLanguage(state, language, options),
+    loadLanguages: languages => loadLanguages(state, languages, options),
+    getLoadedLanguages: () => Array.from(state.loadedLanguages),
+  }
+}
+
+/** Reuse the current app's highlighter or create a standalone, isolated one. */
+export function useHighlight(
+  options: HighlightPluginOptions = {}
+): HighlightAPI {
+  const provided = hasInjectionContext()
+    ? inject<HighlightAPI | undefined>('highlightManager', undefined)
+    : undefined
+  return provided ?? createHighlight(options)
+}
+
+interface WindowHighlightExposure {
+  instance: HLJSApi
+  previousDescriptor?: PropertyDescriptor
+  previousExposure?: WindowHighlightExposure
+  active: boolean
+}
+
+// Only explicit legacy window bridges share ownership bookkeeping.
+const windowExposures = new WeakMap<Window, WindowHighlightExposure>()
+
+/** Restore the nearest active owner without overwriting a host's later assignment. */
+function releaseWindowExposure(
+  target: Window,
+  exposure: WindowHighlightExposure
+): void {
+  exposure.active = false
+  if (
+    Object.getOwnPropertyDescriptor(target, 'hljs')?.value !== exposure.instance
+  ) {
+    if (windowExposures.get(target) === exposure) windowExposures.delete(target)
+    return
+  }
+
+  let descriptor = exposure.previousDescriptor
+  let previous = exposure.previousExposure
+  while (previous && !previous.active) {
+    descriptor = previous.previousDescriptor
+    previous = previous.previousExposure
+  }
+  if (descriptor) Reflect.defineProperty(target, 'hljs', descriptor)
+  else Reflect.deleteProperty(target, 'hljs')
+  if (previous) windowExposures.set(target, previous)
+  else windowExposures.delete(target)
+}
+
+/** Opt into the legacy window bridge and return its ownership-aware cleanup. */
+function exposeHighlightToWindow(instance: HLJSApi): (() => void) | undefined {
+  if (typeof window === 'undefined') return undefined
+  const target = window
+  const previousDescriptor = Object.getOwnPropertyDescriptor(target, 'hljs')
+  const previous = windowExposures.get(target)
+  const exposure: WindowHighlightExposure = {
+    instance,
+    previousDescriptor,
+    previousExposure:
+      previous?.instance === previousDescriptor?.value ? previous : undefined,
+    active: true,
+  }
+  const exposed = Reflect.defineProperty(target, 'hljs', {
+    configurable: true,
+    enumerable: previousDescriptor?.enumerable ?? false,
+    writable: true,
+    value: instance,
+  })
+  if (!exposed) return undefined
+  windowExposures.set(target, exposure)
+  return () => releaseWindowExposure(target, exposure)
+}
+
+interface AppHighlightInstallation {
+  api: HighlightAPI
+  previousProperty?: PropertyDescriptor
+  releaseWindow?: () => void
+}
+
+const appInstallations = new WeakMap<App, AppHighlightInstallation>()
+
+/** Preserve the host descriptor across app reconfiguration while replacing our own API. */
+function installAppHighlightProperty(
+  app: App,
+  api: HighlightAPI,
+  previous?: AppHighlightInstallation
+): PropertyDescriptor | undefined {
+  const properties = app.config.globalProperties
+  const descriptor = Object.getOwnPropertyDescriptor(properties, '$highlight')
+  const previousProperty =
+    previous && descriptor?.value === previous.api
+      ? previous.previousProperty
+      : descriptor
+  Object.defineProperty(properties, '$highlight', {
+    configurable: descriptor?.configurable ?? true,
+    enumerable: descriptor?.enumerable ?? true,
+    writable: true,
+    value: api,
+  })
+  return previousProperty
+}
+
+/** Clean up the latest installation once, including after repeated app configuration. */
+function releaseAppHighlight(app: App): void {
+  const installation = appInstallations.get(app)
+  if (!installation) return
+  appInstallations.delete(app)
+  installation.releaseWindow?.()
+
+  const properties = app.config.globalProperties
+  if (
+    Object.getOwnPropertyDescriptor(properties, '$highlight')?.value !==
+    installation.api
+  ) {
+    return
+  }
+  if (installation.previousProperty) {
+    Reflect.defineProperty(
+      properties,
+      '$highlight',
+      installation.previousProperty
+    )
+  } else Reflect.deleteProperty(properties, '$highlight')
 }
 
 /**
  * * @description 安装 highlight.js 插件到 Vue 应用
  * ? @param app - Vue 应用实例
  * ? @param options - 插件配置选项
- * ! @return void
+ * ! @return 应用独立的 highlight API
  */
-export function setupHighlight(app: App, options: HighlightPluginOptions = {}) {
+export function setupHighlight(
+  app: App,
+  options: HighlightPluginOptions = {}
+): HighlightAPI {
   const pluginOptions: HighlightPluginOptions = {
     autoDetect: false,
     extraLanguages: [],
     ...options,
   }
-  // 初始化核心配置
-  initializeCore(pluginOptions)
-
-  // 挂载到全局
-  if (typeof window !== 'undefined') {
-    Reflect.set(window, 'hljs', hlJsInstance)
-  }
-
   // 提供给 Vue 应用
-  const highlightAPI = useHighlight(pluginOptions)
+  const highlightAPI = createHighlight(pluginOptions)
+  const previous = appInstallations.get(app)
+  const previousProperty = installAppHighlightProperty(
+    app,
+    highlightAPI,
+    previous
+  )
+  previous?.releaseWindow?.()
   app.provide('highlightManager', highlightAPI)
-  app.config.globalProperties.$highlight = highlightAPI
+  const releaseWindow = pluginOptions.exposeToWindow
+    ? exposeHighlightToWindow(highlightAPI.getHljs())
+    : undefined
+  appInstallations.set(app, {
+    api: highlightAPI,
+    previousProperty,
+    releaseWindow,
+  })
+  if (!previous) app.onUnmount(() => releaseAppHighlight(app))
 
   if (pluginOptions.debug) {
     pluginOptions.logger?.info(
       '[HighlightPlugin] highlight.js plugin installed'
     )
   }
+  return highlightAPI
 }
 
 // 导出默认配置
 export const defaultHighlightOptions: HighlightPluginOptions = {
   autoDetect: false,
   extraLanguages: [],
+  exposeToWindow: false,
   debug: false,
 }

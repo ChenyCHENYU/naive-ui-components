@@ -50,7 +50,10 @@ import { C_WorkFlow } from './components/C_WorkFlow'
 import {
   C_Form,
   FORM_GLOBAL_CONFIG_KEY,
+  FORM_RENDERER_REGISTRY_KEY,
+  createFormRendererRegistry,
   type FormConfig,
+  type FormRendererRegistry,
 } from './components/C_Form'
 import { C_FormModal } from './components/C_FormModal'
 import {
@@ -74,7 +77,11 @@ import { C_Skeleton } from './components/C_Skeleton'
 import { C_OrgChart } from './components/C_OrgChart'
 
 // ====== 插件 ======
-import { setupHighlight, useHighlight } from './plugins/highlight'
+import {
+  createHighlight,
+  setupHighlight,
+  useHighlight,
+} from './plugins/highlight'
 
 // ====== 安装选项 ======
 export interface ComponentLibOptions {
@@ -82,11 +89,13 @@ export interface ComponentLibOptions {
   feedback?: ComponentFeedback
   locale?: ComponentLocale
   form?: FormConfig
+  /** An explicitly shared registry is opt-in; default installation owns its own registry. */
+  formRenderers?: FormRendererRegistry
   table?: TableGlobalConfig
 }
 
 // ====== 组件列表（全量注册使用） ======
-const components: Component[] = [
+const components: Record<string, Component> = {
   C_Code,
   C_Icon,
   C_Loading,
@@ -142,7 +151,7 @@ const components: Component[] = [
   C_Transfer,
   C_Skeleton,
   C_OrgChart,
-]
+}
 
 // ====== Barrel Re-exports：所有组件 + composables + types + constants ======
 export * from './components/C_Code'
@@ -217,20 +226,12 @@ export type {
 } from './config'
 
 // ====== 插件导出 ======
-export { setupHighlight, useHighlight }
-export type { HighlightPluginOptions } from './plugins/highlight'
+export { createHighlight, setupHighlight, useHighlight }
+export type { HighlightAPI, HighlightPluginOptions } from './plugins/highlight'
 
 // ====== 全量安装 ======
 const install = (app: App, options: ComponentLibOptions = {}) => {
-  components.forEach(component => {
-    const registeredComponent = component as Component & {
-      __name?: string
-      name?: string
-    }
-    const name =
-      registeredComponent.__name ||
-      registeredComponent.name ||
-      'UnknownComponent'
+  Object.entries(components).forEach(([name, component]) => {
     app.component(name, component)
   })
 
@@ -240,6 +241,10 @@ const install = (app: App, options: ComponentLibOptions = {}) => {
   if (options.feedback) app.provide(COMPONENT_FEEDBACK_KEY, options.feedback)
   if (options.locale) app.provide(COMPONENT_LOCALE_KEY, options.locale)
   if (options.form) app.provide(FORM_GLOBAL_CONFIG_KEY, options.form)
+  app.provide(
+    FORM_RENDERER_REGISTRY_KEY,
+    options.formRenderers ?? createFormRendererRegistry()
+  )
   if (options.table) app.provide(TABLE_GLOBAL_CONFIG_KEY, options.table)
 }
 

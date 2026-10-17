@@ -39,7 +39,7 @@ export { PRESET_RULES, NAIVE_COMBOS, SPEC_RULES } from './utils/formValidation'
 export type { FormValidationRule, RuleSpec } from './utils/formValidation'
 
 export { defineFormConfig, defineFormOptions, useCForm } from './helpers'
-export type { UseCFormOptions } from './helpers'
+export type { UseCFormOptions, UseCFormReturn } from './helpers'
 
 /* 导出 Composables */
 export {
@@ -60,6 +60,8 @@ export type {
 export { useFormState } from './composables/useFormState'
 export {
   useFormRenderer,
+  createFormRendererRegistry,
+  FORM_RENDERER_REGISTRY_KEY,
   registerRenderer,
   unregisterRenderer,
 } from './composables/useFormRenderer'
@@ -67,6 +69,7 @@ export type {
   ComponentMap,
   FormRenderer,
   FormRendererContext,
+  FormRendererRegistry,
   RendererProps,
   UseFormRendererOptions,
 } from './composables/useFormRenderer'

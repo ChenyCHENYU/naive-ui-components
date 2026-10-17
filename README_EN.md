@@ -63,10 +63,10 @@ bun add vue@^3.5.0 naive-ui@^2.35.0
 
 You can also use your project's npm or pnpm setup. Install optional peers only for the features that need them:
 
-| Feature                       | Additional dependency |
-| ----------------------------- | --------------------- |
-| `C_Breadcrumb` / `C_TagsView` | `vue-router@^4.6.4`   |
-| `C_Table` row/column dragging | `sortablejs@^1.15.7`  |
+| Feature                                      | Additional dependency |
+| -------------------------------------------- | --------------------- |
+| Root imports / `C_Breadcrumb` / `C_TagsView` | `vue-router@^4.6.4`   |
+| `C_Table` row/column dragging                | `sortablejs@^1.15.7`  |
 
 ### Build a form from configuration
 
@@ -154,16 +154,19 @@ The resolver uses component subpaths by default. `importStyle` defaults to `fals
 
 Each component CSS entry includes styles for its composed components. Manual imports can use `C_Form/base.css` and `C_Table/base.css`; full styles also have `full.css` aliases. Load heavy editors, flows, maps and media with their business routes. See [import strategies](./docs/guides/usage.en.md#import-strategies) for details and global registration examples.
 
+Root imports aggregate navigation components and require `vue-router` at runtime. Applications without it should use component subpaths; their unrelated optional peers are not required.
+
 ## Documentation
 
-| Document                                          | Contents                                                                                |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Component catalog](./docs/components.en.md)      | All 55 components, dependencies and behavior boundaries                                 |
-| [Usage guide](./docs/guides/usage.en.md)          | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading |
-| [Development and build](./docs/engineering.en.md) | Source structure, six-stage build, adding components, checks and releases               |
-| [Brand assets](./docs/assets/README.md)           | Robot family logo, editable SVG sources and high-resolution PNGs                        |
-| [Changelog](./CHANGELOG.md)                       | Releases and compatibility changes                                                      |
-| [Security policy](./SECURITY.md)                  | Vulnerability reporting and maintenance policy                                          |
+| Document                                                | Contents                                                                                |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Architecture and isolation](./docs/architecture.en.md) | Dependency boundaries, instance ownership and the independent Element Plus roadmap      |
+| [Component catalog](./docs/components.en.md)            | All 55 components, dependencies and behavior boundaries                                 |
+| [Usage guide](./docs/guides/usage.en.md)                | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading |
+| [Development and build](./docs/engineering.en.md)       | Source structure, six-stage build, adding components, checks and releases               |
+| [Brand assets](./docs/assets/README.md)                 | Robot family logo, editable SVG sources and high-resolution PNGs                        |
+| [Changelog](./CHANGELOG.md)                             | Releases and compatibility changes                                                      |
+| [Security policy](./SECURITY.md)                        | Vulnerability reporting and maintenance policy                                          |
 
 The [2026-10-06 security scan record](./docs/security-scan-2026-10-06.md) is a historical archive in Chinese. Run `bun run check:audit` to assess the current dependency state.
 

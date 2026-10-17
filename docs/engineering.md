@@ -54,6 +54,7 @@ bun run build:css        # 合并 tsdown 刚生成的 CSS chunk；已完成的 d
 bun run build:exports    # 仅生成 exports 映射
 bun run check:exports    # 检测导出命名冲突
 bun run check:dist       # 校验构建后的 JS / DTS 公共入口
+bun run check:consumer-contracts # 真实打包消费者类型与可选 peer 边界
 bun run check:package    # 校验依赖、导出和源码公共边界
 bun run check:quality    # 防止 any、console 与类型抑制债务反弹
 bun run check:audit      # 审计直接与传递依赖漏洞
@@ -122,3 +123,7 @@ bun run release         # 发布 Changesets 中待发布版本
 ## 文档资源
 
 品牌源文件与 PNG 导出位于 [`assets/`](./assets/)，配色、Logo 使用及导出方式见[资源说明](./assets/README.md)。
+
+## 架构边界
+
+依赖方向、应用所有权与后续 Element Plus 适配要求见[架构与隔离](./architecture.md)。

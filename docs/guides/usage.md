@@ -15,6 +15,7 @@
 - [表格加载态](#表格加载态)
 - [C_Login 扩展表单](#c_login-扩展表单)
 - [页面切换加载](#页面切换加载)
+- [应用级扩展与迁移](#应用级扩展与迁移)
 
 ## 导入方式
 
@@ -30,6 +31,8 @@ const app = createApp(App)
 app.use(NaiveUIComponents)
 app.mount('#app')
 ```
+
+根入口聚合全部组件，运行时需要 `vue-router`；无需导航能力时请选择组件子路径。
 
 ### 按需导入（主入口 Tree-Shaking）
 
@@ -549,3 +552,9 @@ const id = loading.start()
 // 路由完成、取消或失败后
 loading.finish(id)
 ```
+
+## 应用级扩展与迁移
+
+`createHighlight()`、`setupHighlight()` 各自持有独立高亮实例；组件中的 `useHighlight()` 读取应用注入，独立调用创建新的 API。默认不写入 `window.hljs`，只有兼容旧窗口用法时显式开启 `exposeToWindow: true`。
+
+全量插件为每个应用持有独立表单 registry。已有全局 `registerRenderer()` 用法应迁移到 `createFormRendererRegistry()` 与插件的 `formRenderers` 选项；子路径接入可以显式提供 `FORM_RENDERER_REGISTRY_KEY`。示例、优先级和所有权规则见[架构与隔离](../architecture.md)。

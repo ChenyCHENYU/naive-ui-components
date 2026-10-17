@@ -16,20 +16,35 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./style.css": "./dist/style.css",
     "./resolver": {
-      "types": "./dist/resolver.d.ts",
-      "import": "./dist/resolver.js",
-      "require": "./dist/resolver.cjs"
+      "import": {
+        "types": "./dist/resolver.d.ts",
+        "default": "./dist/resolver.js"
+      },
+      "require": {
+        "types": "./dist/resolver.d.cts",
+        "default": "./dist/resolver.cjs"
+      }
     },
     "./C_*": {
-      "types": "./dist/C_*.d.ts",
-      "import": "./dist/C_*.js",
-      "require": "./dist/C_*.cjs"
+      "import": {
+        "types": "./dist/C_*.d.ts",
+        "default": "./dist/C_*.js"
+      },
+      "require": {
+        "types": "./dist/C_*.d.cts",
+        "default": "./dist/C_*.cjs"
+      }
     },
     "./C_*/style.css": "./dist/C_*.css",
     "./C_Form/base.css": "./dist/C_Form.base.css",
@@ -84,7 +99,8 @@
     "check:package": "node scripts/check-package-contract.js",
     "check:quality": "node scripts/check-source-quality.js",
     "check:consumer-types": "vue-tsc --noEmit -p tests/consumer/tsconfig.json",
-    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-types",
+    "check:consumer-contracts": "node scripts/check-consumer-contracts.js",
+    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-types && bun run check:consumer-contracts",
     "prepublishOnly": "bun run verify",
     "release": "changeset publish",
     "changeset": "changeset",

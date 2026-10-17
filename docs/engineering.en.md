@@ -53,6 +53,7 @@ bun run build:css        # Merge fresh tsdown CSS chunks; safely skips a finaliz
 bun run build:exports    # Generate exports map only
 bun run check:exports    # Check export naming conflicts
 bun run check:dist       # Validate built JS / DTS public entries
+bun run check:consumer-contracts # Tarball consumer types and optional peer boundaries
 bun run check:package    # Validate dependencies, exports, and public source boundaries
 bun run check:quality    # Prevent any, console, and type-suppression debt regressions
 bun run check:audit      # Audit direct and transitive dependency vulnerabilities
@@ -121,3 +122,7 @@ The GitHub changelog generator requires `GITHUB_TOKEN` for `bun run version`; ne
 ## Documentation assets
 
 Brand sources and exported PNGs are in [`assets/`](./assets/). See the [asset guide](./assets/README.md) for colors, logo usage and export instructions.
+
+## Architecture boundaries
+
+See [architecture and isolation](./architecture.en.md) for dependency direction, app-level ownership and future Element Plus adaptation.

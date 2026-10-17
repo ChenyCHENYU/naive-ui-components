@@ -46,7 +46,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, type HTMLAttributes } from 'vue'
+  import {
+    ref,
+    computed,
+    watch,
+    nextTick,
+    type HTMLAttributes,
+    type Ref,
+  } from 'vue'
   import { type MenuOption, type MenuInst } from 'naive-ui'
   import { createMenuOptions, type MenuAdapterConfig } from '../_shared/public'
   import type { MenuEmits, MenuProps } from './types'
@@ -71,7 +78,7 @@
 
   const emit = defineEmits<MenuEmits>()
 
-  const menuRef = ref<MenuInst | null>(null)
+  const menuRef: Ref<MenuInst | null> = ref<MenuInst | null>(null)
   const internalExpandedKeys = ref<string[]>([...props.defaultExpandedKeys])
   const sameKeys = (left: string[], right: string[]) =>
     left.length === right.length &&

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { computed, effectScope, nextTick, ref } from 'vue'
+import { computed, effectScope, h, nextTick, ref } from 'vue'
 import type { FormInst, FormItemInst, FormItemRule } from 'naive-ui/es/form'
 import {
   resolveFormConfig,
@@ -24,6 +24,94 @@ import {
   hasDataPath,
   setDataPath,
 } from '../src/utils/data'
+import {
+  createFormRendererRegistry,
+  registerRenderer,
+  unregisterRenderer,
+  useFormRenderer,
+  type FormRenderer,
+} from '../src/components/C_Form/composables/useFormRenderer'
+
+describe('C_Form renderer registry isolation', () => {
+  const renderer =
+    (text: string): FormRenderer =>
+    () =>
+      h('span', text)
+
+  test('registries copy initial entries and react only to their own registrations', () => {
+    const firstRenderer = renderer('first')
+    const initial = { input: firstRenderer }
+    const first = createFormRendererRegistry(initial)
+    const second = createFormRendererRegistry()
+    const resolved = computed(() => first.get('input'))
+
+    initial.input = renderer('external mutation')
+    expect(resolved.value).toBe(firstRenderer)
+    expect(second.get('input')).toBeUndefined()
+
+    const replacement = renderer('replacement')
+    first.register('input', replacement)
+    expect(resolved.value).toBe(replacement)
+    expect(second.get('input')).toBeUndefined()
+    first.unregister('input')
+    expect(resolved.value).toBeUndefined()
+  })
+
+  test('stale disposers cannot remove a newer registration, even of the same function', () => {
+    const registry = createFormRendererRegistry()
+    const current = renderer('current')
+    const oldDispose = registry.register('input', current)
+    const newDispose = registry.register('input', current)
+
+    expect(oldDispose()).toBe(false)
+    expect(registry.unregister('input', renderer('different'))).toBe(false)
+    expect(registry.get('input')).toBe(current)
+    expect(newDispose()).toBe(true)
+    expect(newDispose()).toBe(false)
+    expect(registry.get('input')).toBeUndefined()
+    expect(() => registry.register(' ', current)).toThrow(TypeError)
+  })
+
+  test('instance renderers override isolated registries, which never fall back to legacy globals', () => {
+    const legacy = renderer('legacy')
+    const isolated = renderer('isolated')
+    const instance = renderer('instance')
+    const nativeInput = { render: () => h('input') }
+    const registry = createFormRendererRegistry({ input: isolated })
+    const instanceRenderers = ref<Record<string, FormRenderer>>()
+    const createRenderer = (useRegistry: boolean) =>
+      useFormRenderer({
+        formModel: {},
+        visibleOptions: computed(() => []),
+        config: computed(() => resolveFormConfig()),
+        handleFieldChange: () => undefined,
+        componentMap: { NInput: nativeInput },
+        asyncOptionsCache: ref({}),
+        asyncLoadingMap: ref({}),
+        renderers: computed(() => instanceRenderers.value),
+        ...(useRegistry ? { registry } : {}),
+      })
+    const dispose = registerRenderer('input', legacy)
+
+    try {
+      const isolatedForm = createRenderer(true)
+      const legacyForm = createRenderer(false)
+      const option = { type: 'input', prop: 'name' }
+      expect(legacyForm.renderFormItem(option)?.children).toBe('legacy')
+      expect(isolatedForm.renderFormItem(option)?.children).toBe('isolated')
+
+      instanceRenderers.value = { input: instance }
+      expect(isolatedForm.renderFormItem(option)?.children).toBe('instance')
+      instanceRenderers.value = undefined
+      registry.unregister('input')
+      expect(isolatedForm.renderFormItem(option)?.type).toBe(nativeInput)
+      expect(legacyForm.renderFormItem(option)?.children).toBe('legacy')
+      expect(unregisterRenderer('input', isolated)).toBe(false)
+    } finally {
+      dispose()
+    }
+  })
+})
 
 describe('C_Form data safety', () => {
   test('nested paths are safe, support arrays, and preserve literal keys', () => {

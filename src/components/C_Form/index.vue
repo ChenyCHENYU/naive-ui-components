@@ -119,6 +119,7 @@
     getCurrentInstance,
     type Component,
     type ComputedRef,
+    type Ref,
   } from 'vue'
   import {
     type FormInst,
@@ -265,7 +266,7 @@
 
   /* ================= 响应式状态 ================= */
 
-  const formRef = ref<FormInst | null>(null)
+  const formRef: Ref<FormInst | null> = ref<FormInst | null>(null)
   const optionsRef = computed(() => props.options as unknown as FormOption[])
   const modelValueRef = computed(
     () => props.modelValue as unknown as FormModel | undefined
