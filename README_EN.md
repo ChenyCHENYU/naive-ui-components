@@ -33,7 +33,7 @@
 | Selective loading       | 55 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.14.3**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.15.0**; see the [changelog](./CHANGELOG.md) for release details.
 
 ## Capability map
 
