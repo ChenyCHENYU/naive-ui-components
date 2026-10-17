@@ -27,6 +27,7 @@ bun run build
 - **Artifact entry validation**: `check-dist-entries.js` prevents internal chunks from replacing root declarations and verifies component utility subpath types
 - **Package contract validation**: blocks Naive UI internal type paths, hidden optional installs, and plugin console side effects
 - **Size budgets**: `check-size-budget.js` prevents accidental growth of global, C_Form/C_Table, and total dist output
+- **Consumer budgets**: `check-consumer-size.js` builds four minimal Vite applications, sums gzip bytes along the emitted static JS import graph, and rejects eager editor, spreadsheet, screenshot, or print dependencies.
 
 ### Build Output
 
@@ -58,12 +59,15 @@ bun run check:package    # Validate dependencies, exports, and public source bou
 bun run check:quality    # Prevent any, console, and type-suppression debt regressions
 bun run check:audit      # Audit direct and transitive dependency vulnerabilities
 bun run check:size       # Enforce publish artifact size budgets
+bun run check:consumer-size # Check initial consumer bundles after building
 bun run type-check       # TypeScript type checking
 bun run test             # Run Bun unit tests
 bun run lint:check       # Oxlint + ESLint (check only)
 bun run lint:eslint      # Audit the existing ESLint rule backlog
 bun run verify           # Type, test, export, and build verification
 ```
+
+Consumer budgets include Vue and Naive UI. The four applications are independent measurements and cannot be added to estimate one application's size. `C_Form/base` renders one input; `C_Table/base` renders one row and column. The other cases render one search input and one action button. Base CSS excludes the built-in rich-text editor styles. Dynamic JS is built and checked but excluded from initial bytes; using those features still loads it. This check measures transfer size, not browser interaction performance. Both `verify` and the pre-publish lifecycle include this gate.
 
 ### Project Structure
 
@@ -117,7 +121,7 @@ bun run verify          # Run all pre-publish checks
 bun run release         # Publish pending Changesets releases
 ```
 
-The GitHub changelog generator requires `GITHUB_TOKEN` for `bun run version`; never commit the token. On Windows, if `bun run release` stalls while npm repeats `prepublishOnly`, first confirm `bun run verify` succeeds, then publish from PowerShell with `$env:npm_config_ignore_scripts='true'; bun run release`. This skips only the repeated lifecycle check, not the prerequisite verification.
+The official local Changesets changelog generator uses commit IDs and change summaries; `bun run version` does not require a GitHub token. npm authentication is still required for publishing. On Windows, if `bun run release` stalls while npm repeats `prepublishOnly`, first confirm `bun run verify` succeeds, then publish from PowerShell with `$env:npm_config_ignore_scripts='true'; bun run release`. This skips only the repeated lifecycle check, not the prerequisite verification.
 
 ## Documentation assets
 

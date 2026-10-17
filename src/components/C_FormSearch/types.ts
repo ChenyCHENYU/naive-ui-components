@@ -51,7 +51,7 @@ export interface FormSearchProps {
 
 export interface FormSearchEmits {
   search: [params: SearchFormParams]
-  reset: []
+  reset: [params: SearchFormParams]
   'change-params': [params: SearchFormParams]
   'update:modelValue': [params: SearchFormParams]
 }

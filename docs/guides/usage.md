@@ -10,6 +10,7 @@
 - [Cron 与公式工作区](#cron-与公式工作区)
 - [C_Guide 配置引导](#c_guide-配置引导)
 - [C_Form / C_Table 推荐用法](#c_form--c_table-推荐用法)
+- [常用组件约定](#常用组件约定)
 - [C_Map 推荐用法](#c_map-推荐用法)
 - [C_Captcha 服务端校验](#c_captcha-服务端校验)
 - [表格加载态](#表格加载态)
@@ -53,7 +54,9 @@ app.mount('#app')
   import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
   import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
   import { createMenuOptions } from '@robot-admin/naive-ui-components/C_Menu'
-  import '@robot-admin/naive-ui-components/style.css'
+  import '@robot-admin/naive-ui-components/C_Form/base.css'
+  import '@robot-admin/naive-ui-components/C_Table/base.css'
+  import '@robot-admin/naive-ui-components/C_Icon/style.css'
 </script>
 ```
 
@@ -62,11 +65,9 @@ app.mount('#app')
 ### Composables 单独使用
 
 ```typescript
-import {
-  useTableManager,
-  useFormState,
-  usePlayerCore,
-} from '@robot-admin/naive-ui-components'
+import { useTableManager } from '@robot-admin/naive-ui-components/C_Table'
+import { useFormState } from '@robot-admin/naive-ui-components/C_Form'
+import { usePlayerCore } from '@robot-admin/naive-ui-components/C_VideoPlayer'
 ```
 
 ### 自动按需导入（推荐）
@@ -434,6 +435,144 @@ const config = defineTableConfig({
 选择列须显式配置 `{ type: 'selection' }`，通过 `@selection-change="(keys, rows) => ..."` 接收结果；主动清空时使用公开实例方法 `clearSelection()`，不观察内部 manager 状态。
 
 `C_Table` 继续由当前 Naive UI 表格实现负责；需要 MachTable 时应由业务入口完整渲染 MachTable 及其原生配置，避免在两套列定义、事件和实例 API 之间做隐式转换。二者只共享 `C_ActionBar` 这类框架无关的页面动作模型，不互相污染。
+
+## 常用组件约定
+
+### 表单读写与校验
+
+延续上例的 `useCForm()`，优先使用助手读写模型，减少手写双向同步和等待渲染的代码：
+
+```ts
+const { formRef, bindings, setValues, getValues, reset, submit } =
+  useCForm<UserForm>({
+    initialValues: { name: '', departmentId: null, profile: { email: '' } },
+    options: fields,
+    config,
+  })
+
+async function loadUser(user: UserForm) {
+  await setValues(user)
+  formRef.value?.markAsClean() // 将已加载记录设为重置基线
+}
+
+function preview() {
+  return getValues() // 独立快照；刚编辑的值无需等待父模型下一轮更新
+}
+```
+
+`setValues(values, shouldValidate = false)` 在挂载后直接调用表单实例，挂载前更新绑定模型；`getValues()` 返回副本。`reset()` 恢复当前干净快照，`markAsClean()` 可更新该基线。设置嵌套对象时传完整对象，或使用实例的 `setFieldValue('profile.email', value)` 修改单个路径。
+
+组件模板 ref 的公开状态已由 Vue 解包：脚本中读取 `formRef.value?.isSubmitting`、`formRef.value?.isDirty` 和 `formRef.value?.formModel`，无需再取一层 `.value`。助手返回的 `model`、`formRef`、`bindings` 本身仍是 Vue ref。
+
+普通、行内、网格布局同步提供；卡片、标签、步骤、动态和自定义布局按需加载。异步布局尚未挂载时，`submit()` 返回 `false`，`validate()` 拒绝执行，避免把未呈现的字段当成通过校验。标签和步骤布局就绪后会挂载各面板字段，整表提交也校验未访问的面板；异步选项请求按字段隔离，更新请求后晚到的旧结果不会覆盖新选项。
+
+### 表格分页、选择与导出
+
+新页面统一通过 `config.pagination` 配置分页；远程表格直接使用上例 `useTableQuery().bindings`，分页、总数、loading 与请求只维护一份状态。兼容路径 `:pagination="..."` 由 Naive 原生分页负责；只要显式传入该 prop（包括 `false`），它就优先于 `config.pagination`，组件不会再显示第二个分页器。原生远程模式同时传 `remote` 并自行管理请求及原生更新事件。
+
+本地数据先筛选、排序，再分页；远程模式显示服务器返回的这一页，不再次切片。`crossPageSelection: true` 保留已访问远程页中选中的行对象；`selectAll()` 只追加当前加载页，不能代表选中尚未获取的全部服务器记录。批量操作用 `getSelectedRows()`／`@selection-change` 的行对象；需要服务器“全部命中”操作时由业务提供查询条件或服务端任务。
+
+导出范围应显式选择：
+
+| `config.export` 配置      | 数据来源                                                   |
+| ------------------------- | ---------------------------------------------------------- |
+| `scope: 'source'`（默认） | 当前传入的完整数据源；远程模式通常只有当前加载页           |
+| `scope: 'page'`           | 当前呈现页，本地模式包含当前筛选、排序及分页结果           |
+| `scope: 'selected'`       | 当前选中的可用行对象，包含跨页保留的已访问记录             |
+| `requestData`             | 点击导出时显式请求数据，优先于 `scope`，适合服务器全量导出 |
+
+```ts
+const config = defineTableConfig({
+  export: {
+    scope: 'page',
+    filename: 'users',
+    format: 'csv',
+  },
+})
+
+// 全量数据由业务显式提供；表格不会在导出时自动遍历服务器分页。
+const fullExport = defineTableConfig({
+  export: { requestData: () => fetchAllUsers(), filename: 'all-users' },
+})
+```
+
+异步展开失败后保留错误状态，默认展开内容提供重试入口。也可使用公开实例方法 `retryExpand(key)` 重新加载；`invalidateExpand(key?)` 清除指定行或全部缓存及错误状态，本身不发请求。同一行并发加载复用一次请求；替换数据行后旧缓存失效，晚到的旧结果不会重新写入。
+
+动态行新增、复制必须生成与表格一致的唯一键。优先传字符串 `row-key="uuid"`；若表格必须传函数 `:row-key="row => row.uuid"`，同时指定 `config.dynamicRows.rowKey: 'uuid'`，让新增和复制知道应生成哪个字段。组件不推断任意复合键；键缺失或重复时拒绝插入，关闭动态行后相关实例方法不修改数据。
+
+### 搜索与远程表格连接
+
+搜索表单使用 `C_FormSearch`，推荐 `v-model`；旧 `formParams` 继续兼容。业务请求放在 `config.onSearch`，`@search` 用于通知；两处同时发请求会由业务执行两次。下面将请求、分页和 loading 交给一份表格控制器：
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_FormSearch,
+    type SearchConfig,
+    type SearchFormItem,
+    type SearchFormParams,
+  } from '@robot-admin/naive-ui-components/C_FormSearch'
+  import {
+    C_Table,
+    useTableQuery,
+  } from '@robot-admin/naive-ui-components/C_Table'
+  import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
+  import '@robot-admin/naive-ui-components/C_Table/base.css'
+
+  const filters = ref<SearchFormParams>({ keyword: '' })
+  const searchFields: SearchFormItem[] = [
+    { type: 'input', prop: 'keyword', placeholder: '关键词' },
+  ]
+  const { bindings, loading, setQuery } = useTableQuery({
+    initialQuery: { keyword: '' },
+    columns,
+    rowKey: 'id',
+    request: loadUsers,
+  })
+  const applyQuery = async (params: SearchFormParams) => {
+    await setQuery({ keyword: String(params.keyword ?? '') })
+  }
+  const searchConfig: SearchConfig = {
+    requireValue: false,
+    onSearch: applyQuery,
+  }
+</script>
+
+<template>
+  <C_FormSearch
+    v-model="filters"
+    :form-item-list="searchFields"
+    :config="searchConfig"
+    :loading="loading"
+    @reset="applyQuery"
+  />
+  <C_Table v-bind="bindings" />
+</template>
+```
+
+搜索按钮、原生表单提交（含输入框 Enter）和实例 `searchFn()` 走同一校验与防重路径；仅当前挂载的搜索控件参与 Naive 表单校验。异步校验期间条件改变、外部 loading 开启或组件卸载，会取消本次派发，成功校验的快照才进入请求。默认要求至少一个非分页条件；需要空条件查询时设置 `requireValue: false`。
+
+`reset(params)` 事件先同步更新 v-model，再通知重置后的完整快照；不带参数的旧回调继续可用。默认仅恢复字段默认值并保留 `pageNum/pageSize`，不自动查询、不添加 debounce。上例通过显式 `@reset="applyQuery"` 刷新，并由 `setQuery()` 将表格页码归一；不要在重置回调里读取一份另行维护的旧查询对象。
+
+### 动作配置与异步执行
+
+保留稳定语义 key 和 Promise 回调即可获得文案、图标与互斥执行，不必为每个按钮维护 loading：
+
+```ts
+const actions = defineActions([
+  { key: 'save', onClick: () => saveCurrentUser() },
+  { key: 'refresh', disabled: () => loading.value, onClick: reload },
+  {
+    key: 'more',
+    dropdown: [{ key: 'export', label: '导出', onClick: exportUsers }],
+  },
+])
+```
+
+同一 ActionBar 中重复 key 共享执行锁；重建动作对象、切换左右分组都保留该 key 的 busy 状态。未提供 key 时按分组和位置识别，因此动态列表应显式提供 key。更多菜单与普通按钮遵守相同的 disabled、loading 和异步互斥规则；`autoLoading: false` 只关闭自动 spinner，执行期间继续阻止重复触发。
+
+`action-click`／`dropdown-click` 是通知，不等待事件监听器的 Promise；异步命令应放在动作 `onClick`。失败发出 `action-error(error, action, item?)`，原始错误继续交给 Vue `errorHandler`／错误捕获边界。`buttonProps.disabled/loading` 与动作状态合并，不能关闭内部 busy 保护；`buttonProps.onClick` 保留为原生点击观察者，不覆盖动作执行器。表格行操作复用轻量执行锁，无需为每行再包一层完整操作栏。
 
 ## C_Map 推荐用法
 

@@ -17,10 +17,12 @@
     :disabled="resolved.disabled"
     :readonly="resolved.readonly"
     v-bind="$attrs"
+    @submit.prevent="submit"
   >
     <!-- 布局组件渲染 -->
     <component
       :is="layoutComponent"
+      :key="resolved.layout"
       :form-items="formItems"
       :layout-config="mergedLayoutConfig"
       :options="visibleOptions"
@@ -67,8 +69,13 @@
           <NButton
             v-if="slotProps.isLastStep && resolved.showActions"
             type="primary"
-            :loading="isSubmitting"
-            :disabled="isSubmitting || resolved.disabled || resolved.readonly"
+            :loading="isSubmitting || !validationReady"
+            :disabled="
+              !validationReady ||
+              isSubmitting ||
+              resolved.disabled ||
+              resolved.readonly
+            "
             @click="submit"
             >{{ resolved.submitText || t('common.submit') }}</NButton
           >
@@ -90,7 +97,12 @@
           style="width: 100%"
         >
           <NButton
-            :disabled="isSubmitting || resolved.disabled || resolved.readonly"
+            :disabled="
+              !validationReady ||
+              isSubmitting ||
+              resolved.disabled ||
+              resolved.readonly
+            "
             @click="handleReset"
             >{{ resolved.resetText || t('common.reset') }}</NButton
           >
@@ -100,8 +112,13 @@
           />
           <NButton
             type="primary"
-            :loading="isSubmitting"
-            :disabled="isSubmitting || resolved.disabled || resolved.readonly"
+            :loading="isSubmitting || !validationReady"
+            :disabled="
+              !validationReady ||
+              isSubmitting ||
+              resolved.disabled ||
+              resolved.readonly
+            "
             @click="handleSubmit"
             >{{ resolved.submitText || t('common.submit') }}</NButton
           >
@@ -114,36 +131,12 @@
 <script lang="ts" setup generic="T extends object = FormRecord">
   import {
     computed,
-    defineAsyncComponent,
     ref,
     getCurrentInstance,
-    type Component,
     type ComputedRef,
     type Ref,
   } from 'vue'
-  import {
-    type FormInst,
-    NForm,
-    NFormItem,
-    NButton,
-    NSpace,
-    NInput,
-    NInputNumber,
-    NSwitch,
-    NSlider,
-    NRate,
-    NDatePicker,
-    NTimePicker,
-    NCascader,
-    NColorPicker,
-    NSelect,
-    NCheckboxGroup,
-    NCheckbox,
-    NRadioGroup,
-    NRadio,
-    NUpload,
-    NTooltip,
-  } from 'naive-ui'
+  import { type FormInst, NForm, NFormItem, NButton, NSpace } from 'naive-ui'
   import { useComponentLocale } from '../../config'
   import type {
     FormOption,
@@ -166,64 +159,16 @@
   import { useFormState } from './composables/useFormState'
   import {
     useFormRenderer,
-    type ComponentMap,
     type FormRenderer,
   } from './composables/useFormRenderer'
 
-  /* ===== 布局组件静态映射（取代 DynamicComponent） ===== */
-  import DefaultLayout from './layouts/Default/index.vue'
-  import InlineLayout from './layouts/Inline/index.vue'
-  import GridLayout from './layouts/Grid/index.vue'
-  import CardLayout from './layouts/Card/index.vue'
-  import TabsLayout from './layouts/Tabs/index.vue'
-  import StepsLayout from './layouts/Steps/index.vue'
-  import DynamicLayout from './layouts/Dynamic/index.vue'
-  import CustomLayout from './layouts/Custom/index.vue'
+  import {
+    FORM_COMPONENTS,
+    FORM_LAYOUTS,
+    SYNCHRONOUS_FORM_LAYOUTS,
+  } from './rendering'
 
   defineOptions({ name: 'C_Form' })
-
-  const C_Editor = defineAsyncComponent(() =>
-    import('../C_Editor').then(module => module.C_Editor)
-  )
-
-  const LAYOUT_MAP: Record<LayoutType, Component> = {
-    default: DefaultLayout,
-    inline: InlineLayout,
-    grid: GridLayout,
-    card: CardLayout,
-    tabs: TabsLayout,
-    steps: StepsLayout,
-    dynamic: DynamicLayout,
-    custom: CustomLayout,
-  } as const
-
-  /* ===== Naive UI 组件映射 ===== */
-  /*
-   * 库代码是预构建产物，resolveComponent 无法在运行时解析未全局注册的组件。
-   * 直接 import 即可。naive-ui 作为 peerDependency，与消费项目共享同一份实例。
-   */
-  const COMPONENT_MAP: ComponentMap = {
-    NFormItem,
-    NInput,
-    NInputNumber,
-    NSwitch,
-    NSlider,
-    NRate,
-    NDatePicker,
-    NTimePicker,
-    NCascader,
-    NColorPicker,
-    NSelect,
-    NCheckboxGroup,
-    NCheckbox,
-    NRadioGroup,
-    NRadio,
-    NUpload,
-    NButton,
-    NSpace,
-    NTooltip,
-    C_Editor,
-  } as ComponentMap
 
   /* ================= 组件属性定义 ================= */
 
@@ -267,6 +212,12 @@
   /* ================= 响应式状态 ================= */
 
   const formRef: Ref<FormInst | null> = ref<FormInst | null>(null)
+  const mountedLayout = ref<LayoutType | null>(null)
+  const validationReady = computed(
+    () =>
+      SYNCHRONOUS_FORM_LAYOUTS.includes(resolved.value.layout) ||
+      mountedLayout.value === resolved.value.layout
+  )
   const optionsRef = computed(() => props.options as unknown as FormOption[])
   const modelValueRef = computed(
     () => props.modelValue as unknown as FormModel | undefined
@@ -311,7 +262,8 @@
     resolved,
     formRef,
     emit as unknown as Parameters<typeof useFormState>[3],
-    modelValueRef as ComputedRef<FormModel | undefined>
+    modelValueRef as ComputedRef<FormModel | undefined>,
+    validationReady
   )
 
   const typedModel = computed(() => formModel.value as FormModel<T>)
@@ -342,7 +294,7 @@
     visibleOptions,
     config: resolved,
     handleFieldChange,
-    componentMap: COMPONENT_MAP,
+    componentMap: FORM_COMPONENTS,
     instanceSlots: currentInstance?.slots,
     asyncOptionsCache,
     asyncLoadingMap,
@@ -355,7 +307,7 @@
   /* ================= 计算属性 ================= */
 
   const layoutComponent = computed(
-    () => LAYOUT_MAP[resolved.value.layout] || LAYOUT_MAP.default
+    () => FORM_LAYOUTS[resolved.value.layout] || FORM_LAYOUTS.default
   )
 
   const mergedLayoutConfig = computed<LayoutConfig>(() => ({
@@ -371,21 +323,29 @@
 
   const showActions = computed(() => calcShowActions(resolved.value))
 
-  const layoutRuntimeProps = computed(() =>
-    resolved.value.layout === 'steps'
-      ? {
-          beforeStepChange: handleStepBeforeChange,
-          validateStep: handleStepValidate,
-          submitting: isSubmitting.value,
-          disabled: resolved.value.disabled || resolved.value.readonly,
-        }
-      : resolved.value.layout === 'tabs'
+  const layoutRuntimeProps = computed(() => {
+    const { layout } = resolved.value
+    const controls =
+      layout === 'steps'
         ? {
-            beforeTabChange: handleTabBeforeChange,
-            validateTab: handleTabValidate,
+            beforeStepChange: handleStepBeforeChange,
+            validateStep: handleStepValidate,
+            submitting: isSubmitting.value,
+            disabled: resolved.value.disabled || resolved.value.readonly,
           }
-        : {}
-  )
+        : layout === 'tabs'
+          ? {
+              beforeTabChange: handleTabBeforeChange,
+              validateTab: handleTabValidate,
+            }
+          : {}
+    return {
+      ...controls,
+      onVnodeMounted: () => {
+        mountedLayout.value = layout
+      },
+    }
+  })
 
   /* ================= 布局事件 → config 回调桥接 ================= */
 
@@ -466,9 +426,12 @@
     }
   }
 
-  const handleStepValidate = async (stepIndex: number): Promise<boolean> => {
+  const handleStepValidate = async (
+    stepIndex: number,
+    stepKey: string
+  ): Promise<boolean> => {
     try {
-      const valid = await validateStep(stepIndex)
+      const valid = await validateStep(stepKey)
       if (!valid) return false
       resolved.value.onStepValidate?.(stepIndex)
       return true

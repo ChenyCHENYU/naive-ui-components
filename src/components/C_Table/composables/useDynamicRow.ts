@@ -12,7 +12,8 @@ import {
   reactive,
   toValue,
   watch,
-  onBeforeUnmount,
+  getCurrentScope,
+  onScopeDispose,
   type MaybeRefOrGetter,
   type VNode,
   type Ref,
@@ -33,6 +34,7 @@ import {
 } from './usePrintWatermark'
 import type { TableColumn, DataRecord } from '../types'
 import C_Icon from '../../C_Icon/index.vue'
+import { cloneData } from '../../../utils/data'
 import {
   useComponentFeedback,
   useComponentLocale,
@@ -147,7 +149,7 @@ function createNewRow<T extends object>(
   defaultRowData: (() => T) | undefined,
   rowKey: string | ((row: T) => DataTableRowKey)
 ): T {
-  const newRow = defaultRowData?.() || ({} as T)
+  const newRow = cloneData(defaultRowData?.() || ({} as T))
   const keyField = typeof rowKey === 'string' ? rowKey : 'id'
   return {
     ...newRow,
@@ -259,6 +261,21 @@ export function useDynamicRows<T extends object = DataRecord>(
     finalOptions.onRowChange?.(newData)
   }
 
+  const canInsertRow = (row: T) => {
+    const key = getRowKey(row, finalOptions.rowKey)
+    if (
+      key !== undefined &&
+      key !== null &&
+      key !== '' &&
+      !data.value.some(
+        existing => getRowKey(existing, finalOptions.rowKey) === key
+      )
+    )
+      return true
+    feedback.warning(t('table.invalidRowKeys', { count: 1 }))
+    return false
+  }
+
   /** 添加新行到表格末尾 */
   const addRow = () => {
     if (!finalOptions.enabled || !finalOptions.enableAdd) return
@@ -267,6 +284,7 @@ export function useDynamicRows<T extends object = DataRecord>(
       finalOptions.defaultRowData,
       finalOptions.rowKey
     )
+    if (!canInsertRow(newRow)) return
     const newData = [...data.value, newRow]
     updateData(newData)
     finalOptions.onRowAdd?.(newRow)
@@ -288,6 +306,7 @@ export function useDynamicRows<T extends object = DataRecord>(
       finalOptions.defaultRowData,
       finalOptions.rowKey
     )
+    if (!canInsertRow(newRow)) return
     const newData = [...data.value]
     newData.splice(selectedRowIndex.value + 1, 0, newRow)
     updateData(newData)
@@ -346,16 +365,16 @@ export function useDynamicRows<T extends object = DataRecord>(
     const keyField =
       typeof finalOptions.rowKey === 'string' ? finalOptions.rowKey : 'id'
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { [keyField]: _originalKey, ...rowData } = originalRow as Record<
-      string,
-      unknown
-    >
+    const { [keyField]: _originalKey, ...rowData } = cloneData(
+      originalRow
+    ) as Record<string, unknown>
 
     const newRow = {
       ...rowData,
       [keyField]: generateUniqueId(),
     } as T
 
+    if (!canInsertRow(newRow)) return
     const newData = [...data.value, newRow]
     updateData(newData)
     finalOptions.onRowCopy?.(originalRow, newRow)
@@ -736,10 +755,11 @@ export function useDynamicRows<T extends object = DataRecord>(
   }
 
   /* 组件卸载时清理 */
-  onBeforeUnmount(() => {
-    selectedRowKey.value = null
-    deleteConfirmVisible.value = false
-  })
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      selectedRowKey.value = null
+      deleteConfirmVisible.value = false
+    })
 
   return {
     /* 状态 */

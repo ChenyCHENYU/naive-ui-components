@@ -1,10 +1,9 @@
 /*
- * @Description: 跨页多选 — 分页切换时保留选中状态
- * Copyright (c) 2025 by CHENY, All Rights Reserved.
+ * @Description: Local/remote cross-page selection with one key and row-cache owner.
  */
-
 import {
   ref,
+  shallowReactive,
   computed,
   watch,
   toValue,
@@ -14,149 +13,163 @@ import {
 } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord } from '../types'
-
-/* ================= 类型定义 ================= */
+import { flattenTableRows } from '../helpers'
 
 export interface CrossPageSelectionConfig {
   enabled?: boolean
-  /** 最大选择数 */
+  /** Maximum selected rows, including previously visited remote pages. */
   maxSelection?: number
 }
 
 export interface UseCrossPageSelectionOptions<T extends object = DataRecord> {
-  /** 全量数据（非分页后的） */
+  /** All local rows, or the loaded page when remote is enabled. */
   allData: Ref<T[]> | ComputedRef<T[]>
-  /** 行键函数 */
   rowKey: (row: T) => DataTableRowKey
-  /** 配置 */
   config: MaybeRefOrGetter<CrossPageSelectionConfig | undefined>
+  remote?: MaybeRefOrGetter<boolean>
+  childrenKey?: MaybeRefOrGetter<string | undefined>
+  rowCheckable?: (row: T) => boolean
+  onSelectionChange?: (keys: DataTableRowKey[], rows: T[]) => void
 }
 
 export interface UseCrossPageSelectionReturn<T extends object = DataRecord> {
-  /** 所有选中的 key（跨页） */
   selectedKeys: Ref<Set<DataTableRowKey>>
-  /** 选中行数量 */
   selectedCount: ComputedRef<number>
-  /** 当前页数据的 checkedKeys（给 NDataTable 绑定） */
   getPageCheckedKeys: (pageData: T[]) => DataTableRowKey[]
-  /** NDataTable @update:checked-row-keys 处理器 */
   handlePageSelectionChange: (keys: DataTableRowKey[], pageData: T[]) => void
-  /** 全选所有页 */
+  /** In remote mode, adds the currently loaded page; never claims to select unseen server rows. */
   selectAll: () => void
-  /** 选择指定 key */
   select: (key: DataTableRowKey) => boolean
-  /** 取消选择指定 key */
   unselect: (key: DataTableRowKey) => void
-  /** 清除所有页选中 */
   clearAll: () => void
-  /** 获取所有选中行数据 */
   getSelectedRows: () => T[]
-  /** 判断 key 是否选中 */
   isSelected: (key: DataTableRowKey) => boolean
 }
 
-/* ================= 实现 ================= */
-
-/** 跨页多选组合式函数 */
+/** Preserve selected identities and loaded row snapshots across local or remote pages. */
 export function useCrossPageSelection<T extends object = DataRecord>(
   options: UseCrossPageSelectionOptions<T>
 ): UseCrossPageSelectionReturn<T> {
-  const { allData, rowKey } = options
   const selectedKeys = ref<Set<DataTableRowKey>>(new Set())
-
+  const selectedRows = shallowReactive(new Map<DataTableRowKey, T>())
+  const enabled = () => toValue(options.config)?.enabled === true
+  const rows = (data = options.allData.value) =>
+    flattenTableRows(data, toValue(options.childrenKey))
+  const selectable = (row: T) => options.rowCheckable?.(row) !== false
   const getMaxSelection = () => {
     const max = toValue(options.config)?.maxSelection
     return Number.isFinite(max) && (max ?? 0) > 0 ? Math.trunc(max!) : undefined
   }
-
   const selectedCount = computed(() => selectedKeys.value.size)
+  const getSelectedRows = () =>
+    [...selectedKeys.value].flatMap(key => {
+      const row = selectedRows.get(key)
+      return row ? [row] : []
+    })
 
-  const getPageCheckedKeys = (pageData: T[]): DataTableRowKey[] => {
-    return pageData
-      .map(row => rowKey(row))
-      .filter(key => selectedKeys.value.has(key))
+  const limitKeys = (keys: Iterable<DataTableRowKey>) => {
+    const max = getMaxSelection()
+    const next = new Set<DataTableRowKey>()
+    for (const key of keys) {
+      if (max && next.size >= max) break
+      next.add(key)
+    }
+    return next
   }
+  const commit = (
+    keys: Iterable<DataTableRowKey>,
+    availableRows: readonly T[] = []
+  ) => {
+    const next = limitKeys(keys)
+    for (const row of availableRows) {
+      const key = options.rowKey(row)
+      if (next.has(key)) selectedRows.set(key, row)
+    }
+    for (const key of selectedRows.keys()) {
+      if (!next.has(key)) selectedRows.delete(key)
+    }
+    const previous = selectedKeys.value
+    if (
+      previous.size === next.size &&
+      [...previous].every(key => next.has(key))
+    )
+      return
+    selectedKeys.value = next
+    options.onSelectionChange?.([...next], getSelectedRows())
+  }
+
+  const getPageCheckedKeys = (pageData: T[]) =>
+    rows(pageData)
+      .map(options.rowKey)
+      .filter(key => selectedKeys.value.has(key))
 
   const handlePageSelectionChange = (
     keys: DataTableRowKey[],
     pageData: T[]
   ) => {
-    if (!toValue(options.config)?.enabled) return
-    const newSet = new Set(selectedKeys.value)
-    // 先清除当前页的所有 key
-    for (const row of pageData) {
-      newSet.delete(rowKey(row))
-    }
-    // 再添加当前页新选中的
-    for (const key of keys) {
-      const maxSelection = getMaxSelection()
-      if (maxSelection && newSet.size >= maxSelection) break
-      newSet.add(key)
-    }
-    selectedKeys.value = newSet
+    if (!enabled()) return
+    const currentRows = rows(pageData)
+    const available = new Set(
+      currentRows.filter(selectable).map(options.rowKey)
+    )
+    const next = new Set(selectedKeys.value)
+    currentRows.forEach(row => next.delete(options.rowKey(row)))
+    keys.forEach(key => {
+      if (available.has(key)) next.add(key)
+    })
+    commit(next, currentRows)
   }
 
   const selectAll = () => {
-    if (!toValue(options.config)?.enabled) return
-    const all = [...new Set(allData.value.map(row => rowKey(row)))]
-    const maxSelection = getMaxSelection()
-    selectedKeys.value = new Set(
-      maxSelection ? all.slice(0, maxSelection) : all
+    if (!enabled()) return
+    const available = rows().filter(selectable)
+    const keys = available.map(options.rowKey)
+    commit(
+      toValue(options.remote) ? [...selectedKeys.value, ...keys] : keys,
+      available
     )
   }
-
-  const select = (key: DataTableRowKey): boolean => {
-    if (!toValue(options.config)?.enabled) return false
-    if (!allData.value.some(row => rowKey(row) === key)) return false
+  const select = (key: DataTableRowKey) => {
+    if (!enabled()) return false
     if (selectedKeys.value.has(key)) return true
-    const maxSelection = getMaxSelection()
-    if (maxSelection && selectedKeys.value.size >= maxSelection) return false
-    selectedKeys.value = new Set([...selectedKeys.value, key])
+    const row = rows().find(
+      candidate => options.rowKey(candidate) === key && selectable(candidate)
+    )
+    if (!row) return false
+    const max = getMaxSelection()
+    if (max && selectedKeys.value.size >= max) return false
+    commit([...selectedKeys.value, key], [row])
     return true
   }
-
   const unselect = (key: DataTableRowKey) => {
     if (!selectedKeys.value.has(key)) return
-    const nextKeys = new Set(selectedKeys.value)
-    nextKeys.delete(key)
-    selectedKeys.value = nextKeys
+    const next = new Set(selectedKeys.value)
+    next.delete(key)
+    commit(next)
   }
+  const clearAll = () => commit([])
 
-  const clearAll = () => {
-    selectedKeys.value = new Set()
-  }
-
-  const getSelectedRows = (): T[] => {
-    return allData.value.filter(row => selectedKeys.value.has(rowKey(row)))
-  }
-
-  const isSelected = (key: DataTableRowKey): boolean => {
-    return selectedKeys.value.has(key)
-  }
-
-  // 数据源变化时清除不存在的 key
-  watch(allData, newData => {
-    const validKeys = new Set(newData.map(row => rowKey(row)))
-    const cleaned = new Set(
-      [...selectedKeys.value].filter(k => validKeys.has(k))
-    )
-    if (cleaned.size !== selectedKeys.value.size) {
-      selectedKeys.value = cleaned
+  watch(options.allData, data => {
+    if (!enabled() || selectedKeys.value.size === 0) return
+    const available = rows(data)
+    if (toValue(options.remote)) {
+      for (const row of available) {
+        const key = options.rowKey(row)
+        if (selectedKeys.value.has(key)) selectedRows.set(key, row)
+      }
+      return
     }
+    const valid = new Set(available.map(options.rowKey))
+    commit(
+      [...selectedKeys.value].filter(key => valid.has(key)),
+      available
+    )
   })
-
   watch(
-    () => [toValue(options.config)?.enabled, getMaxSelection()] as const,
-    ([enabled, maxSelection]) => {
-      if (!enabled) {
-        clearAll()
-        return
-      }
-      if (maxSelection && selectedKeys.value.size > maxSelection) {
-        selectedKeys.value = new Set(
-          [...selectedKeys.value].slice(0, maxSelection)
-        )
-      }
+    () => [enabled(), getMaxSelection()] as const,
+    ([active]) => {
+      if (!active) clearAll()
+      else commit(selectedKeys.value)
     }
   )
 
@@ -170,6 +183,6 @@ export function useCrossPageSelection<T extends object = DataRecord>(
     unselect,
     clearAll,
     getSelectedRows,
-    isSelected,
+    isSelected: key => selectedKeys.value.has(key),
   }
 }

@@ -42,6 +42,11 @@ export interface UseCFormReturn<T extends object> {
   validate: () => Promise<void>
   submit: () => Promise<boolean>
   reset: () => void
+  getValues: () => FormModel<T>
+  setValues: (
+    values: Partial<FormModel<T>>,
+    shouldValidate?: boolean
+  ) => Promise<void>
 }
 
 /** Small binding helper for the common controlled C_Form setup. */
@@ -67,6 +72,22 @@ export function useCForm<T extends object>(
     bindings,
     validate: () => formRef.value?.validate() ?? Promise.resolve(),
     submit: () => formRef.value?.submit() ?? Promise.resolve(false),
-    reset: () => formRef.value?.resetFields(),
+    reset: () => {
+      if (formRef.value) {
+        formRef.value.resetFields()
+        model.value = cloneData(formRef.value.getModel())
+      } else {
+        model.value = cloneData(setup.initialValues)
+      }
+    },
+    getValues: () => cloneData(formRef.value?.getModel() ?? model.value),
+    setValues: async (values, shouldValidate = false) => {
+      if (formRef.value) {
+        await formRef.value.setFieldsValue(values, shouldValidate)
+        model.value = cloneData(formRef.value.getModel())
+      } else {
+        model.value = { ...model.value, ...cloneData(values) }
+      }
+    },
   }
 }

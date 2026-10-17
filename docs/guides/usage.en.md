@@ -10,6 +10,7 @@ Import strategies, component configuration and integration examples.
 - [Cron and formula workspaces](#cron-and-formula-workspaces)
 - [Configure C_Guide](#configure-c_guide)
 - [Recommended C_Form / C_Table setup](#recommended-c_form--c_table-setup)
+- [Common component contracts](#common-component-contracts)
 - [Recommended C_Map setup](#recommended-c_map-setup)
 - [C_Captcha Server Verification](#c_captcha-server-verification)
 - [Table loading](#table-loading)
@@ -53,7 +54,9 @@ Each component provides an independent subpath entry that loads only the target 
   import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
   import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
   import { createMenuOptions } from '@robot-admin/naive-ui-components/C_Menu'
-  import '@robot-admin/naive-ui-components/style.css'
+  import '@robot-admin/naive-ui-components/C_Form/base.css'
+  import '@robot-admin/naive-ui-components/C_Table/base.css'
+  import '@robot-admin/naive-ui-components/C_Icon/style.css'
 </script>
 ```
 
@@ -62,11 +65,9 @@ Each component provides an independent subpath entry that loads only the target 
 ### Standalone Composables
 
 ```typescript
-import {
-  useTableManager,
-  useFormState,
-  usePlayerCore,
-} from '@robot-admin/naive-ui-components'
+import { useTableManager } from '@robot-admin/naive-ui-components/C_Table'
+import { useFormState } from '@robot-admin/naive-ui-components/C_Form'
+import { usePlayerCore } from '@robot-admin/naive-ui-components/C_VideoPlayer'
 ```
 
 ### Automatic On-demand Imports (Recommended)
@@ -373,6 +374,144 @@ For fixed-height tables, use `flex-height` with `wrapper-class`. The root wrappe
 Add `{ type: 'selection' }` explicitly. Receive keys and rows through `@selection-change="(keys, rows) => ..."`; use the public `clearSelection()` instance method instead of observing internal manager state.
 
 `C_Table` remains owned by its current Naive UI table implementation. A MachTable mode should render MachTable with its native columns, events, and instance API as a complete engine boundary rather than translating between the two engines. They only share engine-neutral page actions such as `C_ActionBar`.
+
+## Common component contracts
+
+### Form values and validation
+
+Continue with `useCForm()` from the example above to read and update values without duplicating model synchronization or waiting for rendering:
+
+```ts
+const { formRef, bindings, setValues, getValues, reset, submit } =
+  useCForm<UserForm>({
+    initialValues: { name: '', profile: { email: '' } },
+    options,
+    config,
+  })
+
+async function loadUser(user: UserForm) {
+  await setValues(user)
+  formRef.value?.markAsClean() // Make the loaded record the reset baseline.
+}
+
+function preview() {
+  return getValues() // Independent snapshot, including edits before the parent model's next update.
+}
+```
+
+`setValues(values, shouldValidate = false)` delegates to the mounted form instance, or updates the bound model before mounting. `getValues()` returns a copy. `reset()` restores the current clean snapshot; `markAsClean()` updates that baseline. Supply a complete nested object when setting it, or call the instance's `setFieldValue('profile.email', value)` for one path.
+
+Vue unwraps state exposed through a component template ref: scripts read `formRef.value?.isSubmitting`, `formRef.value?.isDirty`, and `formRef.value?.formModel` without a second `.value`. The helper's own `model`, `formRef`, and `bindings` remain Vue refs.
+
+Default, inline, and grid layouts are synchronous. Card, tabs, steps, dynamic, and custom layouts load on demand. Before an asynchronous layout mounts, `submit()` returns `false` and `validate()` rejects rather than accepting fields that have not rendered. Once ready, tab and step layouts mount fields across their panels, so full submission also validates unvisited panels. Async option requests are isolated per field; late responses from superseded requests cannot replace newer options.
+
+### Table pagination, selection, and export
+
+Use `config.pagination` for new pages. For remote tables, bind the `useTableQuery().bindings` shown above so pagination, totals, loading, and requests have one owner. The compatibility `:pagination="..."` prop delegates pagination to Naive UI. Explicitly passing that prop, including `false`, takes precedence over `config.pagination`; the component does not render a second pager. With native remote pagination, also pass `remote` and manage requests and native update events yourself.
+
+Local data is filtered and sorted before pagination. Remote mode displays the server's page without slicing it again. `crossPageSelection: true` retains selected row objects from visited remote pages; `selectAll()` only adds the currently loaded page and cannot represent unseen server records. Use `getSelectedRows()` or the row objects from `@selection-change` for batch work. Server-wide operations need an explicit query or a server-side task supplied by the application.
+
+Choose export scope explicitly:
+
+| `config.export` option      | Data source                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `scope: 'source'` (default) | All currently supplied source rows; remote mode usually has only the loaded page           |
+| `scope: 'page'`             | The displayed page, including local filtering, sorting, and pagination                     |
+| `scope: 'selected'`         | Available selected row objects, including selections retained from visited pages           |
+| `requestData`               | An explicit request made when export is clicked; overrides `scope` for server-wide exports |
+
+```ts
+const config = defineTableConfig({
+  export: {
+    scope: 'page',
+    filename: 'users',
+    format: 'csv',
+  },
+})
+
+// Supply full data explicitly; export never walks server pages automatically.
+const fullExport = defineTableConfig({
+  export: { requestData: () => fetchAllUsers(), filename: 'all-users' },
+})
+```
+
+Failed asynchronous expansion retains its error state and provides retry in the default content. Call the public `retryExpand(key)` method to reload, or `invalidateExpand(key?)` to clear one row's cached data and error, or all caches when omitted. Invalidation does not request data. Concurrent loads of one row share a request; replacing its source row invalidates the old cache and prevents late old responses from writing it back.
+
+Dynamic add/copy operations must generate keys consistent with the table. Prefer a string `row-key="uuid"`. If the table requires `:row-key="row => row.uuid"`, also set `config.dynamicRows.rowKey: 'uuid'` so add/copy operations know which field to generate. Arbitrary composite keys are not inferred. Missing or duplicate keys reject insertion; the related instance methods do not mutate data when dynamic rows are disabled.
+
+### Connect search to a remote table
+
+Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put requests in `config.onSearch` and use `@search` for notification. Sending requests from both paths executes both application handlers. The following example gives a single table controller ownership of requests, pagination, and loading:
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import {
+    C_FormSearch,
+    type SearchConfig,
+    type SearchFormItem,
+    type SearchFormParams,
+  } from '@robot-admin/naive-ui-components/C_FormSearch'
+  import {
+    C_Table,
+    useTableQuery,
+  } from '@robot-admin/naive-ui-components/C_Table'
+  import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
+  import '@robot-admin/naive-ui-components/C_Table/base.css'
+
+  const filters = ref<SearchFormParams>({ keyword: '' })
+  const searchFields: SearchFormItem[] = [
+    { type: 'input', prop: 'keyword', placeholder: 'Keyword' },
+  ]
+  const { bindings, loading, setQuery } = useTableQuery({
+    initialQuery: { keyword: '' },
+    columns,
+    rowKey: 'id',
+    request: loadUsers,
+  })
+  const applyQuery = async (params: SearchFormParams) => {
+    await setQuery({ keyword: String(params.keyword ?? '') })
+  }
+  const searchConfig: SearchConfig = {
+    requireValue: false,
+    onSearch: applyQuery,
+  }
+</script>
+
+<template>
+  <C_FormSearch
+    v-model="filters"
+    :form-item-list="searchFields"
+    :config="searchConfig"
+    :loading="loading"
+    @reset="applyQuery"
+  />
+  <C_Table v-bind="bindings" />
+</template>
+```
+
+The search button, native form submission (including Enter in an input), and exposed `searchFn()` share validation and duplicate prevention. Only currently mounted search controls participate in Naive form validation. Editing conditions, enabling external loading, or unmounting during async validation cancels dispatch; requests receive the successfully validated snapshot. At least one non-pagination value is required by default; set `requireValue: false` to allow an empty query.
+
+The `reset(params)` event follows the synchronous v-model update and carries the complete reset snapshot. Existing no-argument handlers remain compatible. Reset restores field defaults while retaining `pageNum/pageSize`; it does not automatically request or debounce. This example explicitly reloads through `@reset="applyQuery"`, and `setQuery()` resets the table page. Avoid reading a separately maintained stale query in the reset handler.
+
+### Action configuration and asynchronous work
+
+Stable semantic keys and Promise callbacks provide labels, icons, and mutual exclusion without a loading ref for every button:
+
+```ts
+const actions = defineActions([
+  { key: 'save', onClick: () => saveCurrentUser() },
+  { key: 'refresh', disabled: () => loading.value, onClick: reload },
+  {
+    key: 'more',
+    dropdown: [{ key: 'export', label: 'Export', onClick: exportUsers }],
+  },
+])
+```
+
+Duplicate keys in one ActionBar share a task lock. Replacing action objects or moving them between left/right groups preserves that key's busy state. Unkeyed actions use their group and position, so dynamic lists should supply explicit keys. Dropdown items follow the same disabled/loading guards and async mutual exclusion as regular buttons. `autoLoading: false` only hides the automatic spinner; duplicate execution remains blocked.
+
+`action-click` and `dropdown-click` are notifications and do not await listeners' promises; put async commands in the action's `onClick`. Failures emit `action-error(error, action, item?)` and continue to Vue's `errorHandler` or error-capture boundary. `buttonProps.disabled/loading` merge with action state and cannot override internal busy protection. `buttonProps.onClick` remains a native click observer rather than replacing the executor. Table row actions reuse lightweight task locks without mounting a complete action bar per row.
 
 ## Recommended C_Map setup
 

@@ -1,0 +1,362 @@
+import { expect, test, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { defineComponent, h, nextTick, ref } from 'vue'
+import { NButton, NDropdown } from 'naive-ui'
+import C_FormSearch from '../../src/components/C_FormSearch/index.vue'
+import C_ActionBar from '../../src/components/C_ActionBar/index.vue'
+import type { SearchFormParams } from '../../src/components/C_FormSearch/types'
+import type { ActionItem } from '../../src/components/C_ActionBar/types'
+
+const deferred = () => {
+  let resolve!: () => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<void>((accept, decline) => {
+    resolve = accept
+    reject = decline
+  })
+  return { promise, resolve, reject }
+}
+
+test('search locks validation and request as one task and honors external loading', async () => {
+  let release!: () => void
+  const onSearch = vi.fn(
+    () =>
+      new Promise<void>(resolve => {
+        release = resolve
+      })
+  )
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [{ type: 'input', prop: 'name' }],
+      modelValue: { name: 'first' },
+      config: { onSearch },
+    },
+  })
+  const first = wrapper.vm.searchFn()
+  const duplicate = wrapper.vm.searchFn()
+  await flushPromises()
+  expect(await duplicate).toBe(false)
+  expect(onSearch).toHaveBeenCalledTimes(1)
+  expect(wrapper.findAllComponents(NButton)[0].props('loading')).toBe(true)
+  release()
+  expect(await first).toBe(true)
+  await wrapper.setProps({ loading: true })
+  expect(await wrapper.vm.searchFn()).toBe(false)
+  expect(onSearch).toHaveBeenCalledTimes(1)
+})
+
+test('search validates configured rules before emitting or executing a request', async () => {
+  const onSearch = vi.fn()
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [
+        {
+          type: 'input',
+          prop: 'name',
+          rules: [{ min: 3, message: 'too short' }],
+        },
+      ],
+      modelValue: { name: 'x' },
+      config: { onSearch },
+    },
+  })
+  expect(await wrapper.vm.searchFn()).toBe(false)
+  expect(wrapper.emitted('search')).toBeUndefined()
+  expect(onSearch).not.toHaveBeenCalled()
+  await wrapper.setProps({ modelValue: { name: 'valid' } })
+  expect(await wrapper.vm.searchFn()).toBe(true)
+  expect(onSearch).toHaveBeenCalledWith({ name: 'valid' })
+})
+
+test('search never dispatches after unmount while async field validation is pending', async () => {
+  const validation = deferred()
+  const validate = vi.fn(() => validation.promise)
+  const onSearch = vi.fn()
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [
+        { type: 'input', prop: 'name', rules: [{ asyncValidator: validate }] },
+      ],
+      modelValue: { name: 'validated' },
+      config: { onSearch },
+    },
+  })
+  const pending = wrapper.vm.searchFn()
+  expect(validate).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+  validation.resolve()
+  expect(await pending).toBe(false)
+  expect(wrapper.emitted('search')).toBeUndefined()
+  expect(onSearch).not.toHaveBeenCalled()
+})
+
+test('search rejects values edited during async validation and accepts equal v-model echoes', async () => {
+  let validation = deferred()
+  const validate = vi.fn(() => validation.promise)
+  const onSearch = vi.fn()
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [
+        { type: 'input', prop: 'name', rules: [{ asyncValidator: validate }] },
+      ],
+      modelValue: { name: 'validated' },
+      config: { onSearch },
+    },
+  })
+  const stale = wrapper.vm.searchFn()
+  await wrapper.setProps({ modelValue: { name: 'unvalidated edit' } })
+  validation.resolve()
+  expect(await stale).toBe(false)
+  expect(wrapper.emitted('search')).toBeUndefined()
+  expect(onSearch).not.toHaveBeenCalled()
+
+  validation = deferred()
+  const current = wrapper.vm.searchFn()
+  await wrapper.setProps({ modelValue: { name: 'unvalidated edit' } })
+  validation.resolve()
+  expect(await current).toBe(true)
+  expect(onSearch).toHaveBeenCalledExactlyOnceWith({ name: 'unvalidated edit' })
+})
+
+test('search rechecks external loading after async validation', async () => {
+  const validation = deferred()
+  const onSearch = vi.fn()
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [
+        {
+          type: 'input',
+          prop: 'name',
+          rules: [{ asyncValidator: () => validation.promise }],
+        },
+      ],
+      modelValue: { name: 'validated' },
+      config: { onSearch },
+    },
+  })
+  const pending = wrapper.vm.searchFn()
+  await wrapper.setProps({ loading: true })
+  validation.resolve()
+  expect(await pending).toBe(false)
+  expect(wrapper.emitted('search')).toBeUndefined()
+  expect(onSearch).not.toHaveBeenCalled()
+})
+
+test('search request failures produce no component feedback after unmount', async () => {
+  const request = deferred()
+  const error = vi.fn()
+  const onSearch = vi.fn(() => request.promise)
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [{ type: 'input', prop: 'name' }],
+      modelValue: { name: 'validated' },
+      config: { onSearch, feedback: { error } },
+    },
+  })
+  const pending = wrapper.vm.searchFn()
+  await flushPromises()
+  expect(onSearch).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+  request.reject(new Error('late request failure'))
+  expect(await pending).toBe(false)
+  expect(error).not.toHaveBeenCalled()
+})
+
+test('native form submissions used by Enter prevent navigation and share the search lock', async () => {
+  const request = deferred()
+  const onSearch = vi.fn(() => request.promise)
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [{ type: 'input', prop: 'name' }],
+      modelValue: { name: 'validated' },
+      config: { onSearch },
+    },
+  })
+  await wrapper.get('input').trigger('keydown', { key: 'Enter' })
+  // Happy DOM does not synthesize Enter's implicit form submission.
+  const submit = new Event('submit', { bubbles: true, cancelable: true })
+  wrapper.get('form').element.dispatchEvent(submit)
+  wrapper
+    .get('form')
+    .element.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    )
+  await flushPromises()
+  expect(submit.defaultPrevented).toBe(true)
+  expect(onSearch).toHaveBeenCalledExactlyOnceWith({ name: 'validated' })
+  expect(wrapper.emitted('search')).toHaveLength(1)
+  request.resolve()
+  await flushPromises()
+})
+
+test('reset publishes one final model before its compatible reset notification', async () => {
+  const model = ref<SearchFormParams>({
+    name: 'old',
+    status: 'active',
+    pageNum: 8,
+    pageSize: 10,
+  })
+  const snapshots: SearchFormParams[] = []
+  const onSearch = vi.fn()
+  const updates: SearchFormParams[] = []
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(C_FormSearch, {
+          formItemList: [
+            { type: 'input', prop: 'name', defaultValue: 'default' },
+          ],
+          modelValue: model.value,
+          'onUpdate:modelValue': value => {
+            updates.push(value)
+            model.value = value
+          },
+          config: { onSearch },
+          onReset: params => {
+            snapshots.push({ ...model.value })
+            expect(params).toEqual(model.value)
+          },
+        }),
+    })
+  )
+  wrapper.findComponent(C_FormSearch).vm.cleanFn()
+  const expected = { name: 'default', status: null, pageNum: 8, pageSize: 10 }
+  expect(model.value).toEqual(expected)
+  expect(snapshots).toEqual([expected])
+  await nextTick()
+  await nextTick()
+  expect(updates).toEqual([expected])
+  expect(onSearch).not.toHaveBeenCalled()
+})
+
+test('ActionBar retains the same task lock when same-key action objects are replaced', async () => {
+  let release!: () => void
+  const onClick = vi.fn(
+    () =>
+      new Promise<void>(resolve => {
+        release = resolve
+      })
+  )
+  const createAction = (): ActionItem => ({
+    key: 'save',
+    onClick,
+    buttonProps: { loading: false, disabled: false },
+  })
+  const wrapper = mount(C_ActionBar, { props: { actions: [createAction()] } })
+  await wrapper.get('button').trigger('click')
+  expect(onClick).toHaveBeenCalledTimes(1)
+  await wrapper.setProps({ actions: [{ ...createAction(), group: 'right' }] })
+  expect(wrapper.getComponent(NButton).props('loading')).toBe(true)
+  expect(wrapper.getComponent(NButton).props('disabled')).toBe(true)
+  await wrapper.get('button').trigger('click')
+  expect(onClick).toHaveBeenCalledTimes(1)
+  release()
+  await flushPromises()
+  expect(wrapper.getComponent(NButton).props('loading')).toBe(false)
+})
+
+test('duplicate action keys share a lock and native button click observers preserve the executor', async () => {
+  let release!: () => void
+  const nativeClick = vi.fn()
+  const onClick = vi.fn(
+    () =>
+      new Promise<void>(resolve => {
+        release = resolve
+      })
+  )
+  const wrapper = mount(C_ActionBar, {
+    props: {
+      actions: [
+        {
+          key: 'save',
+          onClick,
+          autoLoading: false,
+          buttonProps: { onClick: nativeClick },
+        },
+        { key: 'save', onClick },
+      ],
+    },
+  })
+  await wrapper.findAll('button')[0].trigger('click')
+  await wrapper.findAll('button')[1].trigger('click')
+  expect(onClick).toHaveBeenCalledTimes(1)
+  expect(nativeClick).toHaveBeenCalledTimes(1)
+  expect(wrapper.emitted('action-click')).toHaveLength(1)
+  expect(wrapper.findAllComponents(NButton)[0].props('loading')).toBe(false)
+  expect(wrapper.findAllComponents(NButton)[0].props('disabled')).toBe(true)
+  release()
+  await flushPromises()
+})
+
+test('dropdown actions share locking, visibility and disabled guards with regular actions', async () => {
+  let release!: () => void
+  const onClick = vi.fn(
+    () =>
+      new Promise<void>(resolve => {
+        release = resolve
+      })
+  )
+  const wrapper = mount(C_ActionBar, {
+    props: {
+      actions: [
+        {
+          key: 'more',
+          dropdown: [
+            { key: 'export', label: 'Export', onClick },
+            { key: 'blocked', label: 'Blocked', disabled: true, onClick },
+            { key: 'hidden', label: 'Hidden', show: false, onClick },
+          ],
+        },
+      ],
+    },
+  })
+  const dropdown = wrapper.getComponent(NDropdown)
+  dropdown.vm.$emit('select', 'blocked')
+  dropdown.vm.$emit('select', 'hidden')
+  dropdown.vm.$emit('select', 'export')
+  dropdown.vm.$emit('select', 'export')
+  await nextTick()
+  expect(onClick).toHaveBeenCalledTimes(1)
+  expect(wrapper.emitted('dropdown-click')).toHaveLength(1)
+  expect(wrapper.getComponent(NButton).props('loading')).toBe(true)
+  release()
+  await flushPromises()
+  await wrapper.setProps({
+    actions: [
+      {
+        key: 'more',
+        disabled: true,
+        dropdown: [{ key: 'export', label: 'Export', onClick }],
+      },
+    ],
+  })
+  dropdown.vm.$emit('select', 'export')
+  expect(onClick).toHaveBeenCalledTimes(1)
+})
+
+test('action failures notify consumers and remain visible to Vue error handling', async () => {
+  const cause = new Error('request failed')
+  const errors = vi.fn()
+  const wrapper = mount(C_ActionBar, {
+    props: {
+      actions: [
+        {
+          key: 'save',
+          onClick: async () => {
+            throw cause
+          },
+        },
+      ],
+    },
+    global: { config: { errorHandler: errors } },
+  })
+  await wrapper.get('button').trigger('click')
+  await flushPromises()
+  expect(wrapper.emitted('action-error')?.[0][0]).toBe(cause)
+  expect(errors).toHaveBeenCalledWith(
+    cause,
+    expect.anything(),
+    expect.any(String)
+  )
+  expect(wrapper.getComponent(NButton).props('disabled')).toBe(false)
+})

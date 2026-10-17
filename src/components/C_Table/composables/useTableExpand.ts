@@ -9,12 +9,14 @@ import {
   ref,
   computed,
   unref,
-  watchEffect,
+  watch,
+  getCurrentScope,
+  onScopeDispose,
   nextTick,
   type VNodeChild,
   type Ref,
 } from 'vue'
-import { type DataTableRowKey, NSpin, NDataTable } from 'naive-ui'
+import { type DataTableRowKey, NSpin, NDataTable, NButton } from 'naive-ui'
 import type {
   TableColumn,
   UseTableExpandOptions,
@@ -22,6 +24,8 @@ import type {
   ChildSelectionState,
   DataRecord,
 } from '../types'
+import { flattenTableRows } from '../helpers'
+import { useComponentLocale } from '../../../config'
 
 /* ================= 核心状态管理 ================= */
 const useExpandState = <T extends object, C>(
@@ -34,6 +38,7 @@ const useExpandState = <T extends object, C>(
     Map<DataTableRowKey, C[]>
   >
   const loadingMap = ref(new Map<DataTableRowKey, boolean>())
+  const errorMap = ref(new Map<DataTableRowKey, unknown>())
 
   const checkedKeys = options.enableSelection
     ? ref<DataTableRowKey[]>([...(options.defaultCheckedKeys || [])])
@@ -47,6 +52,7 @@ const useExpandState = <T extends object, C>(
     expandedKeys,
     expandDataMap,
     loadingMap,
+    errorMap,
     checkedKeys,
     childSelections,
   } as const
@@ -56,7 +62,9 @@ const useExpandState = <T extends object, C>(
 const useDataUtils = <T extends object, C>(
   options: UseTableExpandOptions<T, C>
 ) => {
-  const data = computed(() => unref(options.data))
+  const data = computed(() =>
+    flattenTableRows(unref(options.data), options.childrenKey)
+  )
 
   const getRowKey = options.rowKey
   const getChildRowKey =
@@ -89,45 +97,106 @@ const useExpandLogic = <T extends object, C>(
   utils: ReturnType<typeof useDataUtils<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
-  const pendingLoads = new Map<DataTableRowKey, Promise<C[]>>()
+  const pendingLoads = new Map<
+    DataTableRowKey,
+    { token: object; promise: Promise<C[]> }
+  >()
+  const loadedSources = new Map<DataTableRowKey, T>()
+  let disposed = false
   let transitionVersion = 0
   let desiredExpandedKeys = new Set(options.defaultExpandedKeys || [])
 
+  const invalidateExpand = (key?: DataTableRowKey) => {
+    const keys =
+      key === undefined
+        ? new Set([
+            ...state.expandDataMap.value.keys(),
+            ...state.errorMap.value.keys(),
+            ...pendingLoads.keys(),
+          ])
+        : new Set([key])
+    for (const entry of keys) {
+      pendingLoads.delete(entry)
+      loadedSources.delete(entry)
+      state.expandDataMap.value.delete(entry)
+      state.errorMap.value.delete(entry)
+      state.loadingMap.value.delete(entry)
+      state.childSelections.value.delete(entry)
+    }
+  }
+
   const loadData = async (row: T): Promise<C[]> => {
-    if (!options.onLoadData) return []
-
+    if (!options.onLoadData || disposed) return []
     const key = utils.getRowKey(row)
-    const existingData = state.expandDataMap.value.get(key)
-    if (existingData) return existingData
+    if (state.expandDataMap.value.has(key))
+      return state.expandDataMap.value.get(key)!
+    if (state.errorMap.value.has(key)) return []
     const pending = pendingLoads.get(key)
-    if (pending) return pending
-
+    if (pending) return pending.promise
+    const token = {}
+    loadedSources.set(key, row)
     state.loadingMap.value.set(key, true)
-    const request = (async () => {
+    const isCurrent = () => !disposed && pendingLoads.get(key)?.token === token
+    let resolveRequest!: (rows: C[]) => void
+    const request = new Promise<C[]>(resolve => {
+      resolveRequest = resolve
+    })
+    pendingLoads.set(key, { token, promise: request })
+    void (async () => {
       try {
         const data = await options.onLoadData!(row)
-        const result = data || []
-        state.expandDataMap.value.set(key, result as C[])
-
+        const result = (Array.isArray(data) ? data : []) as C[]
+        if (!isCurrent()) return []
+        state.expandDataMap.value.set(key, result)
         if (
           options.enableChildSelection &&
           !state.childSelections.value.has(key)
         ) {
           state.childSelections.value.set(key, [])
         }
-
         return result
       } catch (error) {
-        options.onError?.(error, row)
+        if (isCurrent()) {
+          state.errorMap.value.set(key, error)
+          options.onError?.(error, row)
+        }
         return []
       } finally {
-        pendingLoads.delete(key)
-        state.loadingMap.value.set(key, false)
+        if (isCurrent()) {
+          pendingLoads.delete(key)
+          state.loadingMap.value.set(key, false)
+        }
       }
-    })()
-    pendingLoads.set(key, request)
+    })().then(resolveRequest, () => resolveRequest([]))
     return request
   }
+
+  const retryExpand = async (key: DataTableRowKey) => {
+    const row = utils.findRow(key)
+    if (!row) return
+    invalidateExpand(key)
+    await loadData(row)
+  }
+
+  watch(utils.data, nextRows => {
+    if (loadedSources.size === 0) return
+    const current = new Map(nextRows.map(row => [utils.getRowKey(row), row]))
+    for (const [key, source] of loadedSources) {
+      const next = current.get(key)
+      if (next === source) continue
+      invalidateExpand(key)
+      if (next && state.expandedKeys.value.includes(key)) void loadData(next)
+      if (!next) desiredExpandedKeys.delete(key)
+    }
+    state.expandedKeys.value = state.expandedKeys.value.filter(key =>
+      current.has(key)
+    )
+  })
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true
+      invalidateExpand()
+    })
 
   const handleRowExpand = async (row: T, expanded: boolean): Promise<void> => {
     const key = utils.getRowKey(row)
@@ -198,6 +267,8 @@ const useExpandLogic = <T extends object, C>(
 
   return {
     loadData,
+    retryExpand,
+    invalidateExpand,
     handleRowExpand,
     expandAll,
     collapseAll,
@@ -211,6 +282,20 @@ const useSelectionLogic = <T extends object, C>(
   utils: ReturnType<typeof useDataUtils<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
+  let notifiedKeys: DataTableRowKey[] = []
+  let notifiedRows: T[] = []
+  const notify = (keys: DataTableRowKey[], rows: T[]) => {
+    const sameKeys =
+      keys.length === notifiedKeys.length &&
+      keys.every((key, i) => key === notifiedKeys[i])
+    const sameRows =
+      rows.length === notifiedRows.length &&
+      rows.every((row, i) => row === notifiedRows[i])
+    if (sameKeys && sameRows) return
+    notifiedKeys = [...keys]
+    notifiedRows = [...rows]
+    options.onSelectionChange?.(keys, rows, state.childSelections.value)
+  }
   const selectableRows = computed(() =>
     utils.data.value.filter(utils.isRowCheckable)
   )
@@ -227,22 +312,19 @@ const useSelectionLogic = <T extends object, C>(
 
     state.checkedKeys.value = finalKeys
 
+    const selected = new Set(finalKeys)
     const selectedRows = selectableRows.value.filter(row =>
-      finalKeys.includes(utils.getRowKey(row))
+      selected.has(utils.getRowKey(row))
     )
 
-    options.onSelectionChange?.(
-      finalKeys,
-      selectedRows,
-      state.childSelections.value
-    )
+    notify(finalKeys, selectedRows)
   }
 
   const clearSelection = (): void => {
     if (!options.enableSelection) return
 
     state.checkedKeys.value = []
-    options.onSelectionChange?.([], [], state.childSelections.value)
+    notify([], [])
   }
 
   const handleSelectionChange = (keys: DataTableRowKey[]): void => {
@@ -258,14 +340,11 @@ const useSelectionLogic = <T extends object, C>(
       ? validKeys.slice(0, Math.max(0, options.maxSelection))
       : validKeys
     state.checkedKeys.value = finalKeys
+    const selected = new Set(finalKeys)
     const selectedRows = utils.data.value.filter(row =>
-      finalKeys.includes(utils.getRowKey(row))
+      selected.has(utils.getRowKey(row))
     )
-    options.onSelectionChange?.(
-      finalKeys,
-      selectedRows,
-      state.childSelections.value
-    )
+    notify(finalKeys, selectedRows)
   }
 
   return {
@@ -503,20 +582,11 @@ const useRenderer = <T extends object, C>(
   expandLogic: ReturnType<typeof useExpandLogic<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
+  const { t } = useComponentLocale(() => options.locale)
   const renderExpandContent = (row: T): VNodeChild => {
     const key = utils.getRowKey(row)
     const expandData = state.expandDataMap.value.get(key) || []
     const loading = state.loadingMap.value.get(key) || false
-
-    if (
-      !expandData.length &&
-      !loading &&
-      state.expandedKeys.value.includes(key)
-    ) {
-      nextTick(() => {
-        expandLogic.loadData(row)
-      })
-    }
 
     const childSelection = createChildSelectionState(
       key,
@@ -536,6 +606,16 @@ const useRenderer = <T extends object, C>(
     }
 
     if (loading) return createLoadingView(options.renderLoading)
+    if (state.errorMap.value.has(key)) {
+      return h('div', { class: 'c-table-expand-error', role: 'alert' }, [
+        h('span', t('table.loadFailed')),
+        h(
+          NButton,
+          { size: 'small', onClick: () => expandLogic.retryExpand(key) },
+          () => t('common.retry')
+        ),
+      ])
+    }
     if (!expandData.length) return createEmptyView()
 
     return createDefaultTable(
@@ -598,26 +678,10 @@ export function useTableExpand<T extends object = DataRecord, C = DataRecord>(
   )
   const renderer = useRenderer(state, utils, childLogic, expandLogic, options)
 
-  if (options.onSelectionChange && options.enableSelection) {
-    watchEffect(() => {
-      if (!options.onSelectionChange) return
-
-      const selectedRows = utils.data.value.filter(row =>
-        state.checkedKeys.value.includes(utils.getRowKey(row))
-      )
-
-      const hasSelection = state.checkedKeys.value.length > 0
-      const hasData = utils.data.value.length > 0
-
-      if (hasSelection || !hasData) {
-        options.onSelectionChange(
-          state.checkedKeys.value,
-          selectedRows,
-          state.childSelections.value
-        )
-      }
-    })
-  }
+  watch(utils.data, () => {
+    if (!options.enableSelection || state.checkedKeys.value.length === 0) return
+    selectionLogic.handleSelectionChange(state.checkedKeys.value)
+  })
 
   const expandRow = async (key: DataTableRowKey): Promise<void> => {
     if (
@@ -672,5 +736,8 @@ export function useTableExpand<T extends object = DataRecord, C = DataRecord>(
 
     expandDataMap: state.expandDataMap,
     loadingMap: state.loadingMap,
+    errorMap: state.errorMap,
+    retryExpand: expandLogic.retryExpand,
+    invalidateExpand: expandLogic.invalidateExpand,
   }
 }

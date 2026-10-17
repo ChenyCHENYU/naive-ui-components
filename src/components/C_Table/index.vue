@@ -85,8 +85,8 @@
           :key="action.key"
           :type="(action.type as any) || 'default'"
           size="small"
-          :loading="runningBatchActions.has(action.key)"
-          :disabled="runningBatchActions.has(action.key)"
+          :loading="batchTasks.isRunning(action.key)"
+          :disabled="batchTasks.isRunning(action.key)"
           @click="handleBatchAction(action)"
         >
           <template
@@ -144,7 +144,17 @@
       v-bind="{ ...computedTableProps, ...$attrs }"
       :flex-height="flexHeight"
       :columns="computedColumns"
-      :data="pagination.paginatedData.value"
+      :data="
+        usesNativePagination
+          ? normalizedData
+          : paginationState.paginatedData.value
+      "
+      :pagination="usesNativePagination ? props.pagination : false"
+      :remote="usesNativePagination ? nativeRemote : true"
+      @update:sorter="handleSorterChange"
+      @update:filters="handleFilterChange"
+      @update:page-size="handleNativePageSizeChange"
+      @update:page="handleNativePageChange"
       :loading="normalizedLoading"
       :row-key="resolvedRowKey"
       :expanded-row-keys="tableManager.expandedKeys.value"
@@ -177,8 +187,8 @@
 
     <!-- 分页 -->
     <NPagination
-      v-if="pagination.paginationConfig.value"
-      v-bind="pagination.paginationConfig.value"
+      v-if="!usesNativePagination && paginationState.paginationConfig.value"
+      v-bind="paginationState.paginationConfig.value"
       class="pagination-wrapper"
     />
 
@@ -208,9 +218,14 @@
       />
       <template #action>
         <NSpace justify="end">
-          <NButton @click="handleModalCancel">{{ t('common.cancel') }}</NButton>
+          <NButton
+            :disabled="modalSubmitLoading"
+            @click="handleModalCancel"
+            >{{ t('common.cancel') }}</NButton
+          >
           <NButton
             type="primary"
+            :disabled="!editFormRef || modalSubmitLoading"
             :loading="modalSubmitLoading"
             @click="handleModalSave"
           >
@@ -252,16 +267,19 @@
     h,
     ref,
     computed,
+    defineAsyncComponent,
     watch,
     nextTick,
     onMounted,
     onBeforeUnmount,
-    type ComponentPublicInstance,
   } from 'vue'
   import type { SortableEvent } from 'sortablejs'
   import type Sortable from 'sortablejs'
   import {
     type DataTableRowKey,
+    type DataTableInst,
+    type DataTableFilterState,
+    type PaginationProps,
     NDataTable,
     NPagination,
     NModal,
@@ -284,6 +302,7 @@
   } from './composables/useTableConfig'
   import { useTableManager } from './composables/useTableManager'
   import { usePagination } from './composables/usePagination'
+  import { useTableDataPipeline } from './composables/useTableDataPipeline'
   import { useTableActions } from './composables/useTableActions'
   import { useTableColumns } from './composables/useTableColumns'
   import {
@@ -297,13 +316,17 @@
   import ColumnSettings from './components/ColumnSettings/index.vue'
   import C_Icon from '../C_Icon/index.vue'
   import C_ActionBar from '../C_ActionBar/index.vue'
-  import C_Form from '../C_Form/index.vue'
-  import { cloneData } from '../../utils/data'
+  import { useActionTask } from '../../composables/useActionTask'
+  import { cloneData, isDataEqual } from '../../utils/data'
   import { useComponentFeedback, useComponentLocale } from '../../config'
   import { C_Loading } from '../C_Loading'
   import { collectTreeBranchKeys, validateTableRowKeys } from './helpers'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
+
+  const C_Form = defineAsyncComponent(() =>
+    import('../C_Form').then(module => module.C_Form)
+  )
 
   /* ================= Props（极简 API） ================= */
 
@@ -323,12 +346,18 @@
       rowKey?: string | ((row: T) => DataTableRowKey)
       /** 统一功能配置（edit / selection / expand / pagination / dynamicRows / toolbar / display） */
       config?: TableConfig<T>
+      /** Native pagination compatibility path; takes ownership over config.pagination. */
+      pagination?: PaginationProps | false
+      /** Native remote mode, used with the native pagination compatibility path. */
+      remote?: boolean
       /** CRUD 绑定 — 传入 useTableCrud() 的返回值，自动接管 data/columns/loading/actions/pagination/events */
       crud?: CrudBinding<T>
     }>(),
     {
       rowKey: 'id',
       config: () => ({}),
+      pagination: undefined,
+      remote: undefined,
     }
   )
 
@@ -347,6 +376,8 @@
       'column-change': [columns: TableColumn[]]
     }
   >()
+
+  const tableRef = ref<DataTableInst | null>(null)
 
   /* ================= CRUD 桥接 ================= */
 
@@ -442,13 +473,15 @@
   let lastRowKeyIssueSignature = ''
   watch(
     () =>
-      normalizedData.value.map(row => {
-        try {
-          return resolvedRowKey(row)
-        } catch {
-          return undefined
-        }
-      }),
+      effectiveConfig.value.validateRowKeys === false
+        ? []
+        : normalizedData.value.map(row => {
+            try {
+              return resolvedRowKey(row)
+            } catch {
+              return undefined
+            }
+          }),
     () => {
       if (effectiveConfig.value.validateRowKeys === false) {
         lastRowKeyIssueSignature = ''
@@ -476,16 +509,38 @@
 
   /* ================= Hooks ================= */
 
-  const pagination = usePagination({
-    data: normalizedData,
-    config: computed(() => resolved.value.pagination),
-    emit: bridgedEmit,
-  })
+  const usesNativePagination = computed(() => props.pagination !== undefined)
+  const nativeRemote = computed(
+    () => props.remote ?? resolved.value.pagination?.remote ?? false
+  )
+  const getDefaultNativePageSize = (
+    pagination: PaginationProps | false | undefined
+  ) => {
+    if (!pagination) return 10
+    if (pagination.defaultPageSize !== undefined)
+      return pagination.defaultPageSize
+    const firstSize = pagination.pageSizes?.[0]
+    return typeof firstSize === 'number' ? firstSize : firstSize?.value || 10
+  }
+  const nativeUncontrolledPageSize = ref(
+    getDefaultNativePageSize(props.pagination)
+  )
+  const nativeUncontrolledPage = ref(
+    props.pagination ? (props.pagination.defaultPage ?? 1) : 1
+  )
+  const handleNativePageChange = (page: number) => {
+    nativeUncontrolledPage.value = page
+  }
+  const handleNativePageSizeChange = (pageSize: number) => {
+    nativeUncontrolledPageSize.value = pageSize
+  }
 
   const tableManager = useTableManager({
     config: managerConfig,
     data: () => normalizedData.value,
     rowKey: resolvedRowKey,
+    rowKeyField: () =>
+      typeof props.rowKey === 'string' ? props.rowKey : undefined,
     emit: bridgedEmit,
     columns: () => effectiveColumns.value,
     renderLoading: () => h(C_Loading, { size: 32, label: t('table.loading') }),
@@ -557,32 +612,92 @@
     computedScrollX,
   } = columnState
 
+  const dataPipeline = useTableDataPipeline({
+    data: normalizedData,
+    columns: reactiveColumns,
+    remote: () =>
+      usesNativePagination.value || resolved.value.pagination?.remote === true,
+  })
+  // Older supported Naive releases do not expose current-page/filtered getters.
+  // This fallback is computed only when those public methods are unavailable.
+  const nativeFallbackPipeline = useTableDataPipeline({
+    data: normalizedData,
+    columns: reactiveColumns,
+    remote: nativeRemote,
+  })
+  const paginationState = usePagination({
+    data: dataPipeline.processedData,
+    config: computed(() =>
+      usesNativePagination.value ? null : resolved.value.pagination
+    ),
+    emit: bridgedEmit,
+  })
+  const displayedRows = computed<DataRecord[]>(() => {
+    if (usesNativePagination.value) {
+      const current = tableRef.value?.getCurrentPageData?.()
+      if (current) return current
+      const source = nativeFallbackPipeline.processedData.value
+      if (!props.pagination || nativeRemote.value) return source
+      const pageSize =
+        props.pagination.pageSize ?? nativeUncontrolledPageSize.value
+      const page = Math.max(
+        1,
+        Math.min(
+          props.pagination.page ?? nativeUncontrolledPage.value,
+          Math.ceil(source.length / Math.max(1, pageSize))
+        )
+      )
+      return source.slice((page - 1) * pageSize, page * pageSize)
+    }
+    return paginationState.paginatedData.value
+  })
+  const handleSorterChange = (
+    sorter: Parameters<typeof dataPipeline.setSorter>[0]
+  ) => {
+    dataPipeline.setSorter(sorter)
+    nativeFallbackPipeline.setSorter(sorter)
+  }
+  const handleFilterChange = (filters: DataTableFilterState) => {
+    dataPipeline.setFilters(filters)
+    nativeFallbackPipeline.setFilters(filters)
+    if (!usesNativePagination.value && !resolved.value.pagination?.remote) {
+      paginationState.resetToFirstPage()
+    }
+  }
+
   /* ================= 行拖拽（可选） ================= */
 
+  let draggedSourceIndexes: (number | undefined)[] | undefined
   const rowDragState = useRowDrag({
-    data: pagination.paginatedData,
+    data: displayedRows,
     rowKey: resolvedRowKey,
     config: computed(() => resolved.value.rowDrag),
     onReorder: newPageData => {
-      const paginationConfig = resolved.value.pagination
-      if (!paginationConfig?.enabled || paginationConfig.remote) {
+      const sourceIndexes = new Map(
+        normalizedData.value.map((row, index) => [resolvedRowKey(row), index])
+      )
+      draggedSourceIndexes = displayedRows.value.map(row =>
+        sourceIndexes.get(resolvedRowKey(row))
+      )
+      const isRemote = usesNativePagination.value
+        ? nativeRemote.value
+        : resolved.value.pagination?.remote === true
+      if (isRemote) {
         bridgedEmit('update:data', newPageData)
         return
       }
 
-      const start =
-        (pagination.currentPage.value - 1) * pagination.currentPageSize.value
       const newData = [...normalizedData.value]
-      newData.splice(start, newPageData.length, ...newPageData)
+      draggedSourceIndexes.forEach((sourceIndex, index) => {
+        if (sourceIndex !== undefined) newData[sourceIndex] = newPageData[index]
+      })
       bridgedEmit('update:data', newData)
     },
     onSort: (row, from, to) => {
-      const isLocalPagination =
-        resolved.value.pagination?.enabled && !resolved.value.pagination.remote
-      const offset = isLocalPagination
-        ? (pagination.currentPage.value - 1) * pagination.currentPageSize.value
-        : 0
-      emit('row-move', row, from + offset, to + offset)
+      const fromIndex = draggedSourceIndexes?.[from] ?? from
+      const toIndex = draggedSourceIndexes?.[to] ?? to
+      draggedSourceIndexes = undefined
+      emit('row-move', row, fromIndex, toIndex)
     },
   })
 
@@ -592,6 +707,15 @@
     allData: normalizedData,
     rowKey: resolvedRowKey,
     config: computed(() => resolved.value.crossPageSelection),
+    remote: () =>
+      usesNativePagination.value
+        ? nativeRemote.value
+        : resolved.value.pagination?.remote === true,
+    childrenKey: () =>
+      resolved.value.treeEnabled ? resolved.value.treeChildrenKey : undefined,
+    rowCheckable: row => resolved.value.rowCheckable?.(row) ?? true,
+    onSelectionChange: (keys, rows) =>
+      emit('selection-change', keys, rows, new Map()),
   })
   const isCrossPageSelectionEnabled = computed(
     () => resolved.value.crossPageSelection?.enabled === true
@@ -603,7 +727,7 @@
       ? crossPageState.selectedCount.value
       : (tableManager.checkedKeys?.value?.length ?? 0)
   )
-  const runningBatchActions = ref<Set<string>>(new Set())
+  const batchTasks = useActionTask<string>()
   type BatchAction = {
     key: string
     onClick: (
@@ -615,28 +739,25 @@
   /** 处理批量操作按钮点击 */
   // eslint-disable-next-line complexity -- 跨页/当前页选择与异步回滚必须作为同一操作处理。
   const handleBatchAction = async (action: BatchAction) => {
-    if (runningBatchActions.value.has(action.key)) return
+    if (batchTasks.isRunning(action.key)) return
     const keys = isCrossPageSelectionEnabled.value
       ? [...crossPageState.selectedKeys.value]
       : (tableManager.checkedKeys?.value ?? [])
+    const selectedKeySet = new Set(keys)
     const rows = isCrossPageSelectionEnabled.value
       ? crossPageState.getSelectedRows()
-      : normalizedData.value.filter(r => keys.includes(resolvedRowKey(r)))
-    runningBatchActions.value = new Set(runningBatchActions.value).add(
-      action.key
-    )
+      : normalizedData.value.filter(r => selectedKeySet.has(resolvedRowKey(r)))
     try {
-      await action.onClick(keys, rows)
+      const result = await batchTasks.run(action.key, () =>
+        action.onClick(keys, rows)
+      )
+      if (!result.executed) return
       if (resolved.value.batchActions?.clearSelectionOnSuccess) {
         clearBatchSelection()
       }
     } catch (error) {
       resolved.value.batchActions?.onError?.(error, action.key)
       emit('batch-action-error', error, action.key)
-    } finally {
-      const nextRunning = new Set(runningBatchActions.value)
-      nextRunning.delete(action.key)
-      runningBatchActions.value = nextRunning
     }
   }
 
@@ -649,27 +770,43 @@
   /** 跨页多选时的 checked-row-keys */
   const crossPageCheckedKeys = computed(() =>
     isCrossPageSelectionEnabled.value
-      ? crossPageState.getPageCheckedKeys(pagination.paginatedData.value)
+      ? crossPageState.getPageCheckedKeys(displayedRows.value)
       : null
   )
 
   /** 选中行变更统一处理 */
   const handleCheckedKeysChange = (keys: DataTableRowKey[]) => {
     if (isCrossPageSelectionEnabled.value) {
-      crossPageState.handlePageSelectionChange(
-        keys,
-        pagination.paginatedData.value
-      )
+      crossPageState.handlePageSelectionChange(keys, displayedRows.value)
+      return
     }
     tableManager.expandState?.handleSelectionChange?.(keys)
   }
 
   /** 导出 */
+  const exportTasks = useActionTask<string>()
   const handleExport = async () => {
     const cfg = resolved.value.exportConfig ?? {}
-    await exportTableData(normalizedData.value, effectiveColumns.value, {
-      ...cfg,
-      formatterConfig: resolved.value.formatterConfig,
+    await exportTasks.run('export', async () => {
+      const selectedRows = () =>
+        isCrossPageSelectionEnabled.value
+          ? crossPageState.getSelectedRows()
+          : tableManager.stateManager.selection.getSelected()
+      const source =
+        cfg.scope === 'page' ? displayedRows.value : normalizedData.value
+      const rows = cfg.requestData
+        ? await cfg.requestData()
+        : cfg.scope === 'selected'
+          ? selectedRows()
+          : source
+      const columns =
+        cfg.scope && cfg.scope !== 'source'
+          ? reactiveColumns.value
+          : effectiveColumns.value
+      await exportTableData(rows, columns, {
+        ...cfg,
+        formatterConfig: resolved.value.formatterConfig,
+      })
     })
   }
 
@@ -733,8 +870,6 @@
 
   /* ================= 表格属性 ================= */
 
-  const tableRef = ref<ComponentPublicInstance>()
-
   const computedTableProps = computed(() => ({
     striped: resolved.value.striped,
     bordered: resolved.value.bordered,
@@ -796,17 +931,23 @@
   })
 
   const handleModalSave = async () => {
-    if (!editFormRef.value) return
+    if (!editFormRef.value || modalSubmitLoading.value) return
+    const targetKey = tableManager.editStates.modalEdit.editingRowKey.value
+    const snapshot = cloneData(localEditingData.value)
     modalSubmitLoading.value = true
     try {
-      await editFormRef.value.validate()
-    } catch {
-      /* 表单验证错误由组件内联显示 */
-      modalSubmitLoading.value = false
-      return
-    }
-    try {
-      await tableManager.editStates.modalEdit.saveEdit(localEditingData.value)
+      try {
+        await editFormRef.value.validate()
+      } catch {
+        /* 表单验证错误由组件内联显示 */
+        return
+      }
+      if (
+        targetKey !== tableManager.editStates.modalEdit.editingRowKey.value ||
+        !isDataEqual(snapshot, localEditingData.value)
+      )
+        return
+      await tableManager.editStates.modalEdit.saveEdit(snapshot)
     } finally {
       modalSubmitLoading.value = false
     }
@@ -827,14 +968,24 @@
   /* ================= Expose ================= */
 
   const { edit, expand, selection, dynamicRows } = tableManager.stateManager
+  const getNativeLocalRowCount = () =>
+    tableRef.value?.getFilteredAndSortedData?.().length ??
+    nativeFallbackPipeline.processedData.value.length
 
   const exposedApi = {
     startEdit: edit.start,
     cancelEdit: edit.cancel,
-    saveEdit: edit.save,
+    saveEdit: () =>
+      tableManager.editStates.modalEdit.isModalVisible.value
+        ? handleModalSave()
+        : edit.save(),
     expandRow: expand.row,
     collapseRow: expand.collapse,
     toggleExpand: expand.toggle,
+    retryExpand: (rowKey: DataTableRowKey) =>
+      tableManager.expandState.retryExpand(rowKey),
+    invalidateExpand: (rowKey?: DataTableRowKey) =>
+      tableManager.expandState.invalidateExpand(rowKey),
     expandAll: expand.all,
     collapseAll: expand.collapseAll,
     selectRow: (rowKey: DataTableRowKey) => {
@@ -877,8 +1028,28 @@
       dynamicRows.print(elementRef ?? tableWrapperRef.value),
     downloadTableScreenshot: (elementRef?: HTMLElement, filename?: string) =>
       dynamicRows.download(elementRef ?? tableWrapperRef.value, filename),
-    resetToFirstPage: pagination.resetToFirstPage,
-    getTotalPages: pagination.getTotalPages,
+    resetToFirstPage: () => {
+      if (usesNativePagination.value) {
+        nativeUncontrolledPage.value = 1
+        tableRef.value?.page(1)
+      } else paginationState.resetToFirstPage()
+    },
+    getTotalPages: () => {
+      if (!usesNativePagination.value) return paginationState.getTotalPages()
+      const native = props.pagination
+      if (!native) return 1
+      if (
+        nativeRemote.value &&
+        native.itemCount === undefined &&
+        native.pageCount !== undefined
+      )
+        return Math.max(1, native.pageCount)
+      const count = nativeRemote.value
+        ? (native.itemCount ?? normalizedData.value.length)
+        : getNativeLocalRowCount()
+      const pageSize = native.pageSize ?? nativeUncontrolledPageSize.value
+      return Math.max(1, Math.ceil(count / Math.max(1, pageSize)))
+    },
     getSelectedRows: () =>
       isCrossPageSelectionEnabled.value
         ? crossPageState.getSelectedRows()
@@ -932,8 +1103,8 @@
     [
       () => resolved.value.rowDrag,
       () => normalizedLoading.value,
-      () => pagination.paginatedData.value.length,
-      () => pagination.currentPage.value,
+      () => displayedRows.value.length,
+      () => paginationState.currentPage.value,
     ],
     async () => {
       await nextTick()

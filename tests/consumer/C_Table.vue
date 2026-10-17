@@ -38,6 +38,7 @@
     type DataRecord,
     type TableColumn,
   } from '@robot-admin/naive-ui-components'
+  import type { TableInstance } from '@robot-admin/naive-ui-components/C_Table'
 
   interface EmployeeRow {
     id: number
@@ -68,6 +69,10 @@
 
   declare const childRows: ChildRow[]
   declare const childColumns: TableColumn<ChildRow>[]
+  declare const tableApi: TableInstance<ChildRow>
+  const exportCurrentRows: () => Promise<void> = tableApi.exportData
+  const retryRow: (key: string | number) => Promise<void> = tableApi.retryExpand
+  tableApi.invalidateExpand()
 
   // 原生表格迁移后继续提供排序与筛选的强类型配置。
   const searchableColumns: TableColumn<ChildRow>[] = [
@@ -86,5 +91,5 @@
     rowKey: (row: ChildRow) => row.id,
   })
 
-  void [externalCrud, childTableVNode]
+  void [externalCrud, childTableVNode, exportCurrentRows, retryRow]
 </script>

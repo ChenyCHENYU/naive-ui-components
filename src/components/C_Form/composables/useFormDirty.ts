@@ -13,6 +13,24 @@ import type { FormModel } from '../types'
 import { cloneFormValue, isFormValueEqual } from '../utils/formModel'
 import { getDataPath } from '../../../utils/data'
 
+/** Read reactive collections before the data comparator unwraps their proxies. */
+function trackNestedValue(value: unknown, seen = new Set<object>()): void {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return
+  seen.add(value)
+  if (value instanceof Map) {
+    value.forEach((entry, key) => {
+      trackNestedValue(key, seen)
+      trackNestedValue(entry, seen)
+    })
+    return
+  }
+  if (value instanceof Set) {
+    value.forEach(entry => trackNestedValue(entry, seen))
+    return
+  }
+  Object.values(value).forEach(entry => trackNestedValue(entry, seen))
+}
+
 export interface UseFormDirtyReturn {
   /** 表单是否已修改 */
   isDirty: Ref<boolean>
@@ -47,9 +65,9 @@ export function useFormDirty(
     )
     const changed: string[] = []
     for (const key of allKeys) {
-      if (
-        !isFormValueEqual(getDataPath(snap, key), getDataPath(formModel, key))
-      ) {
+      const current = getDataPath(formModel, key)
+      trackNestedValue(current)
+      if (!isFormValueEqual(getDataPath(snap, key), current)) {
         changed.push(key)
       }
     }

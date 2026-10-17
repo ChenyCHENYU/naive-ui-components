@@ -154,6 +154,8 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 
 每个组件样式入口包含其组合组件所需样式。手动导入时可选 `C_Form/base.css`、`C_Table/base.css`；完整样式也提供 `full.css` 别名。重型编辑器、流程、地图和媒体组件建议随业务路由加载。完整策略与全量注册示例见[导入指南](./docs/guides/usage.md#导入方式)。
 
+本轮最小消费构建中，基础表单与展示表格的首屏 JS gzip 分别下降 36.1% 和 34.6%；包含 Vue 与 Naive UI，测量范围及自动体积门禁见[消费体积记录](./docs/performance-0.15.0.md)。
+
 根入口聚合导航组件，运行时也需要 `vue-router`。不使用路由的项目请选择组件子路径，无需因此补装无关可选 peer。
 
 ## 文档导航
@@ -168,7 +170,7 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 | [变更记录](./CHANGELOG.md)           | 版本更新与兼容变化                                               |
 | [安全策略](./SECURITY.md)            | 漏洞报告与维护约定                                               |
 
-[2026-10-06 安全扫描记录](./docs/security-scan-2026-10-06.md)保留为历史档案；当前依赖状态以实际运行 `bun run check:audit` 的结果为准。
+本轮依赖审计的两项上游告警见 [2026-10-18 扫描记录](./docs/security-scan-2026-10-18.md)；[2026-10-06 记录](./docs/security-scan-2026-10-06.md)保留为历史档案。当前依赖状态以实际运行 `bun run check:audit` 的结果为准。
 
 ## 本地开发
 

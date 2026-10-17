@@ -12,7 +12,6 @@ import type {
   CSSProperties,
   ComputedRef,
   DeepReadonly,
-  Ref,
 } from 'vue'
 import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui'
 import type { FormValidationRule } from './utils/formValidation'
@@ -228,6 +227,9 @@ export interface ItemLayoutConfig {
   class?: string
   style?: CSSProperties | Record<string, unknown>
   hidden?: boolean
+  suffix?: boolean
+  /** Legacy nested grid attributes; top-level layout values take precedence. */
+  grid?: { span?: number; offset?: number; suffix?: boolean }
 }
 
 /**
@@ -240,6 +242,9 @@ export interface GridLayoutConfig {
   yGutter?: number
   xGap?: number
   yGap?: number
+  responsive?: boolean
+  showConfigPanel?: boolean
+  showStats?: boolean
 }
 
 /**
@@ -248,6 +253,8 @@ export interface GridLayoutConfig {
  */
 export interface InlineLayoutConfig {
   gap?: number
+  rowGap?: number
+  itemWidth?: number
   align?: 'start' | 'center' | 'end' | 'baseline' | 'stretch'
   wrap?: 'nowrap' | 'wrap' | 'wrap-reverse'
 }
@@ -260,6 +267,10 @@ export interface CardLayoutConfig {
   groups?: GroupConfig[]
   spacing?: number
   bordered?: boolean
+  direction?: 'vertical' | 'horizontal'
+  showLayoutConfig?: boolean
+  showActionPanel?: boolean
+  showProgress?: boolean
 }
 
 /**
@@ -438,7 +449,7 @@ export interface UploadEventPayload {
 export interface FormInstance<T extends object = FormRecord> {
   validate(): Promise<void>
   validateField(field: FieldPath<T> | FieldPath<T>[]): Promise<void>
-  validateStep(stepIndex: number): Promise<boolean>
+  validateStep(step: number | string): Promise<boolean>
   validateTab(tabKey: string): Promise<boolean>
   validateDynamicFields(): Promise<boolean>
   validateCustomGroup(groupKey: string): Promise<boolean>
@@ -459,12 +470,12 @@ export interface FormInstance<T extends object = FormRecord> {
   formRef: FormInst | null
   formModel: FormModel<T>
   initialize(): void
-  layoutType: ComputedRef<LayoutType>
-  shouldShowDefaultActions: ComputedRef<boolean>
+  layoutType: LayoutType
+  shouldShowDefaultActions: boolean
 
   /* ===== v0.8.0 脏检查 API ===== */
   /** 表单是否被修改过 */
-  isDirty: Ref<boolean>
+  isDirty: boolean
   /** 获取被修改的字段列表 */
   getChangedFields(): FieldPath<T>[]
   /** 检查某字段是否被修改 */
@@ -472,13 +483,13 @@ export interface FormInstance<T extends object = FormRecord> {
   /** 将当前值设为初始快照（常用于编辑模式加载数据后） */
   markAsClean(): void
   /** 字段异步选项的 loading 状态 */
-  asyncLoadingMap: Ref<Record<string, boolean>>
+  asyncLoadingMap: Record<string, boolean>
   /** 字段异步选项加载错误 */
-  asyncErrorMap: Ref<Record<string, unknown>>
+  asyncErrorMap: Record<string, unknown>
   /** 重新加载全部或指定字段的异步选项 */
   reloadOptions(field?: FieldPath<T>): Promise<void>
   /** 是否正在提交 */
-  isSubmitting: Ref<boolean>
+  isSubmitting: boolean
   /** 验证并提交，成功返回 true */
   submit(): Promise<boolean>
 }

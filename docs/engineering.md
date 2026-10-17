@@ -27,6 +27,7 @@ bun run build
 - **产物入口校验**：`check-dist-entries.js` 防止内部 chunk 覆盖根声明，并保证组件工具的子路径类型完整
 - **包契约校验**：禁止 Naive UI 内部类型路径、隐式可选依赖和插件控制台副作用
 - **体积预算**：`check-size-budget.js` 阻止全量样式、C_Form/C_Table 样式和 dist 总量意外膨胀
+- **消费端预算**：`check-consumer-size.js` 用 Vite 构建四个最小消费应用，沿实际静态导入图累计首屏 JS gzip；同时检查编辑器、Excel、截图和打印依赖没有进入首屏。
 
 ### 输出产物
 
@@ -59,12 +60,15 @@ bun run check:package    # 校验依赖、导出和源码公共边界
 bun run check:quality    # 防止 any、console 与类型抑制债务反弹
 bun run check:audit      # 审计直接与传递依赖漏洞
 bun run check:size       # 校验发布产物体积预算
+bun run check:consumer-size # 构建后检查常用组件的消费端首屏预算
 bun run type-check       # TypeScript 类型检查
 bun run test             # 运行 Bun 单元测试
 bun run lint:check       # Oxlint + ESLint（只检查）
 bun run lint:eslint      # ESLint 存量规则审计
 bun run verify           # 类型、测试、导出和构建全量验证
 ```
+
+消费端预算包含 Vue 和 Naive UI，四个独立场景分别测量，不能相加当作同一应用的体积。`C_Form/base` 为单输入字段，`C_Table/base` 为单列单行展示表格；另外测量一个输入查询和一个操作按钮。基础样式排除内置富文本编辑器样式。动态 JS 会完成构建检查，但不计入首屏；使用对应字段或功能时仍会加载。此检查衡量传输体积，不替代真实浏览器的交互性能测量。`verify` 和发布前生命周期均包含该门禁。
 
 ### 项目结构
 
@@ -118,7 +122,7 @@ bun run verify          # 发布前完整验证
 bun run release         # 发布 Changesets 中待发布版本
 ```
 
-本仓库的 GitHub 变更日志生成器要求在执行 `bun run version` 时提供 `GITHUB_TOKEN`，不要将令牌写入仓库。Windows 下如果 `bun run release` 在 npm 的 `prepublishOnly` 重复验证阶段停滞，可先单独确认 `bun run verify` 成功，再在 PowerShell 中用 `$env:npm_config_ignore_scripts='true'; bun run release` 发布；该设置仅跳过已手动完成的重复生命周期验证，不应省略前一步。
+变更日志使用 Changesets 官方本地生成器，根据 Changeset 与 Git 提交生成，无需额外 `GITHUB_TOKEN`。npm 发布仍需要有效的发布账号认证，凭据不得写入仓库。Windows 下如果 `bun run release` 在 npm 的 `prepublishOnly` 重复验证阶段停滞，可先单独确认 `bun run verify` 成功，再在 PowerShell 中用 `$env:npm_config_ignore_scripts='true'; bun run release` 发布；该设置仅跳过已手动完成的重复生命周期验证，不应省略前一步。
 
 ## 文档资源
 

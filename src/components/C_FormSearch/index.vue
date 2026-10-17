@@ -15,6 +15,7 @@
       :model="formParams"
       ref="formRef"
       :size="size"
+      @submit.prevent="searchFn"
     >
       <div
         class="form-search-item-box"
@@ -202,6 +203,7 @@
     formItemList: props.formItemList,
     formParams: props.modelValue ?? props.formParams,
     config: () => props.config,
+    loading: () => props.loading,
     historyOptions: () => ({
       storageKey: props.formSearchInputHistoryString,
       maxItems: props.config?.historyMaxItems,

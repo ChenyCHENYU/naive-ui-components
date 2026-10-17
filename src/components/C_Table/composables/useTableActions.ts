@@ -4,7 +4,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { h, type VNodeChild } from 'vue'
+import { h, getCurrentScope, onScopeDispose, type VNodeChild } from 'vue'
 import { NButton, NSpace, NDropdown, type DataTableRowKey } from 'naive-ui'
 import type {
   DataRecord,
@@ -14,6 +14,7 @@ import type {
   UseTableActionsReturn,
 } from '../types'
 import C_Icon from '../../C_Icon/index.vue'
+import { useActionTask } from '../../../composables/useActionTask'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
 
 /** Request-core reports action failures as values rather than rejected promises. */
@@ -37,6 +38,14 @@ export function useTableActions<T extends object = DataRecord>(
     onViewDetail,
     isDeleteFeedbackHandled,
   } = options
+  const tasks = useActionTask<string>()
+  let active = true
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      active = false
+    })
+  const taskKey = (key: DataTableRowKey, action: string) =>
+    JSON.stringify([typeof key, key, action])
   const feedback = useComponentFeedback(() => config.value.feedback)
   const { t } = useComponentLocale(() => config.value.locale)
 
@@ -68,14 +77,25 @@ export function useTableActions<T extends object = DataRecord>(
     icon: string,
     title: string,
     type: ButtonType = 'primary',
-    onClick: () => void
+    onClick: () => void,
+    runningKey?: string,
+    loading = false
   ) =>
-    h(NButton, { size: 'small', type, quaternary: true, onClick }, () => [
-      h(C_Icon, { name: icon, size: 14, title }),
-    ])
+    h(
+      NButton,
+      {
+        size: 'small',
+        type,
+        quaternary: true,
+        onClick,
+        loading: loading || (runningKey ? tasks.isRunning(runningKey) : false),
+        disabled: runningKey ? tasks.isRunning(runningKey) : false,
+      },
+      () => [h(C_Icon, { name: icon, size: 14, title })]
+    )
 
   /* 处理编辑操作 */
-  const handleEdit = async (row: T, index: number) => {
+  const performEdit = async (row: T, index: number) => {
     const rowKeyValue = rowKey(row)
     const editAction = actions.value?.edit
 
@@ -98,6 +118,11 @@ export function useTableActions<T extends object = DataRecord>(
     }
   }
 
+  const reportDeleteError = (error: unknown, feedbackHandled: boolean) => {
+    if (active && !feedbackHandled)
+      feedback.error(t('table.deleteFailed'), error)
+  }
+
   /* 执行删除API */
   const executeDelete = async (
     deleteAction: ApiFunction<T>,
@@ -107,22 +132,22 @@ export function useTableActions<T extends object = DataRecord>(
     const feedbackHandled = isDeleteFeedbackHandled?.(deleteAction) === true
     try {
       const result = await deleteAction(row, index)
+      if (!active) return
       const resultError = actionResultError(result)
       if (resultError !== null && resultError !== undefined) {
-        if (!feedbackHandled)
-          feedback.error(t('table.deleteFailed'), resultError)
+        reportDeleteError(resultError, feedbackHandled)
         return
       }
       if (!feedbackHandled) feedback.success(t('table.deleteSuccess'))
       onRowDeleted?.(row, index)
     } catch (error) {
-      if (!feedbackHandled) feedback.error(t('table.deleteFailed'), error)
+      reportDeleteError(error, feedbackHandled)
       throw error
     }
   }
 
   /* 处理删除操作 */
-  const handleDelete = async (row: T, index: number) => {
+  const performDelete = async (row: T, index: number) => {
     const deleteAction = actions.value?.delete
 
     if (!isValidApiFunction(deleteAction)) {
@@ -136,11 +161,11 @@ export function useTableActions<T extends object = DataRecord>(
       negativeText: t('common.cancel'),
       type: 'warning',
     })
-    if (confirmed) await executeDelete(deleteAction, row, index)
+    if (confirmed && active) await executeDelete(deleteAction, row, index)
   }
 
   /* 处理详情操作 */
-  const handleDetail = async (row: T, index: number) => {
+  const performDetail = async (row: T, index: number) => {
     const detailAction = actions.value?.detail
 
     if (!isValidApiFunction(detailAction)) {
@@ -150,13 +175,22 @@ export function useTableActions<T extends object = DataRecord>(
 
     try {
       const apiResponse = await detailAction(row, index)
+      if (!active) return
       const detailData = extractApiResponseData<T>(apiResponse)
       onViewDetail?.(detailData || row)
     } catch (error) {
+      if (!active) return
       feedback.error(t('table.detailFailed'), error)
       onViewDetail?.(row)
     }
   }
+
+  const handleEdit = (row: T, index: number) =>
+    tasks.run(taskKey(rowKey(row), 'edit'), () => performEdit(row, index))
+  const handleDelete = (row: T, index: number) =>
+    tasks.run(taskKey(rowKey(row), 'delete'), () => performDelete(row, index))
+  const handleDetail = (row: T, index: number) =>
+    tasks.run(taskKey(rowKey(row), 'detail'), () => performDetail(row, index))
 
   /* 渲染行编辑按钮 */
   const renderRowEditButtons = (rowKeyValue: DataTableRowKey) => {
@@ -169,17 +203,34 @@ export function useTableActions<T extends object = DataRecord>(
           t('common.save'),
           'primary',
           () =>
-            void tableManager.editStates.rowEdit
-              .saveEditRow()
+            void tasks
+              .run(taskKey(rowKeyValue, 'save'), () =>
+                tableManager.editStates.rowEdit.saveEditRow()
+              )
               .catch((error: unknown) =>
                 feedback.error(
                   t('table.actionFailed', { action: t('common.save') }),
                   error
                 )
-              )
+              ),
+          taskKey(rowKeyValue, 'save')
         ),
-        createButton('mdi:close', t('common.cancel'), 'default', () =>
-          tableManager.editStates.rowEdit.cancelEditRow()
+        createButton(
+          'mdi:close',
+          t('common.cancel'),
+          'default',
+          () =>
+            void tasks
+              .run(taskKey(rowKeyValue, 'cancel'), () =>
+                tableManager.editStates.rowEdit.cancelEditRow()
+              )
+              .catch(error =>
+                feedback.error(
+                  t('table.actionFailed', { action: t('common.cancel') }),
+                  error
+                )
+              ),
+          taskKey(rowKeyValue, 'cancel')
         ),
       ]
     }
@@ -201,7 +252,8 @@ export function useTableActions<T extends object = DataRecord>(
           'mdi:eye',
           t('common.detail'),
           'info',
-          () => void handleDetail(row, index)
+          () => void handleDetail(row, index),
+          taskKey(rowKey(row), 'detail')
         )
       )
     }
@@ -216,7 +268,8 @@ export function useTableActions<T extends object = DataRecord>(
           'mdi:pencil',
           t('common.edit'),
           'warning',
-          () => void handleEdit(row, index)
+          () => void handleEdit(row, index),
+          taskKey(rowKey(row), 'edit')
         )
       )
     }
@@ -227,7 +280,8 @@ export function useTableActions<T extends object = DataRecord>(
           'mdi:delete',
           t('common.delete'),
           'error',
-          () => void handleDelete(row, index).catch(() => undefined)
+          () => void handleDelete(row, index).catch(() => undefined),
+          taskKey(rowKey(row), 'delete')
         )
       )
     }
@@ -260,7 +314,9 @@ export function useTableActions<T extends object = DataRecord>(
         label,
         key: action.key,
         icon: () => h(C_Icon, { name: icon, size: 14 }),
-        disabled: action.disabled?.(row, index) || false,
+        disabled:
+          action.disabled?.(row, index) ||
+          tasks.isRunning(taskKey(rowKey(row), `custom:${action.key}`)),
       }
     })
 
@@ -275,12 +331,18 @@ export function useTableActions<T extends object = DataRecord>(
             typeof action.label === 'function'
               ? action.label(row, index)
               : action.label
-          void Promise.resolve(action.onClick(row, index)).catch(error =>
-            feedback.error(
-              t('table.actionFailed', { action: actionLabel }),
-              error
+          void tasks
+            .run(
+              taskKey(rowKey(row), `custom:${action.key}`),
+              () => action.onClick(row, index),
+              () => !action.disabled?.(row, index)
             )
-          )
+            .catch(error =>
+              feedback.error(
+                t('table.actionFailed', { action: actionLabel }),
+                error
+              )
+            )
         },
       },
       () =>
@@ -288,7 +350,11 @@ export function useTableActions<T extends object = DataRecord>(
           'mdi:dots-horizontal',
           t('table.moreActions'),
           'default',
-          () => {}
+          () => {},
+          undefined,
+          visibleActions.some(action =>
+            tasks.isRunning(taskKey(rowKey(row), `custom:${action.key}`))
+          )
         )
     )
   }
@@ -300,7 +366,8 @@ export function useTableActions<T extends object = DataRecord>(
     }
 
     const rowKeyValue = rowKey(row)
-    const isRowEditMode = ['row', 'both'].includes(config.value.editMode)
+    const isRowEditMode =
+      config.value.editable && ['row', 'both'].includes(config.value.editMode)
 
     if (
       isRowEditMode &&

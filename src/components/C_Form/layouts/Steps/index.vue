@@ -137,6 +137,7 @@
     computed,
     watch,
     onMounted,
+    onScopeDispose,
     readonly,
     type VNode,
   } from 'vue'
@@ -163,7 +164,10 @@
       currentStep: number,
       targetStep: number
     ) => boolean | void | Promise<boolean | void>
-    validateStep?: (stepIndex: number) => boolean | Promise<boolean>
+    validateStep?: (
+      stepIndex: number,
+      stepKey: string
+    ) => boolean | Promise<boolean>
     submitting?: boolean
     disabled?: boolean
   }
@@ -185,6 +189,7 @@
   /* ================= 响应式状态 ================= */
   const currentStep = ref<number>(0)
   const loading = ref<boolean>(false)
+  let disposed = false
   const stepValidationStatus = reactive<Record<number, boolean>>({})
 
   /* ================= 计算属性 ================= */
@@ -269,10 +274,17 @@
   }
 
   const validateCurrentStep = async (): Promise<boolean> => {
+    const stepKey = stepsWithItems.value[currentStep.value]?.config.key
+    if (!stepKey || disposed) return false
     try {
       const valid = props.validateStep
-        ? await props.validateStep(currentStep.value)
+        ? await props.validateStep(currentStep.value, stepKey)
         : true
+      if (
+        disposed ||
+        stepsWithItems.value[currentStep.value]?.config.key !== stepKey
+      )
+        return false
       emit('step-validate', currentStep.value)
       stepValidationStatus[currentStep.value] = valid
       return valid
@@ -282,12 +294,20 @@
     }
   }
 
+  const isStaleTransition = (currentKey: string, targetKey: string): boolean =>
+    disposed ||
+    stepsWithItems.value[currentStep.value]?.config.key !== currentKey ||
+    !stepsWithItems.value.some(
+      step => step.config.key === targetKey && !step.config.disabled
+    )
+
   /* eslint-disable complexity -- Guards document each step-transition invariant. */
   const switchToStep = async (
     targetStep: number,
     needValidation = false
   ): Promise<boolean> => {
-    if (loading.value || props.submitting || props.disabled) return false
+    if (disposed || loading.value || props.submitting || props.disabled)
+      return false
     if (targetStep < 0 || targetStep >= stepsWithItems.value.length) {
       return false
     }
@@ -295,6 +315,9 @@
     if (targetStep === currentStep.value) {
       return true
     }
+    const currentKey = stepsWithItems.value[currentStep.value]?.config.key
+    const targetKey = stepsWithItems.value[targetStep].config.key
+    if (!currentKey || isStaleTransition(currentKey, targetKey)) return false
 
     try {
       loading.value = true
@@ -306,15 +329,19 @@
           return false
         }
       }
+      if (isStaleTransition(currentKey, targetKey)) return false
 
       const canChange = await props.beforeStepChange?.(
         currentStep.value,
         targetStep
       )
       if (canChange === false) return false
+      if (isStaleTransition(currentKey, targetKey)) return false
       emit('step-before-change', currentStep.value, targetStep)
 
-      currentStep.value = targetStep
+      currentStep.value = stepsWithItems.value.findIndex(
+        step => step.config.key === targetKey
+      )
       emit(
         'step-change',
         currentStep.value,
@@ -372,8 +399,26 @@
     initializeCurrentStep()
   })
 
+  watch(
+    () => stepsWithItems.value.map(step => step.config.key),
+    (keys, previousKeys) => {
+      const currentKey = previousKeys[currentStep.value]
+      const nextIndex = keys.indexOf(currentKey)
+      currentStep.value =
+        nextIndex >= 0
+          ? nextIndex
+          : Math.max(0, Math.min(currentStep.value, keys.length - 1))
+      Object.keys(stepValidationStatus).forEach(key => {
+        delete stepValidationStatus[Number(key)]
+      })
+    }
+  )
+
   onMounted(() => {
     initializeCurrentStep()
+  })
+  onScopeDispose(() => {
+    disposed = true
   })
 
   /* ================= 对外暴露 ================= */

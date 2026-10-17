@@ -38,7 +38,9 @@
   /**
    * 获取统一项目宽度
    */
-  const itemWidth = computed((): number => 280)
+  const itemWidth = computed(
+    (): number => props.layoutConfig?.inline?.itemWidth ?? 280
+  )
 
   /**
    * 获取项目间距
@@ -50,17 +52,14 @@
   /**
    * 获取行间距
    */
-  const rowGap = computed((): number => 16)
+  const rowGap = computed(
+    (): number => props.layoutConfig?.inline?.rowGap ?? 16
+  )
 
   /**
    * 获取对齐方式 - 既控制垂直对齐也控制水平对齐
    */
-  const align = computed((): 'start' | 'center' | 'end' => {
-    const alignValue = props.layoutConfig?.inline?.align
-    return alignValue === 'start' || alignValue === 'end'
-      ? alignValue
-      : 'center'
-  })
+  const align = computed(() => props.layoutConfig?.inline?.align ?? 'center')
 
   /**
    * 获取垂直对齐样式
@@ -72,7 +71,7 @@
       case 'end':
         return 'flex-end'
       default:
-        return 'center'
+        return align.value
     }
   })
 
@@ -98,7 +97,7 @@
   const containerStyle = computed((): CSSProperties => {
     return {
       display: 'flex',
-      flexWrap: 'wrap',
+      flexWrap: props.layoutConfig?.inline?.wrap ?? 'wrap',
       alignItems: alignItems.value,
       justifyContent: justifyContent.value,
       gap: `${rowGap.value}px ${gap.value}px`,

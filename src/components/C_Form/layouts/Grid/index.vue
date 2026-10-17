@@ -34,8 +34,9 @@
           <span class="config-label">{{ control.label }}:</span>
           <component
             :is="control.component"
-            v-model:value="control.value"
+            :value="control.value"
             v-bind="control.props"
+            @update:value="control.update"
           />
         </div>
       </div>
@@ -80,33 +81,13 @@
 
 <script setup lang="ts">
   import { reactive, computed, watch, type VNode } from 'vue'
+  import { NInputNumber, NSwitch } from 'naive-ui'
+  import type { GridLayoutConfig, FormOption } from '../../types'
   import C_Icon from '../../../C_Icon/index.vue'
 
   /* ================= 类型定义 ================= */
 
-  interface GridConfig {
-    cols?: number
-    gutter?: number
-    responsive?: boolean
-    showConfigPanel?: boolean
-    showStats?: boolean
-  }
-
-  interface FormOption {
-    type: string
-    prop: string
-    label?: string
-    layout?: {
-      span?: number
-      offset?: number
-      suffix?: boolean
-      grid?: {
-        span?: number
-        offset?: number
-        suffix?: boolean
-      }
-    }
-  }
+  type GridConfig = GridLayoutConfig
 
   interface Props {
     formItems: VNode[]
@@ -151,8 +132,11 @@
   /* 网格属性 */
   const gridProps = computed(() => ({
     cols: effectiveConfig.value.cols,
-    xGap: effectiveConfig.value.gutter,
-    yGap: effectiveConfig.value.gutter,
+    xGap: gridConfig.value.xGap ?? effectiveConfig.value.gutter,
+    yGap:
+      gridConfig.value.yGap ??
+      gridConfig.value.yGutter ??
+      effectiveConfig.value.gutter,
     responsive: effectiveConfig.value.responsive ? 'screen' : 'self',
   }))
 
@@ -161,32 +145,32 @@
     {
       key: 'cols',
       label: '列数',
-      component: 'NInputNumber',
-      value: computed({
-        get: () => internalConfig.cols,
-        set: (val: number) => (internalConfig.cols = val),
-      }),
-      props: { min: 1, max: 48, size: 'small' },
+      component: NInputNumber,
+      value: internalConfig.cols,
+      update: (value: number | boolean | null) => {
+        if (typeof value === 'number') internalConfig.cols = value
+      },
+      props: { min: 1, max: 48, size: 'small' as const },
     },
     {
       key: 'gutter',
       label: '间距',
-      component: 'NInputNumber',
-      value: computed({
-        get: () => internalConfig.gutter,
-        set: (val: number) => (internalConfig.gutter = val),
-      }),
-      props: { min: 0, max: 48, size: 'small' },
+      component: NInputNumber,
+      value: internalConfig.gutter,
+      update: (value: number | boolean | null) => {
+        if (typeof value === 'number') internalConfig.gutter = value
+      },
+      props: { min: 0, max: 48, size: 'small' as const },
     },
     {
       key: 'responsive',
       label: '响应式',
-      component: 'NSwitch',
-      value: computed({
-        get: () => internalConfig.responsive,
-        set: (val: boolean) => (internalConfig.responsive = val),
-      }),
-      props: { size: 'small' },
+      component: NSwitch,
+      value: internalConfig.responsive,
+      update: (value: number | boolean | null) => {
+        if (typeof value === 'boolean') internalConfig.responsive = value
+      },
+      props: { size: 'small' as const },
     },
   ])
 

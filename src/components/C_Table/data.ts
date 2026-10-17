@@ -3,9 +3,13 @@
  * @Migration: naive-ui-components 组件库迁移版本
  */
 
-import { h } from 'vue'
-import { NInput, NInputNumber, NSwitch, NDatePicker, NSelect } from 'naive-ui'
+import { defineAsyncComponent, h } from 'vue'
+import { NInput, NInputNumber, NSwitch, NSelect } from 'naive-ui'
 import type { TableColumn, EditType } from './types'
+
+const NDatePicker = defineAsyncComponent(
+  () => import('../../internal/naive-fields/date-picker')
+)
 
 /* ================= 编辑组件映射 ================= */
 

@@ -2,6 +2,53 @@ import type { TableConfig } from './composables/useTableConfig'
 import type { DataTableRowKey } from 'naive-ui'
 import type { StrictTableColumn, TableRowKeyIssue } from './types'
 
+/** Flatten an explicitly configured tree without visiting cyclic/shared nodes twice. */
+export function flattenTableRows<T extends object>(
+  rows: readonly T[],
+  childrenKey?: string
+): readonly T[] {
+  if (!childrenKey) return rows
+  const result: T[] = []
+  const visited = new WeakSet<object>()
+  const visit = (row: T) => {
+    if (visited.has(row)) return
+    visited.add(row)
+    result.push(row)
+    const children = (row as Record<string, unknown>)[childrenKey]
+    if (Array.isArray(children)) {
+      children.forEach(child => {
+        if (child && typeof child === 'object') visit(child as T)
+      })
+    }
+  }
+  rows.forEach(visit)
+  return result
+}
+
+/** Replace one known row while preserving the latest tree and unrelated row references. */
+export function replaceTableRow<T extends object>(
+  rows: readonly T[],
+  original: T,
+  replacement: T,
+  childrenKey?: string
+): T[] {
+  const visited = new WeakSet<object>()
+  const replace = (row: T): T => {
+    if (row === original) return replacement
+    if (!childrenKey || visited.has(row)) return row
+    visited.add(row)
+    const children = (row as Record<string, unknown>)[childrenKey]
+    if (!Array.isArray(children)) return row
+    const nextChildren = children.map(child =>
+      child && typeof child === 'object' ? replace(child as T) : child
+    )
+    return nextChildren.some((child, index) => child !== children[index])
+      ? { ...row, [childrenKey]: nextChildren }
+      : row
+  }
+  return rows.map(replace)
+}
+
 /** Type-safe identity helper that rejects misspelled business field keys. */
 export function defineTableColumns<T extends object>(
   columns: StrictTableColumn<T>[]

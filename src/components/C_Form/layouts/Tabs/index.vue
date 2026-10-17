@@ -26,7 +26,7 @@
       class="tabs-container"
     >
       <NTabs
-        v-model:value="currentTab"
+        :value="currentTab"
         :type="tabsConfig.type"
         :size="tabsConfig.size"
         :placement="tabsConfig.placement"
@@ -43,8 +43,9 @@
           :key="tab.config.key"
           :name="tab.config.key"
           :tab="tab.config.title"
-          :disabled="tab.config.disabled"
+          :disabled="tab.config.disabled || switching"
           :closable="tab.config.closable"
+          display-directive="show"
         >
           <template #tab>
             <NSpace
@@ -139,6 +140,7 @@
     watch,
     nextTick,
     onMounted,
+    onScopeDispose,
     readonly,
     type VNode,
   } from 'vue'
@@ -185,6 +187,8 @@
 
   /* ================= 响应式状态 ================= */
   const currentTab = ref<string>('')
+  const switching = ref(false)
+  let disposed = false
   const tabValidationStatus = reactive<Record<string, boolean>>({})
 
   /* ================= 默认配置 ================= */
@@ -279,18 +283,19 @@
 
   // eslint-disable-next-line complexity -- Guards document each tab-transition invariant.
   const switchToTab = async (targetTab: string): Promise<boolean> => {
+    if (disposed || switching.value) return false
     if (!targetTab || targetTab === currentTab.value) {
       return true
     }
 
-    const targetTabExists = tabsWithItems.value.some(
-      tab => tab.config.key === targetTab
-    )
-    if (!targetTabExists) {
+    const target = tabsWithItems.value.find(tab => tab.config.key === targetTab)
+    if (!target || target.config.disabled) {
       return false
     }
+    const sourceTab = currentTab.value
 
     try {
+      switching.value = true
       /* 验证当前标签（如果需要） */
       if (tabsConfig.value.validateBeforeSwitch && currentTab.value) {
         const isValid = await validateCurrentTab()
@@ -298,6 +303,7 @@
           return false
         }
       }
+      if (disposed || currentTab.value !== sourceTab) return false
 
       /* 触发标签切换前事件 */
       if (currentTab.value) {
@@ -306,8 +312,16 @@
           targetTab
         )
         if (canChange === false) return false
+        if (disposed || currentTab.value !== sourceTab) return false
         emit('tab-before-change', currentTab.value, targetTab)
       }
+
+      if (
+        !tabsWithItems.value.some(
+          tab => tab.config.key === targetTab && !tab.config.disabled
+        )
+      )
+        return false
 
       currentTab.value = targetTab
       const tabIndex = tabsWithItems.value.findIndex(
@@ -317,6 +331,8 @@
       return true
     } catch {
       return false
+    } finally {
+      switching.value = false
     }
   }
 
@@ -335,11 +351,16 @@
 
   const initializeCurrentTab = (): void => {
     if (!hasTabs.value || tabsWithItems.value.length === 0) {
+      currentTab.value = ''
       return
     }
 
     const { defaultTab } = tabsConfig.value
-    const targetTab = defaultTab || tabsWithItems.value[0]?.config.key
+    const targetTab =
+      tabsWithItems.value.find(
+        tab => tab.config.key === defaultTab && !tab.config.disabled
+      )?.config.key ||
+      tabsWithItems.value.find(tab => !tab.config.disabled)?.config.key
 
     if (targetTab && targetTab !== currentTab.value) {
       currentTab.value = targetTab
@@ -358,6 +379,9 @@
   onMounted(() => {
     initializeCurrentTab()
   })
+  onScopeDispose(() => {
+    disposed = true
+  })
 
   /* 只监听标签结构变化（key / 数量），不监听表单项内容变化 */
   const tabStructureKey = computed(() =>
@@ -365,10 +389,7 @@
   )
 
   watch(tabStructureKey, () => {
-    if (
-      currentTab.value &&
-      !tabsConfig.value.tabs.some(tab => tab.key === currentTab.value)
-    ) {
+    if (!tabsConfig.value.tabs.some(tab => tab.key === currentTab.value)) {
       initializeCurrentTab()
     }
   })

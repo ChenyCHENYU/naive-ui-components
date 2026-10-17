@@ -30,6 +30,7 @@ export interface ActionDropdownItem {
 }
 
 export interface ActionItem {
+  /** 动作建议使用稳定 key；重复 key 共享执行锁，无 key 时按所在分组和位置识别。 */
   key?: string
   /** 内置语义 key 可省略 label、icon 与 type，并自动继承一致的视觉预设。 */
   label?: string
@@ -42,9 +43,10 @@ export interface ActionItem {
   tooltip?: string
   group?: 'left' | 'right'
   dropdown?: ActionDropdownItem[]
-  /** Promise 操作默认自动显示 loading 并阻止重复触发。 */
+  /** 是否自动显示 loading；执行期间始终阻止同 key 动作重复触发。 */
   autoLoading?: boolean
   onClick?: () => void | Promise<void>
+  /** 视觉属性透传。disabled/loading 与动作状态合并；onClick 作为原生点击观察者保留。 */
   buttonProps?: Partial<ButtonProps>
   directives?: Array<
     | [Directive, any?]
@@ -74,4 +76,11 @@ export interface TableActionsProps {
 export interface TableActionsEmits {
   (e: 'action-click', action: ActionItem): void
   (e: 'dropdown-click', item: ActionDropdownItem, action: ActionItem): void
+  /** 执行失败通知；错误继续交给 Vue 的错误处理边界。 */
+  (
+    e: 'action-error',
+    error: unknown,
+    action: ActionItem,
+    item?: ActionDropdownItem
+  ): void
 }

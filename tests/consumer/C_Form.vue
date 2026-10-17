@@ -1,14 +1,17 @@
 <template>
   <C_Form
+    ref="formRef"
     v-model="model"
     :options="options"
     :config="config"
     @submit="handleSubmit"
   >
     <template #action-extra="{ model: draft, submitting }">
-      <button :disabled="submitting">{{
-        draft.profile.name.toUpperCase()
-      }}</button>
+      <button
+        :disabled="submitting || formRef?.isSubmitting"
+        @click="reset"
+        >{{ draft.profile.name.toUpperCase() }}</button
+      >
     </template>
     <template #tab-actions="{ currentTab, validateTab }">
       <button @click="validateTab">{{ currentTab.toUpperCase() }}</button>
@@ -29,11 +32,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
   import {
     C_Form,
     defineFormConfig,
     defineFormOptions,
+    useCForm,
     PRESET_RULES,
     SPEC_RULES,
     type SubmitEventPayload,
@@ -46,10 +49,10 @@
     }
   }
 
-  const model = ref<EmployeeForm>({
+  const initialValues: EmployeeForm = {
     id: '',
     profile: { name: '' },
-  })
+  }
 
   const options = defineFormOptions<EmployeeForm>([
     {
@@ -65,6 +68,8 @@
   ])
 
   const config = defineFormConfig<EmployeeForm>({
+    grid: { xGap: 12, yGap: 16, responsive: true },
+    inline: { wrap: 'nowrap', align: 'baseline' },
     submitSuccessText: 'Saved',
     onSubmit: (payload, context) => {
       payload.model.profile.name.toUpperCase()
@@ -72,7 +77,16 @@
     },
   })
 
+  const { model, formRef, getValues, setValues, reset } =
+    useCForm<EmployeeForm>({
+      initialValues,
+      options,
+      config,
+    })
+
   const handleSubmit = (payload: SubmitEventPayload<EmployeeForm>): void => {
     payload.model.id.toUpperCase()
+    getValues().profile.name.toUpperCase()
+    void setValues({ id: payload.model.id })
   }
 </script>

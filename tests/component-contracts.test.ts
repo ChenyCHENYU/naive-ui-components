@@ -134,6 +134,10 @@ describe('C_FormSearch state contract', () => {
     const sourceParams: SearchFormParams = {}
     const events: Array<[string, unknown?]> = []
     let resolveSearch: () => void = () => undefined
+    let signalSearchStarted: () => void = () => undefined
+    const searchStarted = new Promise<void>(resolve => {
+      signalSearchStarted = resolve
+    })
     let state: ReturnType<typeof useSearchState> | undefined
     const app = createSSRApp(
       defineComponent({
@@ -151,6 +155,7 @@ describe('C_FormSearch state contract', () => {
                 onSearch: () =>
                   new Promise<void>(resolve => {
                     resolveSearch = resolve
+                    signalSearchStarted()
                   }),
               },
             }
@@ -170,6 +175,7 @@ describe('C_FormSearch state contract', () => {
 
     const search = state!.searchFn()
     expect(state?.searching.value).toBe(true)
+    await searchStarted // Search waits for validation before invoking the request.
     resolveSearch()
     expect(await search).toBe(true)
     expect(state?.searching.value).toBe(false)

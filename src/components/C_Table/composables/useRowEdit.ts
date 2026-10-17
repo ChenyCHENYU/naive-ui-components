@@ -22,7 +22,11 @@ export interface RowValidationError {
 export interface RowEditOptions {
   data: () => DataRecord[]
   rowKey: (row: DataRecord) => DataTableRowKey
-  onSave?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
+  onSave?: (
+    rowData: DataRecord,
+    rowIndex: number,
+    originalKey?: DataTableRowKey
+  ) => void | Promise<void>
   onCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
   /** 列配置（用于提取校验规则） */
   columns?: () => TableColumn[]
@@ -82,84 +86,72 @@ export function useRowEdit(options: RowEditOptions) {
       row => options.rowKey(row) === editingRowKey.value
     )
 
-    if (rowIndex > -1) {
-      await options.onCancel?.(currentData[rowIndex], rowIndex)
-    }
-
-    editingRowKey.value = null
-    editingData.value = {}
-  }
-
-  /**
-   * 校验当前编辑行数据
-   */
-  const validateRow = async (): Promise<boolean> => {
-    validationErrors.value = []
-    if (editingRowKey.value === null) return true
-
-    const columns = options.columns?.() || []
-    const rowData = editingData.value[String(editingRowKey.value)]
-    if (!rowData) return true
-
-    /* 收集每列的首条校验任务，并行执行 */
-    const tasks = columns
-      .filter(col => col.editable !== false && col.editProps?.rules?.length)
-      .map(col => {
-        const key = typeof col.key === 'string' ? col.key : ''
-        if (!key) return null
-        const label = col.title || key
-        const value = rowData[key]
-        return Promise.all(
-          col.editProps!.rules!.map(rule =>
-            validateTableRule(rule, value, label, rowData)
-          )
-        ).then(results => {
-          const firstError = results.find(Boolean)
-          return firstError ? { field: key, message: firstError } : null
-        })
-      })
-      .filter(Boolean)
-
-    const results = await Promise.all(tasks)
-    const errors = results.filter(Boolean) as RowValidationError[]
-
-    validationErrors.value = errors
-    return errors.length === 0
-  }
-
-  /**
-   * 保存当前行编辑，调用保存回调并清理编辑状态
-   */
-  const saveEditRow = async () => {
-    if (editingRowKey.value === null || isSaving.value) return
-
-    // 执行校验
-    const isValid = await validateRow()
-    if (!isValid) return
-
-    const rowKey = editingRowKey.value
-    const currentData = options.data()
-    if (!currentData || !Array.isArray(currentData)) return
-
-    const rowIndex = currentData.findIndex(
-      row => options.rowKey(row) === rowKey
-    )
-
-    if (rowIndex === -1) return
-
-    const updatedData = editingData.value[String(rowKey)]
-    if (!updatedData) return
-
     isSaving.value = true
     try {
-      await options.onSave?.(cloneData(updatedData), rowIndex)
+      if (rowIndex > -1)
+        await options.onCancel?.(currentData[rowIndex], rowIndex)
       editingRowKey.value = null
       editingData.value = {}
     } finally {
       isSaving.value = false
     }
+  }
 
-    return { updatedData, rowIndex }
+  /**
+   * 校验当前编辑行数据
+   */
+  const validateSnapshot = async (
+    rowData: DataRecord,
+    expectedKey: DataTableRowKey
+  ): Promise<boolean> => {
+    const tasks = (options.columns?.() || [])
+      .filter(col => col.editable !== false && col.editProps?.rules?.length)
+      .map(async col => {
+        const key = typeof col.key === 'string' ? col.key : ''
+        if (!key) return null
+        const results = await Promise.all(
+          col.editProps!.rules!.map(rule =>
+            validateTableRule(rule, rowData[key], col.title || key, rowData)
+          )
+        )
+        const firstError = results.find(Boolean)
+        return firstError ? { field: key, message: firstError } : null
+      })
+    const errors = (await Promise.all(tasks)).filter(
+      Boolean
+    ) as RowValidationError[]
+    if (editingRowKey.value === expectedKey) validationErrors.value = errors
+    return errors.length === 0
+  }
+
+  const validateRow = async (): Promise<boolean> => {
+    const key = editingRowKey.value
+    if (key === null) return true
+    const snapshot = editingData.value[String(key)]
+    return snapshot ? validateSnapshot(cloneData(snapshot), key) : true
+  }
+
+  /** Lock identity and payload before the first async validation step. */
+  const saveEditRow = async () => {
+    const key = editingRowKey.value
+    if (key === null || isSaving.value) return
+    const snapshot = editingData.value[String(key)]
+    if (!snapshot) return
+    const updatedData = cloneData(snapshot)
+    const original = findRowData(key)
+    isSaving.value = true
+    try {
+      if (!(await validateSnapshot(updatedData, key))) return
+      const currentData = options.data()
+      const rowIndex = currentData.findIndex(row => options.rowKey(row) === key)
+      if (rowIndex === -1 || currentData[rowIndex] !== original) return
+      await options.onSave?.(updatedData, rowIndex, key)
+      editingRowKey.value = null
+      editingData.value = {}
+      return { updatedData, rowIndex }
+    } finally {
+      isSaving.value = false
+    }
   }
 
   /**
@@ -179,7 +171,7 @@ export function useRowEdit(options: RowEditOptions) {
     value: unknown
   ) => {
     const rowData = getEditingRowData(rowKey)
-    if (!rowData) return
+    if (!rowData || isSaving.value) return
     rowData[field] = cloneData(value)
   }
 

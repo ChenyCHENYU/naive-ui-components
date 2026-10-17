@@ -7,6 +7,7 @@ import Components from 'unplugin-vue-components/rolldown'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import * as sass from 'sass'
 import { componentUtilitiesPlugin } from './scripts/build/unocss-sfc.ts'
+import { createComponentStyleCollector } from './scripts/build/component-style-manifest.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -60,7 +61,7 @@ function scssPrePlugin() {
  * 使 Rolldown 正确提取到独立 CSS 文件。
  */
 function cssPostPlugin() {
-  const componentStyles = new Map<string, Set<string>>()
+  const componentStyles = createComponentStyleCollector()
   return {
     name: 'css-post',
     transform(code: string, id: string) {
@@ -71,27 +72,13 @@ function cssPostPlugin() {
       if (!isStyleModule) return null
 
       // 按编译模块的源目录归属最终 scoped CSS，不能依赖可变的 chunk 名称。
-      const owner = /\/src\/components\/(C_[^/]+)\//.exec(
-        id.replaceAll('\\', '/')
-      )?.[1]
-      if (owner) {
-        const styles = componentStyles.get(owner) ?? new Set<string>()
-        styles.add(code)
-        componentStyles.set(owner, styles)
-      }
+      componentStyles.add(id, code)
       return { code, moduleType: 'css' }
     },
     writeBundle() {
       fs.writeFileSync(
         path.resolve(__dirname, 'dist/component-styles.json'),
-        JSON.stringify(
-          Object.fromEntries(
-            [...componentStyles].map(([name, styles]) => [
-              name,
-              [...styles].join('\n'),
-            ])
-          )
-        )
+        JSON.stringify(componentStyles.manifest())
       )
     },
   }

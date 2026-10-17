@@ -256,6 +256,13 @@ export function unregisterRenderer(
 /* =================== 带选项类型集合 =================== */
 
 const OPTION_TYPES = new Set(['select', 'checkbox', 'radio', 'cascader'])
+const NATIVE_READONLY_TYPES = new Set([
+  'input',
+  'textarea',
+  'inputNumber',
+  'rate',
+  'editor',
+])
 
 /* =================== Composable =================== */
 
@@ -298,22 +305,30 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
   /* ===== 基础 Props 生成 ===== */
 
   const getBaseProps = (item: FormOption): RendererProps => {
+    const disabled = resolveFieldFlag(
+      item.disabled,
+      config.value.disabled,
+      formModel
+    )
+    const readonly = resolveFieldFlag(
+      item.readonly,
+      config.value.readonly,
+      formModel
+    )
+    const supportsReadonly = NATIVE_READONLY_TYPES.has(item.type)
     const baseProps: RendererProps = {
       value: getDataPath(formModel, item.prop),
       'onUpdate:value': (value: unknown) => {
+        if (
+          resolveFieldFlag(item.disabled, config.value.disabled, formModel) ||
+          resolveFieldFlag(item.readonly, config.value.readonly, formModel)
+        )
+          return
         setDataPath(formModel, item.prop, value)
         handleFieldChange(item.prop)
       },
-      disabled: resolveFieldFlag(
-        item.disabled,
-        config.value.disabled,
-        formModel
-      ),
-      readonly: resolveFieldFlag(
-        item.readonly,
-        config.value.readonly,
-        formModel
-      ),
+      disabled: disabled || (readonly && !supportsReadonly),
+      readonly: readonly || (item.type === 'rate' && disabled),
     }
 
     if (item.type === 'textarea') {

@@ -19,7 +19,8 @@ export interface CellEditOptions {
   onSave?: (
     rowData: DataRecord,
     rowIndex: number,
-    columnKey: string
+    columnKey: string,
+    originalKey?: DataTableRowKey
   ) => void | Promise<void>
   /** 列配置（用于提取校验规则） */
   columns?: () => TableColumn[]
@@ -118,37 +119,30 @@ export function useCellEdit(options: CellEditOptions) {
   const saveEditCell = async () => {
     const { rowKey, columnKey } = editingCell.value
     if (rowKey === null || columnKey === null || isSaving.value) return
-
-    // 执行校验
-    const isValid = await validateCell()
-    if (!isValid) return
-
-    const currentData = options.data()
-    if (!currentData || !Array.isArray(currentData)) return
-
-    const rowIndex = currentData.findIndex(
-      row => options.rowKey(row) === rowKey
-    )
-    if (rowIndex === -1) return
-
     const cellKey = createCellKey(rowKey, columnKey)
-    const newValue = editingData.value[cellKey]
-
-    const updatedData = {
-      ...currentData[rowIndex],
-      [columnKey]: newValue,
-    }
-
+    const newValue = cloneData(editingData.value[cellKey])
+    const original = findRowData(rowKey)
     isSaving.value = true
     try {
-      await options.onSave?.(cloneData(updatedData), rowIndex, columnKey)
+      if (!(await validateCell())) return
+      const currentData = options.data()
+      const rowIndex = currentData.findIndex(
+        row => options.rowKey(row) === rowKey
+      )
+      if (rowIndex === -1 || currentData[rowIndex] !== original) return
+      const updatedData = { ...currentData[rowIndex], [columnKey]: newValue }
+      await options.onSave?.(
+        cloneData(updatedData),
+        rowIndex,
+        columnKey,
+        rowKey
+      )
       editingCell.value = { rowKey: null, columnKey: null }
       editingData.value = {}
+      return { updatedData, rowIndex, columnKey }
     } finally {
       isSaving.value = false
     }
-
-    return { updatedData, rowIndex, columnKey }
   }
 
   /**
@@ -178,7 +172,7 @@ export function useCellEdit(options: CellEditOptions) {
     columnKey: string,
     value: unknown
   ) => {
-    if (!isEditingCell(rowKey, columnKey)) return
+    if (!isEditingCell(rowKey, columnKey) || isSaving.value) return
     editingData.value[createCellKey(rowKey, columnKey)] = cloneData(value)
   }
 

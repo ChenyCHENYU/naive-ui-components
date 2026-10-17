@@ -28,6 +28,7 @@ import {
   deleteDataPath,
   getDataPath,
   hasDataPath,
+  parseDataPath,
   setDataPath,
 } from '../../../utils/data'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
@@ -89,9 +90,13 @@ export function useFormState(
   config: ComputedRef<ResolvedFormConfig>,
   formRef: Ref<FormInst | null>,
   emit: FormEmit,
-  externalModel?: ComputedRef<FormModel | undefined>
+  externalModel?: ComputedRef<FormModel | undefined>,
+  validationReady?: ComputedRef<boolean>
 ) {
-  const formModel = reactive<FormModel>({})
+  const initialSource =
+    externalModel?.value ??
+    (config.value.mode === 'edit' ? config.value.initialValues : undefined)
+  const formModel = reactive<FormModel>(cloneFormValue(initialSource ?? {}))
   const formRules = reactive<FormRules>({})
   const formItemRefs = new Map<string, FormItemInst>()
 
@@ -106,6 +111,10 @@ export function useFormState(
   const requestVersions = new Map<string, number>()
   const requestControllers = new Map<string, AbortController>()
   const asyncOptionLoaders = new Map<string, FormOption['asyncOptions']>()
+  const scheduledOptionLoads = new Map<
+    string,
+    { item: FormOption; reason: AsyncOptionsContext['reason'] }
+  >()
   let previousOptionProps = new Set<string>()
   let initialized = false
   let suppressModelEmit = false
@@ -237,12 +246,7 @@ export function useFormState(
       formItemRefs.delete(prop)
       delete formRules[prop]
       ruleErrors.delete(prop)
-      delete asyncOptionsCache.value[prop]
-      delete asyncLoadingMap.value[prop]
-      delete asyncErrorMap.value[prop]
-      requestControllers.get(prop)?.abort()
-      requestControllers.delete(prop)
-      requestVersions.delete(prop)
+      invalidateAsyncOptions(prop)
       asyncOptionLoaders.delete(prop)
       if (!config.value.preserveRemovedFields) deleteDataPath(formModel, prop)
     })
@@ -251,6 +255,7 @@ export function useFormState(
   function reconcileOptions(markClean = false): void {
     try {
       ensureValidOptions(options.value)
+      const previous = getModel()
       const nextProps = new Set(options.value.map(item => item.prop))
       cleanupRemovedFields(nextProps)
 
@@ -259,16 +264,11 @@ export function useFormState(
           setDataPath(formModel, item.prop, getDefaultValue(item))
         }
         syncRulesForField(item)
-        if (
-          item.asyncOptions &&
-          asyncOptionLoaders.get(item.prop) !== item.asyncOptions
-        ) {
-          asyncOptionLoaders.set(item.prop, item.asyncOptions)
-          void nextTick(() => loadAsyncOptions(item, 'initialize'))
-        }
+        reconcileAsyncOptions(item)
       })
 
       previousOptionProps = nextProps
+      handleFieldsChanged(changedModelFields(previous), false)
       if (markClean) void nextTick(markAsClean)
     } catch (error) {
       reportError(error, 'initialize')
@@ -277,9 +277,65 @@ export function useFormState(
   }
 
   function applyExternalModel(model: FormModel): void {
+    const previous = getModel()
     suppressNextEmit()
     replaceFormRecord(formModel, createConfiguredModel(model))
-    refreshDynamicRules()
+    handleFieldsChanged(changedModelFields(previous), false)
+  }
+
+  function changedModelFields(previous: FormModel): string[] {
+    const fields = new Set([
+      ...Object.keys(previous),
+      ...Object.keys(formModel),
+      ...options.value.map(item => item.prop),
+    ])
+    return [...fields].filter(
+      field =>
+        !isFormValueEqual(
+          getDataPath(previous, field),
+          getDataPath(formModel, field)
+        )
+    )
+  }
+
+  function invalidateAsyncOptions(field: string): void {
+    requestControllers.get(field)?.abort()
+    requestControllers.delete(field)
+    requestVersions.delete(field)
+    scheduledOptionLoads.delete(field)
+    delete asyncOptionsCache.value[field]
+    delete asyncLoadingMap.value[field]
+    delete asyncErrorMap.value[field]
+  }
+
+  function reconcileAsyncOptions(item: FormOption): void {
+    if (asyncOptionLoaders.get(item.prop) === item.asyncOptions) return
+    invalidateAsyncOptions(item.prop)
+    if (!item.asyncOptions) {
+      asyncOptionLoaders.delete(item.prop)
+      return
+    }
+    asyncOptionLoaders.set(item.prop, item.asyncOptions)
+    scheduleAsyncOptions(item, 'initialize')
+  }
+
+  /** Coalesce model changes before loading, using the final model snapshot. */
+  function scheduleAsyncOptions(
+    item: FormOption,
+    reason: AsyncOptionsContext['reason']
+  ): void {
+    if (disposed) return
+    const previous = scheduledOptionLoads.get(item.prop)
+    const pending = {
+      item,
+      reason: previous?.reason === 'initialize' ? previous.reason : reason,
+    }
+    scheduledOptionLoads.set(item.prop, pending)
+    void nextTick(() => {
+      if (scheduledOptionLoads.get(item.prop) !== pending) return
+      scheduledOptionLoads.delete(item.prop)
+      void loadAsyncOptions(pending.item, pending.reason)
+    })
   }
 
   function isStaleRequest(
@@ -287,14 +343,29 @@ export function useFormState(
     version: number,
     controller: AbortController
   ): boolean {
-    return controller.signal.aborted || requestVersions.get(field) !== version
+    return (
+      disposed ||
+      controller.signal.aborted ||
+      requestVersions.get(field) !== version ||
+      requestControllers.get(field) !== controller
+    )
+  }
+
+  function isCurrentLoader(item: FormOption): item is FormOption & {
+    asyncOptions: NonNullable<FormOption['asyncOptions']>
+  } {
+    return (
+      !disposed &&
+      Boolean(item.asyncOptions) &&
+      asyncOptionLoaders.get(item.prop) === item.asyncOptions
+    )
   }
 
   async function loadAsyncOptions(
     item: FormOption,
     reason: AsyncOptionsContext['reason']
   ): Promise<void> {
-    if (!item.asyncOptions) return
+    if (!isCurrentLoader(item)) return
 
     const { prop } = item
     const version = (requestVersions.get(prop) ?? 0) + 1
@@ -322,7 +393,10 @@ export function useFormState(
       asyncErrorMap.value[prop] = error
       reportError(error, 'async-options', prop)
     } finally {
-      if (requestVersions.get(prop) === version) {
+      if (
+        requestVersions.get(prop) === version &&
+        requestControllers.get(prop) === controller
+      ) {
         asyncLoadingMap.value[prop] = false
         requestControllers.delete(prop)
       }
@@ -336,12 +410,18 @@ export function useFormState(
     if (field && targets.length === 0) {
       throw new Error(`[C_Form] 未找到异步选项字段: ${field}`)
     }
-    await Promise.all(targets.map(item => loadAsyncOptions(item, 'manual')))
+    await Promise.all(
+      targets.map(item => {
+        scheduledOptionLoads.delete(item.prop)
+        return loadAsyncOptions(item, 'manual')
+      })
+    )
   }
 
-  function applyValueWhen(): void {
+  function applyValueWhen(): string[] {
     const derivedItems = options.value.filter(item => item.valueWhen)
-    if (derivedItems.length === 0) return
+    const changedFields = new Set<string>()
+    if (derivedItems.length === 0) return []
 
     for (let pass = 0; pass <= derivedItems.length; pass += 1) {
       let changed = false
@@ -353,42 +433,56 @@ export function useFormState(
             !isFormValueEqual(getDataPath(formModel, item.prop), nextValue)
           ) {
             setDataPath(formModel, item.prop, cloneFormValue(nextValue))
+            changedFields.add(item.prop)
             changed = true
           }
         } catch (error) {
           reportError(error, 'callback', item.prop)
         }
       }
-      if (!changed) return
+      if (!changed) return [...changedFields]
     }
 
     reportError(
       new Error('[C_Form] valueWhen 存在循环依赖，已停止继续计算'),
       'callback'
     )
+    return [...changedFields]
   }
 
   function dependentAsyncItems(fields: readonly string[]): FormOption[] {
-    const changedFields = new Set(fields)
+    const changedFields = fields.map(field => parseDataPath(field).join('.'))
     return options.value.filter(item => {
       if (!item.asyncOptions || !item.dependsOn) return false
       const dependencies = Array.isArray(item.dependsOn)
         ? item.dependsOn
         : [item.dependsOn]
-      return dependencies.some(field => changedFields.has(field))
+      return dependencies.some(field => {
+        const dependency = parseDataPath(field).join('.')
+        return changedFields.some(
+          changed =>
+            changed === dependency ||
+            changed.startsWith(`${dependency}.`) ||
+            dependency.startsWith(`${changed}.`)
+        )
+      })
     })
   }
 
-  function handleFieldsChanged(fields: readonly string[]): void {
-    applyValueWhen()
+  function handleFieldsChanged(
+    fields: readonly string[],
+    shouldValidate = true
+  ): void {
+    const changedFields = [...new Set([...fields, ...applyValueWhen()])]
     refreshDynamicRules()
-    dependentAsyncItems(fields).forEach(item => {
-      void loadAsyncOptions(item, 'dependency')
+    dependentAsyncItems(changedFields).forEach(item => {
+      scheduleAsyncOptions(item, 'dependency')
     })
 
-    if (config.value.validateOnChange) {
+    if (shouldValidate && config.value.validateOnChange) {
       void nextTick(() => {
-        void validateField([...fields]).catch(() => undefined)
+        if (disposed) return
+        void validateField(changedFields).catch(() => undefined)
       })
     }
   }
@@ -403,6 +497,8 @@ export function useFormState(
   }
 
   async function validate(): Promise<void> {
+    if (validationReady?.value === false)
+      throw new Error('[C_Form] 布局尚未加载完成')
     if (!formRef.value) throw new Error('[C_Form] 表单引用不存在')
     try {
       const invalidRule = visibleOptions.value.find(item =>
@@ -419,6 +515,8 @@ export function useFormState(
   }
 
   async function validateField(field: string | string[]): Promise<void> {
+    if (validationReady?.value === false)
+      throw new Error('[C_Form] 布局尚未加载完成')
     if (!formRef.value) throw new Error('[C_Form] 表单引用不存在')
 
     const fields = [...new Set(Array.isArray(field) ? field : [field])]
@@ -466,7 +564,9 @@ export function useFormState(
   async function validateByFilter(
     filter: (option: FormOption) => boolean
   ): Promise<boolean> {
-    const fields = options.value.filter(filter).map(option => option.prop)
+    const fields = visibleOptions.value
+      .filter(filter)
+      .map(option => option.prop)
     if (fields.length === 0) return true
     try {
       await validateField(fields)
@@ -476,8 +576,9 @@ export function useFormState(
     }
   }
 
-  function validateStep(stepIndex: number): Promise<boolean> {
-    const stepKey = config.value.steps?.steps?.[stepIndex]?.key
+  function validateStep(step: number | string): Promise<boolean> {
+    const stepKey =
+      typeof step === 'string' ? step : config.value.steps?.steps?.[step]?.key
     if (!stepKey) return Promise.resolve(true)
     return validateByFilter(option => option.layout?.step === stepKey)
   }
@@ -502,9 +603,10 @@ export function useFormState(
   }
 
   function resetFields(): void {
+    const previous = getModel()
     replaceFormRecord(formModel, getCleanModel())
     clearValidation()
-    refreshDynamicRules()
+    handleFieldsChanged(changedModelFields(previous), false)
     notify('info', config.value.resetSuccessText)
   }
 
@@ -534,21 +636,42 @@ export function useFormState(
   function isSubmissionBlocked(): boolean {
     return (
       disposed ||
+      validationReady?.value === false ||
       isSubmitting.value ||
       config.value.disabled ||
       config.value.readonly
     )
   }
 
+  function canSubmitValidatedSnapshot(
+    controller: AbortController,
+    snapshot: FormModel,
+    form: FormInst | null
+  ): form is FormInst {
+    return (
+      !disposed &&
+      !controller.signal.aborted &&
+      validationReady?.value !== false &&
+      !config.value.disabled &&
+      !config.value.readonly &&
+      form !== null &&
+      formRef.value === form &&
+      isFormValueEqual(formModel, snapshot)
+    )
+  }
+
   async function submit(): Promise<boolean> {
     if (isSubmissionBlocked()) return false
+    const snapshot = getModel()
+    const validatedForm = formRef.value
     const controller = new AbortController()
     submitController = controller
     isSubmitting.value = true
     try {
       await validate()
-      if (controller.signal.aborted) return false
-      const payload = { model: getModel(), form: formRef.value! }
+      if (!canSubmitValidatedSnapshot(controller, snapshot, validatedForm))
+        return false
+      const payload = { model: snapshot, form: validatedForm }
       try {
         await config.value.onSubmit?.(payload, { signal: controller.signal })
       } catch (error) {
@@ -573,7 +696,6 @@ export function useFormState(
       externalModel?.value ??
       (config.value.mode === 'edit' ? config.value.initialValues : undefined)
     if (initialSource) applyExternalModel(initialSource)
-    applyValueWhen()
     void nextTick(markAsClean)
   }
 
@@ -629,6 +751,7 @@ export function useFormState(
     submitController?.abort()
     requestControllers.forEach(controller => controller.abort())
     requestControllers.clear()
+    scheduledOptionLoads.clear()
     formItemRefs.clear()
   })
 

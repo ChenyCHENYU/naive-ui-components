@@ -18,6 +18,7 @@ import { useCellEdit } from './useCellEdit'
 import { useModalEdit } from './useModalEdit'
 import { useTableExpand } from './useTableExpand'
 import { useDynamicRows, type DynamicRowsOptions } from './useDynamicRow'
+import { flattenTableRows, replaceTableRow } from '../helpers'
 import {
   useComponentFeedback,
   useComponentLocale,
@@ -65,6 +66,8 @@ interface TableManagerConfig {
 
   /* 动态行配置 */
   dynamicRows?: DynamicRowsOptions<DataRecord>
+  treeEnabled?: boolean
+  treeChildrenKey?: string
 }
 
 /**
@@ -79,6 +82,8 @@ interface TableManagerParams {
   columns?: () => import('../types').TableColumn[]
   /** UI 壳提供加载内容，状态引擎保持可独立调用。 */
   renderLoading?: () => VNodeChild
+  /** String row-key field inherited by dynamic row creation; explicit dynamicRows.rowKey wins. */
+  rowKeyField?: MaybeRefOrGetter<string | undefined>
 }
 
 /**
@@ -88,7 +93,8 @@ interface EventHandlers {
   onSave: (
     rowData: DataRecord,
     rowIndex: number,
-    columnKey?: string
+    columnKey?: string,
+    originalKey?: DataTableRowKey
   ) => Promise<void>
   onCancel: (rowData: DataRecord, rowIndex: number) => Promise<void>
   onExpandChange: (
@@ -123,6 +129,12 @@ interface EventHandlers {
 export function useTableManager(params: TableManagerParams) {
   const { data, rowKey, emit } = params
   const getConfig = () => toValue(params.config)
+  const childrenKey = () =>
+    getConfig().treeEnabled
+      ? (getConfig().treeChildrenKey ?? 'children')
+      : undefined
+  const flatData = computed(() => flattenTableRows(data(), childrenKey()))
+  const editingData = () => flatData.value as DataRecord[]
   const feedback = useComponentFeedback(() => getConfig().feedback)
   const { t } = useComponentLocale(() => getConfig().locale)
 
@@ -134,17 +146,27 @@ export function useTableManager(params: TableManagerParams) {
     onSave: async (
       rowData: DataRecord,
       rowIndex: number,
-      columnKey?: string
+      columnKey?: string,
+      originalKey?: DataTableRowKey
     ) => {
-      if (!rowData || rowIndex < 0 || rowIndex >= data().length) return
-
-      const newData = [...data()]
-      newData[rowIndex] = { ...newData[rowIndex], ...rowData }
+      const source = data()
+      const key = originalKey ?? rowKey(rowData)
+      const original = flatData.value.find(row => rowKey(row) === key)
+      if (!original) return
+      const currentIndex = flatData.value.indexOf(original)
+      const updated = { ...original, ...rowData }
 
       try {
-        await getConfig().onEditSave?.(newData[rowIndex], rowIndex, columnKey)
-        await emit('save', newData[rowIndex], rowIndex, columnKey)
-        emit('update:data', newData)
+        await getConfig().onEditSave?.(updated, currentIndex, columnKey)
+        await emit('save', updated, currentIndex, columnKey)
+        // A refresh/search response is authoritative; never resurrect a captured dataset.
+        if (data() !== source) return
+        const latest = flatData.value.find(row => rowKey(row) === key)
+        if (latest !== original) return
+        emit(
+          'update:data',
+          replaceTableRow(data(), original, updated, childrenKey())
+        )
       } catch (error) {
         getConfig().onEditError?.(error)
         emit('edit-error', error)
@@ -230,24 +252,26 @@ export function useTableManager(params: TableManagerParams) {
   /** 初始化编辑功能状态 */
   const initEditStates = () => {
     const rowEdit = useRowEdit({
-      data,
+      data: editingData,
       rowKey,
-      onSave: eventHandlers.onSave,
+      onSave: (row, index, key) =>
+        eventHandlers.onSave(row, index, undefined, key),
       onCancel: eventHandlers.onCancel,
       columns: params.columns,
     })
 
     const cellEdit = useCellEdit({
-      data,
+      data: editingData,
       rowKey,
       onSave: eventHandlers.onSave,
       columns: params.columns,
     })
 
     const modalEdit = useModalEdit({
-      data,
+      data: editingData,
       rowKey,
-      onSave: eventHandlers.onSave,
+      onSave: (row, index, key) =>
+        eventHandlers.onSave(row, index, undefined, key),
       onCancel: eventHandlers.onCancel,
     })
 
@@ -259,7 +283,13 @@ export function useTableManager(params: TableManagerParams) {
     return useTableExpand({
       data: computed(() => data()),
       rowKey,
+      get childrenKey() {
+        return childrenKey()
+      },
       childRowKey: (child: DataRecord) => child.id as DataTableRowKey,
+      get locale() {
+        return getConfig().locale
+      },
       renderLoading: params.renderLoading,
 
       get defaultExpandedKeys() {
@@ -316,6 +346,10 @@ export function useTableManager(params: TableManagerParams) {
       computed(() => data()),
       computed<DynamicRowsOptions<DataRecord>>(() => ({
         ...getConfig().dynamicRows,
+        rowKey:
+          getConfig().dynamicRows?.rowKey ??
+          toValue(params.rowKeyField) ??
+          rowKey,
         enabled: Boolean(getConfig().dynamicRows),
         feedback: getConfig().feedback,
         locale: getConfig().locale,
@@ -482,9 +516,8 @@ export function useTableManager(params: TableManagerParams) {
         /** 获取所有已选择的行数据 */
         getSelected() {
           if (!expandState?.checkedKeys.value) return []
-          return data().filter(row =>
-            expandState!.checkedKeys.value.includes(rowKey(row))
-          )
+          const keys = new Set(expandState.checkedKeys.value)
+          return flatData.value.filter(row => keys.has(rowKey(row)))
         },
       },
 

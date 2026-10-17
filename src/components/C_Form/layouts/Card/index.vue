@@ -78,6 +78,7 @@
       <NCard
         v-if="!hasGroups"
         class="single-card"
+        :bordered="layoutConfig.card?.bordered"
         hoverable
       >
         <template #header>
@@ -106,6 +107,7 @@
           v-for="group in groupsWithItems"
           :key="group.config.key"
           class="group-card"
+          :bordered="layoutConfig.card?.bordered"
           :class="[
             `${group.config.key}-card`,
             { collapsed: collapsible && collapsedGroups[group.config.key] },
@@ -253,18 +255,13 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted, type VNode } from 'vue'
+  import type { CardLayoutConfig, FormOption, GroupConfig } from '../../types'
+  import { getDataPath } from '../../../../utils/data'
   import C_Icon from '../../../C_Icon/index.vue'
 
   /**
    * 分组配置接口
    */
-  interface GroupConfig {
-    key: string
-    title: string
-    description?: string
-    icon?: string
-  }
-
   /**
    * 分组数据接口
    */
@@ -279,21 +276,10 @@
   interface Props {
     formItems: VNode[]
     layoutConfig?: {
-      card?: {
-        groups?: GroupConfig[]
-        direction?: 'vertical' | 'horizontal'
-        showLayoutConfig?: boolean
-        showActionPanel?: boolean
-        showProgress?: boolean
-      }
+      card?: CardLayoutConfig
     }
-    options?: Array<{
-      layout?: {
-        group?: string
-      }
-      prop?: string
-    }>
-    formData?: Record<string, any>
+    options?: FormOption[]
+    formData?: Record<string, unknown>
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -374,7 +360,7 @@
     if (!props.options || props.options.length === 0) return 0
 
     const filledCount = props.options.filter(option => {
-      const value = props.formData?.[option.prop || '']
+      const value = getDataPath(props.formData, option.prop)
       return isFieldFilled(value)
     }).length
 
@@ -382,7 +368,7 @@
   })
 
   /* ================= 工具函数 ================= */
-  const isFieldFilled = (value: any): boolean => {
+  const isFieldFilled = (value: unknown): boolean => {
     if (value === null || value === undefined) return false
     if (Array.isArray(value)) return value.length > 0
     if (typeof value === 'string') return value.trim() !== ''
@@ -397,7 +383,7 @@
     )
 
     return groupFields.filter(option => {
-      const value = props.formData?.[option.prop || '']
+      const value = getDataPath(props.formData, option.prop)
       return isFieldFilled(value)
     }).length
   }
@@ -436,6 +422,7 @@
   onMounted(() => {
     /* 初始化配置 */
     const config = props.layoutConfig?.card
+    if (config?.spacing !== undefined) cardGap.value = config.spacing
     if (config?.direction) {
       currentDirection.value = config.direction
     }
@@ -446,7 +433,8 @@
 
     /* 初始化折叠状态 */
     groups.value.forEach(group => {
-      collapsedGroups.value[group.key] = false
+      collapsedGroups.value[group.key] =
+        group.collapsed ?? group.defaultExpanded === false
     })
   })
 </script>

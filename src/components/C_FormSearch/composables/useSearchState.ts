@@ -3,6 +3,8 @@ import {
   computed,
   nextTick,
   onMounted,
+  getCurrentScope,
+  onScopeDispose,
   toValue,
   watch,
   type MaybeRefOrGetter,
@@ -12,12 +14,14 @@ import type { SearchFormItem, SearchFormParams, SearchConfig } from '../types'
 import type { FormInst } from 'naive-ui'
 import { useSearchHistory, type SearchHistoryOptions } from './useSearchHistory'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
-import { cloneData } from '../../../utils/data'
+import { cloneData, isDataEqual } from '../../../utils/data'
+import { useActionTask } from '../../../composables/useActionTask'
 
 interface UseSearchStateOptions {
   formItemList: SearchFormItem[]
   formParams: SearchFormParams
   config?: MaybeRefOrGetter<SearchConfig | undefined>
+  loading?: MaybeRefOrGetter<boolean>
   historyOptions?: MaybeRefOrGetter<SearchHistoryOptions>
 }
 
@@ -27,7 +31,7 @@ interface UseSearchStateOptions {
 export function useSearchState(
   emits: {
     (event: 'search', params: SearchFormParams): void
-    (event: 'reset'): void
+    (event: 'reset', params: SearchFormParams): void
     (event: 'change-params', params: SearchFormParams): void
     (event: 'update:modelValue', params: SearchFormParams): void
   },
@@ -45,7 +49,13 @@ export function useSearchState(
   )
   const formParams = ref<SearchFormParams>(cloneData(options.formParams))
   const expanded = ref(false)
-  const searching = ref(false)
+  const searchTasks = useActionTask<string>()
+  const searching = computed(() => searchTasks.isRunning('search'))
+  let active = true
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      active = false
+    })
 
   const history = useSearchHistory(fields, formParams, options.historyOptions)
 
@@ -86,9 +96,23 @@ export function useSearchState(
     })
   }
 
-  const searchFn = async (): Promise<boolean> => {
+  const validate = async (): Promise<boolean> => {
+    try {
+      await formRef.value?.validate()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const canSubmit = (params: SearchFormParams): boolean =>
+    active && !toValue(options.loading) && isDataEqual(formParams.value, params)
+
+  const executeSearch = async (): Promise<boolean> => {
+    const params = cloneData(formParams.value)
+    if (!(await validate()) || !canSubmit(params)) return false
     if (requireValue.value) {
-      const hasValidParams = Object.entries(formParams.value)
+      const hasValidParams = Object.entries(params)
         .filter(([key]) => key !== 'pageNum' && key !== 'pageSize')
         .some(([, value]) => !isEmpty(value))
 
@@ -98,30 +122,53 @@ export function useSearchState(
       }
     }
     history.saveCurrentInputs()
-    const params = cloneData(formParams.value)
-    emits('search', params)
+    emits('search', cloneData(params))
+    if (!canSubmit(params)) return false
     if (!config.value.onSearch) return true
-    searching.value = true
     try {
       await config.value.onSearch(params)
-      return true
+      return active
     } catch (error) {
-      feedback.error(t('search.failed'), error)
+      if (active) feedback.error(t('search.failed'), error)
       return false
-    } finally {
-      searching.value = false
     }
+  }
+
+  const searchFn = async (): Promise<boolean> => {
+    const result = await searchTasks.run(
+      'search',
+      executeSearch,
+      () => !toValue(options.loading)
+    )
+    return result.executed && result.value
+  }
+
+  const publishModel = (params: SearchFormParams) => {
+    emits('change-params', cloneData(params))
+    emits('update:modelValue', cloneData(params))
+  }
+
+  const suppressModelUpdates = () => {
+    suppressModelEmit = true
+    const version = ++syncVersion
+    void nextTick(() => {
+      if (version === syncVersion) suppressModelEmit = false
+    })
   }
 
   const resetFn = () => {
     formRef.value?.restoreValidation()
-    Object.keys(formParams.value).forEach(key => {
+    const params = cloneData(formParams.value)
+    Object.keys(params).forEach(key => {
       if (key !== 'pageNum' && key !== 'pageSize') {
         const field = fields.value.find(item => item.prop === key)
-        formParams.value[key] = cloneData(field?.defaultValue ?? null)
+        params[key] = cloneData(field?.defaultValue ?? null)
       }
     })
-    emits('reset')
+    suppressModelUpdates()
+    formParams.value = params
+    publishModel(params)
+    emits('reset', cloneData(params))
   }
 
   const toggleFold = () => {
@@ -132,14 +179,10 @@ export function useSearchState(
     newItems: SearchFormItem[],
     newParams: SearchFormParams
   ) => {
-    suppressModelEmit = true
-    const version = ++syncVersion
+    suppressModelUpdates()
     fields.value = cloneData(newItems)
     formParams.value = cloneData(newParams)
     initialize()
-    void nextTick(() => {
-      if (version === syncVersion) suppressModelEmit = false
-    })
   }
 
   let suppressModelEmit = false
@@ -149,9 +192,7 @@ export function useSearchState(
     formParams,
     params => {
       if (suppressModelEmit) return
-      const value = cloneData(params)
-      emits('change-params', value)
-      emits('update:modelValue', value)
+      publishModel(params)
     },
     { deep: true }
   )

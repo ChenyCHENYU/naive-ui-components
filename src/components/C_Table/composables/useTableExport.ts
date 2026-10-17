@@ -9,6 +9,10 @@ import { applyFormatter, type FormatterConfig } from './useTableGlobalConfig'
 /* ================= 类型定义 ================= */
 
 export interface ExportConfig {
+  /** Data scope used by C_Table; source preserves the legacy loaded-source behavior. */
+  scope?: 'source' | 'page' | 'selected'
+  /** Explicit server-side/full-data export request; invoked only when exporting. */
+  requestData?: () => DataRecord[] | Promise<DataRecord[]>
   /** 导出文件名（不含扩展名） */
   filename?: string
   /** 导出格式 */

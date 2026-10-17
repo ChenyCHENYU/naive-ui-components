@@ -154,6 +154,8 @@ The resolver uses component subpaths by default. `importStyle` defaults to `fals
 
 Each component CSS entry includes styles for its composed components. Manual imports can use `C_Form/base.css` and `C_Table/base.css`; full styles also have `full.css` aliases. Load heavy editors, flows, maps and media with their business routes. See [import strategies](./docs/guides/usage.en.md#import-strategies) for details and global registration examples.
 
+Minimal consumer builds reduced initial JS gzip by 36.1% for the base form and 34.6% for the display table, including Vue and Naive UI. See the [measurement and automated budgets](./docs/performance-0.15.0.md) (Chinese) for scope and limitations.
+
 Root imports aggregate navigation components and require `vue-router` at runtime. Applications without it should use component subpaths; their unrelated optional peers are not required.
 
 ## Documentation
@@ -168,7 +170,7 @@ Root imports aggregate navigation components and require `vue-router` at runtime
 | [Changelog](./CHANGELOG.md)                             | Releases and compatibility changes                                                      |
 | [Security policy](./SECURITY.md)                        | Vulnerability reporting and maintenance policy                                          |
 
-The [2026-10-06 security scan record](./docs/security-scan-2026-10-06.md) is a historical archive in Chinese. Run `bun run check:audit` to assess the current dependency state.
+The [2026-10-18 scan record](./docs/security-scan-2026-10-18.md) documents two outstanding upstream advisories; the [2026-10-06 record](./docs/security-scan-2026-10-06.md) is a historical archive. Both are in Chinese. Run `bun run check:audit` to assess the current dependency state.
 
 ## Local development
 

@@ -12,7 +12,11 @@ import { cloneData } from '../../../utils/data'
 export interface ModalEditOptions<T extends object = DataRecord> {
   data: () => T[]
   rowKey: (row: T) => DataTableRowKey
-  onSave?: (editingData: T, rowIndex: number) => void | Promise<void>
+  onSave?: (
+    editingData: T,
+    rowIndex: number,
+    originalKey?: DataTableRowKey
+  ) => void | Promise<void>
   onCancel?: (originalData: T, rowIndex: number) => void | Promise<void>
 }
 
@@ -62,10 +66,11 @@ export function useModalEdit<T extends object = DataRecord>(
     const currentIndex = editingRowIndex.value
     if (currentIndex === -1) return
 
+    const originalKey = editingRowKey.value
     const dataToSave = cloneData(formData ?? editingData.value)
     isSaving.value = true
     try {
-      await options.onSave?.(dataToSave, currentIndex)
+      await options.onSave?.(dataToSave, currentIndex, originalKey)
       isModalVisible.value = false
       editingRowKey.value = null
       editingData.value = {} as T

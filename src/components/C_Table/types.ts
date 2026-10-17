@@ -223,7 +223,12 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   required?: boolean
   editType?: EditType
   editProps?: EditProps
-  editRender?: (value: unknown, rowData: T, rowIndex: number) => VNodeChild
+  editRender?: (
+    value: unknown,
+    rowData: T,
+    rowIndex: number,
+    context: { onUpdate: (value: unknown) => void }
+  ) => VNodeChild
   render?: (rowData: T, rowIndex: number) => VNodeChild
   /** 声明式格式化器（优先级低于 render） */
   formatter?: ColumnFormatter
@@ -429,6 +434,8 @@ export interface TableExpandMethods {
   expandAll: () => Promise<void>
   collapseAll: () => void
   isExpanded: (rowKey: DataTableRowKey) => boolean
+  retryExpand: (rowKey: DataTableRowKey) => Promise<void>
+  invalidateExpand: (rowKey?: DataTableRowKey) => void
 }
 
 export interface TableSelectionMethods<
@@ -482,7 +489,9 @@ export interface TableInstance<T extends object = DataRecord, C = DataRecord>
     TableExpandMethods,
     TableSelectionMethods<T, C>,
     TableDynamicRowsMethods<T>,
-    TablePaginationMethods {}
+    TablePaginationMethods {
+  exportData: () => Promise<void>
+}
 
 /* ================= useTableExpand Hook类型 ================= */
 export interface UseTableExpandOptions<
@@ -493,6 +502,9 @@ export interface UseTableExpandOptions<
   data: Ref<T[]> | ComputedRef<T[]>
   rowKey: (row: T) => DataTableRowKey
   childRowKey?: (child: C) => DataTableRowKey
+  /** Native tree children field; omitted for flat/detail-expansion tables. */
+  childrenKey?: string
+  locale?: ComponentLocale
   /** 展开数据等待时的加载内容，C_Table 内置统一 SVG；独立引擎可按需提供。 */
   renderLoading?: () => VNodeChild
   defaultExpandedKeys?: DataTableRowKey[]
@@ -522,6 +534,9 @@ export interface UseTableExpandReturn<
   childSelections: Ref<Map<DataTableRowKey, DataTableRowKey[]>>
   expandDataMap: Ref<Map<DataTableRowKey, C[]>>
   loadingMap: Ref<Map<DataTableRowKey, boolean>>
+  errorMap: Ref<Map<DataTableRowKey, unknown>>
+  retryExpand: (key: DataTableRowKey) => Promise<void>
+  invalidateExpand: (key?: DataTableRowKey) => void
   selectedRowsCount: ComputedRef<number>
   totalChildSelections: ComputedRef<number>
   expandAll: () => Promise<void>

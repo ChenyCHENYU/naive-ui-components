@@ -29,13 +29,14 @@
       :style="{ gap: `${finalConfig.gap}px` }"
     >
       <template
-        v-for="(action, index) in leftButtonList"
-        :key="action.key || `left-${index}`"
+        v-for="(entry, index) in leftButtonList"
+        :key="entry.renderKey"
       >
         <ActionButton
-          :action="action"
-          @click="handleActionClick(action)"
-          @dropdown-select="item => handleDropdownClick(item, action)"
+          :action="entry.action"
+          :task-key="entry.taskKey"
+          @click="handleActionClick(entry)"
+          @dropdown-select="item => handleDropdownClick(item, entry)"
         />
         <NDivider
           v-if="
@@ -62,13 +63,14 @@
       :style="{ gap: `${finalConfig.gap}px` }"
     >
       <template
-        v-for="(action, index) in rightButtonList"
-        :key="action.key || `right-${index}`"
+        v-for="(entry, index) in rightButtonList"
+        :key="entry.renderKey"
       >
         <ActionButton
-          :action="action"
-          @click="handleActionClick(action)"
-          @dropdown-select="item => handleDropdownClick(item, action)"
+          :action="entry.action"
+          :task-key="entry.taskKey"
+          @click="handleActionClick(entry)"
+          @dropdown-select="item => handleDropdownClick(item, entry)"
         />
         <NDivider
           v-if="
@@ -87,7 +89,6 @@
 <script setup lang="ts">
   import {
     computed,
-    shallowReactive,
     h,
     withDirectives,
     defineComponent,
@@ -95,6 +96,7 @@
   } from 'vue'
   import { NButton, NTooltip, NDropdown, NDivider } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
+  import { useActionTask } from '../../composables/useActionTask'
   import type {
     ActionItem,
     ActionDropdownItem,
@@ -125,7 +127,7 @@
     ...props.config,
   }))
 
-  const leftButtonList = computed<ActionItem[]>(() => {
+  const leftActions = computed<ActionItem[]>(() => {
     if (props.leftActions && props.leftActions.length > 0) {
       return props.leftActions.filter(action => shouldShowAction(action))
     }
@@ -145,7 +147,7 @@
     return []
   })
 
-  const rightButtonList = computed<ActionItem[]>(() => {
+  const rightActions = computed<ActionItem[]>(() => {
     if (props.rightActions && props.rightActions.length > 0) {
       return props.rightActions.filter(action => shouldShowAction(action))
     }
@@ -159,37 +161,90 @@
     return resolveActionState(action.show) ?? true
   }
 
-  const runningActions = shallowReactive(new Set<ActionItem>())
-
-  const isActionDisabled = (action: ActionItem): boolean => {
-    return resolveActionState(action.disabled) || runningActions.has(action)
+  interface ActionEntry {
+    action: ActionItem
+    taskKey: string
+    renderKey: string
   }
 
-  const isActionLoading = (action: ActionItem): boolean => {
-    return resolveActionState(action.loading) || runningActions.has(action)
+  const createEntries = (
+    actions: ActionItem[],
+    group: string
+  ): ActionEntry[] => {
+    const occurrences = new Map<string, number>()
+    return actions.map((action, index) => {
+      const taskKey = JSON.stringify(
+        action.key === undefined
+          ? ['position', group, index]
+          : ['key', action.key]
+      )
+      const occurrence = occurrences.get(taskKey) ?? 0
+      occurrences.set(taskKey, occurrence + 1)
+      return { action, taskKey, renderKey: `${taskKey}:${occurrence}` }
+    })
   }
 
-  const handleActionClick = async (action: ActionItem) => {
+  const leftButtonList = computed(() =>
+    createEntries(leftActions.value, 'left')
+  )
+  const rightButtonList = computed(() =>
+    createEntries(rightActions.value, 'right')
+  )
+  const actionTasks = useActionTask<string>()
+
+  const isActionDisabled = (action: ActionItem, taskKey: string): boolean =>
+    !!(
+      resolveActionState(action.disabled) ||
+      action.buttonProps?.disabled ||
+      actionTasks.isRunning(taskKey)
+    )
+
+  const isActionLoading = (action: ActionItem, taskKey: string): boolean =>
+    !!(
+      resolveActionState(action.loading) ||
+      action.buttonProps?.loading ||
+      (action.autoLoading !== false && actionTasks.isRunning(taskKey))
+    )
+
+  const handleActionClick = async ({ action, taskKey }: ActionEntry) => {
     if (action.dropdown && action.dropdown.length > 0) return
-    if (isActionDisabled(action) || isActionLoading(action)) return
-    emit('action-click', action)
-    if (!action.onClick) return
-
-    if (action.autoLoading !== false) runningActions.add(action)
     try {
-      await action.onClick()
-    } finally {
-      runningActions.delete(action)
+      await actionTasks.run(
+        taskKey,
+        async () => {
+          emit('action-click', action)
+          await action.onClick?.()
+        },
+        () =>
+          !isActionDisabled(action, taskKey) &&
+          !isActionLoading(action, taskKey)
+      )
+    } catch (error) {
+      emit('action-error', error, action)
+      throw error
     }
   }
 
   const handleDropdownClick = async (
     item: ActionDropdownItem,
-    action: ActionItem
+    { action, taskKey }: ActionEntry
   ) => {
-    emit('dropdown-click', item, action)
-    if (item.onClick) {
-      await item.onClick()
+    try {
+      await actionTasks.run(
+        taskKey,
+        async () => {
+          emit('dropdown-click', item, action)
+          await item.onClick?.()
+        },
+        () =>
+          !isActionDisabled(action, taskKey) &&
+          !isActionLoading(action, taskKey) &&
+          resolveActionState(item.disabled) !== true &&
+          resolveActionState(item.show) !== false
+      )
+    } catch (error) {
+      emit('action-error', error, action, item)
+      throw error
     }
   }
 
@@ -200,6 +255,7 @@
         type: Object as PropType<ActionItem>,
         required: true,
       },
+      taskKey: { type: String, required: true },
     },
     emits: ['click', 'dropdown-select'],
     setup(props, { emit }) {
@@ -233,29 +289,50 @@
               icon: icon
                 ? () => h(C_Icon, { name: icon, size: 14, 'aria-hidden': true })
                 : undefined,
-              disabled: resolveActionState(item.disabled),
+              disabled:
+                isActionDisabled(action.value, props.taskKey) ||
+                isActionLoading(action.value, props.taskKey) ||
+                resolveActionState(item.disabled),
             }
           })
       })
 
       const handleDropdownSelect = (key: string) => {
         const item = resolvedAction.value.dropdown?.find(d => d.key === key)
-        if (item) {
+        if (
+          item &&
+          !isActionDisabled(action.value, props.taskKey) &&
+          !isActionLoading(action.value, props.taskKey) &&
+          resolveActionState(item.disabled) !== true &&
+          resolveActionState(item.show) !== false
+        ) {
           emit('dropdown-select', item)
         }
       }
 
-      const createButtonVNode = (extraProps?: Record<string, any>) => {
-        const { icon } = resolvedAction.value
+      const createButtonVNode = (onClick?: () => void) => {
+        const { icon, buttonProps } = resolvedAction.value
+        const notifyNativeClick = (event: MouseEvent) => {
+          if (
+            isActionDisabled(action.value, props.taskKey) ||
+            isActionLoading(action.value, props.taskKey)
+          )
+            return
+          onClick?.()
+          const listeners = buttonProps?.onClick
+          if (Array.isArray(listeners))
+            listeners.forEach(listener => listener(event))
+          else listeners?.(event)
+        }
         const button = h(
           NButton,
           {
             type: resolvedAction.value.type || 'default',
             size: buttonSize.value,
-            loading: isActionLoading(action.value),
-            disabled: isActionDisabled(action.value),
-            ...extraProps,
-            ...resolvedAction.value.buttonProps,
+            ...buttonProps,
+            loading: isActionLoading(action.value, props.taskKey),
+            disabled: isActionDisabled(action.value, props.taskKey),
+            onClick: notifyNativeClick,
           },
           {
             default: () => resolvedAction.value.label,
@@ -277,7 +354,7 @@
       }
 
       const renderButton = () => {
-        const vnode = createButtonVNode({ onClick: () => emit('click') })
+        const vnode = createButtonVNode(() => emit('click'))
         if (resolvedAction.value.tooltip) {
           return h(
             NTooltip,
@@ -296,6 +373,9 @@
         return h(
           NDropdown,
           {
+            disabled:
+              isActionDisabled(action.value, props.taskKey) ||
+              isActionLoading(action.value, props.taskKey),
             options: dropdownOptions.value,
             onSelect: handleDropdownSelect,
           },

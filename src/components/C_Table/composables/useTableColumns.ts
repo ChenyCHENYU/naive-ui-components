@@ -66,9 +66,12 @@ interface TableManagerRef {
 export function renderEditComponent(
   column: TableColumn,
   value: unknown,
-  onUpdate: (val: unknown) => void
+  onUpdate: (val: unknown) => void,
+  rowData: DataRecord = {},
+  rowIndex = 0
 ): VNodeChild {
-  if (column.editRender) return column.editRender(value, {} as DataRecord, 0)
+  if (column.editRender)
+    return column.editRender(value, rowData, rowIndex, { onUpdate })
 
   const col = column as ColumnWithKey
   const componentProps = {
@@ -118,7 +121,11 @@ export function renderEditingCell(
   value: unknown,
   onUpdate: (val: unknown) => void,
   onSave: () => void,
-  onCancel: () => void
+  onCancel: () => void,
+  context: { rowData: DataRecord; rowIndex: number } = {
+    rowData: {},
+    rowIndex: 0,
+  }
 ): VNodeChild {
   const actionBtn = (
     name: string,
@@ -148,7 +155,13 @@ export function renderEditingCell(
 
   return h('div', { class: 'cell-editing-container' }, [
     h('div', { class: 'cell-editing-input' }, [
-      renderEditComponent(column, value, onUpdate),
+      renderEditComponent(
+        column,
+        value,
+        onUpdate,
+        context.rowData,
+        context.rowIndex
+      ),
     ]),
     h('div', { class: 'cell-editing-actions' }, [
       actionBtn('save', '保存', onSave),
@@ -314,10 +327,11 @@ export function useTableColumns(
     if (isEditingCell(rowKeyVal, colKey)) {
       return renderEditingCell(
         column,
-        getEditingCellValue(rowKeyVal, colKey) ?? value,
+        getEditingCellValue(rowKeyVal, colKey),
         (val: unknown) => updateEditingCellValue(rowKeyVal, colKey, val),
         () => saveEditCell(),
-        () => cancelEditCell()
+        () => cancelEditCell(),
+        { rowData, rowIndex }
       )
     }
 
@@ -357,12 +371,18 @@ export function useTableColumns(
       checker.isRowEditMode() &&
       tableManager.editStates.rowEdit.isEditingRow(key)
     ) {
+      const editingRow = tableManager.editStates.rowEdit.getEditingRowData(key)
       return renderEditComponent(
         column,
-        tableManager.editStates.rowEdit.getEditingRowData(key)?.[colKey] ??
-          value,
+        editingRow?.[colKey],
         (val: unknown) =>
-          tableManager.editStates.rowEdit.updateEditingRowData(key, colKey, val)
+          tableManager.editStates.rowEdit.updateEditingRowData(
+            key,
+            colKey,
+            val
+          ),
+        editingRow ?? rowData,
+        rowIndex
       )
     }
 
@@ -411,10 +431,8 @@ export function useTableColumns(
       width: getColWidth(column),
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
-      render:
-        column.render ||
-        ((rowData: DataRecord, rowIndex: number) =>
-          renderCell(column, rowData, rowIndex)),
+      render: (rowData: DataRecord, rowIndex: number) =>
+        renderCell(column, rowData, rowIndex),
     }
 
     if (column.fixed) base.fixed = column.fixed
