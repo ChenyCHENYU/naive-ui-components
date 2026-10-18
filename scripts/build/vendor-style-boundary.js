@@ -11,6 +11,7 @@ const policies = {
   'highlight.js/styles/github.css': /\.hljs(?:\b|-)/,
   '@wangeditor-next/editor/dist/css/style.css': /\.w-e-/,
   'driver.js/dist/driver.css': /\.driver-/,
+  'vue-cropper/dist/index.css': /\.vue-cropper(?:\b|-)/,
   'leaflet/dist/leaflet.css': /\.leaflet-/,
   'md-editor-v3/lib/style.css': /\.(?:md-editor(?:\b|-)|medium-zoom-)/,
   'xgplayer/dist/index.min.css': /\.xg(?:player\b|-)|(?:^|[\s>+~])xg-[\w-]+/,
@@ -51,6 +52,11 @@ export function isolateVendorStyles(css, packagePath) {
     )
       return
     rule.selectors = rule.selectors.map(selector => {
+      if (
+        packagePath === 'vue-cropper/dist/index.css' &&
+        !selector.includes('.vue-cropper')
+      )
+        return `.vue-cropper ${selector}`
       if (markdown && /^\.(?:animation|zoom-in|zoom-out)$/.test(selector))
         return `.md-editor-modal${selector}`
       if (
