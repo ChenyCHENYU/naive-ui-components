@@ -1,5 +1,9 @@
-export { default as C_NotificationCenter } from "./index.vue";
+export { default as C_NotificationCenter } from './index.vue'
 export type {
+  NotificationDataMode,
+  NotificationUnreadByCategory,
+  FetchNotificationsResult,
+  NotificationCenterController,
   NotificationCategory,
   NotificationPriority,
   NotificationStatus,
@@ -16,8 +20,8 @@ export type {
   NotificationCenterProps,
   NotificationCenterEmits,
   NotificationCenterExpose,
-} from "./types";
-export { useNotificationCore } from "./composables/useNotificationCore";
-export { useNotificationFormat } from "./composables/useNotificationFormat";
-export { useNotificationWS } from "./composables/useNotificationWS";
-export * from "./constants";
+} from './types'
+export { useNotificationCore } from './composables/useNotificationCore'
+export { useNotificationFormat } from './composables/useNotificationFormat'
+export { useNotificationWS } from './composables/useNotificationWS'
+export * from './constants'

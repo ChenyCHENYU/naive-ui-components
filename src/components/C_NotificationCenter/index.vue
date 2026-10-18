@@ -35,7 +35,7 @@
           <div class="c-notification-center__header-extra">
             <!-- WebSocket 连接状态 -->
             <NTooltip
-              v-if="props.wsConfig"
+              v-if="props.wsConfig || core.wsStatus.value !== 'disconnected'"
               trigger="hover"
               placement="top"
             >
@@ -48,6 +48,20 @@
               {{ wsStatusText }}
             </NTooltip>
           </div>
+        </div>
+
+        <div
+          v-if="core.error.value"
+          class="c-notification-center__error"
+          role="alert"
+        >
+          <span>{{ core.error.value }}</span>
+          <NButton
+            size="tiny"
+            :loading="core.loading.value"
+            @click="handleRetry"
+            >重试</NButton
+          >
         </div>
 
         <!-- 列表 / 详情切换 -->
@@ -74,15 +88,26 @@
             :unread-count="core.unreadCount.value"
             :loading="core.loading.value"
             :has-more="core.hasMore.value"
+            :busy="core.busy.value"
+            :pending-ids="core.pendingIds.value"
             @switch-category="core.switchCategory"
             @item-click="handleItemClick"
             @read="handleRead"
             @delete="handleDelete"
             @mark-all-read="handleMarkAllRead"
             @clear="handleClear"
-            @load-more="core.loadMore"
+            @load-more="handleLoadMore"
           />
         </Transition>
+        <div class="c-notification-center__footer">
+          <NButton
+            text
+            type="primary"
+            size="small"
+            @click="handleViewAll"
+            >查看全部消息</NButton
+          >
+        </div>
       </div>
     </NPopover>
   </div>
@@ -105,6 +130,7 @@
   defineOptions({ name: 'C_NotificationCenter' })
 
   const props = withDefaults(defineProps<NotificationCenterProps>(), {
+    autoStart: true,
     desktopNotification: false,
     maxBadgeCount: 99,
     pollingInterval: 60_000,
@@ -121,12 +147,16 @@
     wsStatusChange: [status: WSConnectionStatus]
     newMessage: [message: NotificationMessage]
     navigate: [url: string]
+    viewAll: []
   }>()
 
-  const core = useNotificationCore(props, {
-    onNewMessage: message => emit('newMessage', message),
-    onWSStatusChange: status => emit('wsStatusChange', status),
-  })
+  // 外部控制器由应用拥有，避免重复请求、重复 WebSocket 和组件卸载销毁 Store。
+  const core =
+    props.controller ??
+    useNotificationCore(props, {
+      onNewMessage: message => emit('newMessage', message),
+      onWSStatusChange: status => emit('wsStatusChange', status),
+    })
 
   /* ─── 计算属性 ───────────────────────────────── */
 
@@ -162,6 +192,28 @@
   /** 角标点击 */
   function handleBadgeClick() {
     core.popoverVisible.value = !core.popoverVisible.value
+  }
+
+  async function handleRetry() {
+    try {
+      if (core.retry) await core.retry()
+      else await core.fetchMessages(true)
+    } catch {
+      /* error 由控制器呈现 */
+    }
+  }
+
+  async function handleLoadMore() {
+    try {
+      await core.loadMore()
+    } catch {
+      /* 保留原列表，允许再次加载 */
+    }
+  }
+
+  function handleViewAll() {
+    core.popoverVisible.value = false
+    emit('viewAll')
   }
 
   /** 点击消息 */
@@ -273,6 +325,26 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    &__error {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 16px;
+      padding: 10px;
+      color: var(--c-text-1);
+      background: color-mix(in srgb, #d03050 8%, transparent);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    &__footer {
+      display: flex;
+      justify-content: center;
+      padding: 10px 16px;
+      border-top: 1px solid var(--c-border);
     }
 
     &__ws-dot {

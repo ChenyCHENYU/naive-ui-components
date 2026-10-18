@@ -58,7 +58,7 @@ describe('C_NotificationCenter state boundaries', () => {
         },
       })
       app.mount({})
-      await Promise.resolve()
+      await core.fetchMessages(true)
       expect(core.messages.value[0]?.status).toBe('read')
       core.messages.value[0].status = 'unread'
       expect(notification.status).toBe('read')

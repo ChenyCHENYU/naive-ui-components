@@ -6,7 +6,7 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, readonly, onBeforeUnmount } from 'vue'
+import { ref, readonly, getCurrentScope, onScopeDispose } from 'vue'
 import type {
   NotificationWSConfig,
   WSConnectionStatus,
@@ -40,6 +40,7 @@ export function useNotificationWS(
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   /** 心跳定时器 */
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+  let pongTimer: ReturnType<typeof setTimeout> | null = null
   /** 当前配置 */
   let currentConfig: NotificationWSConfig | null = null
   /** 连接代次，用于忽略旧 socket 的延迟事件 */
@@ -69,14 +70,13 @@ export function useNotificationWS(
     const version = ++connectionVersion
     cleanup()
 
-    const url = buildUrl(config)
     setStatus('connecting')
 
     try {
-      ws = new WebSocket(url)
+      ws = new WebSocket(buildUrl(config))
     } catch {
       setStatus('disconnected')
-      scheduleReconnect(config)
+      if (config.autoReconnect !== false) scheduleReconnect(config)
       return
     }
 
@@ -128,7 +128,11 @@ export function useNotificationWS(
     if (typeof raw !== 'string') return
 
     /* 过滤心跳响应 */
-    if (raw === 'pong') return
+    if (raw === 'pong') {
+      if (pongTimer) clearTimeout(pongTimer)
+      pongTimer = null
+      return
+    }
 
     try {
       const payload: unknown = JSON.parse(raw)
@@ -184,9 +188,17 @@ export function useNotificationWS(
 
     const message = config.heartbeatMessage ?? DEFAULT_WS_HEARTBEAT_MESSAGE
     heartbeatTimer = setInterval(() => {
-      if (ws?.readyState === WebSocket.OPEN) {
+      if (ws?.readyState === WebSocket.OPEN && !pongTimer) {
         try {
           ws.send(message)
+          const timeout = config.heartbeatTimeout ?? 0
+          if (timeout > 0) {
+            const socket = ws
+            pongTimer = setTimeout(() => {
+              pongTimer = null
+              if (socket === ws) socket.close()
+            }, timeout)
+          }
         } catch {
           ws.close()
         }
@@ -198,6 +210,8 @@ export function useNotificationWS(
    * 停止心跳
    */
   function stopHeartbeat() {
+    if (pongTimer) clearTimeout(pongTimer)
+    pongTimer = null
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer)
       heartbeatTimer = null
@@ -241,11 +255,7 @@ export function useNotificationWS(
   }
 
   /* 组件卸载时自动清理 */
-  onBeforeUnmount(() => {
-    currentConfig = null
-    connectionVersion++
-    cleanup()
-  })
+  if (getCurrentScope()) onScopeDispose(disconnect)
 
   return {
     /** WebSocket 连接状态 */

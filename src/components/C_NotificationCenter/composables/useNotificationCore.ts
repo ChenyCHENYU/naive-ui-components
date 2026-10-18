@@ -1,18 +1,28 @@
 /*
  * @Author: ChenYu ycyplus@gmail.com
  * @Date: 2026-02-27
- * @Description: 通知中心核心状态管理
- * @Migration: naive-ui-components 组件库迁移版本
+ * @Description: 通知数据、操作日志与连接生命周期；不依赖具体业务后端
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
-
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import {
+  ref,
+  shallowRef,
+  computed,
+  watch,
+  getCurrentInstance,
+  getCurrentScope,
+  onMounted,
+  onScopeDispose,
+} from 'vue'
 import type {
   NotificationMessage,
   NotificationCategory,
   NotificationCenterProps,
+  NotificationCenterController,
+  NotificationUnreadByCategory,
   WSNotificationPayload,
   WSConnectionStatus,
+  FetchNotificationsResult,
 } from '../types'
 import {
   DEFAULT_PAGE_SIZE,
@@ -23,517 +33,766 @@ import {
 import { useNotificationWS } from './useNotificationWS'
 import { setItem, getItem } from '../../../utils/storage'
 
-/** 缓存数据结构 */
-interface CachedState {
-  readIds: string[]
-  lastFetchTime: number
-}
-
 interface NotificationCoreEvents {
   onNewMessage?: (message: NotificationMessage) => void
   onWSStatusChange?: (status: WSConnectionStatus) => void
 }
+interface Snapshot {
+  list: NotificationMessage[]
+  /** 跨查询页的已知状态，避免切分类丢失进行中的操作对象。 */
+  known: Map<string, NotificationMessage>
+  total: number
+  unread: number
+  categories: NotificationUnreadByCategory
+  statisticsVersion: number
+  queryCategory: NotificationCategory | 'all'
+}
+interface Operation {
+  id: number
+  kind: 'read' | 'delete' | 'read-all' | 'clear'
+  ids: string[]
+  category?: NotificationCategory
+  unknownUnread: number
+  unknownCategories: NotificationUnreadByCategory
+  unknownTotal: number
+  statisticsVersion: number
+  queryCategory: NotificationCategory | 'all'
+}
+type Change =
+  | { version: number; operation: Operation }
+  | { version: number; message: NotificationMessage }
+  | {
+      version: number
+      counts: {
+        unreadCount: number
+        unreadByCategory?: NotificationUnreadByCategory
+      }
+    }
+const categories: NotificationCategory[] = ['system', 'business', 'alarm']
+const emptySnapshot = (): Snapshot => ({
+  list: [],
+  known: new Map(),
+  total: 0,
+  unread: 0,
+  categories: {},
+  statisticsVersion: 0,
+  queryCategory: 'all',
+})
 
-/** 防抖持久化延迟（ms） */
-const PERSIST_DEBOUNCE = 300
-
-function isNotificationMessage(value: unknown): value is NotificationMessage {
+/** 验证查询与推送中的消息边界，拒绝畸形事件。 */
+// eslint-disable-next-line complexity -- 单一消息协议的字段与枚举校验。
+export function isNotificationMessage(
+  value: unknown
+): value is NotificationMessage {
   if (!value || typeof value !== 'object') return false
   const message = value as Partial<NotificationMessage>
   return (
     typeof message.id === 'string' &&
+    message.id.length > 0 &&
     typeof message.title === 'string' &&
     typeof message.summary === 'string' &&
     typeof message.timestamp === 'string' &&
-    ['system', 'business', 'alarm'].includes(String(message.category)) &&
+    Number.isFinite(Date.parse(message.timestamp)) &&
+    categories.includes(message.category as NotificationCategory) &&
     ['low', 'normal', 'high', 'urgent'].includes(String(message.priority)) &&
     ['read', 'unread', 'archived'].includes(String(message.status))
   )
 }
+function cloneMessage(message: NotificationMessage): NotificationMessage {
+  return {
+    ...message,
+    ...(message.sender ? { sender: { ...message.sender } } : {}),
+    ...(message.extra ? { extra: { ...message.extra } } : {}),
+  }
+}
+function countRows(list: NotificationMessage[]) {
+  const result = { system: 0, business: 0, alarm: 0 }
+  for (const message of list)
+    if (message.status === 'unread') result[message.category]++
+  return result
+}
+function validCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+function normalizeCategories(value: unknown): NotificationUnreadByCategory {
+  const result: NotificationUnreadByCategory = {}
+  if (value && typeof value === 'object') {
+    for (const key of categories) {
+      const count = (value as NotificationUnreadByCategory)[key]
+      if (validCount(count)) result[key] = count
+    }
+  }
+  return result
+}
+
+function updateKnownRecords(
+  previous: Map<string, NotificationMessage>,
+  targets: NotificationMessage[],
+  removed: boolean
+) {
+  const known = new Map(previous)
+  for (const message of targets) {
+    if (removed) known.delete(message.id)
+    else if (message.status === 'unread')
+      known.set(message.id, { ...message, status: 'read' })
+  }
+  return known
+}
+
+function operationTotal(
+  state: Snapshot,
+  operation: Operation,
+  visibleTargets: number
+) {
+  if (operation.kind !== 'delete' && operation.kind !== 'clear')
+    return state.total
+  const unknown =
+    state.queryCategory === operation.queryCategory ? operation.unknownTotal : 0
+  return Math.max(0, state.total - visibleTargets - unknown)
+}
+
+/** 乐观操作只叠加自己的变更，失败时移除该操作；不恢复整表快照。 */
+function applyOperation(state: Snapshot, operation: Operation): Snapshot {
+  const ids = new Set(operation.ids)
+  const targets = [...state.known.values()].filter(message =>
+    ids.has(message.id)
+  )
+  const visibleTargets = state.list.filter(message => ids.has(message.id))
+  const unreadTargets = targets.filter(message => message.status === 'unread')
+  const removed = operation.kind === 'delete' || operation.kind === 'clear'
+  const list = removed
+    ? state.list.filter(message => !ids.has(message.id))
+    : state.list.map(message =>
+        ids.has(message.id) && message.status === 'unread'
+          ? { ...message, status: 'read' as const }
+          : message
+      )
+  const nextCategories = { ...state.categories }
+  const known = updateKnownRecords(state.known, targets, removed)
+  const adjustStatistics =
+    state.statisticsVersion === operation.statisticsVersion
+  for (const category of categories) {
+    const previous = nextCategories[category]
+    if (previous === undefined || !adjustStatistics) continue
+    const known = unreadTargets.filter(
+      message => message.category === category
+    ).length
+    nextCategories[category] = Math.max(
+      0,
+      previous - known - (operation.unknownCategories[category] ?? 0)
+    )
+  }
+  return {
+    list,
+    known,
+    total: operationTotal(state, operation, visibleTargets.length),
+    unread: adjustStatistics
+      ? Math.max(
+          0,
+          state.unread - unreadTargets.length - operation.unknownUnread
+        )
+      : state.unread,
+    categories: nextCategories,
+    statisticsVersion: state.statisticsVersion,
+    queryCategory: state.queryCategory,
+  }
+}
+
+function snapshotFromResult(
+  result: FetchNotificationsResult,
+  previous: Snapshot,
+  reset: boolean,
+  queryCategory: NotificationCategory | 'all'
+): Snapshot {
+  if (
+    !Array.isArray(result?.list) ||
+    !result.list.every(isNotificationMessage) ||
+    !validCount(result.total) ||
+    !validCount(result.unreadCount)
+  ) {
+    throw new Error('消息接口返回的数据或统计无效')
+  }
+  const unique = new Map<string, NotificationMessage>()
+  const known = new Map(previous.known)
+  if (!reset)
+    for (const message of previous.list) unique.set(message.id, message)
+  for (const message of result.list) {
+    const record = cloneMessage(message)
+    unique.set(message.id, record)
+    known.set(message.id, record)
+  }
+  return {
+    list: [...unique.values()],
+    known,
+    total: result.total,
+    unread: result.unreadCount,
+    categories: normalizeCategories(result.unreadByCategory),
+    statisticsVersion: previous.statisticsVersion,
+    queryCategory,
+  }
+}
+
+function unknownCounts(
+  state: Snapshot,
+  known: NotificationMessage[],
+  category?: NotificationCategory
+) {
+  const knownCounts = countRows(known)
+  const unknownCategories: NotificationUnreadByCategory = {}
+  const keys = category ? [category] : categories
+  for (const key of keys) {
+    const count = state.categories[key]
+    if (count !== undefined)
+      unknownCategories[key] = Math.max(0, count - knownCounts[key])
+  }
+  const scopeUnread = category ? state.categories[category] : state.unread
+  return {
+    unknownCategories,
+    unknownUnread:
+      scopeUnread === undefined
+        ? 0
+        : Math.max(
+            0,
+            scopeUnread -
+              known.filter(message => message.status === 'unread').length
+          ),
+  }
+}
 
 /**
- * 通知中心核心状态管理
- *
- * 统一管理消息列表、未读数、分类过滤、已读标记、
- * API 交互、WebSocket 桥接、轮询调度和本地缓存。
+ * 独立组件与应用 Store 共用的无后端依赖控制器。
+ * 未指定模式时兼容旧接入：有查询接口为 remote，否则为 demo。
  */
 export function useNotificationCore(
   props: NotificationCenterProps,
   events: NotificationCoreEvents = {}
-) {
-  /* ─── 响应式状态 ─────────────────────────────── */
-
-  /** 消息列表 */
-  const messages = ref<NotificationMessage[]>([])
-  /** 当前选中分类 */
+): NotificationCenterController & {
+  initialize: () => void
+  dispose: () => void
+} {
+  const mode = computed(
+    () => props.dataMode ?? (props.fetchNotifications ? 'remote' : 'demo')
+  )
+  const base = shallowRef<Snapshot>(emptySnapshot())
+  const operations = shallowRef<Operation[]>([])
+  const view = computed(() =>
+    operations.value.reduce(applyOperation, base.value)
+  )
+  const messages = computed(() => view.value.list)
   const activeCategory = ref<NotificationCategory | 'all'>('all')
-  /** 是否正在加载 */
   const loading = ref(false)
-  /** 总条数 */
-  const total = ref(0)
-  /** 当前页码 */
   const page = ref(1)
-  /** 选中的消息（详情展示） */
   const selectedMessage = ref<NotificationMessage | null>(null)
-  /** Popover 展开状态 */
   const popoverVisible = ref(false)
-  /** WebSocket 连接状态 */
   const wsStatus = ref<WSConnectionStatus>('disconnected')
-  let fetchVersion = 0
-
-  /* ─── 计算属性 ───────────────────────────────── */
-
-  /** 未读消息总数 */
-  const unreadCount = computed(
-    () => messages.value.filter(m => m.status === 'unread').length
-  )
-
-  /** 各分类未读数 */
-  const unreadByCategory = computed(() => {
-    const counts: Record<string, number> = { system: 0, business: 0, alarm: 0 }
-    for (const m of messages.value) {
-      if (m.status === 'unread' && m.category in counts) {
-        counts[m.category]++
-      }
-    }
-    return counts
-  })
-
-  /** 当前分类下的消息列表 */
-  const filteredMessages = computed(() => {
-    if (activeCategory.value === 'all') return messages.value
-    return messages.value.filter(m => m.category === activeCategory.value)
-  })
-
-  /** 是否有更多消息可加载 */
-  const hasMore = computed(() => messages.value.length < total.value)
-
-  /* ─── 缓存管理 ───────────────────────────────── */
-
-  /** 缓存 key */
-  const storageKey = computed(() => props.storageKey ?? DEFAULT_STORAGE_KEY)
-
-  /**
-   * 从缓存恢复未读状态
-   */
-  function restoreFromCache() {
-    // API responses are authoritative; local demo preferences must never
-    // turn a server-side read notification back into an unread one.
-    if (props.fetchNotifications) return
-    const cached = getItem<CachedState>(storageKey.value)
-    if (Array.isArray(cached?.readIds)) {
-      const idSet = new Set(
-        cached.readIds.filter((id): id is string => typeof id === 'string')
-      )
-      for (const msg of messages.value) {
-        if (idSet.has(msg.id) && msg.status !== 'archived') msg.status = 'read'
-      }
-    }
-  }
-
-  /** 防抖持久化定时器 */
-  let persistTimer: ReturnType<typeof setTimeout> | null = null
-
-  /**
-   * 持久化未读状态到本地缓存（防抖）
-   */
-  function persistToCache() {
-    if (props.fetchNotifications) return
-    if (persistTimer) clearTimeout(persistTimer)
-    persistTimer = setTimeout(() => {
-      const readIds = messages.value
-        .filter(m => m.status === 'read')
-        .map(m => m.id)
-      setItem<CachedState>(storageKey.value, {
-        readIds,
-        lastFetchTime: Date.now(),
-      })
-      persistTimer = null
-    }, PERSIST_DEBOUNCE)
-  }
-
-  /* ─── API 交互 ───────────────────────────────── */
-
-  /**
-   * 拉取消息列表
-   */
-  // eslint-disable-next-line complexity -- 请求版本、分页和回滚在一个原子状态流程中处理。
-  async function fetchMessages(reset = false) {
-    const version = ++fetchVersion
-    if (reset) {
-      page.value = 1
-    }
-
-    loading.value = true
-    try {
-      if (props.fetchNotifications) {
-        const categoryParam =
-          activeCategory.value === 'all' ? undefined : activeCategory.value
-        const pageSize = props.pageSize ?? DEFAULT_PAGE_SIZE
-        const result = await props.fetchNotifications({
-          category: categoryParam,
-          page: page.value,
-          pageSize,
-        })
-        if (version !== fetchVersion) return
-        const list = Array.isArray(result.list)
-          ? result.list.map(message => ({ ...message }))
-          : []
-        if (reset) {
-          messages.value = list
-        } else {
-          const existingIds = new Set(messages.value.map(message => message.id))
-          messages.value.push(
-            ...list.filter(message => !existingIds.has(message.id))
-          )
-        }
-        total.value = Math.max(messages.value.length, Number(result.total) || 0)
-      } else {
-        /* 未配置 API 接口 → 使用模拟数据（全量加载，客户端过滤） */
-        loadMockData()
-      }
-
-      if (version === fetchVersion) restoreFromCache()
-    } catch (error) {
-      if (version === fetchVersion) props.onError?.(error, 'fetch')
-      throw error
-    } finally {
-      if (version === fetchVersion) loading.value = false
-    }
-  }
-
-  /**
-   * 加载模拟数据（全量加载，filteredMessages 负责客户端过滤）
-   */
-  function loadMockData() {
-    messages.value = MOCK_MESSAGES.map(m => ({ ...m }))
-    total.value = MOCK_MESSAGES.length
-  }
-
-  /**
-   * 加载更多
-   */
-  async function loadMore() {
-    if (!hasMore.value || loading.value) return
-    const previousPage = page.value
-    page.value++
-    try {
-      await fetchMessages()
-    } catch (error) {
-      page.value = previousPage
-      throw error
-    }
-  }
-
-  /**
-   * 标记指定消息为已读
-   */
-  async function markAsRead(ids: string[]) {
-    const idSet = new Set(ids)
-    const previousStatuses = new Map(
-      messages.value
-        .filter(message => idSet.has(message.id))
-        .map(message => [message.id, message.status] as const)
-    )
-
-    /* 乐观更新 */
-    for (const msg of messages.value) {
-      if (idSet.has(msg.id)) {
-        msg.status = 'read'
-      }
-    }
-    persistToCache()
-
-    /* 如果配置了 API → 同步到服务端 */
-    if (props.markAsRead) {
-      try {
-        await props.markAsRead(ids)
-      } catch (error) {
-        /* 回滚 */
-        for (const msg of messages.value) {
-          const previousStatus = previousStatuses.get(msg.id)
-          if (previousStatus) msg.status = previousStatus
-        }
-        persistToCache()
-        props.onError?.(error, 'mark-as-read')
-        throw error
-      }
-    }
-  }
-
-  /**
-   * 标记全部已读
-   */
-  async function markAllAsRead(category?: NotificationCategory) {
-    const targetMessages = category
-      ? messages.value.filter(
-          m => m.category === category && m.status === 'unread'
+  const error = ref<string | null>(null)
+  const unreadCount = computed(() => view.value.unread)
+  const unreadByCategory = computed(() => view.value.categories)
+  const filteredMessages = computed(() =>
+    activeCategory.value === 'all'
+      ? messages.value
+      : messages.value.filter(
+          message => message.category === activeCategory.value
         )
-      : messages.value.filter(m => m.status === 'unread')
-
-    /* 乐观更新 */
-    for (const msg of targetMessages) {
-      msg.status = 'read'
-    }
-    persistToCache()
-
-    if (props.markAllRead) {
-      try {
-        await props.markAllRead(category)
-      } catch (error) {
-        /* 回滚 */
-        for (const msg of targetMessages) {
-          msg.status = 'unread'
-        }
-        persistToCache()
-        props.onError?.(error, 'mark-all-as-read')
-        throw error
-      }
-    }
-  }
-
-  /**
-   * 删除消息
-   */
-  async function deleteMessages(ids: string[]) {
-    const idSet = new Set(ids)
-    const backup = [...messages.value]
-    const backupTotal = total.value
-
-    /* 乐观更新 */
-    messages.value = messages.value.filter(m => !idSet.has(m.id))
-    total.value = Math.max(
-      0,
-      total.value - (backup.length - messages.value.length)
-    )
-    persistToCache()
-
-    if (props.deleteNotification) {
-      try {
-        await props.deleteNotification(ids)
-      } catch (error) {
-        messages.value = backup
-        total.value = backupTotal
-        persistToCache()
-        props.onError?.(error, 'delete')
-        throw error
-      }
-    }
-  }
-
-  /**
-   * 清空消息
-   */
-  async function clearMessages(category?: NotificationCategory) {
-    const backup = [...messages.value]
-    const backupTotal = total.value
-
-    if (category) {
-      messages.value = messages.value.filter(m => m.category !== category)
-    } else {
-      messages.value = []
-    }
-    total.value = messages.value.length
-    persistToCache()
-
-    if (props.clearNotifications) {
-      try {
-        await props.clearNotifications(category)
-      } catch (error) {
-        messages.value = backup
-        total.value = backupTotal
-        persistToCache()
-        props.onError?.(error, 'clear')
-        throw error
-      }
-    }
-  }
-
-  /* ─── WebSocket 桥接 ─────────────────────────── */
-
-  /**
-   * 处理 WebSocket 推送消息
-   */
-  function handleWSMessage(payload: WSNotificationPayload) {
-    switch (payload.type) {
-      case 'new_message': {
-        const msg = payload.data as NotificationMessage
-        if (!isNotificationMessage(msg)) return
-        /* 去重后插入到列表头部 */
-        if (!messages.value.some(m => m.id === msg.id)) {
-          messages.value.unshift(msg)
-          total.value++
-          persistToCache()
-          events.onNewMessage?.(msg)
-          showDesktopNotification(msg)
-        }
-        break
-      }
-      case 'read_sync': {
-        if (!Array.isArray(payload.data)) return
-        const syncMessages = payload.data.filter(isNotificationMessage)
-        const readIds = new Set(syncMessages.map(m => m.id))
-        for (const msg of messages.value) {
-          if (readIds.has(msg.id)) msg.status = 'read'
-        }
-        persistToCache()
-        break
-      }
-      case 'count_update': {
-        /* 服务端推送的未读数可用于校准 */
-        break
-      }
-    }
-  }
-
-  /** WebSocket 连接状态变更回调 */
-  function handleWSStatusChange(s: WSConnectionStatus) {
-    wsStatus.value = s
-    events.onWSStatusChange?.(s)
-  }
-
-  const { connect: wsConnect, disconnect: wsDisconnect } = useNotificationWS(
-    handleWSMessage,
-    handleWSStatusChange
   )
+  const total = computed(() =>
+    mode.value === 'demo' ? filteredMessages.value.length : view.value.total
+  )
+  const hasMore = computed(
+    () => mode.value === 'remote' && filteredMessages.value.length < total.value
+  )
+  const busy = computed(() => operations.value.length > 0)
+  const pendingIds = computed(() => [
+    ...new Set(operations.value.flatMap(operation => operation.ids)),
+  ])
+  let fetchVersion = 0
+  let changeVersion = 0
+  let operationId = 0
+  let scopeVersion = 0
+  let initialized = false
+  let disposed = false
+  let changes: Change[] = []
+  let pollingTimer: ReturnType<typeof setInterval> | null = null
+  let hadConnection = false
+  let retryAction: (() => Promise<void>) | undefined
+  const desktopTimers = new Set<ReturnType<typeof setTimeout>>()
 
-  /* ─── 桌面通知 ──────────────────────────────── */
-
-  /**
-   * 发送桌面通知
-   */
-  function showDesktopNotification(msg: NotificationMessage) {
-    if (!props.desktopNotification) return
-    if (typeof window === 'undefined' || !('Notification' in window)) return
-
-    if (Notification.permission === 'granted') {
-      createDesktopNotification(msg)
+  function report(cause: unknown, operation: string) {
+    error.value =
+      cause instanceof Error ? cause.message : '消息操作失败，请重试'
+    props.onError?.(cause, operation)
+  }
+  function clearError() {
+    error.value = null
+  }
+  function pruneKnownRecords(state: Snapshot): Snapshot {
+    // 可见数据和进行中命令始终保留；额外跨页索引只保留最近 256 条。
+    const protectedIds = new Set([
+      ...state.list.map(message => message.id),
+      ...operations.value.flatMap(operation => operation.ids),
+    ])
+    const retained = new Map<string, NotificationMessage>()
+    let extra = 0
+    for (const [id, message] of [...state.known].reverse()) {
+      const protectedRecord = protectedIds.has(id)
+      if (protectedRecord || extra < 256) {
+        retained.set(id, message)
+        if (!protectedRecord) extra++
+      }
+    }
+    return { ...state, known: new Map([...retained].reverse()) }
+  }
+  function demoSnapshot(list: NotificationMessage[]): Snapshot {
+    const counts = countRows(list)
+    return {
+      list,
+      known: new Map(list.map(message => [message.id, message])),
+      total: list.length,
+      unread: Object.values(counts).reduce((a, b) => a + b, 0),
+      categories: counts,
+      statisticsVersion: 0,
+      queryCategory: 'all',
     }
   }
-
+  function loadDemo() {
+    const cached = getItem<{
+      version?: number
+      messages?: unknown
+      readIds?: string[]
+    }>(props.storageKey ?? DEFAULT_STORAGE_KEY)
+    if (cached?.version === 2 && Array.isArray(cached.messages)) {
+      base.value = demoSnapshot(
+        cached.messages.filter(isNotificationMessage).map(cloneMessage)
+      )
+      return
+    }
+    const readIds = new Set(
+      Array.isArray(cached?.readIds) ? cached.readIds : []
+    )
+    base.value = demoSnapshot(
+      MOCK_MESSAGES.map(message => ({
+        ...cloneMessage(message),
+        status: readIds.has(message.id) ? 'read' : message.status,
+      }))
+    )
+  }
+  function persist() {
+    if (mode.value !== 'demo') return
+    // 即时持久化提交后的状态；清空 [] 与无缓存严格区分，卸载不会丢最后一次操作。
+    setItem(props.storageKey ?? DEFAULT_STORAGE_KEY, {
+      version: 2,
+      messages: base.value.list.map(cloneMessage),
+    })
+  }
+  function appendChange(
+    change:
+      | Omit<Extract<Change, { operation: Operation }>, 'version'>
+      | Omit<Extract<Change, { message: NotificationMessage }>, 'version'>
+      | Omit<Extract<Change, { counts: unknown }>, 'version'>
+  ) {
+    const version = ++changeVersion
+    if (loading.value) changes.push({ ...change, version } as Change)
+  }
+  function matchesActiveCategory(message: NotificationMessage) {
+    return (
+      mode.value === 'demo' ||
+      activeCategory.value === 'all' ||
+      activeCategory.value === message.category
+    )
+  }
+  function addMessage(
+    state: Snapshot,
+    message: NotificationMessage,
+    replay = false
+  ): Snapshot {
+    if (state.list.some(item => item.id === message.id)) return state
+    if (!replay && state.known.has(message.id)) return state
+    const matches = matchesActiveCategory(message)
+    const counts = { ...state.categories }
+    if (message.status === 'unread' && counts[message.category] !== undefined)
+      counts[message.category]!++
+    return {
+      list: matches ? [cloneMessage(message), ...state.list] : state.list,
+      known: new Map([...state.known, [message.id, cloneMessage(message)]]),
+      total: state.total + (matches ? 1 : 0),
+      unread: state.unread + (message.status === 'unread' ? 1 : 0),
+      categories: counts,
+      statisticsVersion: state.statisticsVersion,
+      queryCategory: state.queryCategory,
+    }
+  }
+  function applyChange(state: Snapshot, change: Change): Snapshot {
+    if ('operation' in change)
+      return applyOperation(state, {
+        ...change.operation,
+        statisticsVersion: state.statisticsVersion,
+      })
+    if ('message' in change) return addMessage(state, change.message, true)
+    return {
+      ...state,
+      unread: change.counts.unreadCount,
+      categories: {
+        ...state.categories,
+        ...normalizeCategories(change.counts.unreadByCategory),
+      },
+      statisticsVersion: state.statisticsVersion + 1,
+    }
+  }
+  function currentRequest(version: number, scope: number) {
+    return !disposed && scope === scopeVersion && version === fetchVersion
+  }
+  async function requestPage(
+    targetPage: number,
+    category: NotificationCategory | 'all'
+  ) {
+    if (!props.fetchNotifications)
+      throw new Error('远程消息模式未配置 fetchNotifications')
+    return props.fetchNotifications({
+      category: category === 'all' ? undefined : category,
+      page: targetPage,
+      pageSize: props.pageSize ?? DEFAULT_PAGE_SIZE,
+    })
+  }
+  function changesSince(state: Snapshot, started: number) {
+    let next = state
+    for (const change of changes)
+      if (change.version > started) next = applyChange(next, change)
+    return next
+  }
+  async function fetchPage(targetPage: number, reset: boolean) {
+    const version = ++fetchVersion
+    const started = changeVersion
+    const category = activeCategory.value
+    const scope = scopeVersion
+    loading.value = true
+    clearError()
+    try {
+      if (mode.value === 'demo') {
+        loadDemo()
+        page.value = 1
+        return
+      }
+      const result = await requestPage(targetPage, category)
+      if (!currentRequest(version, scope)) return
+      const next = snapshotFromResult(result, base.value, reset, category)
+      // 请求开始后的成功操作与推送不能被较旧的查询结果覆盖。
+      base.value = pruneKnownRecords(changesSince(next, started))
+      page.value = targetPage
+    } catch (cause) {
+      if (currentRequest(version, scope)) {
+        retryAction = () => fetchPage(targetPage, reset)
+        report(cause, 'fetch')
+      }
+      throw cause
+    } finally {
+      if (currentRequest(version, scope)) {
+        loading.value = false
+        changes = []
+      }
+    }
+  }
+  async function fetchMessages(reset = false) {
+    await fetchPage(reset ? 1 : page.value, reset)
+  }
+  async function loadMore() {
+    if (loading.value || !hasMore.value) return
+    await fetchPage(page.value + 1, false)
+  }
+  function createOperation(
+    kind: Operation['kind'],
+    ids: string[],
+    category?: NotificationCategory
+  ): Operation {
+    const operation: Operation = {
+      id: ++operationId,
+      kind,
+      ids: [...new Set(ids)],
+      category,
+      unknownUnread: 0,
+      unknownCategories: {},
+      unknownTotal: 0,
+      statisticsVersion: base.value.statisticsVersion,
+      queryCategory: activeCategory.value,
+    }
+    if (kind !== 'read-all' && kind !== 'clear') return operation
+    const known = [...base.value.known.values()].filter(
+      message => !category || message.category === category
+    )
+    Object.assign(operation, unknownCounts(base.value, known, category))
+    const queryMatches = !category || activeCategory.value === category
+    if (kind === 'clear' && queryMatches)
+      operation.unknownTotal = Math.max(
+        0,
+        base.value.total -
+          base.value.list.filter(
+            message => !category || message.category === category
+          ).length
+      )
+    return operation
+  }
+  async function execute(
+    operation: Operation,
+    adapter: (() => Promise<void>) | undefined,
+    name: string
+  ) {
+    clearError()
+    if (mode.value === 'remote' && !adapter) {
+      const cause = new Error('远程消息模式未配置 ' + name + ' 接口')
+      retryAction = () => execute(operation, adapter, name)
+      report(cause, name)
+      throw cause
+    }
+    const scope = scopeVersion
+    operations.value = [...operations.value, operation]
+    try {
+      if (mode.value === 'remote') await adapter!()
+      if (disposed || scope !== scopeVersion) {
+        const cancelled = new Error('消息作用域已失效')
+        cancelled.name = 'AbortError'
+        throw cancelled
+      }
+      base.value = applyOperation(base.value, operation)
+      appendChange({ operation })
+      persist()
+    } catch (cause) {
+      if (!disposed && scope === scopeVersion) {
+        retryAction = () => execute(operation, adapter, name)
+        report(cause, name)
+      }
+      throw cause
+    } finally {
+      if (scope === scopeVersion) {
+        operations.value = operations.value.filter(
+          item => item.id !== operation.id
+        )
+        base.value = pruneKnownRecords(base.value)
+      }
+    }
+  }
+  async function markAsRead(ids: string[]) {
+    await execute(
+      createOperation('read', ids),
+      props.markAsRead ? () => props.markAsRead!(ids) : undefined,
+      'mark-as-read'
+    )
+  }
+  async function markAllAsRead(category?: NotificationCategory) {
+    const ids = [...base.value.known.values()]
+      .filter(message => !category || message.category === category)
+      .map(message => message.id)
+    await execute(
+      createOperation('read-all', ids, category),
+      props.markAllRead ? () => props.markAllRead!(category) : undefined,
+      'mark-all-as-read'
+    )
+  }
+  async function deleteMessages(ids: string[]) {
+    await execute(
+      createOperation('delete', ids),
+      props.deleteNotification
+        ? () => props.deleteNotification!(ids)
+        : undefined,
+      'delete'
+    )
+    if (selectedMessage.value && ids.includes(selectedMessage.value.id))
+      clearSelection()
+  }
+  async function clearMessages(category?: NotificationCategory) {
+    const ids = [...base.value.known.values()]
+      .filter(message => !category || message.category === category)
+      .map(message => message.id)
+    await execute(
+      createOperation('clear', ids, category),
+      props.clearNotifications
+        ? () => props.clearNotifications!(category)
+        : undefined,
+      'clear'
+    )
+    if (
+      selectedMessage.value &&
+      (!category || selectedMessage.value.category === category)
+    )
+      clearSelection()
+  }
+  const seenPushes = new Set<string>()
+  function handleNewMessage(data: WSNotificationPayload['data']) {
+    if (!isNotificationMessage(data)) return
+    const message = data
+    if (seenPushes.has(message.id) || base.value.known.has(message.id)) return
+    seenPushes.add(message.id)
+    if (seenPushes.size > 2_000)
+      seenPushes.delete(seenPushes.values().next().value!)
+    base.value = addMessage(base.value, message)
+    appendChange({ message: cloneMessage(message) })
+    persist()
+    events.onNewMessage?.(message)
+    showDesktopNotification(message)
+  }
+  function handleReadSync(data: WSNotificationPayload['data']) {
+    if (!Array.isArray(data)) return
+    const ids = data.filter(isNotificationMessage).map(message => message.id)
+    const operation = createOperation('read', ids)
+    base.value = applyOperation(base.value, operation)
+    appendChange({ operation })
+    persist()
+  }
+  function handleCountUpdate(data: WSNotificationPayload['data']) {
+    if (
+      data &&
+      typeof data === 'object' &&
+      'unreadCount' in data &&
+      validCount(data.unreadCount)
+    ) {
+      const counts = data as {
+        unreadCount: number
+        unreadByCategory?: NotificationUnreadByCategory
+      }
+      base.value = applyChange(base.value, { version: 0, counts })
+      appendChange({ counts })
+    }
+  }
+  function handleWSMessage(payload: WSNotificationPayload) {
+    if (disposed) return
+    switch (payload.type) {
+      case 'new_message':
+        handleNewMessage(payload.data)
+        break
+      case 'read_sync':
+        handleReadSync(payload.data)
+        break
+      case 'count_update':
+        handleCountUpdate(payload.data)
+        break
+    }
+  }
+  function handleWSStatusChange(status: WSConnectionStatus) {
+    wsStatus.value = status
+    events.onWSStatusChange?.(status)
+    if (status === 'connected') {
+      if (hadConnection && mode.value === 'remote')
+        void fetchMessages(true).catch(() => undefined)
+      hadConnection = true
+    }
+  }
+  const ws = useNotificationWS(handleWSMessage, handleWSStatusChange)
+  function connectWS(config = props.wsConfig) {
+    if (config) ws.connect(config)
+  }
+  function disconnectWS() {
+    ws.disconnect()
+  }
+  function showDesktopNotification(message: NotificationMessage) {
+    if (
+      !props.desktopNotification ||
+      typeof window === 'undefined' ||
+      !('Notification' in window) ||
+      Notification.permission !== 'granted'
+    )
+      return
+    const notification = new Notification(message.title, {
+      body: message.summary,
+      icon: message.sender?.avatar,
+      tag: message.id,
+    })
+    notification.addEventListener('click', () => {
+      window.focus()
+      selectMessage(message)
+      notification.close()
+    })
+    const timer = setTimeout(() => {
+      notification.close()
+      desktopTimers.delete(timer)
+    }, 5_000)
+    desktopTimers.add(timer)
+  }
   async function requestDesktopPermission(): Promise<
     NotificationPermission | 'unsupported'
   > {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
+    if (typeof window === 'undefined' || !('Notification' in window))
       return 'unsupported'
-    }
     return Notification.requestPermission()
   }
-
-  /**
-   * 创建桌面通知实例
-   */
-  function createDesktopNotification(msg: NotificationMessage) {
-    const n = new Notification(msg.title, {
-      body: msg.summary,
-      icon: msg.sender?.avatar || '/robot-avatar.png',
-      tag: msg.id,
-    })
-
-    n.addEventListener('click', () => {
-      window.focus()
-      selectMessage(msg)
-      n.close()
-    })
-
-    /* 5 秒后自动关闭 */
-    setTimeout(() => n.close(), 5000)
+  function selectMessage(message: NotificationMessage) {
+    selectedMessage.value = message
+    if (message.status === 'unread')
+      void markAsRead([message.id]).catch(() => undefined)
   }
-
-  /* ─── 轮询 ──────────────────────────────────── */
-
-  let pollingTimer: ReturnType<typeof setInterval> | null = null
-
-  /**
-   * 启动轮询
-   */
-  function startPolling() {
-    stopPolling()
-    const interval = props.pollingInterval ?? DEFAULT_POLLING_INTERVAL
-    if (interval <= 0) return
-
-    pollingTimer = setInterval(() => {
-      if (!loading.value) void fetchMessages(true).catch(() => undefined)
-    }, interval)
-  }
-
-  /**
-   * 停止轮询
-   */
-  function stopPolling() {
-    if (pollingTimer) {
-      clearInterval(pollingTimer)
-      pollingTimer = null
-    }
-  }
-
-  /* ─── 交互 ──────────────────────────────────── */
-
-  /**
-   * 选中/查看消息
-   */
-  function selectMessage(msg: NotificationMessage) {
-    selectedMessage.value = msg
-    /* 自动标记为已读 */
-    if (msg.status === 'unread') {
-      void markAsRead([msg.id]).catch(() => undefined)
-    }
-  }
-
-  /**
-   * 返回列表
-   */
   function clearSelection() {
     selectedMessage.value = null
   }
-
-  /**
-   * 切换分类
-   *
-   * 纯客户端过滤（Mock / 已加载数据）直接切换，
-   * API 模式则重新拉取对应分类数据。
-   */
   function switchCategory(category: NotificationCategory | 'all') {
+    if (activeCategory.value === category) return
     activeCategory.value = category
-    selectedMessage.value = null
-
-    /* 仅 API 模式需要重新拉取 */
-    if (props.fetchNotifications) {
+    clearSelection()
+    if (mode.value === 'remote') {
+      base.value = {
+        ...base.value,
+        list: [],
+        total: 0,
+        queryCategory: category,
+      }
+      page.value = 1
       void fetchMessages(true).catch(() => undefined)
     }
   }
-
-  /* ─── 初始化 & 清理 ─────────────────────────── */
-
-  /**
-   * 初始化
-   */
-  function init() {
+  function initialize() {
+    if (initialized) return
+    initialized = true
+    disposed = false
     void fetchMessages(true).catch(() => undefined)
-    startPolling()
-
-    /* 如果配置了 WebSocket → 建连 */
-    if (props.wsConfig) wsConnect(props.wsConfig)
-  }
-
-  /**
-   * 销毁
-   */
-  function destroy() {
-    fetchVersion++
-    stopPolling()
-    wsDisconnect()
-    if (persistTimer) {
-      clearTimeout(persistTimer)
-      persistTimer = null
+    const interval = props.pollingInterval ?? DEFAULT_POLLING_INTERVAL
+    if (mode.value === 'remote' && interval > 0) {
+      pollingTimer = setInterval(() => {
+        if (!loading.value) void fetchMessages(true).catch(() => undefined)
+      }, interval)
     }
+    connectWS()
   }
-
-  onMounted(init)
-  onBeforeUnmount(destroy)
-
+  function dispose() {
+    initialized = false
+    disposed = true
+    scopeVersion++
+    fetchVersion++
+    loading.value = false
+    operations.value = []
+    changes = []
+    retryAction = undefined
+    seenPushes.clear()
+    hadConnection = false
+    if (pollingTimer) clearInterval(pollingTimer)
+    pollingTimer = null
+    for (const timer of desktopTimers) clearTimeout(timer)
+    desktopTimers.clear()
+    disconnectWS()
+  }
+  async function retry() {
+    if (retryAction) await retryAction()
+    else await fetchMessages(true)
+  }
+  if (getCurrentScope()) onScopeDispose(dispose)
+  if (props.autoStart !== false) {
+    if (getCurrentInstance()) onMounted(initialize)
+    else initialize()
+  }
+  watch(messages, list => {
+    const id = selectedMessage.value?.id
+    if (id)
+      selectedMessage.value = list.find(message => message.id === id) ?? null
+  })
+  watch(
+    () => [mode.value, props.storageKey],
+    () => {
+      const shouldStart = initialized
+      dispose()
+      base.value = emptySnapshot()
+      activeCategory.value = 'all'
+      selectedMessage.value = null
+      popoverVisible.value = false
+      error.value = null
+      if (shouldStart) initialize()
+    }
+  )
   return {
-    /* 状态 */
     messages,
     activeCategory,
     loading,
@@ -542,14 +801,13 @@ export function useNotificationCore(
     selectedMessage,
     popoverVisible,
     wsStatus,
-
-    /* 计算 */
     unreadCount,
     unreadByCategory,
     filteredMessages,
     hasMore,
-
-    /* 操作 */
+    error,
+    busy,
+    pendingIds,
     fetchMessages,
     loadMore,
     markAsRead,
@@ -559,10 +817,12 @@ export function useNotificationCore(
     selectMessage,
     clearSelection,
     switchCategory,
+    clearError,
+    retry,
     requestDesktopPermission,
-
-    /* WebSocket */
-    connectWS: wsConnect,
-    disconnectWS: wsDisconnect,
+    connectWS,
+    disconnectWS,
+    initialize,
+    dispose,
   }
 }

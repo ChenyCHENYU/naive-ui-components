@@ -10,13 +10,15 @@
   <div class="notification-list">
     <!-- 分类 Tab -->
     <div class="notification-list__tabs">
-      <div
+      <button
         v-for="tab in CATEGORY_TABS"
         :key="tab.key"
         class="notification-list__tab"
         :class="{
           'notification-list__tab--active': activeCategory === tab.key,
         }"
+        type="button"
+        :aria-pressed="activeCategory === tab.key"
         @click="$emit('switchCategory', tab.key)"
       >
         <span>{{ tab.label }}</span>
@@ -26,25 +28,40 @@
         >
           {{ getTabCount(tab.key) }}
         </span>
-      </div>
+      </button>
     </div>
 
     <!-- 操作栏 -->
-    <div v-if="messages.length > 0" class="notification-list__toolbar">
+    <div
+      v-if="messages.length > 0"
+      class="notification-list__toolbar"
+    >
       <NButton
         text
         size="tiny"
-        :disabled="currentUnread === 0"
+        :disabled="busy || (currentUnread !== undefined && currentUnread === 0)"
+        :loading="busy"
         @click="$emit('markAllRead')"
       >
         <template #icon>
-          <C_Icon name="mdi:check-all" :size="14" />
+          <C_Icon
+            name="mdi:check-all"
+            :size="14"
+          />
         </template>
         全部已读
       </NButton>
-      <NButton text size="tiny" @click="$emit('clear')">
+      <NButton
+        text
+        size="tiny"
+        :disabled="busy"
+        @click="$emit('clear')"
+      >
         <template #icon>
-          <C_Icon name="mdi:delete-sweep-outline" :size="14" />
+          <C_Icon
+            name="mdi:delete-sweep-outline"
+            :size="14"
+          />
         </template>
         清空
       </NButton>
@@ -57,12 +74,32 @@
     >
       <template v-if="loading && messages.length === 0">
         <!-- 骨架屏 -->
-        <div v-for="i in 4" :key="i" class="notification-list__skeleton">
-          <NSkeleton circle :width="36" :height="36" />
+        <div
+          v-for="i in 4"
+          :key="i"
+          class="notification-list__skeleton"
+        >
+          <NSkeleton
+            circle
+            :width="36"
+            :height="36"
+          />
           <div class="notification-list__skeleton-text">
-            <NSkeleton text :width="'60%'" :height="14" />
-            <NSkeleton text :width="'90%'" :height="12" />
-            <NSkeleton text :width="'40%'" :height="10" />
+            <NSkeleton
+              text
+              :width="'60%'"
+              :height="14"
+            />
+            <NSkeleton
+              text
+              :width="'90%'"
+              :height="12"
+            />
+            <NSkeleton
+              text
+              :width="'40%'"
+              :height="10"
+            />
           </div>
         </div>
       </template>
@@ -73,6 +110,7 @@
             v-for="msg in messages"
             :key="msg.id"
             :message="msg"
+            :busy="busy || pendingIds.includes(msg.id)"
             @click="$emit('itemClick', $event)"
             @read="$emit('read', $event)"
             @delete="$emit('delete', $event)"
@@ -80,18 +118,26 @@
         </div>
 
         <!-- 加载更多 -->
-        <div
+        <button
           v-if="hasMore"
           class="notification-list__load-more"
+          type="button"
+          :disabled="loading"
           @click="$emit('loadMore')"
         >
-          <NSpin v-if="loading" :size="14" />
-          <span>{{ loading ? "加载中..." : "加载更多" }}</span>
-        </div>
+          <NSpin
+            v-if="loading"
+            :size="14"
+          />
+          <span>{{ loading ? '加载中...' : '加载更多' }}</span>
+        </button>
       </template>
 
       <!-- 空状态 -->
-      <div v-else class="notification-list__empty">
+      <div
+        v-else
+        class="notification-list__empty"
+      >
         <C_Icon
           name="mdi:bell-off-outline"
           :size="48"
@@ -104,175 +150,192 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import C_Icon from "../../C_Icon/index.vue";
-import type { NotificationMessage, NotificationCategory } from "../types";
-import { CATEGORY_TABS } from "../constants";
-import NotificationItem from "./NotificationItem.vue";
+  import { computed } from 'vue'
+  import C_Icon from '../../C_Icon/index.vue'
+  import type {
+    NotificationMessage,
+    NotificationCategory,
+    NotificationUnreadByCategory,
+  } from '../types'
+  import { CATEGORY_TABS } from '../constants'
+  import NotificationItem from './NotificationItem.vue'
 
-interface Props {
-  /** 消息列表 */
-  messages: NotificationMessage[];
-  /** 当前分类 */
-  activeCategory: NotificationCategory | "all";
-  /** 各分类未读数 */
-  unreadByCategory: Record<string, number>;
-  /** 总未读数 */
-  unreadCount: number;
-  /** 是否加载中 */
-  loading: boolean;
-  /** 是否有更多 */
-  hasMore: boolean;
-  /** 滚动区域高度 */
-  scrollHeight?: number;
-}
+  interface Props {
+    /** 消息列表 */
+    messages: NotificationMessage[]
+    /** 当前分类 */
+    activeCategory: NotificationCategory | 'all'
+    /** 各分类未读数 */
+    unreadByCategory: NotificationUnreadByCategory
+    busy?: boolean
+    pendingIds?: readonly string[]
+    /** 总未读数 */
+    unreadCount: number
+    /** 是否加载中 */
+    loading: boolean
+    /** 是否有更多 */
+    hasMore: boolean
+    /** 滚动区域高度 */
+    scrollHeight?: number
+  }
 
-const props = withDefaults(defineProps<Props>(), {
-  scrollHeight: 420,
-});
+  const props = withDefaults(defineProps<Props>(), {
+    scrollHeight: 420,
+    busy: false,
+    pendingIds: () => [],
+  })
 
-defineEmits<{
-  switchCategory: [key: NotificationCategory | "all"];
-  itemClick: [message: NotificationMessage];
-  read: [id: string];
-  delete: [id: string];
-  markAllRead: [];
-  clear: [];
-  loadMore: [];
-}>();
+  defineEmits<{
+    switchCategory: [key: NotificationCategory | 'all']
+    itemClick: [message: NotificationMessage]
+    read: [id: string]
+    delete: [id: string]
+    markAllRead: []
+    clear: []
+    loadMore: []
+  }>()
 
-/** 当前分类下的未读数 */
-const currentUnread = computed(() => {
-  if (props.activeCategory === "all") return props.unreadCount;
-  return props.unreadByCategory[props.activeCategory] ?? 0;
-});
+  /** 当前分类下的未读数 */
+  const currentUnread = computed(() => {
+    if (props.activeCategory === 'all') return props.unreadCount
+    return props.unreadByCategory[props.activeCategory]
+  })
 
-/** 获取 Tab 的未读数 */
-function getTabCount(key: NotificationCategory | "all"): number {
-  if (key === "all") return props.unreadCount;
-  return props.unreadByCategory[key] ?? 0;
-}
+  /** 获取 Tab 的未读数 */
+  function getTabCount(key: NotificationCategory | 'all'): number {
+    if (key === 'all') return props.unreadCount
+    return props.unreadByCategory[key] ?? 0
+  }
 </script>
 
 <style scoped lang="scss">
-.notification-list {
-  &__tabs {
-    display: flex;
-    border-bottom: 1px solid var(--c-border);
-    padding: 0 4px;
-  }
+  .notification-list {
+    &__tabs {
+      display: flex;
+      border-bottom: 1px solid var(--c-border);
+      padding: 0 4px;
+    }
 
-  &__tab {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 12px;
-    font-size: 13px;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all var(--c-transition, 0.2s ease);
-    user-select: none;
-
-    &::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 12px;
-      right: 12px;
-      height: 2px;
+    &__tab {
+      appearance: none;
+      border: 0;
       background: transparent;
-      border-radius: 1px;
-      transition: background var(--c-transition, 0.2s ease);
-    }
-
-    &:hover {
-      color: var(--c-text-1);
-    }
-
-    &--active {
-      color: var(--c-primary);
-      font-weight: 500;
+      font-family: inherit;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--c-text-2);
+      cursor: pointer;
+      transition: all var(--c-transition, 0.2s ease);
+      user-select: none;
 
       &::after {
-        background: var(--c-primary);
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 12px;
+        right: 12px;
+        height: 2px;
+        background: transparent;
+        border-radius: 1px;
+        transition: background var(--c-transition, 0.2s ease);
+      }
+
+      &:hover {
+        color: var(--c-text-1);
+      }
+
+      &--active {
+        color: var(--c-primary);
+        font-weight: 500;
+
+        &::after {
+          background: var(--c-primary);
+        }
       }
     }
-  }
 
-  &__tab-count {
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    border-radius: 8px;
-    background: #f5222d;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 16px;
-    text-align: center;
-  }
+    &__tab-count {
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 8px;
+      background: #f5222d;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 16px;
+      text-align: center;
+    }
 
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    padding: 6px 16px;
-    border-bottom: 1px solid var(--c-border);
-  }
+    &__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--c-border);
+    }
 
-  &__scroll {
-    flex: 1;
-  }
+    &__scroll {
+      flex: 1;
+    }
 
-  &__skeleton {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
-  }
+    &__skeleton {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+    }
 
-  &__skeleton-text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+    &__skeleton-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-  &__load-more {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 12px;
-    font-size: 12px;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: color var(--c-transition, 0.2s ease);
+    &__load-more {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      font-family: inherit;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px;
+      font-size: 12px;
+      color: var(--c-text-2);
+      cursor: pointer;
+      transition: color var(--c-transition, 0.2s ease);
 
-    &:hover {
-      color: var(--c-primary);
+      &:hover {
+        color: var(--c-primary);
+      }
+    }
+
+    &__empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 0;
+      gap: 12px;
+    }
+
+    &__empty-icon {
+      color: var(--c-text-4);
+      opacity: 0.5;
+    }
+
+    &__empty-text {
+      font-size: 13px;
+      color: var(--c-text-4);
     }
   }
-
-  &__empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 0;
-    gap: 12px;
-  }
-
-  &__empty-icon {
-    color: var(--c-text-4);
-    opacity: 0.5;
-  }
-
-  &__empty-text {
-    font-size: 13px;
-    color: var(--c-text-4);
-  }
-}
 </style>

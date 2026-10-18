@@ -85,11 +85,11 @@ Image/calendar behavior notes: `C_ImageCropper` flips the actual source and rese
 
 ## Workflow & Notification Components
 
-| Component              | Description                              | External Deps    |
-| ---------------------- | ---------------------------------------- | ---------------- |
-| `C_WorkFlow`           | Workflow editor (approval/CC/conditions) | `@vue-flow/core` |
-| `C_NotificationCenter` | Notification center (WebSocket/polling)  | -                |
-| `C_Upload`             | Large file upload (chunked/resumable)    | `spark-md5`      |
+| Component              | Description                                  | External Deps                                        |
+| ---------------------- | -------------------------------------------- | ---------------------------------------------------- |
+| `C_WorkFlow`           | Workflow editor (approval/CC/conditions)     | `@vue-flow/core`                                     |
+| `C_NotificationCenter` | Notification center (demo/remote/controller) | [Integration guide](./guides/notification-center.md) |
+| `C_Upload`             | Large file upload (chunked/resumable)        | `spark-md5`                                          |
 
 ## Dependency Notes
 

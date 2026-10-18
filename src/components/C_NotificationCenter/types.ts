@@ -8,6 +8,16 @@
 
 /* ─── 消息基础类型 ─────────────────────────────── */
 
+import type { Ref } from 'vue'
+
+/** 远程模式缺少接口时明确报错，不回退演示数据。 */
+export type NotificationDataMode = 'demo' | 'remote'
+
+/** 未返回的分类计数保持未知，避免把当前页误当成完整统计。 */
+export type NotificationUnreadByCategory = Partial<
+  Record<NotificationCategory, number>
+>
+
 /** 消息类别 */
 export type NotificationCategory = 'system' | 'business' | 'alarm'
 
@@ -56,16 +66,20 @@ export interface NotificationSender {
 /* ─── API 函数签名 ─────────────────────────────── */
 
 /** 拉取消息列表函数 */
+export interface FetchNotificationsResult {
+  list: NotificationMessage[]
+  total: number
+  /** 全局未读总数，与当前分类和页码无关。 */
+  unreadCount: number
+  unreadByCategory?: NotificationUnreadByCategory
+}
+
 export type FetchNotificationsFn = (params: {
   category?: NotificationCategory
   status?: NotificationStatus
   page?: number
   pageSize?: number
-}) => Promise<{
-  list: NotificationMessage[]
-  total: number
-  unreadCount: number
-}>
+}) => Promise<FetchNotificationsResult>
 
 /** 标记已读函数 */
 export type MarkAsReadFn = (ids: string[]) => Promise<void>
@@ -97,6 +111,8 @@ export interface NotificationWSConfig {
   heartbeatInterval?: number
   /** 心跳消息内容 */
   heartbeatMessage?: string
+  /** 等待 pong 的超时（ms）；0 保持仅发送心跳的兼容行为。 */
+  heartbeatTimeout?: number
   /** 鉴权 token 获取函数 */
   getToken?: () => string | undefined
 }
@@ -110,13 +126,61 @@ export interface WSNotificationPayload {
   /** 事件类型 */
   type: 'new_message' | 'read_sync' | 'count_update'
   /** 推送的消息数据 */
-  data: NotificationMessage | NotificationMessage[] | { unreadCount: number }
+  data:
+    | NotificationMessage
+    | NotificationMessage[]
+    | { unreadCount: number; unreadByCategory?: NotificationUnreadByCategory }
+}
+
+/**
+ * 可共享的通知数据源。组件只消费状态与操作，不拥有外部控制器的生命周期。
+ * Ref 支持 computed 投影，便于应用将顶部消息与完整消息中心接到同一 Store。
+ */
+export interface NotificationCenterController {
+  messages: Readonly<Ref<NotificationMessage[]>>
+  activeCategory: Ref<NotificationCategory | 'all'>
+  loading: Readonly<Ref<boolean>>
+  total: Readonly<Ref<number>>
+  page: Readonly<Ref<number>>
+  selectedMessage: Ref<NotificationMessage | null>
+  popoverVisible: Ref<boolean>
+  wsStatus: Readonly<Ref<WSConnectionStatus>>
+  unreadCount: Readonly<Ref<number>>
+  unreadByCategory: Readonly<Ref<NotificationUnreadByCategory>>
+  filteredMessages: Readonly<Ref<NotificationMessage[]>>
+  hasMore: Readonly<Ref<boolean>>
+  error: Readonly<Ref<string | null>>
+  busy: Readonly<Ref<boolean>>
+  pendingIds: Readonly<Ref<readonly string[]>>
+  fetchMessages: (reset?: boolean) => Promise<void>
+  loadMore: () => Promise<void>
+  markAsRead: (ids: string[]) => Promise<void>
+  markAllAsRead: (category?: NotificationCategory) => Promise<void>
+  deleteMessages: (ids: string[]) => Promise<void>
+  clearMessages: (category?: NotificationCategory) => Promise<void>
+  selectMessage: (message: NotificationMessage) => void
+  clearSelection: () => void
+  switchCategory: (category: NotificationCategory | 'all') => void
+  clearError: () => void
+  /** 重试最近失败的操作；未实现时组件退回刷新列表。 */
+  retry?: () => Promise<void>
+  connectWS: (config?: NotificationWSConfig) => void
+  disconnectWS: () => void
+  requestDesktopPermission: () => Promise<
+    NotificationPermission | 'unsupported'
+  >
 }
 
 /* ─── 组件 Props / Emits / Expose ──────────────── */
 
 /** 组件 Props */
 export interface NotificationCenterProps {
+  /** 不传时根据 fetchNotifications 推断，保留无接口演示兼容性。 */
+  dataMode?: NotificationDataMode
+  /** 外部共享控制器；传入后不再初始化本地数据、轮询或 WebSocket。 */
+  controller?: NotificationCenterController
+  /** 独立 core 是否自动初始化，默认 true。 */
+  autoStart?: boolean
   /** 拉取消息列表 */
   fetchNotifications?: FetchNotificationsFn
   /** 标记已读 */
@@ -145,6 +209,7 @@ export interface NotificationCenterProps {
 
 /** 组件 Emits */
 export interface NotificationCenterEmits {
+  viewAll: []
   /** 点击消息 */
   itemClick: [message: NotificationMessage]
   /** 消息已读 */
