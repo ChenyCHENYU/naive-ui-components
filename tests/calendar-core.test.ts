@@ -49,4 +49,36 @@ describe('C_FullCalendar local event time', () => {
       scope.stop()
     }
   })
+
+  test('reactive view config preserves callbacks while controlled events and editability stay authoritative', async () => {
+    const click = () => {}
+    const props = reactive({
+      events: [{ id: 'one', title: 'One', start: '2026-10-18' }],
+      editable: false,
+      config: {
+        headerToolbar: false as const,
+        weekends: false,
+        eventClick: click,
+      },
+    })
+    const scope = effectScope()
+    const calendar = scope.run(() => useCalendarEvents(props, () => {}))!
+    try {
+      expect(calendar.calendarOptions.value.headerToolbar).toBe(false)
+      expect(calendar.calendarOptions.value.weekends).toBe(false)
+      expect(calendar.calendarOptions.value.eventClick).toBe(click)
+      expect(calendar.calendarOptions.value.editable).toBe(false)
+      calendar.expose.addEvent({ id: 'two', title: 'Two', start: '2026-10-19' })
+      expect(calendar.calendarOptions.value.events).toHaveLength(2)
+      expect(calendar.calendarOptions.value.eventClick).toBe(click)
+      props.config.weekends = true
+      await nextTick()
+      expect(calendar.calendarOptions.value.weekends).toBe(true)
+      props.events = []
+      await nextTick()
+      expect(calendar.calendarOptions.value.events).toHaveLength(0)
+    } finally {
+      scope.stop()
+    }
+  })
 })

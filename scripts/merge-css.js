@@ -76,6 +76,7 @@ const vendorStyles = {
   C_Code: ['highlight.js/styles/github.css'],
   C_Editor: ['@wangeditor-next/editor/dist/css/style.css'],
   C_Guide: ['driver.js/dist/driver.css'],
+  C_ImageCropper: ['vue-cropper/dist/index.css'],
   C_Map: ['leaflet/dist/leaflet.css'],
   C_Markdown: ['md-editor-v3/lib/style.css'],
   C_VideoPlayer: ['xgplayer/dist/index.min.css'],

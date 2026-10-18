@@ -14,6 +14,7 @@ const dependencies = [
   'highlight.js/styles/github.css',
   '@wangeditor-next/editor/dist/css/style.css',
   'driver.js/dist/driver.css',
+  'vue-cropper/dist/index.css',
   'leaflet/dist/leaflet.css',
   'md-editor-v3/lib/style.css',
   'xgplayer/dist/index.min.css',

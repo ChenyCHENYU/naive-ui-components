@@ -1,4 +1,4 @@
-import { ref, shallowRef, watch, type Ref } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import { useComponentFeedback } from '../../../config'
 import type { CalendarEvent, CalendarProps, CalendarEditForm } from '../types'
 import {
@@ -217,19 +217,22 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     message.success(`已删除事件: ${title}`)
   }
 
-  const calendarOptions: Ref<CalendarOptions> = shallowRef({
-    plugins: [dayGridPlugin, interactionPlugin, listPlugin],
+  const calendarOptions = computed<CalendarOptions>(() => ({
     locale: zhCn,
-    initialView: props.initialView ?? 'dayGridMonth',
-    events: internalEvents.value,
     headerToolbar: HEADER_TOOLBAR,
     buttonText: BUTTON_TEXT,
-    editable: props.editable ?? true,
     eventClick: handleEventClick,
     dateClick: handleDateClick,
     eventDrop: handleEventDrop,
     eventResize: handleEventResize,
-  })
+    ...props.config,
+    plugins: [dayGridPlugin, interactionPlugin, listPlugin],
+    initialView: props.initialView ?? 'dayGridMonth',
+    events: internalEvents.value,
+    // 保持未设置状态，避免 Vue 适配器把每次新建的空数组视作清空事件源。
+    eventSources: undefined,
+    editable: props.editable ?? true,
+  }))
 
   watch(
     () => props.events,
@@ -237,27 +240,6 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
       internalEvents.value = [...(newEvents ?? [])]
     },
     { deep: true }
-  )
-
-  watch(
-    internalEvents,
-    newEvents => {
-      calendarOptions.value = {
-        ...calendarOptions.value,
-        events: newEvents,
-      }
-    },
-    { deep: true }
-  )
-
-  watch(
-    () => props.editable,
-    editable => {
-      calendarOptions.value = {
-        ...calendarOptions.value,
-        editable: editable ?? true,
-      }
-    }
   )
 
   watch(

@@ -1,4 +1,4 @@
-import type { CalendarApi } from '@fullcalendar/core'
+import type { CalendarApi, CalendarOptions } from '@fullcalendar/core'
 
 export interface CalendarEvent {
   id: string
@@ -23,6 +23,11 @@ export interface CalendarEditForm {
 }
 
 export interface CalendarProps {
+  /** 视图、布局与交互扩展；数据、插件和编辑开关由组件受控属性管理。 */
+  config?: Omit<
+    CalendarOptions,
+    'events' | 'eventSources' | 'plugins' | 'initialView' | 'editable'
+  >
   events?: CalendarEvent[]
   initialView?: CalendarViewType
   editable?: boolean
