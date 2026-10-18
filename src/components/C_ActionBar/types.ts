@@ -58,10 +58,13 @@ export interface ActionItem {
 export interface ActionBarConfig {
   align?: ActionGroupAlign
   size?: ActionButtonSize
+  /** 按钮间距；省略时紧凑模式为 6px，常规模式为 12px。 */
   gap?: number
+  /** 允许分组及组内按钮随可用宽度换行。 */
   wrap?: boolean
   showDivider?: boolean
   dividerType?: 'vertical' | 'horizontal'
+  /** 减少容器留白和默认按钮间距；行内模式也生效。 */
   compact?: boolean
   inline?: boolean
 }

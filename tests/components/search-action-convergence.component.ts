@@ -360,3 +360,49 @@ test('action failures notify consumers and remain visible to Vue error handling'
   )
   expect(wrapper.getComponent(NButton).props('disabled')).toBe(false)
 })
+
+test('ActionBar updates compact spacing in inline mode and preserves explicit gaps', async () => {
+  const wrapper = mount(C_ActionBar, {
+    props: { actions: [{ key: 'add' }, { key: 'export' }] },
+  })
+  expect(wrapper.get('.actions-group').attributes('style')).toContain(
+    'gap: 6px'
+  )
+  await wrapper.setProps({ config: { compact: false } })
+  expect(wrapper.get('.actions-group').attributes('style')).toContain(
+    'gap: 12px'
+  )
+  await wrapper.setProps({ config: { compact: true, gap: 9 } })
+  expect(wrapper.get('.actions-group').attributes('style')).toContain(
+    'gap: 9px'
+  )
+  await wrapper.setProps({ config: { compact: false, gap: 0 } })
+  expect(wrapper.get('.actions-group').attributes('style')).toContain(
+    'gap: 0px'
+  )
+  wrapper.unmount()
+})
+
+test('ActionBar keeps normal and primary button sizes consistent and follows runtime size changes', async () => {
+  const wrapper = mount(C_ActionBar, {
+    props: {
+      actions: [{ key: 'refresh' }, { key: 'export', type: 'primary' }],
+      config: { size: 'tiny' },
+    },
+  })
+  expect(
+    wrapper.findAllComponents(NButton).map(button => button.props('size'))
+  ).toEqual(['tiny', 'tiny'])
+  await wrapper.setProps({ config: { size: 'small' } })
+  expect(
+    wrapper.findAllComponents(NButton).map(button => button.props('size'))
+  ).toEqual(['small', 'small'])
+  await wrapper.setProps({
+    actions: [
+      { key: 'export', size: 'medium', buttonProps: { size: 'large' } },
+    ],
+  })
+  expect(wrapper.getComponent(NButton).props('size')).toBe('large')
+  expect(wrapper.get('.c-icon').attributes('style')).toContain('18px')
+  wrapper.unmount()
+})

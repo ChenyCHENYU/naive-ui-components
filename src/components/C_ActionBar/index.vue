@@ -125,6 +125,10 @@
   const finalConfig = computed<Required<ActionBarConfig>>(() => ({
     ...ACTION_BAR_DEFAULT_CONFIG,
     ...props.config,
+    // 行内模式也通过按钮间距体现紧凑程度；显式 gap 始终优先。
+    gap:
+      props.config.gap ??
+      (props.config.compact === false ? 12 : ACTION_BAR_DEFAULT_CONFIG.gap),
   }))
 
   const leftActions = computed<ActionItem[]>(() => {
@@ -262,7 +266,10 @@
       const action = computed(() => props.action)
       const resolvedAction = computed(() => resolveActionPreset(action.value))
       const buttonSize = computed(
-        () => resolvedAction.value.size || finalConfig.value.size
+        () =>
+          resolvedAction.value.buttonProps?.size ||
+          resolvedAction.value.size ||
+          finalConfig.value.size
       )
       const iconSize = computed(() => {
         const sizes: Record<ActionButtonSize, number> = {

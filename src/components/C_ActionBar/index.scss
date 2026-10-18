@@ -3,6 +3,7 @@
 /* ================= 主容器 ================= */
 .c-action-bar {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   padding: 16px;
@@ -52,6 +53,12 @@
   &.is-wrap {
     flex-wrap: wrap;
     gap: 8px;
+
+    .actions-group {
+      flex-wrap: wrap;
+      min-width: 0;
+      max-width: 100%;
+    }
   }
 
   @media (max-width: 768px) {
@@ -71,6 +78,7 @@
   align-items: center;
   gap: 12px;
   flex-wrap: nowrap;
+  flex-shrink: 0;
 
   &.actions-left {
     justify-content: flex-start;
@@ -109,6 +117,7 @@
   }
 
   :deep(.n-button) {
+    flex-shrink: 0;
     transition:
       color 0.16s ease,
       background-color 0.16s ease,
