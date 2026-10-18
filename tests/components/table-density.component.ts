@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
+import { computed, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDataTable, NInput, NPagination } from 'naive-ui'
 import C_Table from '../../src/components/C_Table/index.vue'
@@ -6,6 +7,50 @@ import C_ActionBar from '../../src/components/C_ActionBar/index.vue'
 import type { TableInstance } from '../../src/components/C_Table/types'
 
 describe('C_Table density and mode integration', () => {
+  test('CRUD persistence adapters do not execute until confirmation; explicit edit launchers win', async () => {
+    const persistenceAdapter = vi.fn()
+    const save = vi.fn()
+    const override = vi.fn()
+    const crud = {
+      data: ref([{ id: 1, name: 'Original' }]),
+      loading: ref(false),
+      columns: computed(() => [{ key: 'name', title: 'Name' }]),
+      actions: computed(() => ({ edit: persistenceAdapter })),
+      save,
+    }
+    const wrapper = mount(C_Table, {
+      props: {
+        crud,
+        config: { edit: 'row', pagination: false, toolbar: { show: false } },
+      },
+    })
+    await wrapper.get('[title="编辑"]').trigger('click')
+    await flushPromises()
+    expect(
+      wrapper.getComponent(NDataTable).findComponent(NInput).exists()
+    ).toBe(true)
+    expect(persistenceAdapter).not.toHaveBeenCalled()
+    expect(save).not.toHaveBeenCalled()
+    wrapper
+      .getComponent(NDataTable)
+      .getComponent(NInput)
+      .vm.$emit('update:value', 'Changed')
+    await (wrapper.vm as unknown as TableInstance).saveEdit()
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save.mock.calls[0][0]).toMatchObject({ id: 1, name: 'Changed' })
+    expect(persistenceAdapter).not.toHaveBeenCalled()
+    await wrapper.setProps({
+      config: { edit: 'row', actions: { edit: override }, pagination: false },
+    })
+    await wrapper.get('[title="编辑"]').trigger('click')
+    await flushPromises()
+    expect(override).toHaveBeenCalledTimes(1)
+    expect(
+      wrapper.getComponent(NDataTable).findComponent(NInput).exists()
+    ).toBe(false)
+    wrapper.unmount()
+  })
+
   test('live density reaches table, editor, pagination and actions without losing a draft', async () => {
     const wrapper = mount(C_Table, {
       props: {

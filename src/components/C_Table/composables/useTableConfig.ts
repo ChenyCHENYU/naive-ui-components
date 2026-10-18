@@ -41,6 +41,7 @@ export interface CrudBinding<T extends object = DataRecord> {
 
   columns: ComputedRef<readonly unknown[]>
 
+  /** 提供 save 时 edit 函数只标记保存能力；自定义编辑入口放到 config.actions.edit。 */
   actions?: ComputedRef<SimpleTableActions<T>>
 
   pagination?: ComputedRef<PaginationConfig | boolean | undefined>

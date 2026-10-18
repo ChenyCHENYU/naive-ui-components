@@ -421,8 +421,17 @@
       const fromCrud: Partial<TableConfig> = {}
       if (props.crud.actions) {
         // Internal config uses DataRecord; the public CRUD binding retains T.
-        fromCrud.actions = props.crud.actions
-          .value as unknown as TableConfig['actions']
+        const actions = props.crud.actions.value as unknown as NonNullable<
+          TableConfig['actions']
+        >
+        // CRUD 的 edit 函数是持久化适配器；确认保存由 bridgedEmit -> crud.save 负责。
+        // 有独立 save 时，铅笔只进入内置编辑器；显式 config.actions.edit 仍覆盖此默认桥接。
+        fromCrud.actions = {
+          ...actions,
+          ...(props.crud.save && typeof actions.edit === 'function'
+            ? { edit: undefined }
+            : {}),
+        }
       }
       if (props.crud.pagination)
         fromCrud.pagination = props.crud.pagination.value ?? undefined
