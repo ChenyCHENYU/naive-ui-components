@@ -12,7 +12,12 @@ import type {
   ParentChildLinkMode,
   SimpleTableActions,
   TableColumn,
+  EditMode,
 } from '../types'
+import {
+  resolveComponentDensity,
+  type ComponentDensity,
+} from '../../../core/density'
 import type { DynamicRowsOptions } from './useDynamicRow'
 import type { RowDragConfig } from './useRowDrag'
 import type { CrossPageSelectionConfig } from './useCrossPageSelection'
@@ -55,6 +60,8 @@ export interface CrudBinding<T extends object = DataRecord> {
 
 /** C_Table :config prop 的类型 — 所有功能配置收拢在此 */
 export interface TableConfig<T extends object = DataRecord> {
+  /** 与 C_Form / C_FormSearch 共用密度；局部 display.size 等显式配置优先。 */
+  density?: ComponentDensity
   /** 组件级反馈适配器；未提供时尝试复用 Naive Provider，再安全降级 */
   feedback?: ComponentFeedback
   /** 组件级文案与语言覆盖 */
@@ -62,7 +69,7 @@ export interface TableConfig<T extends object = DataRecord> {
   /** 校验缺失/重复行键；默认开启，超大或无状态表格可关闭。 */
   validateRowKeys?: boolean
   /** 编辑配置 */
-  edit?: EditConfig<T> | boolean
+  edit?: EditConfig<T> | EditMode | boolean
   /** 操作按钮 */
   actions?: SimpleTableActions<T>
   /** 分页配置 */
@@ -103,7 +110,7 @@ export interface TableConfig<T extends object = DataRecord> {
 
 export interface EditConfig<T extends object = DataRecord> {
   enabled?: boolean
-  mode?: 'row' | 'cell' | 'modal' | 'both' | 'none'
+  mode?: EditMode
   showRowActions?: boolean
   modalTitle?: string
   modalWidth?: number
@@ -244,10 +251,12 @@ export interface BatchActionsConfig<T extends object = DataRecord> {
 /* ================= 内部解析后的扁平配置 ================= */
 
 export interface ResolvedConfig {
+  density: ComponentDensity | undefined
+  controlSize: 'small' | 'medium' | 'large'
   feedback: ComponentFeedback | undefined
   locale: ComponentLocale | undefined
   editable: boolean
-  editMode: string
+  editMode: EditMode
   showRowActions: boolean
   modalTitle: string
   modalWidth: number
@@ -351,7 +360,7 @@ const EDIT_DISABLED: Pick<
 }
 
 const resolveEdit = (
-  edit: EditConfig | boolean | undefined
+  edit: EditConfig | EditMode | boolean | undefined
 ): Pick<
   ResolvedConfig,
   | 'editable'
@@ -364,6 +373,7 @@ const resolveEdit = (
   | 'onEditError'
 > => {
   if (edit === false || edit === undefined) return EDIT_DISABLED
+  if (typeof edit === 'string') return resolveEdit({ mode: edit })
   if (edit === true)
     return {
       editable: true,
@@ -375,10 +385,11 @@ const resolveEdit = (
       onEditCancel: undefined,
       onEditError: undefined,
     }
+  const enabled = edit.enabled !== false && edit.mode !== 'none'
   return {
-    editable: edit.enabled !== false && edit.mode !== 'none',
+    editable: enabled,
     editMode: edit.mode || 'modal',
-    showRowActions: edit.showRowActions !== false && edit.mode !== 'none',
+    showRowActions: enabled && edit.showRowActions !== false,
     modalTitle: edit.modalTitle || '编辑数据',
     modalWidth: edit.modalWidth || 600,
     onEditSave: edit.onSave,
@@ -454,7 +465,8 @@ const resolveSelection = (selection: SelectionConfig | boolean | undefined) => {
 }
 
 const resolvePagination = (
-  pagination: PaginationConfig | boolean | undefined
+  pagination: PaginationConfig | boolean | undefined,
+  density?: ComponentDensity
 ): { pagination: PaginationConfig | null } => {
   const defaults: PaginationConfig = {
     enabled: true,
@@ -464,7 +476,7 @@ const resolvePagination = (
     showQuickJumper: true,
     pageSizes: [10, 20, 50, 100],
     simple: false,
-    size: 'medium',
+    size: density ? resolveComponentDensity(density).size : 'medium',
   }
 
   if (pagination === false) return { pagination: null }
@@ -513,25 +525,40 @@ const DISPLAY_DEFAULTS: Pick<
 }
 
 /** 解析 display 配置，合并默认值 */
-function resolveDisplay(display: DisplayConfig | undefined) {
-  if (!display) return { ...DISPLAY_DEFAULTS }
+function resolveDisplay(
+  display: DisplayConfig | undefined,
+  density?: ComponentDensity
+) {
+  const { size } = resolveComponentDensity(density)
+  if (!display) return { ...DISPLAY_DEFAULTS, size }
   return {
     striped: display.striped ?? DISPLAY_DEFAULTS.striped,
     bordered: display.bordered ?? DISPLAY_DEFAULTS.bordered,
     singleLine: display.singleLine ?? DISPLAY_DEFAULTS.singleLine,
-    size: display.size ?? DISPLAY_DEFAULTS.size,
+    size: display.size ?? size,
     maxHeight: display.maxHeight,
     scrollX: display.scrollX,
     columnWidth: display.columnWidth ?? DISPLAY_DEFAULTS.columnWidth,
   }
 }
 
-const resolveToolbar = (toolbar: ToolbarConfig | undefined) => ({
+const resolveToolbar = (
+  toolbar: ToolbarConfig | undefined,
+  density?: ComponentDensity
+) => ({
   showToolbar: toolbar?.show !== false,
   enableColumnSettings: toolbar?.columnSettings !== false,
   toolbarActions: toolbar?.actions ?? [],
   toolbarRightActions: toolbar?.rightActions ?? [],
-  toolbarActionBarConfig: toolbar?.actionBar ?? {},
+  toolbarActionBarConfig: {
+    ...(density
+      ? {
+          size: resolveComponentDensity(density).size,
+          compact: density === 'compact',
+        }
+      : {}),
+    ...toolbar?.actionBar,
+  },
 })
 
 const resolveVirtualScroll = (
@@ -626,15 +653,19 @@ const resolveCrossPageSelection = (
  */
 export function resolveConfig(config: TableConfig = {}): ResolvedConfig {
   return {
+    density: config.density,
+    controlSize: config.density
+      ? resolveComponentDensity(config.density).size
+      : 'small',
     feedback: config.feedback,
     locale: config.locale,
     ...resolveEdit(config.edit),
     ...resolveExpand(config.expand),
     ...resolveSelection(config.selection),
-    ...resolvePagination(config.pagination),
+    ...resolvePagination(config.pagination, config.density),
     ...resolveDynamicRows(config.dynamicRows),
-    ...resolveDisplay(config.display),
-    ...resolveToolbar(config.toolbar),
+    ...resolveDisplay(config.display, config.density),
+    ...resolveToolbar(config.toolbar, config.density),
     ...resolveVirtualScroll(config.virtualScroll),
     ...resolveSummary(config.summary),
     ...resolveColumnDrag(config.columnDrag),

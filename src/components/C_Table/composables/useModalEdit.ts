@@ -24,10 +24,17 @@ export interface ModalEditOptions<T extends object = DataRecord> {
 export function useModalEdit<T extends object = DataRecord>(
   options: ModalEditOptions<T>
 ) {
+  let revision = 0
   const isModalVisible = ref(false)
   const isSaving = ref(false)
   const editingRowKey = ref<DataTableRowKey | null>(null)
   const editingData = ref<T>({} as T)
+  const invalidate = () => {
+    revision++
+    isModalVisible.value = false
+    editingRowKey.value = null
+    editingData.value = {} as T
+  }
 
   const editingRowIndex = computed(() => {
     if (editingRowKey.value === null) return -1
@@ -55,6 +62,7 @@ export function useModalEdit<T extends object = DataRecord>(
     )
     if (rowIndex === -1) return false
 
+    revision++
     editingRowKey.value = rowKey
     editingData.value = cloneData(sourceData ?? currentData[rowIndex])
     isModalVisible.value = true
@@ -67,10 +75,12 @@ export function useModalEdit<T extends object = DataRecord>(
     if (currentIndex === -1) return
 
     const originalKey = editingRowKey.value
+    const expectedRevision = revision
     const dataToSave = cloneData(formData ?? editingData.value)
     isSaving.value = true
     try {
       await options.onSave?.(dataToSave, currentIndex, originalKey)
+      if (revision !== expectedRevision) return
       isModalVisible.value = false
       editingRowKey.value = null
       editingData.value = {} as T
@@ -82,6 +92,7 @@ export function useModalEdit<T extends object = DataRecord>(
 
   const cancelEdit = async () => {
     if (isSaving.value) return false
+    const expectedRevision = revision
     const currentIndex = editingRowIndex.value
     try {
       if (editingRowKey.value !== null && currentIndex > -1) {
@@ -91,9 +102,11 @@ export function useModalEdit<T extends object = DataRecord>(
         }
       }
     } finally {
-      isModalVisible.value = false
-      editingRowKey.value = null
-      editingData.value = {} as T
+      if (revision === expectedRevision) {
+        isModalVisible.value = false
+        editingRowKey.value = null
+        editingData.value = {} as T
+      }
     }
     return true
   }
@@ -123,5 +136,6 @@ export function useModalEdit<T extends object = DataRecord>(
     resetEditingState,
     isEditingRow,
     getEditingRowData,
+    invalidate,
   }
 }

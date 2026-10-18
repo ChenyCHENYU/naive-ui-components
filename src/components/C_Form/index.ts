@@ -1,4 +1,5 @@
 export { default as C_Form } from './index.vue'
+export type { ComponentDensity } from '../../core/density'
 
 /* 导出类型定义 */
 export type {

@@ -8,6 +8,9 @@ import {
   shallowRef,
   computed,
   toValue,
+  watch,
+  getCurrentScope,
+  onScopeDispose,
   type MaybeRefOrGetter,
   type VNodeChild,
 } from 'vue'
@@ -127,6 +130,7 @@ interface EventHandlers {
  * 表格统一状态管理器
  */
 export function useTableManager(params: TableManagerParams) {
+  let editRevision = 0
   const { data, rowKey, emit } = params
   const getConfig = () => toValue(params.config)
   const childrenKey = () =>
@@ -137,6 +141,13 @@ export function useTableManager(params: TableManagerParams) {
   const editingData = () => flatData.value as DataRecord[]
   const feedback = useComponentFeedback(() => getConfig().feedback)
   const { t } = useComponentLocale(() => getConfig().locale)
+  const canPatchData = (
+    source: DataRecord[],
+    key: DataTableRowKey,
+    original: DataRecord
+  ) =>
+    data() === source &&
+    flatData.value.find(row => rowKey(row) === key) === original
 
   /* ================= 事件处理器工厂 ================= */
 
@@ -155,14 +166,16 @@ export function useTableManager(params: TableManagerParams) {
       if (!original) return
       const currentIndex = flatData.value.indexOf(original)
       const updated = { ...original, ...rowData }
+      const revision = editRevision
+      if (!getConfig().editable) return
 
       try {
         await getConfig().onEditSave?.(updated, currentIndex, columnKey)
+        if (editRevision !== revision) return
         await emit('save', updated, currentIndex, columnKey)
+        if (editRevision !== revision) return
         // A refresh/search response is authoritative; never resurrect a captured dataset.
-        if (data() !== source) return
-        const latest = flatData.value.find(row => rowKey(row) === key)
-        if (latest !== original) return
+        if (!canPatchData(source, key, original)) return
         emit(
           'update:data',
           replaceTableRow(data(), original, updated, childrenKey())
@@ -175,8 +188,10 @@ export function useTableManager(params: TableManagerParams) {
     },
 
     onCancel: async (rowData: DataRecord, rowIndex: number) => {
+      const revision = editRevision
       try {
         await getConfig().onEditCancel?.(rowData, rowIndex)
+        if (editRevision !== revision) return
         await emit('cancel', rowData, rowIndex)
       } catch (error) {
         getConfig().onEditError?.(error)
@@ -365,6 +380,18 @@ export function useTableManager(params: TableManagerParams) {
 
   /* 初始化所有功能状态 */
   const editStates = initEditStates()
+  const invalidateEdits = () => {
+    editRevision++
+    editStates.rowEdit.invalidate()
+    editStates.cellEdit.invalidate()
+    editStates.modalEdit.invalidate()
+  }
+  watch(
+    [() => getConfig().editable, () => getConfig().editMode],
+    invalidateEdits,
+    { flush: 'sync' }
+  )
+  if (getCurrentScope()) onScopeDispose(invalidateEdits)
   const expandState = initExpandState()
   const dynamicRowsState = initDynamicRowsState()
 
@@ -377,6 +404,7 @@ export function useTableManager(params: TableManagerParams) {
       edit: {
         /** 开始编辑 */
         start(rowKey: DataTableRowKey, columnKey?: string) {
+          if (!getConfig().editable) return
           const mode = getConfig().editMode
           if (mode === 'modal') editStates.modalEdit.startEdit(rowKey)
           else if (mode === 'cell' && columnKey)

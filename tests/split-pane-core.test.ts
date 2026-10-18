@@ -55,3 +55,54 @@ describe('C_SplitPane state boundaries', () => {
     }
   })
 })
+
+import {
+  clampSplitSize,
+  getSplitBounds,
+  normalizeGutterSize,
+} from '../src/components/C_SplitPane/constraints'
+
+describe('split panel geometry', () => {
+  test('normalizes invalid, reversed and out-of-range percentage bounds', () => {
+    expect(
+      getSplitBounds({
+        minSize: 90,
+        maxSize: 10,
+        minFirstSize: 0,
+        minSecondSize: 0,
+        availableLength: 0,
+      })
+    ).toEqual({ min: 10, max: 90 })
+    expect(
+      getSplitBounds({
+        minSize: NaN,
+        maxSize: Infinity,
+        minFirstSize: -5,
+        minSecondSize: NaN,
+        availableLength: 400,
+      })
+    ).toEqual({ min: 0, max: 100 })
+    expect(clampSplitSize(NaN, 20, 80)).toBe(50)
+    expect(normalizeGutterSize(-1)).toBe(4)
+  })
+  test('expresses each pixel minimum in the same available space used by flex panels', () => {
+    expect(
+      getSplitBounds({
+        minSize: 10,
+        maxSize: 90,
+        minFirstSize: 200,
+        minSecondSize: 300,
+        availableLength: 1000,
+      })
+    ).toEqual({ min: 20, max: 70 })
+    expect(
+      getSplitBounds({
+        minSize: 10,
+        maxSize: 90,
+        minFirstSize: 200,
+        minSecondSize: 300,
+        availableLength: 250,
+      })
+    ).toEqual({ min: 40, max: 40 })
+  })
+})

@@ -84,6 +84,7 @@
         <NSpace justify="space-between">
           <NButton
             v-if="currentStep > 0"
+            :size="controlSize"
             :disabled="loading || submitting || disabled"
             @click="handlePreviousStep"
           >
@@ -100,6 +101,7 @@
           <NSpace>
             <NButton
               v-if="currentStep < stepsWithItems.length - 1"
+              :size="controlSize"
               type="primary"
               :loading="loading"
               :disabled="submitting || disabled"
@@ -151,6 +153,7 @@
   }
 
   interface Props {
+    controlSize?: 'small' | 'medium' | 'large'
     formItems: VNode[]
     layoutConfig?: {
       steps?: StepsLayoutConfig

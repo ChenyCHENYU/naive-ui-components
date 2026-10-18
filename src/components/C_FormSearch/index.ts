@@ -1,4 +1,5 @@
 export { default as C_FormSearch } from './index.vue'
+export type { ComponentDensity } from '../../core/density'
 export type {
   SearchFieldType,
   SearchOptionItem,

@@ -2,7 +2,7 @@
 .c-form-steps {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--c-form-gap, 24px);
 }
 
 .single-panel {
@@ -12,11 +12,11 @@
 .steps-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--c-form-gap, 24px);
 }
 
 .steps-indicator {
-  padding: 24px;
+  padding: var(--c-form-padding, 24px);
   border-radius: 8px;
 }
 
@@ -29,8 +29,8 @@
 }
 
 .step-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: var(--c-form-row-gap, 24px);
+  padding-bottom: var(--c-form-row-gap, 16px);
   border-bottom: 1px solid var(--n-border-color);
 }
 
@@ -51,8 +51,8 @@
 }
 
 .steps-actions {
-  margin-top: 24px;
-  padding-top: 16px;
+  margin-top: var(--c-form-row-gap, 24px);
+  padding-top: var(--c-form-row-gap, 16px);
   border-top: 1px solid var(--n-border-color);
 }
 
@@ -92,7 +92,7 @@
   .steps-container.is-vertical .steps-indicator {
     width: 100% !important;
     margin-right: 0 !important;
-    margin-bottom: 16px;
+    margin-bottom: var(--c-form-row-gap, 16px);
   }
 }
 

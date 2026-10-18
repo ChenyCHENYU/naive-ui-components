@@ -8,13 +8,15 @@
 <template>
   <NCard
     class="form-search-card custom-card"
+    :class="config?.density && `form-search-card--${config.density}`"
+    :style="densityStyle"
     :bordered="bordered"
   >
     <NForm
       class="form-search"
       :model="formParams"
       ref="formRef"
-      :size="size"
+      :size="resolvedSize"
       @submit.prevent="searchFn"
     >
       <div
@@ -33,6 +35,7 @@
           <NInput
             v-if="item.type === 'input'"
             clearable
+            :size="resolvedSize"
             :value="inputValue(item.prop)"
             @update:value="value => setFieldValue(item.prop, value)"
             :placeholder="item.placeholder"
@@ -80,6 +83,7 @@
             @update:value="value => setFieldValue(item.prop, value)"
             :placeholder="item.placeholder || '请选择'"
             clearable
+            :size="resolvedSize"
             :options="normalizeOptions(item.list) as any"
             v-bind="item.attrs"
           />
@@ -87,6 +91,7 @@
           <NDatePicker
             v-if="item.type === 'date-range'"
             type="datetimerange"
+            :size="resolvedSize"
             v-bind="{ ...dateRangeBinding(item.prop), ...item.attrs }"
             format="yyyy-MM-dd HH:mm"
             value-format="yyyy-MM-dd HH:mm"
@@ -97,14 +102,16 @@
         </NFormItem>
       </div>
 
-      <div class="form-search-item-box">
+      <div class="form-search-item-box form-search-actions">
         <div class="form-item-input">
           <div class="button-label-placeholder"></div>
-          <NSpace>
+          <NSpace :size="config?.density ? densityTokens.gap : 8">
             <NTooltip trigger="hover">
               <template #trigger>
                 <NButton
                   type="primary"
+                  :size="resolvedSize"
+                  aria-label="搜索"
                   @click="searchFn"
                   :loading="loading || searching"
                 >
@@ -118,7 +125,11 @@
 
             <NTooltip trigger="hover">
               <template #trigger>
-                <NButton @click="resetFn">
+                <NButton
+                  :size="resolvedSize"
+                  aria-label="重置"
+                  @click="resetFn"
+                >
                   <template #icon>
                     <div class="i-mdi:refresh w-4 h-4" />
                   </template>
@@ -132,7 +143,12 @@
               trigger="hover"
             >
               <template #trigger>
-                <NButton @click="toggleFold">
+                <NButton
+                  :size="resolvedSize"
+                  :aria-label="expanded ? '收起搜索条件' : '展开搜索条件'"
+                  :aria-expanded="expanded"
+                  @click="toggleFold"
+                >
                   <template #icon>
                     <div
                       :class="
@@ -154,7 +170,8 @@
 </template>
 
 <script setup lang="ts">
-  import { watch } from 'vue'
+  import { computed, watch, type CSSProperties } from 'vue'
+  import { resolveComponentDensity } from '../../core/density'
   import {
     NCard,
     NForm,
@@ -181,11 +198,23 @@
     bordered: true,
     formItemList: () => [],
     formParams: () => ({}),
-    size: 'medium',
     loading: false,
   })
 
   const emits = defineEmits<FormSearchEmits>()
+  const densityTokens = computed(() =>
+    resolveComponentDensity(props.config?.density)
+  )
+  const resolvedSize = computed(() => props.size ?? densityTokens.value.size)
+  const densityStyle = computed<CSSProperties | undefined>(() => {
+    if (props.config?.density === undefined) return undefined
+    const { gap, rowGap, padding } = densityTokens.value
+    return {
+      '--c-search-gap': `${gap}px`,
+      '--c-search-row-gap': `${rowGap}px`,
+      '--c-search-padding': `${padding}px`,
+    }
+  })
 
   const {
     formRef,
@@ -247,13 +276,7 @@
   }
 
   watch(
-    () =>
-      [
-        props.formItemList,
-        props.modelValue,
-        props.formParams,
-        props.config,
-      ] as const,
+    () => [props.formItemList, props.modelValue, props.formParams] as const,
     ([newItems, modelValue, formParams]) =>
       syncFromProps(newItems, modelValue ?? formParams),
     { deep: true }

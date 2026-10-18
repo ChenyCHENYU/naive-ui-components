@@ -68,7 +68,8 @@ export function renderEditComponent(
   value: unknown,
   onUpdate: (val: unknown) => void,
   rowData: DataRecord = {},
-  rowIndex = 0
+  rowIndex = 0,
+  size?: 'small' | 'medium' | 'large'
 ): VNodeChild {
   if (column.editRender)
     return column.editRender(value, rowData, rowIndex, { onUpdate })
@@ -79,6 +80,7 @@ export function renderEditComponent(
     'onUpdate:value': onUpdate,
     placeholder: `请输入${col.title ?? ''}`,
     style: { width: '100%' },
+    ...(size ? { size } : {}),
     ...column.editProps,
   }
 
@@ -122,7 +124,11 @@ export function renderEditingCell(
   onUpdate: (val: unknown) => void,
   onSave: () => void,
   onCancel: () => void,
-  context: { rowData: DataRecord; rowIndex: number } = {
+  context: {
+    rowData: DataRecord
+    rowIndex: number
+    size?: 'small' | 'medium' | 'large'
+  } = {
     rowData: {},
     rowIndex: 0,
   }
@@ -160,7 +166,8 @@ export function renderEditingCell(
         value,
         onUpdate,
         context.rowData,
-        context.rowIndex
+        context.rowIndex,
+        context.size
       ),
     ]),
     h('div', { class: 'cell-editing-actions' }, [
@@ -331,7 +338,11 @@ export function useTableColumns(
         (val: unknown) => updateEditingCellValue(rowKeyVal, colKey, val),
         () => saveEditCell(),
         () => cancelEditCell(),
-        { rowData, rowIndex }
+        {
+          rowData,
+          rowIndex,
+          size: config.value.density ? config.value.controlSize : undefined,
+        }
       )
     }
 
@@ -382,7 +393,8 @@ export function useTableColumns(
             val
           ),
         editingRow ?? rowData,
-        rowIndex
+        rowIndex,
+        config.value.density ? config.value.controlSize : undefined
       )
     }
 

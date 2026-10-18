@@ -200,7 +200,9 @@ export function mergeGlobalConfig(
     'batchActions',
   ]
   sections.forEach(key => {
-    const value = mergeSection(defaults[key], local[key])
+    const normalize = (value: unknown) =>
+      key === 'edit' && typeof value === 'string' ? { mode: value } : value
+    const value = mergeSection(normalize(defaults[key]), normalize(local[key]))
     if (value !== undefined) {
       ;(merged as Record<string, unknown>)[key] = value
     }

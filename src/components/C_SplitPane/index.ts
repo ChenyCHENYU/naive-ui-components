@@ -1,4 +1,4 @@
-export { default as C_SplitPane } from "./index.vue";
+export { default as C_SplitPane } from './index.vue'
 export type {
   SplitDirection,
   CollapseTarget,
@@ -6,5 +6,5 @@ export type {
   SplitPaneProps,
   SplitPaneExpose,
   SplitPaneEmits,
-} from "./types";
-export { useSplitResize } from "./composables/useSplitResize";
+} from './types'
+export { useSplitResize } from './composables/useSplitResize'

@@ -105,7 +105,7 @@
             <NButton
               v-if="tabsConfig.validateBeforeSwitch"
               type="primary"
-              size="small"
+              :size="controlSize ?? 'small'"
               @click="validateCurrentTab"
             >
               <C_Icon
@@ -159,6 +159,7 @@
   }
 
   interface Props {
+    controlSize?: 'small' | 'medium' | 'large'
     formItems: VNode[]
     layoutConfig?: {
       tabs?: TabsLayoutConfig

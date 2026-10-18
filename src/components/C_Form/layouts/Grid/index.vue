@@ -11,7 +11,7 @@
     <!-- 配置面板 -->
     <NCard
       v-if="showConfigPanel"
-      size="small"
+      :size="controlSize ?? 'small'"
       :bordered="false"
       class="config-panel"
     >
@@ -90,6 +90,7 @@
   type GridConfig = GridLayoutConfig
 
   interface Props {
+    controlSize?: 'small' | 'medium' | 'large'
     formItems: VNode[]
     layoutConfig?: { grid?: GridConfig }
     options?: FormOption[]
@@ -150,7 +151,7 @@
       update: (value: number | boolean | null) => {
         if (typeof value === 'number') internalConfig.cols = value
       },
-      props: { min: 1, max: 48, size: 'small' as const },
+      props: { min: 1, max: 48, size: props.controlSize ?? ('small' as const) },
     },
     {
       key: 'gutter',
@@ -160,7 +161,7 @@
       update: (value: number | boolean | null) => {
         if (typeof value === 'number') internalConfig.gutter = value
       },
-      props: { min: 0, max: 48, size: 'small' as const },
+      props: { min: 0, max: 48, size: props.controlSize ?? ('small' as const) },
     },
     {
       key: 'responsive',
@@ -170,7 +171,7 @@
       update: (value: number | boolean | null) => {
         if (typeof value === 'boolean') internalConfig.responsive = value
       },
-      props: { size: 'small' as const },
+      props: { size: props.controlSize ?? ('small' as const) },
     },
   ])
 

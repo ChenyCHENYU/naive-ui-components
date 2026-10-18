@@ -21,14 +21,14 @@
             <NButton
               :type="isDesignMode ? 'primary' : 'default'"
               @click="isDesignMode = true"
-              size="small"
+              :size="controlSize ?? 'small'"
             >
               🎨 设计模式
             </NButton>
             <NButton
               :type="!isDesignMode ? 'primary' : 'default'"
               @click="isDesignMode = false"
-              size="small"
+              :size="controlSize ?? 'small'"
             >
               📝 填写模式
             </NButton>
@@ -53,14 +53,14 @@
             <NButton
               secondary
               @click="handleSaveLayout"
-              size="small"
+              :size="controlSize ?? 'small'"
             >
               💾 保存布局
             </NButton>
             <NButton
               secondary
               @click="handleResetLayout"
-              size="small"
+              :size="controlSize ?? 'small'"
             >
               🔄 重置布局
             </NButton>
@@ -69,7 +69,7 @@
             <NButton
               secondary
               @click="handleExportData"
-              size="small"
+              :size="controlSize ?? 'small'"
             >
               📊 导出数据
             </NButton>
@@ -89,19 +89,19 @@
           <span class="group-label">添加区域:</span>
           <NButton
             @click="addArea('horizontal')"
-            size="small"
+            :size="controlSize ?? 'small'"
           >
             ➡️ 水平区域
           </NButton>
           <NButton
             @click="addArea('vertical')"
-            size="small"
+            :size="controlSize ?? 'small'"
           >
             ⬇️ 垂直区域
           </NButton>
           <NButton
             @click="addArea('grid')"
-            size="small"
+            :size="controlSize ?? 'small'"
           >
             ⚏ 网格区域
           </NButton>
@@ -142,7 +142,7 @@
                 <NInput
                   v-if="editingTitleId === area.id"
                   v-model:value="area.title"
-                  size="small"
+                  :size="controlSize ?? 'small'"
                   @blur="editingTitleId = ''"
                   @keyup.enter="editingTitleId = ''"
                   class="title-input"
@@ -154,7 +154,9 @@
                 >
                   {{ area.title }}
                 </span>
-                <NTag size="small">{{ area.fields.length }} 字段</NTag>
+                <NTag :size="controlSize ?? 'small'"
+                  >{{ area.fields.length }} 字段</NTag
+                >
               </div>
               <div class="area-controls">
                 <NButton
@@ -290,12 +292,12 @@
               <NEmpty
                 v-else
                 description="此区域暂无字段"
-                size="small"
+                :size="controlSize ?? 'small'"
               >
                 <template #extra>
                   <NButton
                     @click="isDesignMode = true"
-                    size="small"
+                    :size="controlSize ?? 'small'"
                     secondary
                   >
                     🎨 添加字段
@@ -328,6 +330,7 @@
   }
 
   interface Props {
+    controlSize?: 'small' | 'medium' | 'large'
     options?: FormOption[]
     formItems?: VNode[]
     formData?: Record<string, any>

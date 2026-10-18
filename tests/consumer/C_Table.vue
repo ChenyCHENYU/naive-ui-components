@@ -25,7 +25,12 @@
   <C_Table
     :data="childRows"
     :columns="searchableColumns"
-    :config="{ toolbar: { show: false }, pagination: false }"
+    :config="{
+      density: compactDensity,
+      edit: 'cell',
+      toolbar: { show: false },
+      pagination: false,
+    }"
   />
 </template>
 
@@ -38,7 +43,14 @@
     type DataRecord,
     type TableColumn,
   } from '@robot-admin/naive-ui-components'
-  import type { TableInstance } from '@robot-admin/naive-ui-components/C_Table'
+  import {
+    type TableInstance,
+    type ComponentDensity,
+    resolveComponentDensity,
+  } from '@robot-admin/naive-ui-components/C_Table'
+  const compactDensity: ComponentDensity = 'compact'
+  const compactSize = resolveComponentDensity(compactDensity).size
+  void compactSize
 
   interface EmployeeRow {
     id: number

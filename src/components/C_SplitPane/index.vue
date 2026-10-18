@@ -22,10 +22,17 @@
     <!-- 首面板 -->
     <div
       class="split-panel split-panel--first"
+      :id="firstPanelId"
       :style="firstPanelStyle"
+      :aria-hidden="isFirstCollapsed || undefined"
+      :inert="isFirstCollapsed"
     >
       <div class="split-panel__content">
-        <slot name="first" />
+        <slot
+          name="first"
+          :size="panelSize"
+          :collapsed="isFirstCollapsed"
+        />
       </div>
     </div>
 
@@ -35,13 +42,14 @@
       :style="gutterStyle"
       role="separator"
       :aria-orientation="direction === 'horizontal' ? 'vertical' : 'horizontal'"
-      :aria-valuenow="Math.round(panelSize)"
-      :aria-valuemin="Math.min(minSize, maxSize)"
-      :aria-valuemax="Math.max(minSize, maxSize)"
+      :aria-valuenow="panelSize"
+      :aria-valuemin="isFirstCollapsed ? 0 : bounds.min"
+      :aria-valuemax="isSecondCollapsed ? 100 : bounds.max"
       :aria-disabled="disabled || undefined"
+      :aria-controls="firstPanelId"
+      :aria-label="ariaLabel"
       :tabindex="disabled ? -1 : 0"
-      @mousedown="handleMouseDown"
-      @touchstart.prevent="handleMouseDown"
+      @pointerdown="handleMouseDown"
       @dblclick="handleDoubleClick"
       @keydown="handleKeyDown"
     >
@@ -59,9 +67,15 @@
       <template v-if="showCollapseButton && collapsible">
         <button
           class="split-gutter__collapse-btn split-gutter__collapse-btn--first"
+          type="button"
+          :disabled="disabled"
+          :aria-label="isFirstCollapsed ? '展开首面板' : '折叠首面板'"
+          :aria-expanded="!isFirstCollapsed"
+          :aria-controls="firstPanelId"
           :title="isFirstCollapsed ? '展开首面板' : '折叠首面板'"
           @click.stop="toggle('first')"
-          @mousedown.stop
+          @pointerdown.stop
+          @dblclick.stop
         >
           <C_Icon
             :name="collapseFirstIcon"
@@ -71,9 +85,15 @@
         </button>
         <button
           class="split-gutter__collapse-btn split-gutter__collapse-btn--second"
+          type="button"
+          :disabled="disabled"
+          :aria-label="isSecondCollapsed ? '展开第二面板' : '折叠第二面板'"
+          :aria-expanded="!isSecondCollapsed"
+          :aria-controls="secondPanelId"
           :title="isSecondCollapsed ? '展开第二面板' : '折叠第二面板'"
           @click.stop="toggle('second')"
-          @mousedown.stop
+          @pointerdown.stop
+          @dblclick.stop
         >
           <C_Icon
             :name="collapseSecondIcon"
@@ -87,48 +107,42 @@
     <!-- 第二面板 -->
     <div
       class="split-panel split-panel--second"
+      :id="secondPanelId"
       :style="secondPanelStyle"
+      :aria-hidden="isSecondCollapsed || undefined"
+      :inert="isSecondCollapsed"
     >
       <div class="split-panel__content">
-        <slot name="second" />
+        <slot
+          name="second"
+          :size="100 - panelSize"
+          :collapsed="isSecondCollapsed"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, toRef } from 'vue'
+  import { ref, computed, toRef, useId } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import { useSplitResize } from './composables/useSplitResize'
-  import type { CollapseTarget, SplitDirection, SplitPaneExpose } from './types'
+  import type {
+    SplitPaneProps,
+    SplitPaneEmits,
+    SplitPaneExpose,
+    PanelInfo,
+  } from './types'
 
   defineOptions({ name: 'C_SplitPane' })
 
-  interface Props {
-    /** 分割方向 */
-    direction?: SplitDirection
-    /** 首面板默认大小（百分比 0-100） */
-    defaultSize?: number
-    /** 首面板最小大小（百分比 0-100） */
-    minSize?: number
-    /** 首面板最大大小（百分比 0-100） */
-    maxSize?: number
-    /** 是否禁用拖拽调整 */
-    disabled?: boolean
-    /** 是否可折叠 */
-    collapsible?: boolean
-    /** 是否显示折叠按钮 */
-    showCollapseButton?: boolean
-    /** 分割线宽度（px） */
-    gutterSize?: number
-    /** 键盘微调步长（百分比） */
-    step?: number
-  }
-
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<SplitPaneProps>(), {
     direction: 'horizontal',
+    ariaLabel: '调整面板大小',
     defaultSize: 50,
     minSize: 0,
+    minFirstSize: 0,
+    minSecondSize: 0,
     maxSize: 100,
     disabled: false,
     collapsible: true,
@@ -137,18 +151,21 @@
     step: 2,
   })
 
-  const emit = defineEmits<{
-    resize: [firstSize: number, secondSize: number]
-    collapse: [target: CollapseTarget]
-    expand: [target: CollapseTarget]
-    'drag-start': [size: number]
-    'drag-end': [size: number]
+  const emit = defineEmits<SplitPaneEmits>()
+  defineSlots<{
+    first(props: PanelInfo): unknown
+    second(props: PanelInfo): unknown
   }>()
+  const panelId = useId()
+  const firstPanelId = `split-${panelId}-first`
+  const secondPanelId = `split-${panelId}-second`
 
   const containerRef = ref<HTMLElement | null>(null)
 
   const {
     panelSize,
+    bounds,
+    gutterSize,
     isDragging,
     isFirstCollapsed,
     isSecondCollapsed,
@@ -164,12 +181,17 @@
   } = useSplitResize({
     containerRef,
     direction: toRef(props, 'direction'),
-    defaultSize: props.defaultSize,
-    minSize: props.minSize,
-    maxSize: props.maxSize,
+    size: toRef(props, 'size'),
+    defaultSize: toRef(props, 'defaultSize'),
+    minSize: toRef(props, 'minSize'),
+    maxSize: toRef(props, 'maxSize'),
+    minFirstSize: toRef(props, 'minFirstSize'),
+    minSecondSize: toRef(props, 'minSecondSize'),
+    gutterSize: toRef(props, 'gutterSize'),
     disabled: toRef(props, 'disabled'),
     collapsible: toRef(props, 'collapsible'),
-    step: props.step,
+    step: toRef(props, 'step'),
+    onUpdateSize: size => emit('update:size', size),
     onResize: (first, second) => emit('resize', first, second),
     onCollapse: target => emit('collapse', target),
     onExpand: target => emit('expand', target),
@@ -178,25 +200,17 @@
   })
 
   /* ─── 计算样式 ──────────────────────────────── */
-  const firstPanelStyle = computed(() => {
-    const sizeValue = `calc(${panelSize.value}% - ${Math.max(0, props.gutterSize) / 2}px)`
-    return props.direction === 'horizontal'
-      ? { width: sizeValue }
-      : { height: sizeValue }
-  })
-
-  const secondPanelStyle = computed(() => {
-    const sizeValue = `calc(${100 - panelSize.value}% - ${Math.max(0, props.gutterSize) / 2}px)`
-    return props.direction === 'horizontal'
-      ? { width: sizeValue }
-      : { height: sizeValue }
-  })
-
-  const gutterStyle = computed(() => {
-    return props.direction === 'horizontal'
-      ? { width: `${Math.max(0, props.gutterSize)}px` }
-      : { height: `${Math.max(0, props.gutterSize)}px` }
-  })
+  // Flex divides the remaining space after the non-shrinking gutter. A collapsed
+  // panel has a literal zero basis, so no negative calc() can affect nested tables.
+  const firstPanelStyle = computed(() => ({ flex: `${panelSize.value} 1 0px` }))
+  const secondPanelStyle = computed(() => ({
+    flex: `${100 - panelSize.value} 1 0px`,
+  }))
+  const gutterStyle = computed(() =>
+    props.direction === 'horizontal'
+      ? { width: `${gutterSize.value}px` }
+      : { height: `${gutterSize.value}px` }
+  )
 
   /* ─── 折叠按钮图标 ──────────────────────────── */
   const collapseFirstIcon = computed(() => {

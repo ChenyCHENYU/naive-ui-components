@@ -1,6 +1,6 @@
 .form-search-card {
-  :deep(.n-card__content) {
-    padding: 20px;
+  :deep(:is(.n-card-content, .n-card__content)) {
+    padding: var(--c-search-padding, 20px);
   }
 }
 
@@ -8,7 +8,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: 20px 32px;
+  gap: var(--c-search-row-gap, 20px) var(--c-search-gap, 32px);
 
   .form-search-item-box {
     .form-item-input {
@@ -17,15 +17,14 @@
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 260px !important;
+        width: 260px;
+        max-width: 100%;
       }
 
       :deep(.n-space) {
-        gap: 8px !important;
-
         .n-button {
-          width: 36px;
-          height: 36px;
+          width: var(--n-height);
+          padding: 0;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -152,13 +151,13 @@
 /* responsive */
 @media (max-width: 1400px) {
   .form-search {
-    gap: 16px 28px;
+    gap: var(--c-search-row-gap, 16px) var(--c-search-gap, 28px);
 
     .form-search-item-box .form-item-input {
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 240px !important;
+        width: 240px;
       }
     }
   }
@@ -166,13 +165,13 @@
 
 @media (max-width: 1200px) {
   .form-search {
-    gap: 16px 24px;
+    gap: var(--c-search-row-gap, 16px) var(--c-search-gap, 24px);
 
     .form-search-item-box .form-item-input {
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 220px !important;
+        width: 220px;
       }
     }
   }
@@ -180,25 +179,25 @@
 
 @media (max-width: 900px) {
   .form-search {
-    gap: 12px 20px;
+    gap: var(--c-search-row-gap, 12px) var(--c-search-gap, 20px);
 
     .form-search-item-box .form-item-input {
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 200px !important;
+        width: 200px;
       }
     }
   }
 }
 
 @media (max-width: 600px) {
-  .form-search-card :deep(.n-card__content) {
-    padding: 16px;
+  .form-search-card :deep(:is(.n-card-content, .n-card__content)) {
+    padding: var(--c-search-padding, 16px);
   }
 
   .form-search {
-    gap: 12px 0;
+    gap: var(--c-search-row-gap, 12px) 0;
 
     .form-search-item-box {
       width: 100%;
@@ -207,7 +206,7 @@
         :deep(.n-input),
         :deep(.n-select),
         :deep(.n-date-picker) {
-          width: 100% !important;
+          width: 100%;
         }
 
         .input-history .history-item .delete-icon {

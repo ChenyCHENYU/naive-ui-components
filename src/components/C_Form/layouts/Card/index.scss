@@ -3,7 +3,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--c-form-gap, 1.5rem);
 }
 
 /* ================= 配置面板 ================= */
@@ -14,13 +14,13 @@
 .config-controls {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: var(--c-form-gap, 1.5rem);
   flex-wrap: wrap;
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
-    gap: 1rem;
+    gap: var(--c-form-gap, 1rem);
   }
 }
 
@@ -98,7 +98,7 @@
 .header-info {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--c-form-gap, 1rem);
 }
 
 .card-icon {
@@ -141,11 +141,11 @@
 
 /* ================= 卡片内容 ================= */
 .card-content {
-  padding-top: 1rem;
+  padding-top: var(--c-form-row-gap, 1rem);
 }
 
 .progress-section {
-  padding-bottom: 1rem;
+  padding-bottom: var(--c-form-row-gap, 1rem);
 }
 
 /* ================= 操作面板 ================= */
@@ -153,18 +153,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: var(--c-form-gap, 1.5rem);
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
-    gap: 1rem;
+    gap: var(--c-form-gap, 1rem);
   }
 }
 
 .status-summary {
   display: flex;
-  gap: 1.5rem;
+  gap: var(--c-form-gap, 1.5rem);
   align-items: center;
   flex-wrap: wrap;
 }

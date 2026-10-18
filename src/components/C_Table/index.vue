@@ -16,7 +16,11 @@
   <div
     ref="tableWrapperRef"
     class="c-table-wrapper"
-    :class="[wrapperClass, { 'c-table-wrapper--flex': flexHeight }]"
+    :class="[
+      wrapperClass,
+      { 'c-table-wrapper--flex': flexHeight },
+      resolved.density && `c-table-wrapper--${resolved.density}`,
+    ]"
     :aria-busy="normalizedLoading"
   >
     <!-- 动态行工具栏 -->
@@ -84,7 +88,7 @@
           v-for="action in resolved.batchActions.actions || []"
           :key="action.key"
           :type="(action.type as any) || 'default'"
-          size="small"
+          :size="resolved.controlSize"
           :loading="batchTasks.isRunning(action.key)"
           :disabled="batchTasks.isRunning(action.key)"
           @click="handleBatchAction(action)"
@@ -101,7 +105,7 @@
           {{ action.label }}
         </NButton>
         <NButton
-          size="small"
+          :size="resolved.controlSize"
           @click="clearBatchSelection"
           >{{ t('table.cancelSelection') }}</NButton
         >
@@ -128,7 +132,7 @@
           <NButton
             v-if="resolved.error.onRetry"
             type="primary"
-            size="small"
+            :size="resolved.controlSize"
             @click="resolved.error.onRetry"
           >
             {{ t('common.retry') }}
@@ -212,19 +216,25 @@
         :options="formOptions"
         :config="{
           layout: 'grid',
-          grid: { cols: 2, xGap: 16, yGap: 16 },
+          density: resolved.density,
+          grid: {
+            cols: 2,
+            ...(resolved.density ? {} : { xGap: 16, yGap: 16 }),
+          },
           showActions: false,
         }"
       />
       <template #action>
         <NSpace justify="end">
           <NButton
+            :size="resolved.density ? resolved.controlSize : 'medium'"
             :disabled="modalSubmitLoading"
             @click="handleModalCancel"
             >{{ t('common.cancel') }}</NButton
           >
           <NButton
             type="primary"
+            :size="resolved.density ? resolved.controlSize : 'medium'"
             :disabled="!editFormRef || modalSubmitLoading"
             :loading="modalSubmitLoading"
             @click="handleModalSave"

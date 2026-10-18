@@ -84,7 +84,7 @@ export function useTableActions<T extends object = DataRecord>(
     h(
       NButton,
       {
-        size: 'small',
+        size: config.value.controlSize ?? 'small',
         type,
         quaternary: true,
         onClick,

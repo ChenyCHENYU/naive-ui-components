@@ -46,7 +46,12 @@
     type FormConfig,
     type FormInstance,
     type FormRecord,
+    mergeFormConfig,
+    resolveFormConfig,
+    useFormGlobalConfig,
   } from '../C_Form'
+  import { resolveComponentDensity } from '../../core/density'
+  import type { ActionBarConfig } from '../C_ActionBar/types'
   import type { FormModalEmits, FormModalProps } from './types'
 
   defineOptions({ name: 'C_FormModal' })
@@ -63,6 +68,10 @@
   })
   const emit = defineEmits<FormModalEmits<T>>()
   const formRef = ref<FormInstance<T> | null>(null)
+  const globalFormConfig = useFormGlobalConfig()
+  const density = computed(
+    () => props.config?.density ?? globalFormConfig.density
+  )
 
   const modalVisible = computed({
     get: () => props.editor.visible.value,
@@ -82,7 +91,8 @@
     },
   })
   const resolvedFormConfig = computed<FormConfig<T>>(() => ({
-    size: 'small',
+    // 历史弹窗默认 small；显式密度交给 C_Form 统一推导，避免 small 吞掉密度。
+    ...(density.value === undefined ? { size: 'small' as const } : {}),
     ...props.config,
     mode: props.editor.mode.value,
     initialValues: props.editor.model.value ?? undefined,
@@ -100,9 +110,22 @@
     emit('close')
   }
 
-  const footerConfig = {
-    align: 'right',
-  } as const
+  const footerConfig = computed<ActionBarConfig>(() => {
+    const config: ActionBarConfig = { align: 'right' }
+    if (density.value !== undefined || props.config?.size !== undefined) {
+      config.size = resolveFormConfig(
+        mergeFormConfig(
+          resolvedFormConfig.value as FormConfig,
+          globalFormConfig
+        )
+      ).size
+    }
+    if (density.value !== undefined) {
+      config.gap = resolveComponentDensity(density.value).gap
+      config.compact = density.value === 'compact'
+    }
+    return config
+  })
 
   const modalActions = computed(() =>
     defineActions([

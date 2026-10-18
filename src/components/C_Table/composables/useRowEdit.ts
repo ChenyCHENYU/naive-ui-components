@@ -36,11 +36,20 @@ export interface RowEditOptions {
  * 可编辑行组合函数，提供表格整行的编辑功能
  */
 export function useRowEdit(options: RowEditOptions) {
+  let revision = 0
   const editingRowKey = ref<DataTableRowKey | null>(null)
   const editingData = ref<Record<string, DataRecord>>({})
   const isSaving = ref(false)
   /** 校验错误信息 */
   const validationErrors = ref<RowValidationError[]>([])
+
+  /** 配置切换时丢弃草稿；已经发出的业务请求仍由调用方负责取消。 */
+  const invalidate = () => {
+    revision++
+    editingRowKey.value = null
+    editingData.value = {}
+    validationErrors.value = []
+  }
 
   /**
    * 检查指定行是否正在编辑状态
@@ -104,6 +113,7 @@ export function useRowEdit(options: RowEditOptions) {
     rowData: DataRecord,
     expectedKey: DataTableRowKey
   ): Promise<boolean> => {
+    const expectedRevision = revision
     const tasks = (options.columns?.() || [])
       .filter(col => col.editable !== false && col.editProps?.rules?.length)
       .map(async col => {
@@ -120,6 +130,7 @@ export function useRowEdit(options: RowEditOptions) {
     const errors = (await Promise.all(tasks)).filter(
       Boolean
     ) as RowValidationError[]
+    if (revision !== expectedRevision) return false
     if (editingRowKey.value === expectedKey) validationErrors.value = errors
     return errors.length === 0
   }
@@ -138,14 +149,17 @@ export function useRowEdit(options: RowEditOptions) {
     const snapshot = editingData.value[String(key)]
     if (!snapshot) return
     const updatedData = cloneData(snapshot)
+    const expectedRevision = revision
     const original = findRowData(key)
     isSaving.value = true
     try {
       if (!(await validateSnapshot(updatedData, key))) return
+      if (revision !== expectedRevision) return
       const currentData = options.data()
       const rowIndex = currentData.findIndex(row => options.rowKey(row) === key)
       if (rowIndex === -1 || currentData[rowIndex] !== original) return
       await options.onSave?.(updatedData, rowIndex, key)
+      if (revision !== expectedRevision) return
       editingRowKey.value = null
       editingData.value = {}
       return { updatedData, rowIndex }
@@ -188,5 +202,6 @@ export function useRowEdit(options: RowEditOptions) {
     getEditingRowData,
     updateEditingRowData,
     findRowData,
+    invalidate,
   }
 }

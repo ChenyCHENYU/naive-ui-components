@@ -190,7 +190,7 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
         }
       ),
 
-    upload: (baseProps, _item, _config, context) => {
+    upload: (baseProps, item, config, context) => {
       const uploadProps = { ...baseProps }
       const { value } = uploadProps
       const updateValue = uploadProps['onUpdate:value']
@@ -204,9 +204,17 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
           'onUpdate:fileList': (fileList: unknown[]) => updateValue?.(fileList),
         },
         {
-          trigger: () =>
+          default: () =>
             context.slots?.uploadClick?.() ||
-            h(C.NButton, { type: 'primary' }, { default: () => '选择文件' }),
+            h(
+              C.NButton,
+              {
+                type: 'primary',
+                size: item.attrs?.size ?? config.size,
+                disabled: uploadProps.disabled === true,
+              },
+              { default: () => '选择文件' }
+            ),
           tip: () => context.slots?.uploadTip?.() || null,
         }
       )
@@ -256,6 +264,21 @@ export function unregisterRenderer(
 /* =================== 带选项类型集合 =================== */
 
 const OPTION_TYPES = new Set(['select', 'checkbox', 'radio', 'cascader'])
+/** Rate 的 size 是数字、Upload 无 size；只向接受标准尺寸的控件补默认值。 */
+const SIZED_FIELD_TYPES = new Set([
+  'input',
+  'textarea',
+  'inputNumber',
+  'select',
+  'checkbox',
+  'radio',
+  'switch',
+  'datePicker',
+  'daterange',
+  'timePicker',
+  'cascader',
+  'colorPicker',
+])
 const NATIVE_READONLY_TYPES = new Set([
   'input',
   'textarea',
@@ -317,6 +340,9 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     )
     const supportsReadonly = NATIVE_READONLY_TYPES.has(item.type)
     const baseProps: RendererProps = {
+      ...(SIZED_FIELD_TYPES.has(item.type)
+        ? { size: item.attrs?.size ?? config.value.size }
+        : {}),
       value: getDataPath(formModel, item.prop),
       'onUpdate:value': (value: unknown) => {
         if (
@@ -446,6 +472,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
         {
           label: typeof label === 'string' ? label : undefined,
           path: item.prop,
+          class: 'c-form-field',
           key: item.prop,
           required: isRequired,
           ref: (instance: FormItemInst | null) =>

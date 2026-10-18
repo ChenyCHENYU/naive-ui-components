@@ -1,4 +1,4 @@
-/* ================= 1. 组件根容器 ================= */
+// ================= 1. 组件根容器 =================
 .c-table-wrapper {
   --c-table-border-color: var(--border-color, #e5e7eb);
   --c-table-bg: var(--body-color, #fff);
@@ -9,6 +9,26 @@
   --c-table-drag-ghost-bg: var(--primary-color, #2080f0);
   width: 100%;
   position: relative;
+}
+
+// 显式密度才覆盖既有布局，变量停留在当前表格实例。
+.c-table-wrapper--compact {
+  --c-table-gap: 8px;
+  --c-table-button-font-size: 14px;
+  --c-table-cell-min-height: 28px;
+  --c-table-cell-padding: 2px 4px;
+}
+.c-table-wrapper--default {
+  --c-table-gap: 16px;
+  --c-table-button-font-size: 14px;
+  --c-table-cell-min-height: 36px;
+  --c-table-cell-padding: 6px 8px;
+}
+.c-table-wrapper--comfortable {
+  --c-table-gap: 20px;
+  --c-table-button-font-size: 15px;
+  --c-table-cell-min-height: 40px;
+  --c-table-cell-padding: 8px 10px;
 }
 
 // 只在显式 flex-height 模式建立高度链，不影响自然高度表格。
@@ -30,7 +50,7 @@
   }
 }
 
-/* ================= 列拖拽排序 ================= */
+// ================= 列拖拽排序 =================
 .column-drag-ghost {
   opacity: var(--c-table-drag-ghost-opacity);
   background: var(--c-table-drag-ghost-bg) !important;
@@ -44,28 +64,33 @@
   }
 }
 
-/* ================= 合计行强调 ================= */
+// ================= 合计行强调 =================
 .c-table-wrapper :deep(.n-data-table-tfoot) {
   background: var(--c-table-summary-bg);
   font-weight: var(--c-table-summary-font-weight);
 }
-/* ================= 2. 表格工具栏 ================= */
+// ================= 2. 表格工具栏 =================
 .table-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--c-table-gap, 16px);
+  gap: var(--c-table-gap, 12px);
+  flex-wrap: wrap;
 
   .toolbar-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--c-table-gap, 12px);
+    flex-wrap: wrap;
+    min-width: 0;
   }
 
   .toolbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--c-table-gap, 8px);
+    flex-wrap: wrap;
 
     .column-settings-btn {
       opacity: 0.6;
@@ -82,10 +107,10 @@
   }
 }
 
-/* ================= 3. 动态行工具栏 ================= */
+// ================= 3. 动态行工具栏 =================
 .dynamic-rows-toolbar {
-  margin-bottom: 16px;
-  padding: 16px;
+  margin-bottom: var(--c-table-gap, 16px);
+  padding: var(--c-table-gap, 16px);
   border-radius: 8px;
   border: 1px solid var(--n-border-color);
   background-color: var(--n-card-color);
@@ -97,7 +122,7 @@
   }
 }
 
-/* ================= 4. 表格布局基础 ================= */
+// ================= 4. 表格布局基础 =================
 :deep(.n-data-table) {
   table-layout: auto !important;
   width: 100% !important;
@@ -105,26 +130,26 @@
   overflow: hidden;
 }
 
-/* 确保表格容器允许横向滚动（固定列必需） */
+// 确保表格容器允许横向滚动（固定列必需）
 :deep(.n-data-table-wrapper) {
   overflow-x: auto !important;
 }
 
-/* 分页组件样式 */
+// 分页组件样式
 .pagination-wrapper {
-  margin-top: 16px;
+  margin-top: var(--c-table-gap, 16px);
   display: flex;
   justify-content: flex-end;
 }
 
-/* ================= 5. 表格列宽度管理 ================= */
+// ================= 5. 表格列宽度管理 =================
 
-/* 普通列的最小宽度保护 */
+// 普通列的最小宽度保护
 :deep(.n-data-table-th:not(:last-child), .n-data-table-td:not(:last-child)) {
   min-width: 80px !important;
 }
 
-/* 操作列固定宽度（适应4个按钮的布局） */
+// 操作列固定宽度（适应4个按钮的布局）
 :deep(.c-table-actions-column) {
   width: 180px !important;
   min-width: 160px !important;
@@ -133,28 +158,28 @@
   padding: 8px 12px !important;
 }
 
-/* 操作按钮容器居中 */
+// 操作按钮容器居中
 :deep(.c-table-actions-column .n-space) {
   justify-content: center !important;
   align-items: center !important;
 }
 
-/* ================= 6. 可编辑单元格样式 ================= */
+// ================= 6. 可编辑单元格样式 =================
 
-/* 单元格编辑容器 - 精致化设计 */
-.cell-edit-wrapper {
+// 单元格编辑容器 - 精致化设计
+:deep(.cell-edit-wrapper) {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 6px 8px;
-  min-height: 36px;
+  padding: var(--c-table-cell-padding, 6px 8px);
+  min-height: var(--c-table-cell-min-height, 36px);
   border-radius: 4px;
   transition: all 0.2s ease;
   cursor: pointer;
   position: relative;
 
-  /* 悬停效果 */
+  // 悬停效果
   &:hover {
     background-color: var(--n-color-target);
 
@@ -165,14 +190,14 @@
     }
   }
 
-  /* 激活状态 */
+  // 激活状态
   &:active {
     transform: translateY(1px);
   }
 }
 
-/* 单元格内容 */
-.cell-value {
+// 单元格内容
+:deep(.cell-value) {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -182,7 +207,7 @@
   font-size: 13px;
 }
 
-/* 动态渲染单元格也只在当前表格边界内匹配。 */
+// 动态渲染单元格也只在当前表格边界内匹配。
 .c-table-wrapper :deep(.cell-edit-icon) {
   flex-shrink: 0;
   width: 24px;
@@ -198,7 +223,7 @@
   opacity: 0;
   position: relative;
 
-  /* 悬停效果 */
+  // 悬停效果
   &:hover {
     opacity: 1 !important;
     color: var(--n-color-success-hover) !important;
@@ -206,27 +231,27 @@
     transform: scale(1.1);
   }
 
-  /* 激活效果 */
+  // 激活效果
   &:active {
     transform: scale(0.95);
   }
 
-  /* 图标尺寸 */
+  // 图标尺寸
   svg {
     width: 14px;
     height: 14px;
   }
 }
 
-/* ================= 7. 单元格编辑状态样式 ================= */
+// ================= 7. 单元格编辑状态样式 =================
 
-/* 编辑容器 - 确保水平布局不换行 */
+// 编辑容器 - 确保水平布局不换行
 .cell-editing-container,
 :deep(.cell-editing-container) {
   display: flex !important;
   align-items: center !important;
   width: 100% !important;
-  min-height: 36px !important;
+  min-height: var(--c-table-cell-min-height, 36px) !important;
   background-color: var(--n-input-color) !important;
   border: 1px solid var(--n-primary-color) !important;
   border-radius: 6px !important;
@@ -235,14 +260,14 @@
   gap: 8px !important;
 }
 
-/* 编辑输入区域 - 占据剩余空间 */
+// 编辑输入区域 - 占据剩余空间
 .cell-editing-input,
 :deep(.cell-editing-input) {
   flex: 1 !important;
   min-width: 0 !important;
 }
 
-/* 深度选择器处理输入框样式 */
+// 深度选择器处理输入框样式
 :deep(.cell-editing-input) {
   .n-input {
     border: none !important;
@@ -274,7 +299,7 @@
   }
 }
 
-/* 编辑操作按钮容器 */
+// 编辑操作按钮容器
 .cell-editing-actions,
 :deep(.cell-editing-actions) {
   display: flex !important;
@@ -288,7 +313,7 @@
   box-shadow: var(--n-box-shadow) !important;
 }
 
-/* 编辑操作按钮 */
+// 编辑操作按钮
 .cell-action-btn,
 :deep(.cell-action-btn) {
   display: flex !important;
@@ -302,7 +327,7 @@
   transition: all 0.2s ease !important;
   background: transparent !important;
 
-  /* 保存按钮 */
+  // 保存按钮
   &.cell-action-save {
     color: var(--n-color-success) !important;
 
@@ -312,7 +337,7 @@
     }
   }
 
-  /* 取消按钮 */
+  // 取消按钮
   &.cell-action-cancel {
     color: var(--n-color-error) !important;
 
@@ -322,37 +347,37 @@
     }
   }
 
-  /* 图标尺寸 */
+  // 图标尺寸
   svg {
     width: 11px !important;
     height: 11px !important;
   }
 }
 
-/* ================= 7. 操作按钮样式 ================= */
+// ================= 7. 操作按钮样式 =================
 
-/* 通用按钮样式 */
+// 通用按钮样式
 :deep(.n-button) {
   white-space: nowrap;
-  font-size: 12px !important;
+  font-size: var(--c-table-button-font-size, 12px) !important;
   flex-shrink: 0 !important;
   border-radius: 6px;
   transition: all 0.2s ease;
   font-weight: 500;
 
-  /* 图标间距 */
+  // 图标间距
   .n-icon {
     margin-right: 4px !important;
   }
 
-  /* 小尺寸按钮优化 */
+  // 小尺寸按钮优化
   &.n-button--small-type {
     padding: 4px 8px;
     height: 28px;
     line-height: 20px;
   }
 
-  /* 四元按钮样式 */
+  // 四元按钮样式
   &.n-button--quaternary-type {
     &:hover {
       transform: translateY(-1px);
@@ -365,9 +390,9 @@
   }
 }
 
-/* ================= 8. 按钮组间距优化 ================= */
+// ================= 8. 按钮组间距优化 =================
 
-/* 操作按钮组 */
+// 操作按钮组
 :deep(.n-space) {
   &.n-space--horizontal {
     .n-space-item:not(:last-child) {
@@ -376,9 +401,9 @@
   }
 }
 
-/* ================= 9. 模态框样式优化 ================= */
+// ================= 9. 模态框样式优化 =================
 
-/* 编辑模态框 */
+// 编辑模态框
 :deep(.n-modal) {
   .n-card {
     border-radius: 12px;
@@ -401,9 +426,9 @@
   }
 }
 
-/* ================= 10. 描述列表样式 ================= */
+// ================= 10. 描述列表样式 =================
 
-/* 详情模态框描述列表 */
+// 详情模态框描述列表
 :deep(.n-descriptions) {
   .n-descriptions-item-label {
     font-weight: 500;
@@ -416,21 +441,21 @@
   }
 }
 
-/* ================= 11. 响应式设计 ================= */
+// ================= 11. 响应式设计 =================
 
-/* 移动端适配 */
+// 移动端适配
 @media (max-width: 768px) {
   .c-table-wrapper {
     overflow-x: auto;
   }
 
-  /* 操作列在移动端的适配 */
+  // 操作列在移动端的适配
   :deep(.n-data-table-th:last-child, .n-data-table-td:last-child) {
     width: 160px !important;
     min-width: 160px !important;
   }
 
-  /* 按钮在移动端的优化 */
+  // 按钮在移动端的优化
   :deep(.n-button) {
     font-size: 11px !important;
     padding: 3px 6px;
@@ -440,22 +465,22 @@
     }
   }
 
-  /* 单元格编辑图标在移动端始终显示 */
+  // 单元格编辑图标在移动端始终显示
   .cell-edit-icon {
     opacity: 0.6;
   }
 }
 
-/* ================= 12. 主题适配 ================= */
+// ================= 12. 主题适配 =================
 
-/* 暗色主题适配 - 已通过 CSS 变量自动适配 */
+// 暗色主题适配 - 已通过 CSS 变量自动适配
 [data-theme='dark'] {
-  /* CSS 变量已自动适配，如有特殊需求可在此添加 */
+  // CSS 变量已自动适配，如有特殊需求可在此添加
 }
 
-/* ================= 13. 响应式优化 ================= */
+// ================= 13. 响应式优化 =================
 
-/* 小屏幕下的单元格编辑优化 */
+// 小屏幕下的单元格编辑优化
 @media (max-width: 768px) {
   .cell-editing-container,
   :deep(.cell-editing-container) {
@@ -479,40 +504,30 @@
     }
   }
 
-  /* 移动端编辑图标 */
+  // 移动端编辑图标
   .cell-edit-icon {
     opacity: 0.6 !important;
   }
 
-  .cell-value {
+  :deep(.cell-value) {
     margin-right: 12px !important;
   }
 }
 
-/* ================= 14. 性能优化 ================= */
+// ================= 14. 性能优化 =================
 
-/* 使用 GPU 加速的动画 */
-.cell-edit-icon,
-.cell-action-btn {
-  will-change: transform;
-  backface-visibility: hidden;
-}
+// 短暂 hover 交互交给浏览器合成，避免为所有行按钮常驻创建图层。
 
-:deep(.n-button) {
-  will-change: transform;
-  backface-visibility: hidden;
-}
+// ================= 15. 可访问性优化 =================
 
-/* ================= 15. 可访问性优化 ================= */
-
-/* 聚焦状态 */
-.cell-edit-wrapper:focus-within,
-.cell-editing-container:focus-within {
+// 聚焦状态
+:deep(.cell-edit-wrapper:focus-within),
+:deep(.cell-editing-container:focus-within) {
   outline: 2px solid var(--n-primary-color);
   outline-offset: 2px;
 }
 
-/* 高对比度模式支持 */
+// 高对比度模式支持
 @media (prefers-contrast: high) {
   .cell-edit-icon {
     opacity: 0.8;
@@ -523,7 +538,7 @@
   }
 }
 
-/* ================= 11. 行拖拽排序 ================= */
+// ================= 11. 行拖拽排序 =================
 .row-drag-ghost {
   opacity: 0.4;
   background: var(--c-table-drag-ghost-bg) !important;
@@ -533,7 +548,7 @@
   background: var(--n-color-hover, #f5f5f5) !important;
 }
 
-/* ================= 12. 批量操作栏 ================= */
+// ================= 12. 批量操作栏 =================
 .batch-actions-bar {
   display: flex;
   align-items: center;
@@ -551,7 +566,7 @@
   }
 }
 
-/* ================= 13. 错误状态 ================= */
+// ================= 13. 错误状态 =================
 .table-error-state {
   padding: 48px 24px;
   text-align: center;

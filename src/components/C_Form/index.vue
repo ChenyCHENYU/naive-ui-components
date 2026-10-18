@@ -8,6 +8,9 @@
 <template>
   <NForm
     ref="formRef"
+    class="c-form"
+    :class="densityEnabled && `c-form--${resolved.density}`"
+    :style="densityStyle"
     :model="formModel"
     :rules="formRules"
     :validate-on-rule-change="false"
@@ -69,6 +72,7 @@
           <NButton
             v-if="slotProps.isLastStep && resolved.showActions"
             type="primary"
+            :size="resolved.size"
             :loading="isSubmitting || !validationReady"
             :disabled="
               !validationReady ||
@@ -86,7 +90,7 @@
     <!-- 表单操作按钮区域（只在特定布局中显示） -->
     <NFormItem
       v-if="showActions"
-      style="margin-top: 20px"
+      class="c-form-actions"
     >
       <slot
         name="action"
@@ -94,9 +98,11 @@
       >
         <NSpace
           justify="end"
+          :size="densityEnabled ? densityTokens.gap : undefined"
           style="width: 100%"
         >
           <NButton
+            :size="resolved.size"
             :disabled="
               !validationReady ||
               isSubmitting ||
@@ -112,6 +118,7 @@
           />
           <NButton
             type="primary"
+            :size="resolved.size"
             :loading="isSubmitting || !validationReady"
             :disabled="
               !validationReady ||
@@ -133,11 +140,14 @@
     computed,
     ref,
     getCurrentInstance,
+    useAttrs,
     type ComputedRef,
+    type CSSProperties,
     type Ref,
   } from 'vue'
   import { type FormInst, NForm, NFormItem, NButton, NSpace } from 'naive-ui'
   import { useComponentLocale } from '../../config'
+  import { resolveComponentDensity } from '../../core/density'
   import type {
     FormOption,
     LayoutType,
@@ -202,11 +212,36 @@
   /* ================= 配置解析 ================= */
 
   const globalConfig = useFormGlobalConfig()
-  const resolved = computed(() =>
-    resolveFormConfig(
-      mergeFormConfig(props.config as unknown as FormConfig, globalConfig)
-    )
+  const nativeAttrs = useAttrs()
+  const mergedConfig = computed(() =>
+    mergeFormConfig(props.config as unknown as FormConfig, globalConfig)
   )
+  const resolved = computed(() => {
+    // NForm 的原生 attrs 一直最后透传，尺寸同时同步给字段和操作按钮。
+    const { size } = nativeAttrs
+    return resolveFormConfig({
+      ...mergedConfig.value,
+      ...(size === 'small' || size === 'medium' || size === 'large'
+        ? { size }
+        : {}),
+    })
+  })
+  const densityEnabled = computed(
+    () => mergedConfig.value.density !== undefined
+  )
+  const densityTokens = computed(() =>
+    resolveComponentDensity(resolved.value.density)
+  )
+  const densityStyle = computed<CSSProperties | undefined>(() => {
+    if (!densityEnabled.value) return undefined
+    const { gap, rowGap, padding, formItemGap } = densityTokens.value
+    return {
+      '--c-form-gap': `${gap}px`,
+      '--c-form-row-gap': `${rowGap}px`,
+      '--c-form-padding': `${padding}px`,
+      '--c-form-item-gap': `${formItemGap}px`,
+    }
+  })
   const { t } = useComponentLocale(() => resolved.value.locale)
 
   /* ================= 响应式状态 ================= */
@@ -310,16 +345,40 @@
     () => FORM_LAYOUTS[resolved.value.layout] || FORM_LAYOUTS.default
   )
 
-  const mergedLayoutConfig = computed<LayoutConfig>(() => ({
-    type: resolved.value.layout,
-    grid: resolved.value.grid,
-    inline: resolved.value.inline,
-    card: resolved.value.card,
-    tabs: resolved.value.tabs,
-    steps: resolved.value.steps,
-    dynamic: resolved.value.dynamic,
-    custom: resolved.value.custom,
-  }))
+  const mergedLayoutConfig = computed<LayoutConfig>(() => {
+    const config = resolved.value
+    const layout = {
+      type: config.layout,
+      grid: config.grid,
+      inline: config.inline,
+      card: config.card,
+      tabs: config.tabs,
+      steps: config.steps,
+      dynamic: config.dynamic,
+      custom: config.custom,
+    }
+    if (!densityEnabled.value) return layout
+    const { gap, rowGap } = densityTokens.value
+    return {
+      ...layout,
+      grid: {
+        gutter: gap,
+        yGutter: config.grid?.gutter ?? rowGap,
+        ...config.grid,
+      },
+      inline: { gap, rowGap, ...config.inline },
+      card: { spacing: gap, ...config.card },
+      tabs: { size: config.size, ...config.tabs },
+      steps: {
+        size: config.size === 'small' ? 'small' : 'medium',
+        ...config.steps,
+      },
+      dynamic: {
+        ...config.dynamic,
+        grid: { gutter: gap, ...config.dynamic?.grid },
+      },
+    }
+  })
 
   const showActions = computed(() => calcShowActions(resolved.value))
 
@@ -341,6 +400,7 @@
           : {}
     return {
       ...controls,
+      controlSize: densityEnabled.value ? resolved.value.size : undefined,
       onVnodeMounted: () => {
         mountedLayout.value = layout
       },
@@ -473,3 +533,7 @@
     submit,
   })
 </script>
+
+<style scoped lang="scss">
+  @use './index.scss';
+</style>

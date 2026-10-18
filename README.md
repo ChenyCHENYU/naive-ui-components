@@ -160,15 +160,17 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 
 ## 文档导航
 
-| 文档                                 | 内容                                                             |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| [架构与隔离](./docs/architecture.md) | 依赖边界、实例所有权与独立 Element Plus 演进路线                 |
-| [组件目录](./docs/components.md)     | 55 个组件、外部依赖与各组件的使用边界                            |
-| [使用指南](./docs/guides/usage.md)   | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
-| [开发与构建](./docs/engineering.md)  | 工程结构、六阶段构建、组件扩展、校验与发布流程                   |
-| [品牌资源](./docs/assets/README.md)  | Robot 系列 Logo、可编辑 SVG 与高清 PNG 封面                      |
-| [变更记录](./CHANGELOG.md)           | 版本更新与兼容变化                                               |
-| [安全策略](./SECURITY.md)            | 漏洞报告与维护约定                                               |
+| 文档                                               | 内容                                                             |
+| -------------------------------------------------- | ---------------------------------------------------------------- |
+| [架构与隔离](./docs/architecture.md)               | 依赖边界、实例所有权与独立 Element Plus 演进路线                 |
+| [组件目录](./docs/components.md)                   | 55 个组件、外部依赖与各组件的使用边界                            |
+| [使用指南](./docs/guides/usage.md)                 | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
+| [密度与多表工作台](./docs/guides/table-density.md) | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
+| [真实场景覆盖](./docs/wl-ui-produce-coverage.md)   | wl-ui-produce 对照、可组合能力与需要适配的边界                   |
+| [开发与构建](./docs/engineering.md)                | 工程结构、六阶段构建、组件扩展、校验与发布流程                   |
+| [品牌资源](./docs/assets/README.md)                | Robot 系列 Logo、可编辑 SVG 与高清 PNG 封面                      |
+| [变更记录](./CHANGELOG.md)                         | 版本更新与兼容变化                                               |
+| [安全策略](./SECURITY.md)                          | 漏洞报告与维护约定                                               |
 
 本轮依赖审计的两项上游告警见 [2026-10-18 扫描记录](./docs/security-scan-2026-10-18.md)；[2026-10-06 记录](./docs/security-scan-2026-10-06.md)保留为历史档案。当前依赖状态以实际运行 `bun run check:audit` 的结果为准。
 

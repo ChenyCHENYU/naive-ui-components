@@ -1,0 +1,28 @@
+.c-form {
+  .c-form-actions {
+    margin-top: var(--c-form-row-gap, 20px);
+  }
+}
+
+:is(.c-form--default, .c-form--compact, .c-form--comfortable) {
+  :deep(.c-form-field .n-form-item-feedback-wrapper) {
+    min-height: var(--c-form-item-gap);
+  }
+
+  // 仅表单布局卡片继承密度，字段插槽中的业务卡片不受影响。
+  :deep(
+    :is(
+      .c-form-card > .n-card,
+      .c-form-card > .form-content > .n-card,
+      .c-form-steps > .steps-container > .steps-content,
+      .dynamic-controls > .n-card,
+      .dynamic-controls-fallback > .n-card,
+      .custom-layout > .n-card,
+      .custom-layout .form-area > .n-card
+    )
+  ) {
+    > :is(.n-card-content, .n-card__content, .n-card-header) {
+      padding: var(--c-form-padding);
+    }
+  }
+}

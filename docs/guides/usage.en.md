@@ -4,6 +4,8 @@
 
 Import strategies, component configuration and integration examples.
 
+Focused guides: [form density](./form-density.en.md), [table density and edit modes](./table-density.md), [split panes](./split-pane.en.md), [tree capabilities](./tree.md), and [production project coverage review](../wl-ui-produce-coverage.md). Some focused guides are currently available in Chinese.
+
 ## On this page
 
 - [Import strategies](#import-strategies)

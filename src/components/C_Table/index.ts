@@ -5,6 +5,8 @@
  */
 
 export { default as C_Table } from './index.vue'
+export { resolveComponentDensity } from '../../core/density'
+export type { ComponentDensity } from '../../core/density'
 
 /* ================= 类型导出 ================= */
 export type {

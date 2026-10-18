@@ -27,6 +27,10 @@ import type {
 } from '../types'
 import { getCurrentInstance, inject, type InjectionKey } from 'vue'
 import type { ComponentFeedback, ComponentLocale } from '../../../config'
+import {
+  resolveComponentDensity,
+  type ComponentDensity,
+} from '../../../core/density'
 
 /* =================== FormConfig 类型定义 =================== */
 
@@ -86,6 +90,8 @@ export interface FormConfig<
   labelWidth?: string | number
   /** 尺寸，默认 'medium' */
   size?: 'small' | 'medium' | 'large'
+  /** 与表格、搜索表单一致的密度；显式 size 和布局间距优先。 */
+  density?: ComponentDensity
   /** 禁用整个表单，默认 false */
   disabled?: boolean
   /** 只读，默认 false */
@@ -214,6 +220,7 @@ export const FORM_DEFAULTS: ResolvedFormConfig = {
   labelPlacement: 'left',
   labelWidth: 'auto',
   size: 'medium',
+  density: 'default',
   disabled: false,
   readonly: false,
   showActions: true,
@@ -240,7 +247,11 @@ export const LAYOUTS_WITH_OWN_CONTROLS: readonly LayoutType[] = [
  * @returns 具有完整默认值的 ResolvedFormConfig
  */
 export function resolveFormConfig(config?: FormConfig): ResolvedFormConfig {
-  return { ...FORM_DEFAULTS, ...config }
+  return {
+    ...FORM_DEFAULTS,
+    ...config,
+    size: config?.size ?? resolveComponentDensity(config?.density).size,
+  }
 }
 
 /**

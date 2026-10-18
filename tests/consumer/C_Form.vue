@@ -40,6 +40,7 @@
     PRESET_RULES,
     SPEC_RULES,
     type SubmitEventPayload,
+    type ComponentDensity,
   } from '@robot-admin/naive-ui-components/C_Form'
 
   interface EmployeeForm {
@@ -67,7 +68,9 @@
     },
   ])
 
+  const density: ComponentDensity = 'compact'
   const config = defineFormConfig<EmployeeForm>({
+    density,
     grid: { xGap: 12, yGap: 16, responsive: true },
     inline: { wrap: 'nowrap', align: 'baseline' },
     submitSuccessText: 'Saved',

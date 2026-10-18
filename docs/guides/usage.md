@@ -4,6 +4,8 @@
 
 按需导入、组件配置与业务场景的详细接入示例。
 
+专项指南：[表单与搜索密度](./form-density.md) · [表格密度与编辑模式](./table-density.md) · [分割面板与多表布局](./split-pane.md) · [树与原生能力透传](./tree.md) · [真实项目覆盖调研](../wl-ui-produce-coverage.md)。
+
 ## 本页导航
 
 - [导入方式](#导入方式)

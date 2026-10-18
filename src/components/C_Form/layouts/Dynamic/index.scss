@@ -5,11 +5,11 @@
 
 .dynamic-controls,
 .dynamic-controls-fallback {
-  margin-bottom: 16px;
+  margin-bottom: var(--c-form-row-gap, 16px);
 }
 
 .dynamic-stats {
-  margin-top: 16px;
+  margin-top: var(--c-form-row-gap, 16px);
   padding-top: 12px;
   border-top: 1px solid var(--n-divider-color);
 }

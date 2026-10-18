@@ -69,7 +69,7 @@
 @media (max-width: 768px) {
   .c-form-inline {
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: var(--c-form-row-gap, 12px) !important;
     justify-content: flex-start !important;
   }
 
@@ -82,6 +82,6 @@
 /* 小屏手机 */
 @media (max-width: 480px) {
   .c-form-inline {
-    gap: 8px !important;
+    gap: var(--c-form-row-gap, 8px) !important;
   }
 }

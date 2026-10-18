@@ -35,6 +35,7 @@ function createCellKey(rowKey: DataTableRowKey, columnKey: string): string {
  * 可编辑单元格组合函数，提供表格单元格的编辑功能
  */
 export function useCellEdit(options: CellEditOptions) {
+  let revision = 0
   const editingCell = ref<{
     rowKey: DataTableRowKey | null
     columnKey: string | null
@@ -46,6 +47,12 @@ export function useCellEdit(options: CellEditOptions) {
   const isSaving = ref(false)
   /** 当前单元格校验错误 */
   const cellValidationError = ref<string | null>(null)
+  const invalidate = () => {
+    revision++
+    editingCell.value = { rowKey: null, columnKey: null }
+    editingData.value = {}
+    cellValidationError.value = null
+  }
 
   /**
    * 检查指定单元格是否正在编辑状态
@@ -86,13 +93,16 @@ export function useCellEdit(options: CellEditOptions) {
   /**
    * 校验当前编辑单元格
    */
+  const findColumn = (columnKey: string) =>
+    (options.columns?.() ?? []).find(column => column.key === columnKey)
+
   const validateCell = async (): Promise<boolean> => {
+    const expectedRevision = revision
     cellValidationError.value = null
     const { rowKey, columnKey } = editingCell.value
     if (rowKey === null || columnKey === null) return true
 
-    const columns = options.columns?.() || []
-    const col = columns.find(c => c.key === columnKey)
+    const col = findColumn(columnKey)
     if (!col || !col.editProps?.rules) return true
 
     const cellKey = createCellKey(rowKey, columnKey)
@@ -105,6 +115,7 @@ export function useCellEdit(options: CellEditOptions) {
         validateTableRule(rule, value, label, source)
       )
     )
+    if (revision !== expectedRevision) return false
     const firstError = results.find(Boolean)
     if (firstError) {
       cellValidationError.value = firstError
@@ -121,10 +132,12 @@ export function useCellEdit(options: CellEditOptions) {
     if (rowKey === null || columnKey === null || isSaving.value) return
     const cellKey = createCellKey(rowKey, columnKey)
     const newValue = cloneData(editingData.value[cellKey])
+    const expectedRevision = revision
     const original = findRowData(rowKey)
     isSaving.value = true
     try {
       if (!(await validateCell())) return
+      if (revision !== expectedRevision) return
       const currentData = options.data()
       const rowIndex = currentData.findIndex(
         row => options.rowKey(row) === rowKey
@@ -137,6 +150,7 @@ export function useCellEdit(options: CellEditOptions) {
         columnKey,
         rowKey
       )
+      if (revision !== expectedRevision) return
       editingCell.value = { rowKey: null, columnKey: null }
       editingData.value = {}
       return { updatedData, rowIndex, columnKey }
@@ -189,5 +203,6 @@ export function useCellEdit(options: CellEditOptions) {
     getEditingCellValue,
     updateEditingCellValue,
     findRowData,
+    invalidate,
   }
 }

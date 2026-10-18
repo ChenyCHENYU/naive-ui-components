@@ -128,12 +128,14 @@ export interface UseTableActionsOptions<T extends object = DataRecord> {
     | Ref<{
         editable: boolean
         editMode: string
+        controlSize?: 'small' | 'medium' | 'large'
         feedback?: ComponentFeedback
         locale?: ComponentLocale
       }>
     | ComputedRef<{
         editable: boolean
         editMode: string
+        controlSize?: 'small' | 'medium' | 'large'
         feedback?: ComponentFeedback
         locale?: ComponentLocale
       }>

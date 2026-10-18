@@ -14,7 +14,7 @@
       class="dynamic-controls"
     >
       <NCard
-        size="small"
+        :size="controlSize ?? 'small'"
         title="动态表单控制"
         :bordered="false"
       >
@@ -36,7 +36,7 @@
         >
           <NSpace>
             <NButton
-              size="small"
+              :size="controlSize ?? 'small'"
               type="primary"
               :disabled="!canAddMoreFields"
               @click="handleAddField"
@@ -51,7 +51,7 @@
             </NButton>
 
             <NButton
-              size="small"
+              :size="controlSize ?? 'small'"
               type="warning"
               :disabled="dynamicFieldsCount === 0"
               @click="handleRemoveField"
@@ -66,7 +66,7 @@
             </NButton>
 
             <NButton
-              size="small"
+              :size="controlSize ?? 'small'"
               type="error"
               :disabled="dynamicFieldsCount === 0"
               @click="handleClearFields"
@@ -89,7 +89,7 @@
               @update:value="handleMaxFieldsChange"
               :min="5"
               :max="50"
-              size="small"
+              :size="controlSize ?? 'small'"
               style="width: 100px"
             />
           </div>
@@ -111,7 +111,7 @@
       class="dynamic-controls-fallback"
     >
       <NCard
-        size="small"
+        :size="controlSize ?? 'small'"
         title="动态表单控制 (静态模式)"
         :bordered="false"
       >
@@ -169,6 +169,7 @@
 
   /* ================= 接口定义 ================= */
   interface Props {
+    controlSize?: 'small' | 'medium' | 'large'
     formItems: VNode[]
     layoutConfig?: LayoutConfig
     options?: FormOption[]

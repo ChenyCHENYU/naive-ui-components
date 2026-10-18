@@ -1,315 +1,256 @@
-import { ref, computed, onUnmounted, type Ref } from 'vue'
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  toValue,
+  watch,
+  type MaybeRefOrGetter,
+  type Ref,
+} from 'vue'
+import {
+  clampSplitSize,
+  finiteSize,
+  getSplitBounds,
+  normalizeGutterSize,
+} from '../constraints'
 import type { CollapseTarget, SplitDirection } from '../types'
+import { isPrimarySplitInput, startSplitPointer } from './splitPointer'
 
 interface UseSplitResizeOptions {
-  /** 容器引用 */
   containerRef: Ref<HTMLElement | null>
-  /** 分割方向 */
   direction: Ref<SplitDirection>
-  /** 首面板默认大小（百分比） */
-  defaultSize: number
-  /** 首面板最小大小（百分比） */
-  minSize: number
-  /** 首面板最大大小（百分比） */
-  maxSize: number
-  /** 是否禁用 */
+  size?: MaybeRefOrGetter<number | undefined>
+  defaultSize: MaybeRefOrGetter<number>
+  minSize: MaybeRefOrGetter<number>
+  maxSize: MaybeRefOrGetter<number>
+  minFirstSize?: MaybeRefOrGetter<number>
+  minSecondSize?: MaybeRefOrGetter<number>
+  gutterSize?: MaybeRefOrGetter<number>
   disabled: Ref<boolean>
-  /** 是否可折叠 */
   collapsible: Ref<boolean>
-  /** 键盘微调步长（百分比） */
-  step: number
-  /** resize 回调 */
+  step: MaybeRefOrGetter<number>
+  onUpdateSize?: (size: number) => void
   onResize?: (firstSize: number, secondSize: number) => void
-  /** 折叠回调 */
   onCollapse?: (target: CollapseTarget) => void
-  /** 展开回调 */
   onExpand?: (target: CollapseTarget) => void
-  /** 拖拽开始回调 */
   onDragStart?: (size: number) => void
-  /** 拖拽结束回调 */
   onDragEnd?: (size: number) => void
 }
 
-/**
- * 分割面板拖拽调整逻辑
- */
-export function useSplitResize(options: UseSplitResizeOptions) {
-  const {
-    containerRef,
-    direction,
-    defaultSize,
-    minSize,
-    maxSize,
-    disabled,
-    collapsible,
-    step,
-    onResize,
-    onCollapse,
-    onExpand,
-    onDragStart,
-    onDragEnd,
-  } = options
+function collapsedPanel(size: number): CollapseTarget | null {
+  if (size === 0) return 'first'
+  return size === 100 ? 'second' : null
+}
 
-  const safeMin = Number.isFinite(minSize) ? minSize : 0
-  const safeMax = Number.isFinite(maxSize) ? maxSize : 100
-  const minBound = Math.max(0, Math.min(100, Math.min(safeMin, safeMax)))
-  const maxBound = Math.max(0, Math.min(100, Math.max(safeMin, safeMax)))
-  const initialSize = Math.min(
-    maxBound,
-    Math.max(minBound, Number.isFinite(defaultSize) ? defaultSize : 50)
+function keySize(
+  key: string,
+  direction: SplitDirection,
+  step: number,
+  current: number,
+  bounds: { min: number; max: number }
+) {
+  if (key === 'Home') return bounds.min
+  if (key === 'End') return bounds.max
+  const decrease = direction === 'horizontal' ? 'ArrowLeft' : 'ArrowUp'
+  const increase = direction === 'horizontal' ? 'ArrowRight' : 'ArrowDown'
+  if (key === decrease) return current - step
+  if (key === increase) return current + step
+  return undefined
+}
+
+/** Manage percentage state, physical panel limits and accessible resizing without table coupling. */
+export function useSplitResize(options: UseSplitResizeOptions) {
+  const { containerRef, direction, disabled, collapsible } = options
+  const containerLength = ref(0)
+  const gutterSize = computed(() =>
+    normalizeGutterSize(toValue(options.gutterSize))
+  )
+  const availableLength = computed(() =>
+    Math.max(0, containerLength.value - gutterSize.value)
+  )
+  const bounds = computed(() =>
+    getSplitBounds({
+      minSize: toValue(options.minSize),
+      maxSize: toValue(options.maxSize),
+      minFirstSize: toValue(options.minFirstSize) ?? 0,
+      minSecondSize: toValue(options.minSecondSize) ?? 0,
+      availableLength: availableLength.value,
+    })
+  )
+  const internalSize = ref(
+    clampSplitSize(
+      toValue(options.defaultSize),
+      bounds.value.min,
+      bounds.value.max
+    )
+  )
+  const controlled = computed(() => toValue(options.size) !== undefined)
+  const rawSize = computed(() =>
+    controlled.value
+      ? finiteSize(toValue(options.size), 50)
+      : internalSize.value
+  )
+  const collapsedTarget = computed<CollapseTarget | null>(() => {
+    if (!collapsible.value) return null
+    return rawSize.value === 0
+      ? 'first'
+      : rawSize.value === 100
+        ? 'second'
+        : null
+  })
+  const panelSize = computed(() =>
+    collapsedTarget.value
+      ? collapsedTarget.value === 'first'
+        ? 0
+        : 100
+      : clampSplitSize(rawSize.value, bounds.value.min, bounds.value.max)
+  )
+  const isDragging = ref(false)
+  const isFirstCollapsed = computed(() => collapsedTarget.value === 'first')
+  const isSecondCollapsed = computed(() => collapsedTarget.value === 'second')
+  const defaultRestoreSize = finiteSize(toValue(options.defaultSize), 50)
+  let sizeBeforeCollapse = collapsedTarget.value
+    ? clampSplitSize(
+        defaultRestoreSize > 0 && defaultRestoreSize < 100
+          ? defaultRestoreSize
+          : 50,
+        bounds.value.min,
+        bounds.value.max
+      )
+    : panelSize.value
+  let stopGesture: (() => void) | undefined
+  let observer: ResizeObserver | undefined
+
+  const requestSize = (size: number, allowCollapse = false) => {
+    if (!Number.isFinite(size)) return
+    const next = allowCollapse
+      ? size
+      : clampSplitSize(size, bounds.value.min, bounds.value.max)
+    if (next === rawSize.value) return
+    if (!controlled.value) internalSize.value = next
+    options.onUpdateSize?.(next)
+  }
+
+  watch(
+    panelSize,
+    (size, previous) => {
+      const before = collapsedPanel(previous)
+      const target = collapsedTarget.value
+      if (!before && target) sizeBeforeCollapse = previous
+      if (before && before !== target) options.onExpand?.(before)
+      if (target && target !== before) options.onCollapse?.(target)
+      options.onResize?.(size, 100 - size)
+    },
+    { flush: 'sync' }
   )
 
-  /** 首面板当前大小（百分比） */
-  const panelSize = ref(initialSize)
-  /** 是否正在拖拽 */
-  const isDragging = ref(false)
-  /** 折叠状态 */
-  const collapsedTarget = ref<CollapseTarget | null>(null)
-  /** 折叠前记住的面板大小 */
-  const sizeBeforeCollapse = ref(initialSize)
-  let previousBodyCursor = ''
-  let previousBodyUserSelect = ''
-
-  /** 首面板是否折叠 */
-  const isFirstCollapsed = computed(() => collapsedTarget.value === 'first')
-  /** 第二面板是否折叠 */
-  const isSecondCollapsed = computed(() => collapsedTarget.value === 'second')
-
-  /**
-   * 将大小限制在 min/max 范围内
-   */
-  const clampSize = (size: number): number => {
-    if (!Number.isFinite(size)) return panelSize.value
-    return Math.min(maxBound, Math.max(minBound, size))
-  }
-
-  /**
-   * 获取容器在分割方向上的总长度（px）
-   */
-  const getContainerLength = (): number => {
-    const container = containerRef.value
-    if (!container) return 0
-    return direction.value === 'horizontal'
-      ? container.offsetWidth
-      : container.offsetHeight
-  }
-
-  /**
-   * 获取容器在分割方向上的起始坐标
-   */
-  const getContainerStart = (): number => {
-    const container = containerRef.value
-    if (!container) return 0
-    const rect = container.getBoundingClientRect()
-    return direction.value === 'horizontal' ? rect.left : rect.top
-  }
-
-  /**
-   * 根据鼠标/触摸位置计算面板大小（百分比）
-   */
-  const calcSizeFromPosition = (clientPos: number): number => {
-    const containerLength = getContainerLength()
-    if (containerLength === 0) return panelSize.value
-
-    const containerStart = getContainerStart()
-    const offset = clientPos - containerStart
-    const percentage = (offset / containerLength) * 100
-
-    return clampSize(percentage)
-  }
-
-  /**
-   * 获取事件的位置坐标
-   */
-  const getClientPos = (e: MouseEvent | TouchEvent): number => {
-    if (e instanceof TouchEvent) {
-      return direction.value === 'horizontal'
-        ? e.touches[0].clientX
-        : e.touches[0].clientY
-    }
-    return direction.value === 'horizontal' ? e.clientX : e.clientY
-  }
-
-  /**
-   * 更新面板大小
-   */
-  const updateSize = (newSize: number) => {
-    const clamped = clampSize(newSize)
-    if (clamped === panelSize.value) return
-    panelSize.value = clamped
-    onResize?.(clamped, 100 - clamped)
-  }
-
-  /* ─── 拖拽逻辑 ──────────────────────────────── */
-  const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-    if (!isDragging.value || disabled.value) return
-
-    e.preventDefault()
-    const pos = getClientPos(e)
-    const newSize = calcSizeFromPosition(pos)
-
-    /* 拖拽过程中取消折叠状态 */
-    if (collapsedTarget.value) {
-      collapsedTarget.value = null
-    }
-    updateSize(newSize)
-  }
-
-  const handleMouseUp = () => {
-    if (!isDragging.value) return
-
-    isDragging.value = false
-    document.body.style.cursor = previousBodyCursor
-    document.body.style.userSelect = previousBodyUserSelect
-
-    onDragEnd?.(panelSize.value)
-
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-    document.removeEventListener('touchmove', handleMouseMove)
-    document.removeEventListener('touchend', handleMouseUp)
-  }
-
-  const handleMouseDown = (e: MouseEvent | TouchEvent) => {
-    if (disabled.value || isDragging.value) return
-
-    e.preventDefault()
-    /* preventDefault 会阻止默认聚焦行为，需手动 focus 以支持键盘控制 */
-    ;(e.currentTarget as HTMLElement)?.focus()
-    isDragging.value = true
-    previousBodyCursor = document.body.style.cursor
-    previousBodyUserSelect = document.body.style.userSelect
-
-    document.body.style.cursor =
-      direction.value === 'horizontal' ? 'col-resize' : 'row-resize'
-    document.body.style.userSelect = 'none'
-
-    onDragStart?.(panelSize.value)
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('touchmove', handleMouseMove, { passive: false })
-    document.addEventListener('touchend', handleMouseUp)
-  }
-
-  /* ─── 双击折叠 ──────────────────────────────── */
-  const handleDoubleClick = () => {
-    if (disabled.value || !collapsible.value) return
-    toggle('first')
-  }
-
-  /* ─── 折叠 / 展开 ───────────────────────────── */
-  const collapse = (target: CollapseTarget = 'first') => {
-    if (!collapsible.value || collapsedTarget.value === target) return
-
-    /* 记住折叠前的大小 */
-    if (!collapsedTarget.value) {
-      sizeBeforeCollapse.value = panelSize.value
-    }
-
-    collapsedTarget.value = target
-
-    if (target === 'first') {
-      panelSize.value = 0
-    } else {
-      panelSize.value = 100
-    }
-
-    onCollapse?.(target)
-    onResize?.(panelSize.value, 100 - panelSize.value)
-  }
-
-  const expand = () => {
-    if (!collapsedTarget.value) return
-
-    const target = collapsedTarget.value
-    collapsedTarget.value = null
-    panelSize.value = clampSize(sizeBeforeCollapse.value)
-
-    onExpand?.(target)
-    onResize?.(panelSize.value, 100 - panelSize.value)
-  }
-
-  const toggle = (target: CollapseTarget = 'first') => {
-    if (collapsedTarget.value === target) {
-      expand()
-    } else {
-      collapse(target)
-    }
-  }
-
-  /* ─── 键盘微调 ──────────────────────────────── */
-  /**
-   * 根据按键获取增量
-   */
-  const getKeyDelta = (key: string, isHorizontal: boolean): number | null => {
-    const keyStep = Number.isFinite(step) && step > 0 ? step : 2
-    const keyMap: Record<string, number | null> = {
-      ArrowLeft: isHorizontal ? -keyStep : 0,
-      ArrowRight: isHorizontal ? keyStep : 0,
-      ArrowUp: !isHorizontal ? -keyStep : 0,
-      ArrowDown: !isHorizontal ? keyStep : 0,
-    }
-    return keyMap[key] ?? null
-  }
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (disabled.value) return
-
-    /* Home / End 直接跳到极值 */
-    if (e.key === 'Home') {
-      updateSize(minBound)
-      e.preventDefault()
-      return
-    }
-    if (e.key === 'End') {
-      updateSize(maxBound)
-      e.preventDefault()
-      return
-    }
-
-    const delta = getKeyDelta(e.key, direction.value === 'horizontal')
-    if (delta === null || delta === 0) return
-
-    e.preventDefault()
-    if (collapsedTarget.value) collapsedTarget.value = null
-    updateSize(panelSize.value + delta)
-  }
-
-  /* ─── 重置 / 查询 ───────────────────────────── */
-  const resetSize = () => {
-    collapsedTarget.value = null
-    panelSize.value = initialSize
-    onResize?.(initialSize, 100 - initialSize)
-  }
-
-  const setSize = (size: number) => {
-    collapsedTarget.value = null
-    updateSize(size)
-  }
-
-  const getPanelInfo = () => ({
-    first: {
-      size: panelSize.value,
-      collapsed: isFirstCollapsed.value,
+  watch(
+    bounds,
+    () => {
+      if (!collapsedTarget.value) requestSize(panelSize.value)
     },
-    second: {
-      size: 100 - panelSize.value,
-      collapsed: isSecondCollapsed.value,
+    { flush: 'sync' }
+  )
+  watch([disabled, direction], () => stopGesture?.(), { flush: 'sync' })
+  watch(
+    collapsible,
+    () => {
+      if (!collapsedTarget.value) requestSize(panelSize.value)
     },
+    { flush: 'sync' }
+  )
+
+  const measure = () => {
+    const element = containerRef.value
+    if (!element) return
+    const rect = element.getBoundingClientRect()
+    containerLength.value =
+      direction.value === 'horizontal' ? rect.width : rect.height
+  }
+  watch(direction, measure, { flush: 'post' })
+  onMounted(() => {
+    measure()
+    if (typeof ResizeObserver !== 'undefined' && containerRef.value) {
+      observer = new ResizeObserver(measure)
+      observer.observe(containerRef.value)
+    }
   })
 
-  /* 清理 */
-  onUnmounted(() => {
-    if (isDragging.value) {
-      document.body.style.cursor = previousBodyCursor
-      document.body.style.userSelect = previousBodyUserSelect
-      isDragging.value = false
+  const collapse = (target: CollapseTarget = 'first') => {
+    if (!collapsible.value || collapsedTarget.value === target) return
+    if (!collapsedTarget.value) sizeBeforeCollapse = panelSize.value
+    requestSize(target === 'first' ? 0 : 100, true)
+  }
+  const expand = () => {
+    if (collapsedTarget.value) requestSize(sizeBeforeCollapse)
+  }
+  const toggle = (target: CollapseTarget = 'first') => {
+    if (collapsedTarget.value === target) expand()
+    else collapse(target)
+  }
+  const resetSize = () =>
+    requestSize(finiteSize(toValue(options.defaultSize), 50))
+  const setSize = (size: number) => requestSize(size)
+
+  const handleMouseDown = (event: MouseEvent | TouchEvent | PointerEvent) => {
+    if (disabled.value || isDragging.value) return
+    if (!isPrimarySplitInput(event)) return
+    const element = containerRef.value
+    if (!element) return
+    measure()
+    if (!availableLength.value) return
+    const startSize = panelSize.value
+    stopGesture = startSplitPointer(event, {
+      element,
+      direction: direction.value,
+      onDelta: delta =>
+        requestSize(startSize + (delta / availableLength.value) * 100),
+      onEnd: () => {
+        isDragging.value = false
+        stopGesture = undefined
+        options.onDragEnd?.(panelSize.value)
+      },
+    })
+    if (!stopGesture) return
+    isDragging.value = true
+    options.onDragStart?.(panelSize.value)
+  }
+
+  const handleDoubleClick = () => {
+    if (!disabled.value) toggle('first')
+  }
+  const handleKeyDown = (event: KeyboardEvent) => {
+    // A button inside the separator owns its Enter/Space keys.
+    if (disabled.value || event.target !== event.currentTarget) return
+    if (event.key === 'Enter') {
+      if (collapsible.value) {
+        event.preventDefault()
+        if (collapsedTarget.value) expand()
+        else collapse('first')
+      }
+      return
     }
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-    document.removeEventListener('touchmove', handleMouseMove)
-    document.removeEventListener('touchend', handleMouseUp)
+    const step = Math.max(0, finiteSize(toValue(options.step), 2)) || 2
+    const scale = event.shiftKey ? 10 : 1
+    const next = keySize(
+      event.key,
+      direction.value,
+      step * scale,
+      panelSize.value,
+      bounds.value
+    )
+    if (next === undefined) return
+    event.preventDefault()
+    requestSize(next)
+  }
+  const getPanelInfo = () => ({
+    first: { size: panelSize.value, collapsed: isFirstCollapsed.value },
+    second: { size: 100 - panelSize.value, collapsed: isSecondCollapsed.value },
+  })
+  onUnmounted(() => {
+    stopGesture?.()
+    observer?.disconnect()
   })
 
   return {
@@ -318,6 +259,8 @@ export function useSplitResize(options: UseSplitResizeOptions) {
     collapsedTarget,
     isFirstCollapsed,
     isSecondCollapsed,
+    bounds,
+    gutterSize,
     handleMouseDown,
     handleDoubleClick,
     handleKeyDown,

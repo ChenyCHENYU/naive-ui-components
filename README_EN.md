@@ -160,15 +160,17 @@ Root imports aggregate navigation components and require `vue-router` at runtime
 
 ## Documentation
 
-| Document                                                | Contents                                                                                |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Architecture and isolation](./docs/architecture.en.md) | Dependency boundaries, instance ownership and the independent Element Plus roadmap      |
-| [Component catalog](./docs/components.en.md)            | All 55 components, dependencies and behavior boundaries                                 |
-| [Usage guide](./docs/guides/usage.en.md)                | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading |
-| [Development and build](./docs/engineering.en.md)       | Source structure, six-stage build, adding components, checks and releases               |
-| [Brand assets](./docs/assets/README.md)                 | Robot family logo, editable SVG sources and high-resolution PNGs                        |
-| [Changelog](./CHANGELOG.md)                             | Releases and compatibility changes                                                      |
-| [Security policy](./SECURITY.md)                        | Vulnerability reporting and maintenance policy                                          |
+| Document                                                       | Contents                                                                                  |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Architecture and isolation](./docs/architecture.en.md)        | Dependency boundaries, instance ownership and the independent Element Plus roadmap        |
+| [Component catalog](./docs/components.en.md)                   | All 55 components, dependencies and behavior boundaries                                   |
+| [Usage guide](./docs/guides/usage.en.md)                       | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading   |
+| [Density and workbenches](./docs/guides/table-density.md)      | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese) |
+| [Production coverage review](./docs/wl-ui-produce-coverage.md) | wl-ui-produce capability mapping and adapter boundaries (Chinese)                         |
+| [Development and build](./docs/engineering.en.md)              | Source structure, six-stage build, adding components, checks and releases                 |
+| [Brand assets](./docs/assets/README.md)                        | Robot family logo, editable SVG sources and high-resolution PNGs                          |
+| [Changelog](./CHANGELOG.md)                                    | Releases and compatibility changes                                                        |
+| [Security policy](./SECURITY.md)                               | Vulnerability reporting and maintenance policy                                            |
 
 The [2026-10-18 scan record](./docs/security-scan-2026-10-18.md) documents two outstanding upstream advisories; the [2026-10-06 record](./docs/security-scan-2026-10-06.md) is a historical archive. Both are in Chinese. Run `bun run check:audit` to assess the current dependency state.
 

@@ -1,4 +1,6 @@
 import type { App, Component } from 'vue'
+export { resolveComponentDensity } from './core/density'
+export type { ComponentDensity, ResolvedComponentDensity } from './core/density'
 import {
   COMPONENT_FEEDBACK_KEY,
   COMPONENT_LOCALE_KEY,

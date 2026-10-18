@@ -36,5 +36,8 @@
   const options = defineFormOptions<RecordForm>([
     { type: 'input', prop: 'name', label: 'Name' },
   ])
-  const config = defineFormConfig<RecordForm>({ layout: 'grid' })
+  const config = defineFormConfig<RecordForm>({
+    layout: 'grid',
+    density: 'compact',
+  })
 </script>

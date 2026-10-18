@@ -21,7 +21,7 @@
     font-weight: 650;
   }
 
-  :deep(.n-card__content) {
+  :deep(:is(.n-card-content, .n-card__content)) {
     padding: 14px 16px 8px;
   }
 
@@ -29,7 +29,11 @@
     display: flex;
     justify-content: flex-end;
     padding: 10px 16px;
-    background: color-mix(in srgb, var(--n-color-modal) 94%, var(--n-border-color));
+    background: color-mix(
+      in srgb,
+      var(--n-color-modal) 94%,
+      var(--n-border-color)
+    );
     border-top: 1px solid var(--n-border-color);
   }
 
@@ -40,7 +44,7 @@
 
 @media (max-width: 640px) {
   .c-form-modal {
-    :deep(.n-card__content) {
+    :deep(:is(.n-card-content, .n-card__content)) {
       padding-inline: 12px;
     }
 

@@ -29,6 +29,8 @@ export interface SearchFormParams {
 }
 
 export interface SearchConfig {
+  /** 与 C_Form、C_Table 统一的布局密度，显式 size 和字段 attrs.size 优先。 */
+  density?: ComponentDensity
   foldThreshold?: number
   historyMaxItems?: number
   requireValue?: boolean
@@ -57,3 +59,4 @@ export interface FormSearchEmits {
 }
 import type { FormItemRule } from 'naive-ui'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
+import type { ComponentDensity } from '../../core/density'

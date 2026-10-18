@@ -43,7 +43,7 @@
           <span>显示图标</span>
           <NSwitch
             v-model:value="showIcons"
-            size="small"
+            :size="controlSize ?? 'small'"
           />
         </div>
 
@@ -51,7 +51,7 @@
           <span>可折叠</span>
           <NSwitch
             v-model:value="collapsible"
-            size="small"
+            :size="controlSize ?? 'small'"
           />
         </div>
 
@@ -59,7 +59,7 @@
           <span>布局方向</span>
           <NRadioGroup
             v-model:value="currentDirection"
-            size="small"
+            :size="controlSize ?? 'small'"
           >
             <NRadio value="vertical">垂直</NRadio>
             <NRadio value="horizontal">水平</NRadio>
@@ -161,7 +161,7 @@
                   v-if="collapsible"
                   quaternary
                   circle
-                  size="small"
+                  :size="controlSize ?? 'small'"
                   @click="toggleGroup(group.config.key)"
                 >
                   <template #icon>
@@ -233,6 +233,7 @@
         <div class="action-buttons">
           <NButton
             v-if="collapsible"
+            :size="controlSize"
             @click="toggleAllGroups"
           >
             <template #icon>
@@ -254,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted, type VNode } from 'vue'
+  import { ref, computed, onMounted, watch, type VNode } from 'vue'
   import type { CardLayoutConfig, FormOption, GroupConfig } from '../../types'
   import { getDataPath } from '../../../../utils/data'
   import C_Icon from '../../../C_Icon/index.vue'
@@ -274,6 +275,7 @@
    * 组件属性接口
    */
   interface Props {
+    controlSize?: 'small' | 'medium' | 'large'
     formItems: VNode[]
     layoutConfig?: {
       card?: CardLayoutConfig
@@ -295,6 +297,14 @@
   const showProgress = ref(true)
   const currentDirection = ref<'vertical' | 'horizontal'>('vertical')
   const collapsedGroups = ref<Record<string, boolean>>({})
+  // 密度切换只更新外部间距，不重置用户的分组折叠状态。
+  watch(
+    () => props.layoutConfig?.card?.spacing,
+    spacing => {
+      cardGap.value = spacing ?? 20
+    },
+    { immediate: true }
+  )
 
   /* ================= 计算属性 ================= */
   const groups = computed((): GroupConfig[] => {
