@@ -96,6 +96,10 @@
 
 ## 交互与无障碍
 
+手柄采用细轨道与居中胶囊握柄，默认长 80px、厚 16px，保留三点拖动提示。悬停和键盘聚焦时，在握柄两侧显示折叠入口，并以局部描边和轻阴影提示当前状态；折叠后入口持续显示。横向、纵向使用相同视觉规则，主题颜色复用 `--c-primary / --c-bg-card / --c-border / --c-text-3`。
+
+胶囊是独立的实际拖动区域，其视觉厚度不会改变 `gutterSize` 占用的布局空间。触屏下握柄厚度增至 24px、折叠按钮增至 28px，并保持按钮常驻；折叠到边缘时控件向容器内部停靠，避免被裁切。箭头使用本地 SVG，不请求远程图标。
+
 键盘交互与 separator 语义参照 [W3C APG Window Splitter](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/)。可用 `aria-label="订单主表"` 设置面板对应的可访问名称。
 
 - 拖动支持鼠标、触控笔和触屏 Pointer Events，不接管宿主的 `document.onmousemove`。

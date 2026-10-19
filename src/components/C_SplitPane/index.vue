@@ -53,19 +53,15 @@
       @dblclick="handleDoubleClick"
       @keydown="handleKeyDown"
     >
-      <div class="split-gutter__visual">
-        <div class="split-gutter__dots">
-          <span
-            v-for="i in 3"
-            :key="i"
-            class="split-gutter__dot"
-          />
-        </div>
-      </div>
-
-      <!-- 折叠按钮 -->
-      <template v-if="showCollapseButton && collapsible">
+      <div
+        class="split-gutter__controls"
+        :class="{
+          'split-gutter__controls--with-collapse':
+            showCollapseButton && collapsible,
+        }"
+      >
         <button
+          v-if="showCollapseButton && collapsible"
           class="split-gutter__collapse-btn split-gutter__collapse-btn--first"
           type="button"
           :disabled="disabled"
@@ -77,13 +73,31 @@
           @pointerdown.stop
           @dblclick.stop
         >
-          <C_Icon
-            :name="collapseFirstIcon"
-            :size="16"
-            color="currentColor"
-          />
+          <svg
+            class="split-gutter__chevron"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="m9.5 4.5-3.5 3.5 3.5 3.5" />
+          </svg>
         </button>
+
+        <div
+          class="split-gutter__visual"
+          aria-hidden="true"
+        >
+          <div class="split-gutter__dots">
+            <span
+              v-for="i in 3"
+              :key="i"
+              class="split-gutter__dot"
+            />
+          </div>
+        </div>
+
         <button
+          v-if="showCollapseButton && collapsible"
           class="split-gutter__collapse-btn split-gutter__collapse-btn--second"
           type="button"
           :disabled="disabled"
@@ -95,13 +109,16 @@
           @pointerdown.stop
           @dblclick.stop
         >
-          <C_Icon
-            :name="collapseSecondIcon"
-            :size="16"
-            color="currentColor"
-          />
+          <svg
+            class="split-gutter__chevron"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="m9.5 4.5-3.5 3.5 3.5 3.5" />
+          </svg>
         </button>
-      </template>
+      </div>
     </div>
 
     <!-- 第二面板 -->
@@ -125,7 +142,6 @@
 
 <script setup lang="ts">
   import { ref, computed, toRef, useId } from 'vue'
-  import C_Icon from '../C_Icon/index.vue'
   import { useSplitResize } from './composables/useSplitResize'
   import type {
     SplitPaneProps,
@@ -211,21 +227,6 @@
       ? { width: `${gutterSize.value}px` }
       : { height: `${gutterSize.value}px` }
   )
-
-  /* ─── 折叠按钮图标 ──────────────────────────── */
-  const collapseFirstIcon = computed(() => {
-    if (props.direction === 'horizontal') {
-      return isFirstCollapsed.value ? 'mdi:chevron-right' : 'mdi:chevron-left'
-    }
-    return isFirstCollapsed.value ? 'mdi:chevron-down' : 'mdi:chevron-up'
-  })
-
-  const collapseSecondIcon = computed(() => {
-    if (props.direction === 'horizontal') {
-      return isSecondCollapsed.value ? 'mdi:chevron-left' : 'mdi:chevron-right'
-    }
-    return isSecondCollapsed.value ? 'mdi:chevron-up' : 'mdi:chevron-down'
-  })
 
   /* ─── 暴露方法 ──────────────────────────────── */
   defineExpose<SplitPaneExpose>({

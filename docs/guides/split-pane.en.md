@@ -82,6 +82,10 @@ Existing uncontrolled usage remains supported. Moving the gutter outside the per
 
 ## Interaction
 
+A fine divider line carries a centered capsule grip (80px long, 16px thick by default). Nearby collapse buttons appear on hover or keyboard focus and stay visible while collapsed. Borders, a restrained shadow and local accent feedback use the existing `--c-primary`, `--c-bg-card`, `--c-border` and `--c-text-3` theme tokens in both orientations.
+
+The capsule itself accepts dragging without increasing the layout space reserved by `gutterSize`. Touch input gets a 24px grip thickness and permanently visible 28px buttons. Collapsed controls dock inside the container to avoid clipping. Inline SVG arrows require no remote icon request, and reduced-motion preferences disable transitions.
+
 The [W3C APG Window Splitter pattern](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/) informs keyboard behavior and separator semantics. Use Left/Right for left/right layouts and Up/Down for top/bottom layouts. Home/End move to the current boundaries. Enter collapses the first pane or restores an already collapsed pane. Double-click toggles the first pane.
 
 Pointer Events support mouse, pen and touch. Pointer cancellation, window blur, document hiding, disablement, direction changes and unmounting all dispose listeners and restore the previous body cursor / text selection styles. Nested splitters do not overwrite `document.onmousemove`.
