@@ -99,6 +99,8 @@ Image/calendar behavior notes: `C_ImageCropper` flips the actual source and rese
 
 `C_VtableGantt` merges presets and `options` without dropping untouched nested settings, replaces arrays as a whole, and ignores prototype-related keys. Its fullscreen button reflects the actual fullscreen state of that Gantt container.
 
+If Gantt initialization or rebuilding fails, a released `ganttInstance` is cleared, an error and retry button appear, and an `error` event emits an `Error`. The component instance exposes `loading`, `error`, and asynchronous `reload()` for status feedback and retries. Wait for `ganttCreated` before operating on a replacement engine instance.
+
 `C_AudioPlayer` enters the playing state and emits `play` only after the browser accepts `play()`. A rejected autoplay emits `error`, and an empty playlist cannot emit a false play event. Mute, playlist tracks, and seeking are keyboard operable.
 
 `C_CollapsePanel` and `C_TagsView` validate persisted data before restoring it, so corrupt or outdated JSON cannot break initialization. Persisted tags restore only in-app paths, and special characters in a path are no longer interpolated into CSS selectors.
@@ -106,6 +108,8 @@ Image/calendar behavior notes: `C_ImageCropper` flips the actual source and rese
 `C_Table` column settings restore only valid keys, visibility, widths, and fixed directions; corrupt `persistKey` storage falls back to the supplied columns. Settings operate on local column copies rather than mutating caller-owned objects. `C_Upload` copies its initial file list before managing it, applies the same `accept` filter to picker, drop, and paste input, labels image actions for keyboard users, and shows per-file progress during concurrent hashing. Cancelling a chunked upload during resume lookup, an active request, or merging cannot start later requests or emit stale completion; a custom request's `abort()` releases the pending chunk even if it never calls back.
 
 `C_WorkFlow` loads the supplied `modelValue` on first render and returns isolated snapshots from `getCurrentWorkflowData()`, `save`, `change`, and `node-click`, so callers cannot accidentally mutate its internal nodes. Editing conditions cannot change canvas data before Save, and incomplete conditions are not silently dropped. `readonly` blocks dragging, connecting, configuring, adding/removing, and saving while leaving preview, validation, and fit-to-view available. Node and condition IDs remain unique when created in the same tick.
+
+Workflow validation requires unique, nonempty node and edge IDs, exactly one start node, existing edge endpoints, and directed reachability from the start to every node. `allowCycles` defaults to `true` for general workflows with loops. Use `:allow-cycles="false"` for acyclic approval flows; a detected cycle blocks saving and produces a structural error that can be located on the canvas. This option supports runtime changes. Passing validation confirms graph structure and node configuration; execution, permissions, and business rules remain the responsibility of the business backend.
 
 Type verification covers TypeScript source, Vue SFC templates, and consumer examples built against the package. `C_Table` summary rendering expects an object keyed by column (`{ columnKey: { value, colSpan? } }`). `C_FormSearch` preserves existing numeric timestamp ranges and also supports formatted string ranges, binding each to the matching Naive UI value API.
 

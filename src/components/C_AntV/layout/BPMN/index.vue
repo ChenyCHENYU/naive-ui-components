@@ -8,6 +8,7 @@
         <div class="toolbar-group">
           <NButton
             @click="clearAll"
+            :disabled="readonly"
             size="small"
           >
             <template #icon>
@@ -67,7 +68,7 @@
     <div class="main-content">
       <div
         class="left-panel"
-        v-if="showToolbar"
+        v-if="showToolbar && !readonly"
       >
         <div class="panel-title">组件</div>
         <div class="element-grid">
@@ -109,6 +110,8 @@
   import { useGraphBase } from '../../composables/useGraphBase'
   import { useGraphExport } from '../../composables/useGraphExport'
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
+  import { bindReadonlyGuard } from '../../composables/readonlyGraph'
+  import { cloneData } from '../../../../utils/data'
   import BPMNPropertyEditor from './components/BPMNPropertyEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
   import {
@@ -168,6 +171,7 @@
   const { bindInteractions } = useEdgeInteraction(graph, {
     portPositions,
     onDataChange: () => emitDataChange(),
+    isReadonly: () => props.readonly,
   })
 
   // ==================== 编辑器状态 ====================
@@ -229,7 +233,7 @@
         item.shape === 'bpmn-edge'
           ? graph.value!.createEdge(cellProps)
           : graph.value!.createNode(cellProps)
-      if (nodeData) cell.setData(nodeData)
+      if (nodeData) cell.setData(cloneData(nodeData))
       return cell
     })
     graph.value.resetCells(cells)
@@ -237,7 +241,7 @@
   }
 
   const addElement = (type: string) => {
-    if (!graph.value) return
+    if (props.readonly || !graph.value) return
     const config = addElementConfigs[type as keyof typeof addElementConfigs]
     if (!config) return
 
@@ -250,18 +254,20 @@
       ...config,
     }
     const node = graph.value.createNode(nodeProps)
-    if (nodeData) node.setData(nodeData)
+    if (nodeData) node.setData(cloneData(nodeData))
     graph.value.addCell(node)
     emitDataChange()
   }
 
   const clearAll = () => {
+    if (props.readonly) return
     graph.value?.clearCells()
     emitDataChange()
   }
 
   // ==================== 元素编辑 ====================
   const editElement = (cell: any) => {
+    if (props.readonly) return
     const cellData = cell.getData() || {}
     editingElement.value = {
       id: cell.id,
@@ -276,7 +282,7 @@
   }
 
   const saveElement = () => {
-    if (!graph.value || !editingElement.value) return
+    if (props.readonly || !graph.value || !editingElement.value) return
     const cell = graph.value.getCellById(editingElement.value.id)
     if (cell) {
       cell.setData({
@@ -291,7 +297,7 @@
   }
 
   const deleteElement = () => {
-    if (!graph.value || !editingElement.value) return
+    if (props.readonly || !graph.value || !editingElement.value) return
     graph.value.getCellById(editingElement.value.id)?.remove()
     showEditor.value = false
     emitDataChange()
@@ -309,7 +315,7 @@
         width: node.getSize().width,
         height: node.getSize().height,
         label: getLabel(node),
-        data: node.getData() || {},
+        data: cloneData(node.getData() || {}),
       })),
       ...graph.value.getEdges().map((edge: any) => ({
         id: edge.id,
@@ -317,14 +323,16 @@
         source: edge.getSourceCellId() || '',
         target: edge.getTargetCellId() || '',
         label: getLabel(edge),
-        data: edge.getData() || {},
+        data: cloneData(edge.getData() || {}),
         x: 0,
         y: 0,
       })),
     ] as BPMNElement[]
   }
 
-  const emitDataChange = () => emit('data-change', getCurrentData())
+  const emitDataChange = () => {
+    if (!props.readonly) emit('data-change', getCurrentData())
+  }
 
   // ==================== Graph 事件绑定 ====================
   watch(
@@ -332,11 +340,10 @@
     newGraph => {
       if (!(newGraph instanceof Graph)) return
 
-      if (!props.readonly) {
-        bindInteractions()
-        newGraph.on('node:dblclick', ({ node }) => editElement(node))
-        newGraph.on('node:moved', emitDataChange)
-      }
+      bindReadonlyGuard(newGraph, () => props.readonly)
+      bindInteractions()
+      newGraph.on('node:dblclick', ({ node }) => editElement(node))
+      newGraph.on('node:moved', emitDataChange)
 
       emit('ready', newGraph)
       loadData(
@@ -355,13 +362,26 @@
     { deep: true }
   )
 
+  watch(
+    () => props.readonly,
+    readonly => {
+      if (!readonly) return
+      showEditor.value = false
+      editingElement.value = undefined
+    },
+    { flush: 'sync' }
+  )
+
   onMounted(async () => {
     registerNodes()
     const bpmnConfig = getGraphConfig()
     await initGraph({
       ...bpmnConfig,
+      interacting: () => !props.readonly,
       connecting: {
         ...bpmnConfig.connecting,
+        validateMagnet: () => !props.readonly,
+        validateEdge: () => !props.readonly,
         createEdge: () => graph.value!.createEdge({ shape: 'bpmn-edge' }),
         validateConnection: ({
           sourceView,
@@ -369,6 +389,7 @@
           sourceMagnet,
           targetMagnet,
         }: any) =>
+          !props.readonly &&
           sourceView !== targetView &&
           !!sourceMagnet &&
           !!targetMagnet &&

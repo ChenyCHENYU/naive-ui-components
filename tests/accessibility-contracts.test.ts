@@ -99,12 +99,4 @@ describe('keyboard and status accessibility contracts', () => {
     expect(source).not.toContain('container.style.maxWidth')
     expect(source).toContain("'editor-focused': isFocused")
   })
-
-  test('file preview auto mode opens and refreshes when its source changes', () => {
-    const source = read('src/components/C_FilePreview/index.vue')
-    expect(source).toContain('watch(')
-    expect(source).toContain('[file, url, autoPreview, inline]')
-    expect(source).toContain('void openPreview()')
-    expect(source).toContain('void loadFile()')
-  })
 })

@@ -6,7 +6,7 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, type Ref } from 'vue'
+import { ref, watch, toValue, type Ref, type MaybeRefOrGetter } from 'vue'
 import { getItem, setItem } from '../../../utils/storage'
 import { STORAGE_KEYS } from '../constants'
 import type { Bookmark } from '../types'
@@ -21,9 +21,9 @@ export function useBookmarks(
   url: Ref<string>,
   currentTime: Ref<number>,
   seekFn: (time: number) => void,
-  initialBookmarks: Bookmark[] = []
+  initialBookmarks: MaybeRefOrGetter<Bookmark[] | undefined> = []
 ) {
-  const bookmarks = ref<Bookmark[]>([...initialBookmarks])
+  const bookmarks = ref<Bookmark[]>([])
 
   /** 存储 key */
   function getStorageKey(): string {
@@ -106,10 +106,15 @@ export function useBookmarks(
     saveBookmarks()
   }
 
-  /* 初始化时恢复 */
-  if (!initialBookmarks.length) {
-    restoreBookmarks()
-  }
+  watch(
+    [url, () => toValue(initialBookmarks)],
+    () => {
+      const provided = toValue(initialBookmarks) ?? []
+      bookmarks.value = provided.map(bookmark => ({ ...bookmark }))
+      if (!provided.length) restoreBookmarks()
+    },
+    { immediate: true, deep: true, flush: 'sync' }
+  )
 
   return {
     bookmarks,

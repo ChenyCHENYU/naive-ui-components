@@ -50,6 +50,9 @@ export function useFilePreview(
   const excelSheets = ref<ExcelSheet[]>([])
   let loadVersion = 0
   let fetchController: AbortController | null = null
+  let disposed = false
+  const isCurrentLoad = (version: number, controller: AbortController) =>
+    version === loadVersion && !disposed && !controller.signal.aborted
 
   /* ==================== 计算属性 ==================== */
   const displayFileName = computed(() => {
@@ -63,6 +66,7 @@ export function useFilePreview(
     getFileType(displayFileName.value)
   )
   const fileConfig = computed(() => getFileConfig(fileType.value))
+  const hasSource = computed(() => Boolean(file.value || url.value))
 
   const revokePdfUrl = () => {
     const previous = pdfUrl.value
@@ -87,6 +91,14 @@ export function useFilePreview(
   const setError = (msg: string) => {
     error.value = msg
     loading.value = false
+  }
+
+  /** 清空源与卸载共用失效路径，阻止不可中止解析器迟到回写。 */
+  const clearPreview = () => {
+    loadVersion += 1
+    fetchController?.abort()
+    fetchController = null
+    clearState()
   }
 
   /* ==================== 文件解析 ==================== */
@@ -148,15 +160,15 @@ export function useFilePreview(
 
   /* ==================== 核心方法 ==================== */
   const loadFile = async () => {
+    if (disposed) return false
     const version = ++loadVersion
     fetchController?.abort()
     const controller = new AbortController()
     fetchController = controller
     clearState()
-    if (!file.value && !url.value) {
-      setError('未提供文件或URL')
+    if (!hasSource.value) {
       fetchController = null
-      return
+      return false
     }
 
     loading.value = true
@@ -164,13 +176,15 @@ export function useFilePreview(
     try {
       const currentType = fileType.value
       const currentFile = await resolveFile(controller.signal)
-      if (version !== loadVersion) return
+      if (version !== loadVersion) return false
       fileSize.value = currentFile.size
       await loadByType(currentFile, currentType, version)
+      return isCurrentLoad(version, controller)
     } catch (err) {
-      if (version !== loadVersion || controller.signal.aborted) return
+      if (!isCurrentLoad(version, controller)) return false
       const errorMessage = err instanceof Error ? err.message : '未知错误'
       setError(`${fileType.value.toUpperCase()}文件加载失败: ${errorMessage}`)
+      return false
     } finally {
       if (version === loadVersion) {
         loading.value = false
@@ -180,12 +194,17 @@ export function useFilePreview(
   }
 
   const openPreview = async () => {
+    if (disposed) return
+    const source = file.value || url.value
     showModal.value = true
-    await loadFile()
-    emit('preview', file.value || url.value!)
+    const loaded = await loadFile()
+    if (loaded && source && source === (file.value || url.value) && !disposed)
+      emit('preview', source)
   }
 
   const downloadFile = () => {
+    const source = file.value || url.value
+    if (disposed || !source) return
     if (file.value) {
       const downloadUrl = URL.createObjectURL(file.value)
       const a = Object.assign(document.createElement('a'), {
@@ -202,10 +221,18 @@ export function useFilePreview(
       }
       window.open(safeUrl, '_blank', 'noopener,noreferrer')
     }
-    emit('download', file.value || url.value!)
+    emit('download', source)
   }
 
   /* ==================== 副作用 ==================== */
+  watch(
+    [file, url],
+    ([currentFile, currentUrl]) => {
+      if (!currentFile && !currentUrl) clearPreview()
+    },
+    { flush: 'sync' }
+  )
+
   watch(
     () => file.value?.size,
     newSize => {
@@ -215,9 +242,8 @@ export function useFilePreview(
   )
 
   onUnmounted(() => {
-    loadVersion += 1
-    fetchController?.abort()
-    revokePdfUrl()
+    disposed = true
+    clearPreview()
   })
 
   return {
@@ -226,6 +252,7 @@ export function useFilePreview(
     error,
     fileSize,
     showModal,
+    hasSource,
     /* 解析数据 */
     pdfUrl,
     pdfTotalPages,
@@ -240,5 +267,6 @@ export function useFilePreview(
     loadFile,
     openPreview,
     downloadFile,
+    clearPreview,
   }
 }

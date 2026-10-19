@@ -6,7 +6,16 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, onBeforeUnmount, type ShallowRef, type Ref } from 'vue'
+import {
+  ref,
+  computed,
+  watch,
+  toValue,
+  onBeforeUnmount,
+  type ShallowRef,
+  type Ref,
+  type MaybeRefOrGetter,
+} from 'vue'
 import { XGPLAYER_EVENTS as Events } from '../constants'
 import type { PlayerInstance, AntiCheatConfig } from '../types'
 
@@ -19,8 +28,10 @@ import type { PlayerInstance, AntiCheatConfig } from '../types'
 export function useAntiCheat(
   playerRef: ShallowRef<PlayerInstance | null>,
   currentTime: Ref<number>,
-  config?: AntiCheatConfig
+  config?: MaybeRefOrGetter<AntiCheatConfig | undefined>
 ) {
+  const resolved = computed(() => toValue(config))
+
   /** 已观看的最远位置（秒） */
   const maxWatchedTime = ref(0)
 
@@ -31,10 +42,10 @@ export function useAntiCheat(
   const isBlurred = ref(false)
 
   /** 是否启用水印 */
-  const showWatermark = ref(config?.watermark ?? false)
+  const showWatermark = computed(() => resolved.value?.watermark ?? false)
 
   /** 水印文本 */
-  const watermarkText = ref(config?.watermarkText ?? '')
+  const watermarkText = ref(resolved.value?.watermarkText ?? '')
 
   /** 记录播放的最远位置 */
   function updateMaxWatched(time: number) {
@@ -45,7 +56,7 @@ export function useAntiCheat(
 
   /** 防跳播拦截 */
   function handleSeeking(player: PlayerInstance) {
-    if (!config?.preventSeekOnFirstWatch || !isFirstWatch.value) return
+    if (!resolved.value?.preventSeekOnFirstWatch || !isFirstWatch.value) return
 
     const seekTarget = player.currentTime ?? 0
     /* 只允许向已观看区域拖动 */
@@ -57,7 +68,7 @@ export function useAntiCheat(
 
   /** 焦点检测 - 页面可见性变化 */
   function handleVisibilityChange() {
-    if (!config?.focusDetection) return
+    if (!resolved.value?.focusDetection) return
 
     const player = playerRef.value
     if (!player) return
@@ -75,19 +86,17 @@ export function useAntiCheat(
   /** 绑定事件 */
   function bindEvents(player: PlayerInstance) {
     /* 防跳播 */
-    if (config?.preventSeekOnFirstWatch) {
-      player.on(Events.SEEKING, () => handleSeeking(player))
-    }
+    player.on(Events.SEEKING, () => {
+      if (playerRef.value === player) handleSeeking(player)
+    })
 
     /* 更新最远观看位置 */
     player.on(Events.TIME_UPDATE, () => {
-      updateMaxWatched(currentTime.value)
+      if (playerRef.value === player) updateMaxWatched(currentTime.value)
     })
 
     /* 焦点检测 */
-    if (config?.focusDetection) {
-      document.addEventListener('visibilitychange', handleVisibilityChange)
-    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
   }
 
   /** 标记已完整看过（允许自由拖动） */
@@ -99,6 +108,13 @@ export function useAntiCheat(
   function setWatermarkText(text: string) {
     watermarkText.value = text
   }
+
+  watch(
+    () => resolved.value?.watermarkText,
+    text => {
+      watermarkText.value = text ?? ''
+    }
+  )
 
   onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)

@@ -68,8 +68,14 @@
       v-if="inline"
       class="c-file-preview-inline"
     >
+      <NResult
+        v-if="!hasSource"
+        status="info"
+        title="暂无预览文件"
+        description="选择文件后即可预览"
+      />
       <div
-        v-if="loading || error"
+        v-else-if="loading || error"
         class="status-container"
         role="status"
       >
@@ -226,7 +232,13 @@
           <!-- 预览内容区域 -->
           <div class="preview-content">
             <!-- 加载和错误状态 -->
-            <template v-if="loading || error">
+            <NResult
+              v-if="!hasSource"
+              status="info"
+              title="暂无预览文件"
+              description="选择文件后即可预览"
+            />
+            <template v-else-if="loading || error">
               <div class="status-container">
                 <NSpin
                   v-if="loading"
@@ -330,6 +342,7 @@
     error,
     fileSize,
     showModal,
+    hasSource,
     pdfUrl,
     pdfTotalPages,
     wordContent,
@@ -353,20 +366,20 @@
   })
 
   watch(
-    [file, url, autoPreview, inline],
-    ([currentFile, currentUrl], previous) => {
-      if (typeof window === 'undefined') return
+    [file, url, autoPreview, inline, propFileName],
+    (current, previous) => {
+      if (typeof window === 'undefined' || !hasSource.value) return
       if (inline.value) {
-        if (currentFile || currentUrl) void loadFile()
+        void loadFile()
         return
       }
       if (showModal.value) {
-        if (currentFile !== previous?.[0] || currentUrl !== previous?.[1]) {
+        if ([0, 1, 4].some(index => current[index] !== previous?.[index])) {
           void loadFile()
         }
         return
       }
-      if (autoPreview.value && (currentFile || currentUrl)) void openPreview()
+      if (autoPreview.value) void openPreview()
     },
     { immediate: true }
   )

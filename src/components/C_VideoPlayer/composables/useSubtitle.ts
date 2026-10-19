@@ -10,9 +10,12 @@ import {
   ref,
   shallowRef,
   computed,
+  watch,
+  toValue,
   onBeforeUnmount,
   type Ref,
   type ShallowRef,
+  type MaybeRefOrGetter,
 } from 'vue'
 import type { PlayerInstance, SubtitleTrack } from '../types'
 import {
@@ -80,11 +83,13 @@ function parseVtt(vttText: string): SubtitleCue[] {
 /** 字幕管理：复用轨道请求，且迟到的请求不能覆盖新的语言选择。 */
 export function useSubtitle(
   playerRef: ShallowRef<PlayerInstance | null>,
-  subtitles: SubtitleTrack[] = [],
+  subtitles: MaybeRefOrGetter<SubtitleTrack[] | undefined> = [],
   currentTime: Ref<number> = ref(0)
 ) {
   const activeLanguage = ref<string | null>(null)
-  const subtitleList = ref<SubtitleTrack[]>([...subtitles])
+  const subtitleList = ref<SubtitleTrack[]>(
+    (toValue(subtitles) ?? []).map(track => ({ ...track }))
+  )
   // Cue 数据按轨道整体替换；播放时间高频读取不需要为每条 cue 创建深层代理。
   const cueMap = shallowRef<
     Record<string, { cues: SubtitleCue[]; timeline: SubtitleTimeline }>
@@ -123,7 +128,12 @@ export function useSubtitle(
         if (!response.ok)
           throw new Error(`字幕加载失败: ${track.src} (${response.status})`)
         const text = await response.text()
-        if (disposed || controller.signal.aborted) return []
+        if (
+          disposed ||
+          controller.signal.aborted ||
+          pendingTracks.get(language)?.controller !== controller
+        )
+          return []
         const cues = parseVtt(text)
         cueMap.value = {
           ...cueMap.value,
@@ -137,6 +147,7 @@ export function useSubtitle(
         return []
       })
       .finally(() => {
+        if (pendingTracks.get(language)?.controller !== controller) return
         pendingTracks.delete(language)
         if (!disposed) isLoading.value = pendingTracks.size > 0
       })
@@ -174,12 +185,27 @@ export function useSubtitle(
     else void initSubtitles()
   }
 
-  onBeforeUnmount(() => {
-    disposed = true
+  /** 轨道列表或资源失效后，旧请求连 finally 也不能移除新请求。 */
+  function resetSubtitles() {
     selectionVersion++
     pendingTracks.forEach(({ controller }) => controller.abort())
     pendingTracks.clear()
+    cueMap.value = {}
+    activeLanguage.value = null
     isLoading.value = false
+  }
+  watch(
+    () => toValue(subtitles),
+    tracks => {
+      resetSubtitles()
+      subtitleList.value = (tracks ?? []).map(track => ({ ...track }))
+      void initSubtitles()
+    },
+    { deep: true }
+  )
+  onBeforeUnmount(() => {
+    disposed = true
+    resetSubtitles()
   })
 
   return {
@@ -189,6 +215,7 @@ export function useSubtitle(
     hasSubtitles,
     isLoading,
     initSubtitles,
+    resetSubtitles,
     switchSubtitle,
     closeSubtitle,
     toggleSubtitle,

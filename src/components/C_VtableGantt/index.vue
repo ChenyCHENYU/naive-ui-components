@@ -31,11 +31,28 @@
         </NButton>
       </div>
     </div>
-    <div
-      ref="ganttContainerRef"
-      class="gantt-container"
-      :style="{ height: containerHeight }"
-    />
+    <div class="gantt-body">
+      <div
+        ref="ganttContainerRef"
+        class="gantt-container"
+        :style="{ height: containerHeight }"
+      />
+      <NResult
+        v-if="initializationError"
+        class="gantt-error"
+        status="error"
+        title="甘特图加载失败"
+        :description="initializationError.message"
+      >
+        <template #footer>
+          <NButton
+            :loading="loading"
+            @click="initGantt"
+            >重试</NButton
+          >
+        </template>
+      </NResult>
+    </div>
   </div>
 </template>
 
@@ -49,7 +66,9 @@
     onMounted,
     onUnmounted,
   } from 'vue'
-  import { NButton } from 'naive-ui'
+  import { NButton, NResult } from 'naive-ui'
+  import type { Gantt as GanttInstance } from '@visactor/vtable-gantt'
+  import type { IEditor } from '@visactor/vtable-editors'
   import C_Icon from '../C_Icon/index.vue'
   import {
     presetConfigs,
@@ -88,12 +107,15 @@
     ganttCreated: [gantt: any]
     taskClick: [task: GanttTask, event: Event]
     taskChange: [task: GanttTask, changes: any]
+    error: [error: Error]
   }>()
 
   const ganttContainerRef = ref<HTMLDivElement>()
   // 图库实例不参与模板深层响应式，保留原始实例和其内部记录。
   const ganttInstance = shallowRef<any>()
   const isFullscreen = ref(false)
+  const loading = ref(false)
+  const initializationError = shallowRef<Error>()
   let initVersion = 0
   let initTimer: ReturnType<typeof setTimeout> | undefined
   let resizeTimer: ReturnType<typeof setTimeout> | undefined
@@ -183,49 +205,84 @@
     grid: applyThemeToGrid(finalConfig.grid, themeColors),
   })
 
+  const resolveGanttOptions = (
+    themes: typeof import('@visactor/vtable').themes
+  ) => {
+    const isDark = props.theme === 'dark'
+    const presetConfig = presetConfigs[props.preset] || presetConfigs.basic
+    const finalConfig = mergeGanttOptions(presetConfig, props.options)
+    return buildGanttOptions(
+      finalConfig,
+      processData(props.data),
+      isDark ? themes.DARK : themes.DEFAULT,
+      getThemeConfig(isDark)
+    )
+  }
+
+  const releaseInstance = (instance?: GanttInstance) => {
+    if (!instance) return
+    try {
+      instance.release()
+    } catch (error) {
+      console.warn('销毁甘特图失败:', error)
+    }
+  }
+
+  const ensureEditor = (
+    register: typeof import('@visactor/vtable').register,
+    name: string,
+    create: () => IEditor
+  ) => {
+    if (!register.editor(name)) register.editor(name, create())
+  }
+
   const initGantt = async () => {
     clearTimeout(initTimer)
     initTimer = undefined
     const container = ganttContainerRef.value
     if (!container || disposed) return
     const version = ++initVersion
+    loading.value = true
+    initializationError.value = undefined
+    let candidate: GanttInstance | undefined
     try {
-      const { Gantt } = await import('@visactor/vtable-gantt')
-      const { themes, register } = await import('@visactor/vtable')
-      const { InputEditor, DateInputEditor } =
-        await import('@visactor/vtable-editors')
+      const [
+        { Gantt },
+        { themes, register },
+        { InputEditor, DateInputEditor },
+      ] = await Promise.all([
+        import('@visactor/vtable-gantt'),
+        import('@visactor/vtable'),
+        import('@visactor/vtable-editors'),
+      ])
       if (!isCurrentInitialization(version, container)) return
       // Preserve applications' own editor registrations.
-      if (!register.editor('input')) register.editor('input', new InputEditor())
-      if (!register.editor('date-input'))
-        register.editor('date-input', new DateInputEditor())
-      const isDark = props.theme === 'dark'
-      const presetConfig = presetConfigs[props.preset] || presetConfigs.basic
-      const finalConfig = mergeGanttOptions(presetConfig, props.options)
-      const processedData = processData(props.data || [])
-      if (ganttInstance.value) ganttInstance.value.release()
-      const tableTheme = isDark ? themes.DARK : themes.DEFAULT
-      const themeColors = getThemeConfig(isDark)
-      const ganttOptions = buildGanttOptions(
-        finalConfig,
-        processedData,
-        tableTheme,
-        themeColors
-      )
+      ensureEditor(register, 'input', () => new InputEditor())
+      ensureEditor(register, 'date-input', () => new DateInputEditor())
+      const ganttOptions = resolveGanttOptions(themes)
+      destroyGantt()
       const instance = new Gantt(container, ganttOptions)
+      candidate = instance
       if (!isCurrentInitialization(version, container)) {
         instance.release()
         return
       }
-      ganttInstance.value = instance
       bindGanttEvents(
         instance,
         (task, event) => emit('taskClick', task, event),
         (task, changes) => emit('taskChange', task, changes)
       )
+      ganttInstance.value = instance
+      candidate = undefined
       emit('ganttCreated', instance)
     } catch (error) {
-      console.error('甘特图初始化失败:', error)
+      releaseInstance(candidate)
+      if (!isCurrentInitialization(version, container)) return
+      initializationError.value =
+        error instanceof Error ? error : new Error(String(error))
+      emit('error', initializationError.value)
+    } finally {
+      if (isCurrentInitialization(version, container)) loading.value = false
     }
   }
 
@@ -280,15 +337,9 @@
   }
 
   const destroyGantt = () => {
-    if (ganttInstance.value) {
-      try {
-        ganttInstance.value.release()
-      } catch (error) {
-        console.warn('销毁甘特图失败:', error)
-      } finally {
-        ganttInstance.value = undefined
-      }
-    }
+    const instance = ganttInstance.value
+    ganttInstance.value = undefined
+    releaseInstance(instance)
   }
 
   watch(
@@ -316,6 +367,7 @@
 
   onUnmounted(() => {
     disposed = true
+    loading.value = false
     initVersion += 1
     if (initTimer) clearTimeout(initTimer)
     if (resizeTimer) clearTimeout(resizeTimer)
@@ -325,6 +377,9 @@
 
   defineExpose({
     ganttInstance,
+    loading,
+    error: initializationError,
+    reload: initGantt,
     updateData,
     updateOptions,
     toggleFullscreen,

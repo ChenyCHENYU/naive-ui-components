@@ -5,6 +5,8 @@ export interface CalendarEvent {
   title: string
   start: Date | string
   end?: Date | string
+  /** 全天事件的 end 为 FullCalendar 约定的排他结束日期。 */
+  allDay?: boolean
   color?: string
   editable?: boolean
   [key: string]: any
@@ -17,6 +19,9 @@ export interface CalendarEditForm {
   id: string
   title: string
   date: number | null
+  /** 编辑器中的结束日期（全天事件按包含当天显示）。 */
+  endDate?: number | null
+  allDay?: boolean
   startTime: string
   endTime: string
   color: string

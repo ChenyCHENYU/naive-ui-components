@@ -60,18 +60,41 @@
 
         <div style="margin-bottom: 16px">
           <label style="display: block; margin-bottom: 8px; font-weight: 500"
-            >事件日期</label
+            >开始日期</label
           >
           <NDatePicker
             v-model:value="editForm.date"
             type="date"
             format="yyyy-MM-dd"
             style="width: 100%"
-            aria-label="事件日期"
+            aria-label="开始日期"
           />
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+        <div style="margin-bottom: 16px">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500"
+            >结束日期</label
+          >
+          <NDatePicker
+            v-model:value="editForm.endDate"
+            type="date"
+            format="yyyy-MM-dd"
+            style="width: 100%"
+            aria-label="结束日期"
+          />
+        </div>
+
+        <NCheckbox
+          v-model:checked="editForm.allDay"
+          style="margin-bottom: 16px"
+        >
+          全天事件
+        </NCheckbox>
+
+        <div
+          v-if="!editForm.allDay"
+          style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px"
+        >
           <div>
             <label style="display: block; margin-bottom: 8px; font-weight: 500"
               >开始时间</label
@@ -126,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-  import { NModal, NButton, NInput, NDatePicker } from 'naive-ui'
+  import { NModal, NButton, NInput, NDatePicker, NCheckbox } from 'naive-ui'
   import FullCalendar from '@fullcalendar/vue3'
   import { useCalendarEvents } from './composables/useCalendarEvents'
   import type { CalendarProps, CalendarEmits, CalendarExpose } from './types'

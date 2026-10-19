@@ -47,6 +47,7 @@ export function useProgressTracker(
 
   /** 是否正在播放 */
   let isPlaying = false
+  let tracking = false
 
   /** 心跳定时器 */
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
@@ -54,9 +55,11 @@ export function useProgressTracker(
   /** 进度节流定时器 */
   let throttleTimer: ReturnType<typeof setInterval> | null = null
 
+  let activeUrl = url.value
+
   /** 视频标识（用于 localStorage key） */
   function getVideoKey(): string {
-    return STORAGE_KEYS.PROGRESS + encodeURIComponent(url.value)
+    return STORAGE_KEYS.PROGRESS + encodeURIComponent(activeUrl)
   }
 
   /** 恢复进度 */
@@ -84,7 +87,7 @@ export function useProgressTracker(
 
   /** 保存进度到 localStorage */
   function saveProgress() {
-    setItem(getVideoKey(), getProgressData())
+    if (activeUrl) setItem(getVideoKey(), getProgressData())
   }
 
   /** 隔离使用侧异步回调异常，避免定时器产生未处理拒绝。 */
@@ -177,6 +180,7 @@ export function useProgressTracker(
   /** 初始化追踪 */
   function startTracking() {
     stopRuntimeTracking()
+    tracking = true
     startHeartbeat()
     startThrottleReport()
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -185,9 +189,12 @@ export function useProgressTracker(
 
   /** 停止追踪 */
   function stopTracking() {
+    const shouldSave = tracking
+    updateWatchedDuration()
     isPlaying = false
+    tracking = false
     stopRuntimeTracking()
-    saveProgress()
+    if (shouldSave) saveProgress()
   }
 
   /** 清理运行时资源，不触发持久化，便于安全地重复启动。 */
@@ -206,6 +213,7 @@ export function useProgressTracker(
 
   /** 标记开始播放 */
   function onPlay() {
+    if (!tracking) startTracking()
     isPlaying = true
     lastRecordTime = performance.now()
   }
@@ -222,6 +230,20 @@ export function useProgressTracker(
   function onTimeUpdate() {
     updateWatchedDuration()
   }
+
+  watch(
+    url,
+    next => {
+      stopTracking()
+      activeUrl = next
+      watchedDuration.value = 0
+      completionPercent.value = 0
+      lastRecordTime = 0
+      currentTime.value = 0
+      duration.value = 0
+    },
+    { flush: 'sync' }
+  )
 
   /** 监听播放器就绪后恢复进度 */
   watch(playerRef, player => {

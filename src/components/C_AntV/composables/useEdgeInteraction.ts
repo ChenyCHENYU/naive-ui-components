@@ -14,6 +14,8 @@ export interface EdgeInteractionOptions {
   portPositions?: string[]
   /** 数据变更回调 */
   onDataChange?: () => void
+  /** 运行中也重新检查写权限。 */
+  isReadonly?: () => boolean
 }
 
 const DEFAULT_OPTIONS: Required<EdgeInteractionOptions> = {
@@ -23,6 +25,7 @@ const DEFAULT_OPTIONS: Required<EdgeInteractionOptions> = {
   highlightStrokeWidth: 3,
   portPositions: [],
   onDataChange: () => {},
+  isReadonly: () => false,
 }
 
 /**
@@ -74,6 +77,7 @@ export function useEdgeInteraction(
 
     // 连线双击删除
     g.on('edge:dblclick', ({ edge }) => {
+      if (config.isReadonly()) return
       edge.remove()
       config.onDataChange()
     })
@@ -83,7 +87,9 @@ export function useEdgeInteraction(
     g.on('node:click', resetEdgeStyles)
 
     // 连线创建时通知数据变更
-    g.on('edge:connected', config.onDataChange)
+    g.on('edge:connected', () => {
+      if (!config.isReadonly()) config.onDataChange()
+    })
 
     // 端口显隐（如果配置了 portPositions）
     if (config.portPositions.length > 0) {

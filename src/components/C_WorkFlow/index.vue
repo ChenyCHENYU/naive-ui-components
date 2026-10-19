@@ -160,7 +160,9 @@
             />
           </div>
           <h3>验证通过</h3>
-          <p>工作流配置正确，所有节点都已正确设置！</p>
+          <p
+            >流程结构和节点配置验证通过；审批执行、权限与业务规则由后端校验。</p
+          >
         </div>
 
         <div
@@ -182,7 +184,7 @@
           <div class="error-list">
             <div
               v-for="(error, index) in validationErrors"
-              :key="error.nodeId"
+              :key="`${error.nodeId}-${error.field}-${index}`"
               class="error-item"
             >
               <div class="error-header">
@@ -205,6 +207,7 @@
                 <NButton
                   size="small"
                   type="primary"
+                  :disabled="!error.nodeId"
                   @click="jumpToErrorNode(error.nodeId)"
                 >
                   <template #icon>
@@ -433,6 +436,7 @@
     roles: () => [],
     departments: () => [],
     readonly: false,
+    allowCycles: true,
     theme: 'light',
   })
 
@@ -471,6 +475,7 @@
     getErrorTypeText,
     resetValidation,
   } = useWorkflowValidation(nodes, edges, vueFlowRef, {
+    allowCycles: () => props.allowCycles,
     onShowNodeConfig: node => {
       if (props.readonly) return
       currentNode.value = node
@@ -487,9 +492,11 @@
   const saveWorkflow = (): void => {
     if (props.readonly) return
     const errors = validateWorkflow()
+    validationErrors.value = errors
     if (errors.length > 0) {
       message.error(`工作流验证失败: ${errors[0].message}`)
       showValidationErrors.value = true
+      emit('validate-error', errors)
       return
     }
     const data = getCurrentWorkflowData()

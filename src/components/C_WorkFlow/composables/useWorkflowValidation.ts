@@ -7,12 +7,15 @@ import { ref, onBeforeUnmount, type Ref } from 'vue'
 import { useComponentFeedback } from '../../../config'
 import type { WorkflowNode, WorkflowEdge, ValidationError } from '../types'
 import { FIELD_DISPLAY_NAMES, ERROR_TYPE_TEXTS } from '../data'
+import { validateWorkflowStructure } from './workflowStructure'
 
 export interface WorkflowValidationOptions {
   /** 定位错误节点后打开配置弹窗的回调 */
   onShowNodeConfig?: (node: WorkflowNode) => void
   /** 验证失败时的外部回调（通常用于 emit） */
   onValidateError?: (errors: ValidationError[]) => void
+  /** 默认允许循环以兼容通用流程；审批业务可显式关闭。 */
+  allowCycles?: boolean | (() => boolean)
 }
 
 /** 工作流验证 —— 封装流程校验逻辑、错误展示和节点定位 */
@@ -32,7 +35,13 @@ export function useWorkflowValidation(
   /* ─── 核心验证 ──────────────────────────────────────────── */
   /** 执行工作流验证，返回错误列表（纯逻辑，不操作 UI） */
   const validateWorkflow = (): ValidationError[] => {
-    const errors: ValidationError[] = []
+    const allowCycles =
+      typeof options?.allowCycles === 'function'
+        ? options.allowCycles()
+        : options?.allowCycles
+    const errors = validateWorkflowStructure(nodes.value, edges.value, {
+      allowCycles,
+    })
 
     nodes.value.forEach(node => {
       /* 审批节点：必须有审批人 */
@@ -78,25 +87,6 @@ export function useWorkflowValidation(
       }
     })
 
-    /* 检查断连节点 */
-    const connectedNodes = new Set<string>()
-    edges.value.forEach(edge => {
-      connectedNodes.add(edge.source)
-      connectedNodes.add(edge.target)
-    })
-
-    nodes.value.forEach(node => {
-      if (node.type !== 'start' && !connectedNodes.has(node.id)) {
-        errors.push({
-          nodeId: node.id,
-          nodeName: node.data.title,
-          field: 'connection',
-          message: '此节点未与其他节点连接，可能导致流程中断',
-          type: 'warning',
-        })
-      }
-    })
-
     return errors
   }
 
@@ -107,7 +97,7 @@ export function useWorkflowValidation(
     validationErrors.value = errors
 
     if (errors.length === 0) {
-      message.success('工作流验证通过！所有节点配置正确')
+      message.success('流程结构和节点配置验证通过；执行规则由业务后端校验')
       showValidationErrors.value = false
     } else {
       message.error(`发现 ${errors.length} 个问题，请查看详细错误`)

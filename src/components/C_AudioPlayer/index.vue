@@ -226,10 +226,15 @@
 
   let audio: HTMLAudioElement | null = null
   let playVersion = 0
+  let playbackRequested = false
+  let loadedTrack: { id: string | number; src: string } | undefined
   const hasTrack = (index: number): boolean =>
     Number.isInteger(index) && Boolean(props.tracks[index])
   const isCurrentPlayback = (version: number, current: HTMLAudioElement) =>
-    version === playVersion && current === audio
+    version === playVersion &&
+    current === audio &&
+    currentTrack.value?.id === loadedTrack?.id &&
+    currentTrack.value?.src === loadedTrack?.src
 
   const activeIndex = ref(
     normalizeTrackIndex(props.initialIndex ?? 0, props.tracks.length)
@@ -263,27 +268,46 @@
     () => MODE_ICON_MAP[playMode.value]?.label ?? '循环'
   )
 
-  /** 初始化音频实例 */
-  function initAudio() {
+  /** 停止并释放旧资源，使待完成的 play() 与媒体事件失效。 */
+  function releaseAudio() {
     playVersion += 1
     if (audio) {
-      audio.pause()
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.removeEventListener('loadedmetadata', onMetaLoaded)
       audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('error', onAudioError)
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
     }
     audio = null
+    loadedTrack = undefined
     isPlaying.value = false
     currentTime.value = 0
+  }
+
+  /** 初始化音频实例 */
+  function initAudio() {
+    releaseAudio()
     const track = currentTrack.value
     totalDuration.value = track?.duration ?? 0
     if (!track || typeof Audio === 'undefined') return
 
     audio = new Audio(track.src)
+    loadedTrack = { id: track.id, src: track.src }
     audio.volume = volume.value / 100
     audio.addEventListener('timeupdate', onTimeUpdate)
     audio.addEventListener('loadedmetadata', onMetaLoaded)
     audio.addEventListener('ended', onEnded)
+    audio.addEventListener('error', onAudioError)
+  }
+
+  function onAudioError(event: Event) {
+    if (event.currentTarget !== audio) return
+    playbackRequested = false
+    playVersion += 1
+    isPlaying.value = false
+    emit('error', audio?.error ?? event)
   }
 
   /** 播放进度更新回调 */
@@ -309,6 +333,7 @@
         void startPlayback(activeIndex.value, false)
         break
       case 'single':
+        playbackRequested = false
         isPlaying.value = false
         break
       case 'shuffle':
@@ -332,20 +357,25 @@
   /** Only a successful browser play() transition can enter the playing state. */
   async function startPlayback(idx: number, restart: boolean): Promise<void> {
     if (!hasTrack(idx)) return
+    playbackRequested = true
     if (restart || !audio || activeIndex.value !== idx) {
       activeIndex.value = idx
       initAudio()
     }
     const currentAudio = audio
-    if (!currentAudio) return
+    if (!currentAudio) {
+      playbackRequested = false
+      return
+    }
     const version = ++playVersion
     try {
       await currentAudio.play()
       if (!isCurrentPlayback(version, currentAudio)) return
       isPlaying.value = true
-      emit('play', idx)
+      emit('play', activeIndex.value)
     } catch (error) {
       if (!isCurrentPlayback(version, currentAudio)) return
+      playbackRequested = false
       isPlaying.value = false
       emit('error', error)
     }
@@ -359,6 +389,7 @@
       return
     }
     playVersion += 1
+    playbackRequested = false
     audio?.pause()
     isPlaying.value = false
     emit('pause')
@@ -439,15 +470,29 @@
   // ==================== Lifecycle ====================
 
   watch(
-    () => props.tracks,
-    () => {
-      const resume = isPlaying.value
-      activeIndex.value = normalizeTrackIndex(
-        props.initialIndex ?? 0,
-        props.tracks.length
-      )
+    () => props.tracks.map(track => ({ id: track.id, src: track.src })),
+    (tracks, previous) => {
+      const previousTrack = loadedTrack ?? previous[activeIndex.value]
+      const retainedIndex = previousTrack
+        ? tracks.findIndex(track => track.id === previousTrack.id)
+        : -1
+      const nextIndex =
+        retainedIndex >= 0
+          ? retainedIndex
+          : normalizeTrackIndex(activeIndex.value, tracks.length)
+      const nextTrack = tracks[nextIndex]
+      const sameResource =
+        previousTrack &&
+        nextTrack &&
+        previousTrack.id === nextTrack.id &&
+        previousTrack.src === nextTrack.src
+      activeIndex.value = nextIndex
+      // 重排或增删其他曲目不打断当前音频；身份或地址变化才重建。
+      if (sameResource) return
+      const resume = playbackRequested
       initAudio()
-      if (resume) void startPlayback(activeIndex.value, false)
+      playbackRequested = resume && Boolean(nextTrack)
+      if (playbackRequested) void startPlayback(nextIndex, false)
     }
   )
 
@@ -456,7 +501,7 @@
     val => {
       const nextIndex = normalizeTrackIndex(val ?? 0, props.tracks.length)
       if (nextIndex !== activeIndex.value) {
-        const resume = isPlaying.value
+        const resume = playbackRequested
         activeIndex.value = nextIndex
         initAudio()
         if (resume) void startPlayback(nextIndex, false)
@@ -485,19 +530,14 @@
   })
 
   onBeforeUnmount(() => {
-    playVersion += 1
-    if (audio) {
-      audio.pause()
-      audio.removeEventListener('timeupdate', onTimeUpdate)
-      audio.removeEventListener('loadedmetadata', onMetaLoaded)
-      audio.removeEventListener('ended', onEnded)
-      audio = null
-    }
+    playbackRequested = false
+    releaseAudio()
   })
 
   // KeepAlive 隐藏视图时停止播放，并使仍在等待的 play() 结果失效。
   onDeactivated(() => {
     playVersion += 1
+    playbackRequested = false
     audio?.pause()
     isPlaying.value = false
   })

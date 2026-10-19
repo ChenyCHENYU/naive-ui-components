@@ -7,6 +7,7 @@
       <NSpace>
         <NButton
           @click="addClass"
+          :disabled="readonly"
           type="primary"
           size="small"
         >
@@ -82,6 +83,8 @@
   import { useGraphBase } from '../../composables/useGraphBase'
   import { useGraphExport } from '../../composables/useGraphExport'
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
+  import { bindReadonlyGuard } from '../../composables/readonlyGraph'
+  import { cloneData } from '../../../../utils/data'
   import type { UMLClass, UMLDiagramData, UMLRelation } from '../../types'
   import UMLClassEditor from './components/UMLClassEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
@@ -128,6 +131,7 @@
     defaultColor: '#722ed1',
     portPositions: ['top', 'right', 'bottom', 'left'],
     onDataChange: () => emitDataChange(),
+    isReadonly: () => props.readonly,
   })
 
   // ==================== 编辑器状态 ====================
@@ -206,12 +210,12 @@
     data.forEach(item => {
       if (edgeShapes.includes(item.shape)) {
         const edge = graph.value!.createEdge(item)
-        if (item.data) edge.setData(item.data)
+        if (item.data) edge.setData(cloneData(item.data))
         cells.push(edge)
       } else {
         const { data: nodeData, ...displayProps } = item
         const node = graph.value!.createNode(displayProps)
-        if (nodeData) node.setData(nodeData)
+        if (nodeData) node.setData(cloneData(nodeData))
         cells.push(node)
       }
     })
@@ -238,10 +242,10 @@
 
   // ==================== 类 CRUD ====================
   const addClass = () => {
-    if (!graph.value) return
+    if (props.readonly || !graph.value) return
     const newClass: UMLClass = {
       id: `class_${Date.now()}`,
-      ...newClassTemplate,
+      ...cloneData(newClassTemplate),
     }
     const nodeData = {
       id: newClass.id,
@@ -256,19 +260,17 @@
   }
 
   const editClass = (umlClass: UMLClass) => {
-    editingClass.value = {
-      ...umlClass,
-      attributes: [...(umlClass.attributes || [])],
-      methods: [...(umlClass.methods || [])],
-    }
+    if (props.readonly) return
+    // 方法参数、属性对象和位置都属于草稿，取消时不能修改图模型。
+    editingClass.value = cloneData(umlClass)
     showEditor.value = true
   }
 
   const saveClass = () => {
-    if (!graph.value || !editingClass.value) return
+    if (props.readonly || !graph.value || !editingClass.value) return
     const node = graph.value.getCellById(editingClass.value.id) as Node
     if (node) {
-      node.setData(editingClass.value)
+      node.setData(cloneData(editingClass.value))
       node.prop(formatClassDisplay(editingClass.value))
     }
     showEditor.value = false
@@ -276,7 +278,7 @@
   }
 
   const deleteClass = () => {
-    if (!graph.value || !editingClass.value) return
+    if (props.readonly || !graph.value || !editingClass.value) return
     graph.value.getCellById(editingClass.value.id)?.remove()
     showEditor.value = false
     emitDataChange()
@@ -286,7 +288,7 @@
   const getCurrentData = (): UMLDiagramData => ({
     classes:
       graph.value?.getNodes().map((node: Node) => ({
-        ...node.getData(),
+        ...cloneData(node.getData()),
         position: node.getPosition(),
       })) || [],
     relations:
@@ -308,7 +310,9 @@
       }) || [],
   })
 
-  const emitDataChange = () => emit('data-change', getCurrentData())
+  const emitDataChange = () => {
+    if (!props.readonly) emit('data-change', getCurrentData())
+  }
 
   const loadUmlData = (data: UMLDiagramData): void => {
     loadData([
@@ -345,11 +349,13 @@
       if (!(newGraph instanceof Graph)) return
 
       registerNodes()
+      bindReadonlyGuard(newGraph, () => props.readonly)
       bindInteractions()
 
       newGraph.on('node:dblclick', ({ node }: { node: Node }) => {
         if (!props.readonly && node.getData()) editClass(node.getData())
       })
+      newGraph.on('node:moved', emitDataChange)
 
       emit('ready', newGraph)
 
@@ -384,11 +390,23 @@
     { deep: true }
   )
 
+  watch(
+    () => props.readonly,
+    readonly => {
+      if (!readonly) return
+      showEditor.value = false
+      editingClass.value = undefined
+    },
+    { flush: 'sync' }
+  )
+
   onMounted(() => {
     initGraph({
-      interacting: true,
+      interacting: () => !props.readonly,
       connecting: {
         ...connectingConfig,
+        validateMagnet: () => !props.readonly,
+        validateEdge: () => !props.readonly,
         createEdge: () => graph.value!.createEdge(defaultEdgeConfig),
         validateConnection: ({
           sourceView,
@@ -396,6 +414,7 @@
           sourceMagnet,
           targetMagnet,
         }: any) =>
+          !props.readonly &&
           sourceView !== targetView &&
           !!sourceMagnet &&
           !!targetMagnet &&

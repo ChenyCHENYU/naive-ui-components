@@ -7,7 +7,7 @@
 -->
 <template>
   <NTabs
-    :value="activeValue ?? undefined"
+    :value="nativeActiveValue"
     @update:value="handleValueUpdate"
     class="c-tabs"
     :class="[`is-${type}`, { 'is-tabs-only': tabsOnly }]"
@@ -18,7 +18,7 @@
     :animated="animated"
     :closable="closable"
     :addable="addable"
-    :before-leave="handleBeforeLeave"
+    :on-before-leave="handleBeforeLeave"
     @close="emit('close', $event)"
     @add="emit('add')"
   >
@@ -93,6 +93,7 @@
     defineComponent,
     ref,
     watch,
+    onBeforeUnmount,
     type PropType,
     type VNodeChild,
   } from 'vue'
@@ -139,19 +140,30 @@
     },
   })
 
-  const firstEnabledValue = (): TabsValue | null =>
-    props.items.find(item => !item.disabled)?.key ?? null
+  const isEnabled = (value: TabsValue | null | undefined): value is TabsValue =>
+    value !== null &&
+    value !== undefined &&
+    props.items.some(item => item.key === value && !item.disabled)
+  const fallbackValue = (): TabsValue | null =>
+    isEnabled(props.defaultValue)
+      ? props.defaultValue
+      : (props.items.find(item => !item.disabled)?.key ?? null)
 
-  const internalValue = ref<TabsValue | null>(
-    props.defaultValue ?? firstEnabledValue()
-  )
+  const internalValue = ref<TabsValue | null>(fallbackValue())
+  let leaveVersion = 0
+  let disposed = false
 
   const activeValue = computed<TabsValue | null>({
-    get: () =>
-      props.modelValue !== undefined ? props.modelValue : internalValue.value,
+    get: () => {
+      const value =
+        props.modelValue !== undefined ? props.modelValue : internalValue.value
+      return value === null || isEnabled(value) ? value : fallbackValue()
+    },
     set: value => {
-      if (value === null) return
+      if (value !== null && !isEnabled(value)) return
+      if (activeValue.value === value) return
       if (props.modelValue === undefined) internalValue.value = value
+      if (value === null) return
       emit('update:modelValue', value)
       emit(
         'change',
@@ -161,6 +173,11 @@
     },
   })
 
+  // Naive 的运行时支持显式 null 空态；其历史声明仅列出字符串与数字。
+  const nativeActiveValue = computed(
+    () => activeValue.value as TabsValue | undefined
+  )
+
   const handleValueUpdate = (value: TabsValue): void => {
     activeValue.value = value
   }
@@ -169,9 +186,20 @@
     target: TabsValue,
     current: TabsValue
   ): Promise<boolean> => {
-    if (!props.beforeChange) return true
+    const version = ++leaveVersion
+    if (!isEnabled(target)) return false
     try {
-      return (await props.beforeChange(target, current ?? null)) !== false
+      const allowed =
+        !props.beforeChange ||
+        (await props.beforeChange(target, current ?? null)) !== false
+      // 等待守卫期间，标签可能被移除、禁用，当前项也可能已由外部切换。
+      return (
+        allowed &&
+        !disposed &&
+        version === leaveVersion &&
+        isEnabled(target) &&
+        activeValue.value === (current ?? null)
+      )
     } catch {
       return false
     }
@@ -180,25 +208,36 @@
   const getPaneSlotName = (item: TabsItem): string => `pane-${String(item.key)}`
 
   watch(
-    () => props.modelValue,
-    value => {
-      if (value !== undefined) internalValue.value = value
-    }
+    [
+      () => props.modelValue,
+      () => props.defaultValue,
+      () => props.items.map(item => [item.key, item.disabled]),
+    ],
+    () => {
+      const current =
+        props.modelValue !== undefined ? props.modelValue : internalValue.value
+      if (props.modelValue !== undefined) internalValue.value = props.modelValue
+      if (current === null && props.modelValue === null) return
+      if (isEnabled(current)) return
+      const fallback = fallbackValue()
+      if (current === fallback) return
+      leaveVersion += 1
+      if (props.modelValue === undefined) internalValue.value = fallback
+      if (fallback === null) return
+      emit('update:modelValue', fallback)
+      emit(
+        'change',
+        fallback,
+        props.items.find(item => item.key === fallback)
+      )
+    },
+    { deep: true, immediate: true }
   )
 
-  watch(
-    () =>
-      props.items
-        .map(item => `${typeof item.key}:${String(item.key)}`)
-        .join('|'),
-    () => {
-      const current = activeValue.value
-      if (current !== null && props.items.some(item => item.key === current))
-        return
-      const fallback = props.defaultValue ?? firstEnabledValue()
-      if (fallback !== null) activeValue.value = fallback
-    }
-  )
+  onBeforeUnmount(() => {
+    disposed = true
+    leaveVersion += 1
+  })
 
   defineExpose({ activeValue })
 </script>

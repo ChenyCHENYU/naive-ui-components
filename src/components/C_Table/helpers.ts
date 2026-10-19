@@ -2,6 +2,23 @@ import type { TableConfig } from './composables/useTableConfig'
 import type { DataTableRowKey } from 'naive-ui'
 import type { StrictTableColumn, TableRowKeyIssue } from './types'
 
+/** DOM 标记保留键的原始类型，避免数字 1 与字符串 "1" 混为同一行。 */
+export function getTableRowDragKey<T extends object>(
+  row: T,
+  rowKey: (row: T) => DataTableRowKey
+): string | undefined {
+  try {
+    const key = rowKey(row)
+    if (typeof key === 'string' && key !== '')
+      return JSON.stringify(['string', key])
+    if (typeof key === 'number' && Number.isFinite(key))
+      return JSON.stringify(['number', key])
+  } catch {
+    // 行键错误由表格统一报告；拖拽遇到无效身份时只做安全降级。
+  }
+  return undefined
+}
+
 /** Flatten an explicitly configured tree without visiting cyclic/shared nodes twice. */
 export function flattenTableRows<T extends object>(
   rows: readonly T[],

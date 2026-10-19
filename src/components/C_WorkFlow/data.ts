@@ -70,12 +70,17 @@ export const FIELD_DISPLAY_NAMES: Record<string, string> = {
   approvers: '审批人',
   conditions: '条件配置',
   connection: '节点连接',
+  nodeId: '节点标识',
+  edgeId: '连线标识',
+  start: '开始节点',
+  cycle: '循环策略',
   copyUsers: '抄送人',
 }
 
 /* 错误类型文本映射 */
 export const ERROR_TYPE_TEXTS: Record<string, string> = {
   required: '必填',
+  invalid: '结构错误',
   incomplete: '不完整',
   warning: '警告',
   error: '错误',

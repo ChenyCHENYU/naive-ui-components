@@ -50,6 +50,29 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
   const isEditing = ref(false)
   const selectedEvent = shallowRef<EventApi | null>(null)
   const editForm = ref<CalendarEditForm>({ ...DEFAULT_EDIT_FORM })
+  const getEditTime = (form: CalendarEditForm) => [
+    form.date,
+    form.endDate,
+    form.startTime,
+    form.endTime,
+    form.allDay,
+  ]
+  let initialEditTime: unknown[] = []
+
+  watch(
+    () => [editForm.value, editForm.value.date] as const,
+    ([form, date], [previousForm, previousDate]) => {
+      if (form !== previousForm) return
+      const { endDate } = editForm.value
+      if (date == null || previousDate == null || endDate == null) return
+      const previous = new Date(previousDate)
+      const end = new Date(endDate)
+      // 单日事件移动开始日期时，结束日期同步移动；跨日结束日期仍由用户明确选择。
+      if (previous.toDateString() === end.toDateString())
+        editForm.value.endDate = date
+    },
+    { flush: 'sync' }
+  )
 
   const addEventToArray = (event: CalendarEvent) => {
     internalEvents.value = [...internalEvents.value, event]
@@ -93,10 +116,15 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    *
    */
   function handleEventDrop(info: EventDropArg) {
+    if (props.editable === false) {
+      info.revert()
+      return
+    }
     const payload = {
       id: info.event.id,
       start: info.event.start ?? undefined,
       end: info.event.end ?? undefined,
+      allDay: info.event.allDay,
     }
     updateEventInArray(payload)
     emit('event-dropped', payload)
@@ -107,10 +135,15 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    *
    */
   function handleEventResize(info: EventResizeDoneArg) {
+    if (props.editable === false) {
+      info.revert()
+      return
+    }
     const payload = {
       id: info.event.id,
       start: info.event.start ?? undefined,
       end: info.event.end ?? undefined,
+      allDay: info.event.allDay,
     }
     updateEventInArray(payload)
     emit('event-updated', payload)
@@ -120,10 +153,13 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    *
    */
   function openAddModal(date: Date) {
+    if (props.editable === false) return
     isEditing.value = false
     editForm.value = {
       ...DEFAULT_EDIT_FORM,
       date: date.getTime(),
+      endDate: date.getTime(),
+      allDay: false,
       color: EVENT_COLORS[Math.floor(Math.random() * EVENT_COLORS.length)],
     }
     showEditModal.value = true
@@ -133,53 +169,76 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    *
    */
   function openEditModal() {
+    if (props.editable === false) return
     const event = selectedEvent.value
     if (!event?.start) return
     const { start } = event
     isEditing.value = true
     const startDate = new Date(start)
-    const endDate =
-      event.end && !event.allDay
-        ? new Date(event.end)
-        : new Date(start.getTime() + 3600000)
+    const endDate = event.end
+      ? new Date(event.end)
+      : new Date(start.getTime() + (event.allDay ? 0 : 3600000))
+    if (event.allDay && event.end) endDate.setDate(endDate.getDate() - 1)
 
     editForm.value = {
       id: event.id,
       title: event.title,
       date: startDate.getTime(),
+      endDate: endDate.getTime(),
+      allDay: event.allDay,
       startTime: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
       endTime: `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`,
       color: event.backgroundColor || '#3f86ff',
     }
+    initialEditTime = getEditTime(editForm.value)
     showActionDialog.value = false
     showEditModal.value = true
   }
 
-  /**
-   *
-   */
+  function getEditedRange(currentEvent?: CalendarEvent) {
+    // 仅修改标题或颜色时保留原始日期精度、缺省 end 与全天语义。
+    const timeUnchanged =
+      currentEvent &&
+      getEditTime(editForm.value).every(
+        (value, index) => value === initialEditTime[index]
+      )
+    if (timeUnchanged)
+      return {
+        start: currentEvent.start,
+        end: currentEvent.end,
+        allDay: currentEvent.allDay,
+      }
+    const range = buildLocalEventRange(
+      editForm.value.date,
+      editForm.value.startTime,
+      editForm.value.endTime,
+      editForm.value.endDate === undefined
+        ? editForm.value.date
+        : editForm.value.endDate,
+      editForm.value.allDay
+    )
+    return range && { ...range, allDay: Boolean(editForm.value.allDay) }
+  }
+
+  /** 校验完整编辑快照，成功后一次写回事件。 */
   function saveEvent() {
+    if (props.editable === false) return false
     if (!editForm.value.title.trim()) {
       message.error('请输入事件标题')
       return false
     }
-    const range = buildLocalEventRange(
-      editForm.value.date,
-      editForm.value.startTime,
-      editForm.value.endTime
-    )
+    const currentEvent = isEditing.value
+      ? internalEvents.value.find(event => event.id === editForm.value.id)
+      : undefined
+    if (isEditing.value && !currentEvent) {
+      message.error('事件已不存在，请刷新后重试')
+      return false
+    }
+    const range = getEditedRange(currentEvent)
     if (!range) {
       message.error('请选择有效日期和时间，且结束时间须晚于开始时间')
       return false
     }
-    if (
-      isEditing.value &&
-      !internalEvents.value.some(event => event.id === editForm.value.id)
-    ) {
-      message.error('事件已不存在，请刷新后重试')
-      return false
-    }
-
     const eventData: CalendarEvent = {
       id: isEditing.value ? editForm.value.id : createEventId(),
       title: editForm.value.title.trim(),
@@ -205,7 +264,7 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    *
    */
   function deleteEvent() {
-    if (!selectedEvent.value) return
+    if (props.editable === false || !selectedEvent.value) return
     const { id, title } = selectedEvent.value
     if (!internalEvents.value.some(event => event.id === id)) {
       showActionDialog.value = false
@@ -233,6 +292,17 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     eventSources: undefined,
     editable: props.editable ?? true,
   }))
+
+  watch(
+    () => props.editable,
+    editable => {
+      if (editable !== false) return
+      showActionDialog.value = false
+      showEditModal.value = false
+      selectedEvent.value = null
+    },
+    { flush: 'sync' }
+  )
 
   watch(
     () => props.events,

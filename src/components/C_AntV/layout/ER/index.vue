@@ -8,6 +8,7 @@
       <NSpace>
         <NButton
           @click="addTable"
+          :disabled="readonly"
           type="primary"
           size="small"
         >
@@ -45,6 +46,7 @@
         </NButton>
         <NButton
           @click="toggleDeleteMode"
+          :disabled="readonly"
           :type="deleteMode ? 'error' : 'default'"
           size="small"
         >
@@ -90,6 +92,11 @@
     <div
       ref="containerRef"
       class="graph-container"
+      tabindex="0"
+      role="region"
+      aria-label="ER 图画布"
+      @pointerdown="focusCanvas"
+      @keydown="handleKeyDown"
     ></div>
 
     <!-- 表编辑器 -->
@@ -106,11 +113,13 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+  import { ref, computed, watch, nextTick, onMounted } from 'vue'
   import { NSpace, NButton, NDropdown, NAlert } from 'naive-ui'
   import { Node, Graph, Cell, Edge } from '@antv/x6'
   import { useGraphBase } from '../../composables/useGraphBase'
   import { useGraphExport } from '../../composables/useGraphExport'
+  import { bindReadonlyGuard } from '../../composables/readonlyGraph'
+  import { cloneData } from '../../../../utils/data'
   import type { ERTable, ERField, ERDiagramData, ERRelation } from '../../types'
   import ERTableEditor from './components/ERTableEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
@@ -157,6 +166,8 @@
           : field.name
       return {
         id: `${table.id}_${field.name}`,
+        // 字段身份独立保存，不再从带下划线的端口 id 猜测。
+        data: { tableId: table.id, fieldName: field.name },
         group: 'list',
         attrs: {
           portNameLabel: {
@@ -179,7 +190,7 @@
     y: table.position.y,
     width: 200,
     height: 24 + (table.fields?.length || 0) * 24,
-    data: table,
+    data: cloneData(table),
     attrs: {
       label: {
         text: truncateText(table.name, 20),
@@ -263,6 +274,7 @@
 
   // ==================== 删除模式 ====================
   const toggleDeleteMode = () => {
+    if (props.readonly) return
     deleteMode.value = !deleteMode.value
     if (!deleteMode.value) resetEdgeStyles()
   }
@@ -302,6 +314,7 @@
   }
 
   const addTable = () => {
+    if (props.readonly) return
     const newTable: ERTable = {
       id: `table_${Date.now()}`,
       name: '新表',
@@ -332,18 +345,16 @@
   }
 
   const editTable = (table: ERTable) => {
-    editingTable.value = {
-      ...table,
-      fields: table.fields?.map(field => ({ ...field })) || [],
-    }
+    if (props.readonly) return
+    editingTable.value = cloneData(table)
     showEditor.value = true
   }
 
   const saveTable = () => {
-    if (!graph.value || !editingTable.value) return
+    if (props.readonly || !graph.value || !editingTable.value) return
     const node = graph.value.getCellById(editingTable.value.id) as Node
     if (node) {
-      node.setData(editingTable.value)
+      node.setData(cloneData(editingTable.value))
       node.prop({
         size: {
           width: 200,
@@ -364,7 +375,7 @@
 
   // ==================== 字段操作（由子组件事件触发） ====================
   const handlePrimaryKey = (field: ERField, isPrimaryKey: boolean) => {
-    if (!isPrimaryKey) return
+    if (props.readonly || !isPrimaryKey) return
     field.isRequired = true
     editingTable.value?.fields.forEach(f => {
       if (f !== field) f.isPrimaryKey = false
@@ -372,6 +383,7 @@
   }
 
   const addField = () => {
+    if (props.readonly) return
     editingTable.value?.fields.push({
       name: `field_${(editingTable.value?.fields.length || 0) + 1}`,
       type: 'VARCHAR(100)',
@@ -383,41 +395,91 @@
   }
 
   const removeField = (index: number) => {
+    if (props.readonly) return
     if (editingTable.value && editingTable.value.fields.length > 1)
       editingTable.value.fields.splice(index, 1)
   }
 
   // ==================== 数据获取 ====================
+  const getFieldName = (node: Node, portId: string): string | undefined => {
+    const metadata = node.getPort(portId)?.data as
+      { tableId: string; fieldName: string } | undefined
+    if (metadata?.tableId === node.id) return metadata.fieldName
+    // 兼容使用侧通过 getGraph 导入的旧端口格式，按完整表 id 截取。
+    const prefix = `${node.id}_`
+    return portId.startsWith(prefix) ? portId.slice(prefix.length) : undefined
+  }
+
+  const getTableLabel = (node: Node): string => node.getData()?.name || node.id
+
+  const getRelation = (edge: Edge): ERRelation | undefined => {
+    const source = edge.getSourceNode()
+    const target = edge.getTargetNode()
+    if (!source || !target) return
+    const sourceField = getFieldName(source, edge.getSourcePortId() ?? '')
+    const targetField = getFieldName(target, edge.getTargetPortId() ?? '')
+    if (sourceField === undefined || targetField === undefined) return
+    const metadata = edge.getData() as ERRelation | undefined
+    return {
+      ...cloneData(metadata),
+      id: edge.id,
+      type: metadata?.type ?? 'foreign-key',
+      sourceTable: source.id,
+      sourceField,
+      targetTable: target.id,
+      targetField,
+      ...(!metadata && {
+        name: `${getTableLabel(source)} -> ${getTableLabel(target)}`,
+      }),
+    }
+  }
+
   const getCurrentData = (): ERDiagramData => {
     if (!graph.value) return { tables: [], relations: [] }
 
     const tables = graph.value.getNodes().map((node: any) => ({
-      ...node.getData(),
+      ...cloneData(node.getData()),
       position: node.getPosition(),
     }))
 
     const relations: ERRelation[] = []
-    graph.value.getEdges().forEach((edge: any) => {
-      const source = edge.getSourceNode()
-      const target = edge.getTargetNode()
-      const sourcePort = edge.getSourcePortId()
-      const targetPort = edge.getTargetPortId()
-      if (source && target && sourcePort && targetPort) {
-        relations.push({
-          id: edge.id,
-          type: 'foreign-key',
-          sourceTable: source.id,
-          sourceField: sourcePort.split('_').slice(1).join('_'),
-          targetTable: target.id,
-          targetField: targetPort.split('_').slice(1).join('_'),
-          name: `${source.getData()?.name || source.id} -> ${target.getData()?.name || target.id}`,
-        })
-      }
+    graph.value.getEdges().forEach((edge: Edge) => {
+      const relation = getRelation(edge)
+      if (relation) relations.push(relation)
     })
     return { tables, relations }
   }
 
-  const emitDataChange = () => emit('data-change', getCurrentData())
+  const emitDataChange = () => {
+    if (!props.readonly) emit('data-change', getCurrentData())
+  }
+
+  const loadErData = (data: ERDiagramData) => {
+    const currentGraph = graph.value
+    if (!currentGraph) return
+    selectedEdge = null
+    const cells: Cell[] = data.tables.map(table =>
+      currentGraph.createNode(createNodeConfig(table))
+    )
+    data.relations?.forEach(relation => {
+      cells.push(
+        currentGraph.createEdge({
+          id: relation.id,
+          source: {
+            cell: relation.sourceTable,
+            port: `${relation.sourceTable}_${relation.sourceField}`,
+          },
+          target: {
+            cell: relation.targetTable,
+            port: `${relation.targetTable}_${relation.targetField}`,
+          },
+          data: cloneData(relation),
+          attrs: { line: { stroke: '#A2B1C3', strokeWidth: 2 } },
+        })
+      )
+    })
+    currentGraph.resetCells(cells)
+  }
 
   // ==================== Graph 事件绑定 ====================
   let selectedEdge: Edge | null = null
@@ -428,16 +490,20 @@
       if (!(newGraph instanceof Graph)) return
 
       registerNodes()
+      bindReadonlyGuard(newGraph, () => props.readonly)
       newGraph.on('node:dblclick', ({ node }) => {
         if (!props.readonly) editTable(node.getData() as ERTable)
       })
       newGraph.on('edge:connected', emitDataChange)
-      newGraph.on('edge:removed', emitDataChange)
+      newGraph.on('edge:removed', ({ edge }) => {
+        if (selectedEdge === edge) selectedEdge = null
+        emitDataChange()
+      })
 
       newGraph.on('edge:click', ({ edge }) => {
+        if (props.readonly) return
         if (deleteMode.value) {
           edge.remove()
-          emitDataChange()
         } else {
           resetEdgeStyles()
           edge.attr('line/stroke', '#ff4d4f')
@@ -446,8 +512,8 @@
         }
       })
       newGraph.on('edge:dblclick', ({ edge }) => {
+        if (props.readonly) return
         edge.remove()
-        emitDataChange()
       })
       newGraph.on('blank:click', () => {
         selectedEdge = null
@@ -457,30 +523,8 @@
       emit('ready', newGraph)
 
       nextTick(() => {
-        if (props.data?.tables) {
-          const cells: Cell[] = props.data.tables.map(table =>
-            newGraph.createNode(createNodeConfig(table))
-          )
-
-          if (props.data.relations?.length) {
-            props.data.relations.forEach(relation => {
-              cells.push(
-                newGraph.createEdge({
-                  source: {
-                    cell: relation.sourceTable,
-                    port: `${relation.sourceTable}_${relation.sourceField}`,
-                  },
-                  target: {
-                    cell: relation.targetTable,
-                    port: `${relation.targetTable}_${relation.targetField}`,
-                  },
-                  attrs: { line: { stroke: '#A2B1C3', strokeWidth: 2 } },
-                })
-              )
-            })
-          }
-
-          newGraph.resetCells(cells)
+        if (graph.value === newGraph && props.data?.tables) {
+          loadErData(props.data)
           scheduleZoomToFit(300, 20)
         }
       })
@@ -492,58 +536,67 @@
     () => props.data,
     newData => {
       if (graph.value && newData?.tables) {
-        const cells: Cell[] = newData.tables.map(table =>
-          graph.value!.createNode(createNodeConfig(table))
-        )
-
-        // 加载关系连线
-        if (newData.relations?.length) {
-          newData.relations.forEach(relation => {
-            cells.push(
-              graph.value!.createEdge({
-                source: {
-                  cell: relation.sourceTable,
-                  port: `${relation.sourceTable}_${relation.sourceField}`,
-                },
-                target: {
-                  cell: relation.targetTable,
-                  port: `${relation.targetTable}_${relation.targetField}`,
-                },
-                attrs: { line: { stroke: '#A2B1C3', strokeWidth: 2 } },
-              })
-            )
-          })
-        }
-
-        graph.value.resetCells(cells)
+        loadErData(newData)
       }
     },
     { deep: true }
   )
 
-  const handleKeyDown = (e: KeyboardEvent): void => {
-    const target = e.target as HTMLElement | null
+  watch(
+    () => props.readonly,
+    readonly => {
+      if (!readonly) return
+      showEditor.value = false
+      editingTable.value = undefined
+      deleteMode.value = false
+      selectedEdge = null
+      resetEdgeStyles()
+    },
+    { flush: 'sync' }
+  )
+
+  const focusCanvas = (event: PointerEvent) => {
+    const target = event.target as Element | null
     if (
-      target?.tagName === 'INPUT' ||
-      target?.tagName === 'TEXTAREA' ||
-      target?.isContentEditable
+      !target?.closest(
+        'input, textarea, [contenteditable]:not([contenteditable="false"])'
+      )
+    ) {
+      containerRef.value?.focus({ preventScroll: true })
+    }
+  }
+
+  const handleKeyDown = (e: KeyboardEvent): void => {
+    if (props.readonly || document.activeElement !== containerRef.value) return
+    const target = e.target as Element | null
+    if (
+      target?.closest(
+        'input, textarea, [contenteditable]:not([contenteditable="false"])'
+      )
     ) {
       return
     }
 
     if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
+      e.preventDefault()
       selectedEdge.remove()
-      emitDataChange()
       selectedEdge = null
     }
   }
 
   onMounted(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    void initGraph()
+    void initGraph({
+      interacting: () => !props.readonly,
+      connecting: {
+        allowBlank: false,
+        allowNode: false,
+        allowEdge: false,
+        validateMagnet: () => !props.readonly,
+        validateConnection: () => !props.readonly,
+        validateEdge: () => !props.readonly,
+      },
+    })
   })
-
-  onUnmounted(() => document.removeEventListener('keydown', handleKeyDown))
 
   defineExpose({
     getGraph: () => graph.value ?? undefined,

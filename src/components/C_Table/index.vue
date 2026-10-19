@@ -161,6 +161,7 @@
       @update:page="handleNativePageChange"
       :loading="normalizedLoading"
       :row-key="resolvedRowKey"
+      :row-props="getRowProps"
       :expanded-row-keys="tableManager.expandedKeys.value"
       :checked-row-keys="crossPageCheckedKeys ?? tableManager.checkedKeys.value"
       @update:expanded-row-keys="tableManager.expandState?.handleExpandChange"
@@ -283,6 +284,7 @@
     nextTick,
     onMounted,
     onBeforeUnmount,
+    useAttrs,
   } from 'vue'
   import type { SortableEvent } from 'sortablejs'
   import type Sortable from 'sortablejs'
@@ -331,7 +333,11 @@
   import { cloneData, isDataEqual } from '../../utils/data'
   import { useComponentFeedback, useComponentLocale } from '../../config'
   import { C_Loading } from '../C_Loading'
-  import { collectTreeBranchKeys, validateTableRowKeys } from './helpers'
+  import {
+    collectTreeBranchKeys,
+    validateTableRowKeys,
+    getTableRowDragKey,
+  } from './helpers'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
 
@@ -699,11 +705,50 @@
 
   /* ================= 行拖拽（可选） ================= */
 
+  const attrs = useAttrs()
+  const rowDragEnabled = computed(
+    () =>
+      resolved.value.rowDrag !== undefined &&
+      resolved.value.rowDrag.enabled !== false &&
+      !resolved.value.virtualScroll &&
+      props.virtualScrollX !== true
+  )
+  const draggableRows = computed(() => {
+    const rows = displayedRows.value
+    const entries = rows.map(
+      row => [getTableRowDragKey(row, resolvedRowKey), row] as const
+    )
+    const identities = new Set(entries.map(([key]) => key))
+    if (
+      entries.some(([key]) => key === undefined) ||
+      identities.size !== rows.length
+    )
+      return new Map<string, DataRecord>()
+    return new Map(entries as [string, DataRecord][])
+  })
+  const getRowProps = (row: DataRecord, index: number) => {
+    const forwarded = attrs.rowProps ?? attrs['row-props']
+    const userProps =
+      typeof forwarded === 'function' ? forwarded(row, index) : undefined
+    if (!rowDragEnabled.value) return userProps
+    const key = getTableRowDragKey(row, resolvedRowKey)
+    return {
+      ...userProps,
+      'data-c-table-row-key':
+        key !== undefined && draggableRows.value.get(key) === row
+          ? key
+          : undefined,
+    }
+  }
+
   let draggedSourceIndexes: (number | undefined)[] | undefined
   const rowDragState = useRowDrag({
     data: displayedRows,
     rowKey: resolvedRowKey,
-    config: computed(() => resolved.value.rowDrag),
+    // 虚拟列表只呈现窗口片段，禁止用局部 DOM 重排完整数据。
+    config: computed(() =>
+      rowDragEnabled.value ? resolved.value.rowDrag : undefined
+    ),
     onReorder: newPageData => {
       const sourceIndexes = new Map(
         normalizedData.value.map((row, index) => [resolvedRowKey(row), index])
@@ -1153,6 +1198,7 @@
   watch(
     [
       () => resolved.value.rowDrag,
+      rowDragEnabled,
       () => normalizedLoading.value,
       () => displayedRows.value.length,
       () => paginationState.currentPage.value,

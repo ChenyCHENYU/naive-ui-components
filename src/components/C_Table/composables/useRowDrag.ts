@@ -15,6 +15,7 @@ import type { DataTableRowKey } from 'naive-ui'
 import type Sortable from 'sortablejs'
 import type { SortableEvent } from 'sortablejs'
 import type { DataRecord } from '../types'
+import { getTableRowDragKey } from '../helpers'
 
 /* ================= 类型定义 ================= */
 
@@ -63,47 +64,123 @@ export function useRowDrag<T extends object = DataRecord>(
   let sortableInstance: Sortable | null = null
   let initVersion = 0
   let disposed = false
+  let bodyObserver: MutationObserver | undefined
+  let boundBody: HTMLElement | null = null
+  let dragSnapshot: T[] | undefined
+  let dragSnapshotKeys: (string | undefined)[] | undefined
+  let originalNextSibling: ChildNode | null = null
+  let draggedElement: HTMLElement | undefined
+
+  const getRowKeys = (rows: readonly T[]) =>
+    rows.map(row => getTableRowDragKey(row, options.rowKey))
+
+  const restoreDraggedElement = () => {
+    if (draggedElement?.parentNode !== boundBody || !boundBody) return
+    if (originalNextSibling && originalNextSibling.parentNode !== boundBody)
+      return
+    boundBody.insertBefore(draggedElement, originalNextSibling)
+  }
 
   const destroyInstance = () => {
     sortableInstance?.destroy()
     sortableInstance = null
+    boundBody = null
+    dragSnapshot = undefined
+    dragSnapshotKeys = undefined
+    draggedElement = undefined
+    originalNextSibling = null
     isDragging.value = false
   }
 
-  // eslint-disable-next-line complexity -- Guards prevent stale async imports and invalid drag indexes.
+  const canReorder = (
+    rows: readonly T[],
+    keys: (string | undefined)[],
+    domKeys: string[]
+  ) => {
+    if (!dragSnapshot || dragSnapshot.length !== rows.length) return false
+    if (dragSnapshot.some((row, index) => row !== rows[index])) return false
+    if (
+      keys.some(
+        (key, index) => key === undefined || key !== dragSnapshotKeys?.[index]
+      )
+    )
+      return false
+    if (domKeys.length !== keys.length || new Set(domKeys).size !== keys.length)
+      return false
+    const keySet = new Set(keys)
+    return domKeys.every(value => keySet.has(value))
+  }
+
+  const handleDragEnd = (evt: SortableEvent) => {
+    isDragging.value = false
+    const { item } = evt
+    const key = item.getAttribute('data-c-table-row-key')
+    const rows = [...data.value]
+    const keys = getRowKeys(rows)
+    const domKeys = boundBody
+      ? [...boundBody.children]
+          .map(row => row.getAttribute('data-c-table-row-key'))
+          .filter((value): value is string => value !== null)
+      : []
+    const valid = item === draggedElement && canReorder(rows, keys, domKeys)
+    // Sortable 先改 DOM，Vue 仍持有原来的节点顺序，必须先还原再提交状态。
+    restoreDraggedElement()
+    dragSnapshot = undefined
+    dragSnapshotKeys = undefined
+    draggedElement = undefined
+    originalNextSibling = null
+    if (!valid || !key) return
+    const from = keys.indexOf(key)
+    const to = domKeys.indexOf(key)
+    if (from < 0 || to < 0 || from === to) return
+    const [moved] = rows.splice(from, 1)
+    rows.splice(to, 0, moved)
+    onReorder?.(rows)
+    onSort?.(moved, from, to)
+  }
+
   const initRowDrag = async (wrapperEl: HTMLElement) => {
     const version = ++initVersion
+    bodyObserver?.disconnect()
+    bodyObserver = undefined
     destroyInstance()
     const config = toValue(options.config)
-    if (!config?.enabled || !wrapperEl || disposed) return
+    if (!config || config.enabled === false || !wrapperEl || disposed) return
 
     try {
       const { default: Sortable } = await import('sortablejs')
       if (disposed || version !== initVersion) return
-      const tbody = wrapperEl.querySelector('.n-data-table-tbody')
-      if (!tbody) return
-
-      sortableInstance = new Sortable(tbody as HTMLElement, {
-        animation: config.animationDuration ?? 150,
-        handle: config.handleSelector,
-        ghostClass: config.ghostClass ?? 'row-drag-ghost',
-        chosenClass: config.chosenClass ?? 'row-drag-chosen',
-        onStart: () => {
-          isDragging.value = true
-        },
-        onEnd: (evt: SortableEvent) => {
-          isDragging.value = false
-          if (evt.oldIndex == null || evt.newIndex == null) return
-          if (evt.oldIndex === evt.newIndex) return
-
-          const newData = [...data.value]
-          const [moved] = newData.splice(evt.oldIndex, 1)
-          if (!moved) return
-          newData.splice(evt.newIndex, 0, moved)
-          onReorder?.(newData)
-          onSort?.(moved, evt.oldIndex, evt.newIndex)
-        },
-      })
+      const connectBody = () => {
+        if (disposed || version !== initVersion) return
+        const tbody = wrapperEl.querySelector<HTMLElement>(
+          '.n-data-table-tbody'
+        )
+        if (tbody === boundBody) return
+        destroyInstance()
+        if (!tbody) return
+        boundBody = tbody
+        sortableInstance = new Sortable(tbody, {
+          animation: config.animationDuration ?? 150,
+          handle: config.handleSelector,
+          // 仅顶层数据行有身份标记，树子行、详情展开和合计行不参与排序。
+          draggable: '> tr[data-c-table-row-key]',
+          ghostClass: config.ghostClass ?? 'row-drag-ghost',
+          chosenClass: config.chosenClass ?? 'row-drag-chosen',
+          onMove: evt => evt.related.hasAttribute('data-c-table-row-key'),
+          onStart: evt => {
+            dragSnapshot = [...data.value]
+            dragSnapshotKeys = getRowKeys(dragSnapshot)
+            draggedElement = evt.item
+            originalNextSibling = evt.item.nextSibling
+            isDragging.value = true
+          },
+          onEnd: handleDragEnd,
+        })
+      }
+      // 空表首次载入、错误视图恢复或原生表体延迟挂载时自动重新连接。
+      bodyObserver = new MutationObserver(connectBody)
+      bodyObserver.observe(wrapperEl, { childList: true, subtree: true })
+      connectBody()
     } catch {
       // sortablejs 未安装时静默降级
     }
@@ -111,6 +188,8 @@ export function useRowDrag<T extends object = DataRecord>(
 
   const destroyRowDrag = () => {
     initVersion += 1
+    bodyObserver?.disconnect()
+    bodyObserver = undefined
     destroyInstance()
   }
 

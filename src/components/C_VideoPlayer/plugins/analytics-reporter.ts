@@ -23,6 +23,8 @@ export function createAnalyticsPlugin(
   player: PlayerInstance,
   reporter: AnalyticsReporter
 ) {
+  let active = true
+
   /** 构建事件数据 */
   function buildEvent(
     type: AnalyticsEvent['type'],
@@ -41,8 +43,13 @@ export function createAnalyticsPlugin(
     type: AnalyticsEvent['type'],
     payload?: Record<string, unknown>
   ) {
+    if (!active) return
     const event = buildEvent(type, payload)
-    reporter(event)
+    try {
+      void Promise.resolve(reporter(event)).catch(() => undefined)
+    } catch {
+      /* 使用侧上报失败不应中断播放器事件与资源释放。 */
+    }
   }
 
   /* 事件处理函数（保留引用以便销毁时移除） */
@@ -75,6 +82,7 @@ export function createAnalyticsPlugin(
 
   /** 销毁插件：移除所有事件监听 */
   function destroy() {
+    active = false
     player.off(Events.PLAY, onPlay)
     player.off(Events.PAUSE, onPause)
     player.off(Events.ENDED, onEnded)

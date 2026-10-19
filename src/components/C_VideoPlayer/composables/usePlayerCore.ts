@@ -6,7 +6,7 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
  */
 
-import { ref, shallowRef, onBeforeUnmount, type Ref } from 'vue'
+import { ref, shallowRef, onBeforeUnmount, onUnmounted, type Ref } from 'vue'
 import {
   DEFAULT_VOLUME,
   SOURCE_TYPE_MAP,
@@ -150,6 +150,7 @@ export function usePlayerCore(props: VideoPlayerProps) {
   async function initPlayer() {
     if (disposed || !containerRef.value) return
 
+    destroyPlayer()
     const version = ++initVersion
 
     playerState.value = 'loading'
@@ -183,37 +184,48 @@ export function usePlayerCore(props: VideoPlayerProps) {
 
     const player = playerRef.value!
 
+    const isCurrent = () =>
+      !disposed && version === initVersion && playerRef.value === player
+
     /* 绑定事件 */
     player.on(Events.READY, () => {
+      if (!isCurrent()) return
       playerState.value = 'ready'
     })
 
     player.on(Events.PLAY, () => {
+      if (!isCurrent()) return
       playerState.value = 'playing'
     })
 
     player.on(Events.PAUSE, () => {
+      if (!isCurrent()) return
       playerState.value = 'paused'
     })
 
     player.on(Events.ENDED, () => {
+      if (!isCurrent()) return
       playerState.value = 'ended'
     })
 
     player.on(Events.ERROR, () => {
+      if (!isCurrent()) return
       playerState.value = 'error'
     })
 
     player.on(Events.TIME_UPDATE, () => {
+      if (!isCurrent()) return
       currentTime.value = player.currentTime ?? 0
       duration.value = player.duration ?? 0
     })
 
     player.on(Events.DURATION_CHANGE, () => {
+      if (!isCurrent()) return
       duration.value = player.duration ?? 0
     })
 
     player.on(Events.FULLSCREEN_CHANGE, (isFS: boolean) => {
+      if (!isCurrent()) return
       isFullscreen.value = isFS
     })
   }
@@ -223,8 +235,8 @@ export function usePlayerCore(props: VideoPlayerProps) {
     initVersion++
     const player = playerRef.value
     if (player) {
-      player.destroy()
       playerRef.value = null
+      player.destroy()
     }
     playerState.value = 'idle'
     currentTime.value = 0
@@ -233,6 +245,9 @@ export function usePlayerCore(props: VideoPlayerProps) {
   }
 
   onBeforeUnmount(() => {
+    disposed = true
+  })
+  onUnmounted(() => {
     disposed = true
     destroyPlayer()
   })

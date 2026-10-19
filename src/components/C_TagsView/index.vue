@@ -38,16 +38,14 @@
         ref="tagsContainer"
       >
         <NTag
-          v-for="(tag, index) in tags.tagsViewList.value"
+          v-for="tag in tags.tagsViewList.value"
           :key="tag.path"
           :type="isActive(tag) ? 'primary' : 'default'"
           :closable="!isAffix(tag)"
           :data-path="tag.path"
-          @close.stop="handleClose(tag, index)"
+          @close.stop="handleClose(tag)"
           @click="navigateToTag(tag)"
-          @contextmenu.prevent="
-            (e: MouseEvent) => showContextMenu(e, tag, index)
-          "
+          @contextmenu.prevent="(e: MouseEvent) => showContextMenu(e, tag)"
         >
           <template #icon>
             <C_Icon
@@ -73,8 +71,13 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, h } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
+  import { ref, computed, watch, nextTick, h, onBeforeUnmount } from 'vue'
+  import {
+    useRoute,
+    useRouter,
+    isNavigationFailure,
+    NavigationFailureType,
+  } from 'vue-router'
   import { C_Icon } from '../C_Icon'
   import type { TagItem } from '../_shared/public'
   import { useTagsView, type UseTagsViewOptions } from './useTagsView'
@@ -161,13 +164,26 @@
   const formatLabel = (title: string): string =>
     props.labelFormatter ? props.labelFormatter(title) : title
 
+  const createCurrentTag = (): TagItem => {
+    const isHome = route.path === props.homePath
+    const originalTitle = isHome
+      ? props.homeTitle
+      : (route.meta.title as string) || 'Unnamed Page'
+    return {
+      path: route.path,
+      originalTitle,
+      title: formatLabel(originalTitle),
+      icon: isHome ? props.homeIcon : (route.meta.icon as string),
+      meta: { affix: route.meta.affix as boolean },
+    }
+  }
+
   // ====== UI State ======
 
   const contextMenuVisible = ref(false)
   const contextMenuX = ref(0)
   const contextMenuY = ref(0)
   const selectedTag = ref<TagItem | null>(null)
-  const selectedIndex = ref(-1)
   const tagsTrack = ref<HTMLElement>()
   const tagsContainer = ref<HTMLElement>()
 
@@ -210,33 +226,69 @@
     scrollToTag(tag.path)
   }
 
-  const handleClose = (tag: TagItem, index: number) => {
-    if (isAffix(tag)) return
+  let closeVersion = 0
+  let disposed = false
 
-    const wasActive = isActive(tag)
-    const tagsBeforeRemove = tags.tagsViewList.value.length
-    tags.removeTag(index)
-
-    if (wasActive) {
-      const remaining = tags.tagsViewList.value
-      const wasLastTag = index === tagsBeforeRemove - 1
-      let fallbackPath: string
-
-      if (wasLastTag) {
-        fallbackPath = remaining[index - 1]?.path || props.homePath
-      } else {
-        fallbackPath = remaining[remaining.length - 1]?.path || props.homePath
-      }
-
-      void router.push(fallbackPath).catch(() => undefined)
-      emit('close', fallbackPath)
+  const navigateForClose = async (path: string) => {
+    try {
+      const failure = await router.push(path)
+      return (
+        !isNavigationFailure(failure) ||
+        isNavigationFailure(failure, NavigationFailureType.duplicated)
+      )
+    } catch {
+      return false
     }
   }
 
-  const showContextMenu = (event: MouseEvent, tag: TagItem, index: number) => {
+  const applyClosedTags = async (
+    remaining: TagItem[],
+    fallbackPath: string,
+    forceNavigate = false
+  ) => {
+    const version = ++closeVersion
+    const shouldNavigate =
+      forceNavigate || !remaining.some(tag => tag.path === route.path)
+    if (shouldNavigate && !(await navigateForClose(fallbackPath))) return false
+    if (disposed || version !== closeVersion) return false
+    // 导航成功才提交关闭结果。重定向可能落到其他页面，保留该页的活动标签。
+    const active =
+      tags.tagsViewList.value.find(tag => tag.path === route.path) ??
+      createCurrentTag()
+
+    tags.initTags(
+      !remaining.some(tag => tag.path === active.path)
+        ? [...remaining, active]
+        : remaining
+    )
+    tags.setActiveTag(route.path)
+    scrollToTag(route.path)
+    return true
+  }
+
+  const handleClose = async (tag: TagItem) => {
+    if (isAffix(tag)) return
+    const current = tags.tagsViewList.value
+    const index = current.findIndex(item => item.path === tag.path)
+    if (index === -1) return
+    const wasActive = isActive(tag)
+    const remaining = current.filter(item => item.path !== tag.path)
+    const fallbackPath =
+      index === current.length - 1
+        ? remaining[index - 1]?.path || props.homePath
+        : remaining[remaining.length - 1]?.path || props.homePath
+    if ((await applyClosedTags(remaining, fallbackPath)) && wasActive)
+      emit('close', fallbackPath)
+  }
+
+  onBeforeUnmount(() => {
+    disposed = true
+    closeVersion += 1
+  })
+
+  const showContextMenu = (event: MouseEvent, tag: TagItem) => {
     event.preventDefault()
     selectedTag.value = tag
-    selectedIndex.value = index
     contextMenuVisible.value = true
     contextMenuX.value = event.clientX
     contextMenuY.value = event.clientY
@@ -281,50 +333,38 @@
     ]
   })
 
-  const handleContextMenuSelect = (key: string) => {
-    if (!selectedTag.value || selectedIndex.value === -1) return
-
-    switch (key) {
-      case 'close':
-        handleClose(selectedTag.value, selectedIndex.value)
-        break
-      case 'closeOthers':
-        tags.removeOtherTags(selectedIndex.value)
-        break
-      case 'closeLeft':
-        tags.removeLeftTags(selectedIndex.value)
-        break
-      case 'closeRight':
-        tags.removeRightTags(selectedIndex.value)
-        break
-      case 'closeAll':
-        tags.removeAllTags()
-        void router.push(props.homePath).catch(() => undefined)
-        emit('closeAll')
-        break
-    }
+  const handleContextMenuSelect = async (key: string) => {
+    const selected = selectedTag.value
+    const current = tags.tagsViewList.value
+    const index = current.findIndex(tag => tag.path === selected?.path)
     closeContextMenu()
+    if (!selected || index === -1) return
+    if (key === 'close') {
+      await handleClose(selected)
+      return
+    }
+    const retained = current.filter((tag, position) => {
+      if (tag.meta?.affix) return true
+      if (key === 'closeOthers') return position === 0 || position === index
+      if (key === 'closeLeft') return position === 0 || position >= index
+      if (key === 'closeRight') return position <= index
+      return key !== 'closeAll'
+    })
+    if (!['closeOthers', 'closeLeft', 'closeRight', 'closeAll'].includes(key))
+      return
+    const fallbackPath = key === 'closeAll' ? props.homePath : selected.path
+    if (
+      (await applyClosedTags(retained, fallbackPath, key === 'closeAll')) &&
+      key === 'closeAll'
+    )
+      emit('closeAll')
   }
 
   // ====== 路由自动跟踪 ======
   watch(
     () => route.path,
     (newPath: string) => {
-      const originalTitle =
-        newPath === props.homePath
-          ? props.homeTitle
-          : (route.meta.title as string) || 'Unnamed Page'
-
-      tags.addTag({
-        path: newPath,
-        originalTitle,
-        title: formatLabel(originalTitle),
-        icon:
-          newPath === props.homePath
-            ? props.homeIcon
-            : (route.meta.icon as string),
-        meta: { affix: route.meta.affix as boolean },
-      })
+      tags.addTag(createCurrentTag())
 
       tags.setActiveTag(newPath)
       scrollToTag(newPath)

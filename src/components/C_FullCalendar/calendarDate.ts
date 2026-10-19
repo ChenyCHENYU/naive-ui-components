@@ -1,37 +1,51 @@
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
 
-/** Build same-day event times from the date picker's local calendar date. */
+const getDate = (value: number | null): Date | null => {
+  if (value === null || !Number.isFinite(value)) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const setLocalTime = (day: Date, time: string): Date | null => {
+  const match = TIME_PATTERN.exec(time)
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  const date = new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
+    hours,
+    minutes
+  )
+  // 夏令时切换可能使某个本地时间不存在，不能静默顺延。
+  return date.getHours() === hours && date.getMinutes() === minutes
+    ? date
+    : null
+}
+
+/** 使用本地日历日期构造区间；可选结束日期支持跨日事件。 */
 export function buildLocalEventRange(
   dateValue: number | null,
   startTime: string,
-  endTime: string
+  endTime: string,
+  endDateValue: number | null = dateValue,
+  allDay = false
 ): { start: Date; end: Date } | null {
-  if (dateValue === null || !Number.isFinite(dateValue)) return null
-  const startMatch = TIME_PATTERN.exec(startTime)
-  const endMatch = TIME_PATTERN.exec(endTime)
-  if (!startMatch || !endMatch) return null
-
-  const startMinutes = Number(startMatch[1]) * 60 + Number(startMatch[2])
-  const endMinutes = Number(endMatch[1]) * 60 + Number(endMatch[2])
-  if (endMinutes <= startMinutes) return null
-
-  const date = new Date(dateValue)
-  if (Number.isNaN(date.getTime())) return null
-  const makeDate = (minutes: number) =>
-    new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      Math.floor(minutes / 60),
-      minutes % 60
+  const date = getDate(dateValue)
+  const endDate = getDate(endDateValue)
+  if (!date || !endDate) return null
+  if (allDay) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    // 界面选择包含最后一天，写回 FullCalendar 时转换为排他结束日。
+    const end = new Date(
+      endDate.getFullYear(),
+      endDate.getMonth(),
+      endDate.getDate() + 1
     )
-  const start = makeDate(startMinutes)
-  const end = makeDate(endMinutes)
-  // A daylight-saving transition can make a requested local time nonexistent.
-  if (
-    start.getHours() * 60 + start.getMinutes() !== startMinutes ||
-    end.getHours() * 60 + end.getMinutes() !== endMinutes
-  )
-    return null
-  return { start, end }
+    return end > start ? { start, end } : null
+  }
+  const start = setLocalTime(date, startTime)
+  const end = setLocalTime(endDate, endTime)
+  return start && end && end > start ? { start, end } : null
 }

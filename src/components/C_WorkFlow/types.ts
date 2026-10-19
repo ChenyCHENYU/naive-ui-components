@@ -153,6 +153,8 @@ export interface WorkflowProps {
   departments?: Department[]
   modelValue?: WorkflowData
   readonly?: boolean
+  /** 是否允许循环连接，默认 true。无环审批流程应设为 false；执行规则由业务后端校验。 */
+  allowCycles?: boolean
   theme?: 'light' | 'dark'
 }
 

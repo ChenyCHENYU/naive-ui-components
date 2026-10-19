@@ -93,7 +93,7 @@ export interface TableConfig<T extends object = DataRecord> {
   columnDrag?: ColumnDragConfig | boolean
   /** 树形表格 */
   tree?: TreeConfig | boolean
-  /** 行拖拽排序 */
+  /** 当前页顶层行同层排序；树子行/详情内容不可拖拽，虚拟滚动模式下禁用。 */
   rowDrag?: RowDragConfig | boolean
   /** 跨页多选 */
   crossPageSelection?: CrossPageSelectionConfig | boolean
