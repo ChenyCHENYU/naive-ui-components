@@ -1,6 +1,7 @@
 import { Graph } from '@antv/x6'
 import {
   ref,
+  shallowRef,
   watch,
   nextTick,
   onUnmounted,
@@ -80,7 +81,8 @@ export function useGraphBase(
   let zoomToFitTimer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
 
-  const graph: Ref<any> = ref(null)
+  // 图实例自行管理内部状态，避免 Vue 深代理整个图模型与第三方类方法。
+  const graph: Ref<any> = shallowRef(null)
   const loading = ref(false)
 
   const initializeGraph = (options: any): void => {

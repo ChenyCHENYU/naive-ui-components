@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { getCurrentScope, onScopeDispose, ref, type Ref } from 'vue'
 import type { CropOutputFormat, CropResult } from '../types'
 
 interface CropperInstance {
@@ -21,6 +21,15 @@ const EXPORT_TIMEOUT_MS = 15_000
 /** Manage the vue-cropper instance and serialize a single crop snapshot. */
 export function useCropperCore(options: UseCropperCoreOptions = {}) {
   const cropperRef = ref<CropperInstance | null>(null)
+  const pendingExports = new Set<(error: Error) => void>()
+  let disposed = false
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true
+      for (const cancel of pendingExports)
+        cancel(new Error('Image cropper was disposed'))
+      pendingExports.clear()
+    })
 
   function rotateLeft() {
     cropperRef.value?.rotateLeft()
@@ -63,8 +72,12 @@ export function useCropperCore(options: UseCropperCoreOptions = {}) {
   function getCropResult(): Promise<CropResult> {
     return new Promise((resolve, reject) => {
       const cropper = cropperRef.value
-      if (!cropper) {
-        reject(new Error('Cropper not initialized'))
+      if (!cropper || disposed) {
+        reject(
+          new Error(
+            disposed ? 'Image cropper was disposed' : 'Cropper not initialized'
+          )
+        )
         return
       }
 
@@ -81,6 +94,7 @@ export function useCropperCore(options: UseCropperCoreOptions = {}) {
         if (settled) return
         settled = true
         clearTimeout(timeout)
+        pendingExports.delete(fail)
         reject(error instanceof Error ? error : new Error(String(error)))
       }
 
@@ -88,9 +102,11 @@ export function useCropperCore(options: UseCropperCoreOptions = {}) {
         if (settled) return
         settled = true
         clearTimeout(timeout)
+        pendingExports.delete(fail)
         resolve(result)
       }
 
+      pendingExports.add(fail)
       try {
         cropper.getCropChecked(source => {
           if (settled) return

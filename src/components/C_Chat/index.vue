@@ -329,7 +329,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, ref, watch } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import {
     DEFAULT_CHAT_PROPS,
@@ -405,21 +405,90 @@
     inputText.value = ''
   }
 
-  /** 自动滚动到底部 */
-  const scrollToBottom = () => {
-    nextTick(() => {
-      if (messagesRef.value) {
-        messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-      }
+  let scrollVersion = 0
+  let disposed = false
+
+  /** DOM 更新后再定位，旧会话/已卸载组件的迟到任务不能移动新视图。 */
+  const scheduleScroll = (apply: (element: HTMLElement) => void) => {
+    const version = ++scrollVersion
+    void nextTick(() => {
+      if (!disposed && version === scrollVersion && messagesRef.value)
+        apply(messagesRef.value)
     })
   }
 
-  // 消息变化时自动滚动
+  /** 公开的主动定位始终滚到底部。 */
+  const scrollToBottom = () => {
+    scheduleScroll(element => {
+      element.scrollTop = element.scrollHeight
+    })
+  }
+
+  // 只观察会话与首尾摘要；不深度遍历全部消息。流式追加仅跟踪末条文本。
+  const messageScrollSummary = () => {
+    const messages = messageList.value
+    const first = messages[0]
+    const last = messages[messages.length - 1]
+    return [
+      currentId.value,
+      messages.length,
+      first?.id,
+      last?.id,
+      last?.content,
+      props.loadingHistory,
+    ] as const
+  }
+  type MessageScrollSummary = ReturnType<typeof messageScrollSummary>
+  const isHistoryPrepend = (
+    next: MessageScrollSummary,
+    previous: MessageScrollSummary
+  ) =>
+    next[1] > previous[1] &&
+    previous[1] > 0 &&
+    next[2] !== previous[2] &&
+    next[3] === previous[3]
+  const isMessageReplacement = (
+    next: MessageScrollSummary,
+    previous: MessageScrollSummary
+  ) =>
+    next[1] > 0 &&
+    previous[1] > 0 &&
+    next[2] !== previous[2] &&
+    next[3] !== previous[3]
+
   watch(
-    () => props.messages?.length,
-    () => scrollToBottom(),
-    { flush: 'post' }
+    messageScrollSummary,
+    (next, previous) => {
+      const element = messagesRef.value
+      if (!previous || next[0] !== previous[0] || !element) {
+        scrollToBottom()
+        return
+      }
+      const top = element.scrollTop
+      const height = element.scrollHeight
+      const nearBottom = height - top - element.clientHeight <= 64
+      if (isHistoryPrepend(next, previous) || next[5] !== previous[5]) {
+        scheduleScroll(updated => {
+          updated.scrollTop = Math.max(0, top + updated.scrollHeight - height)
+        })
+      } else if (
+        isMessageReplacement(next, previous) ||
+        previous[1] === 0 ||
+        nearBottom
+      ) {
+        scrollToBottom()
+      } else {
+        // 阅读历史时的新消息或流式响应保留当前位置，并使旧定位任务失效。
+        scrollVersion++
+      }
+    },
+    { immediate: true, flush: 'pre' }
   )
+
+  onBeforeUnmount(() => {
+    disposed = true
+    scrollVersion++
+  })
 
   /** 滚动到顶部时触发加载更多 */
   const handleMessagesScroll = () => {

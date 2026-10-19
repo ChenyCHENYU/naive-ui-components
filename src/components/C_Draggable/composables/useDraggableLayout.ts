@@ -1,5 +1,21 @@
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
+import type { DraggableEvent } from 'vue-draggable-plus'
 import type { DraggableItem, DragEvent, DraggableProps } from '../types'
+
+type LayoutDragEvent = Partial<
+  Pick<
+    DraggableEvent<DraggableItem>,
+    | 'data'
+    | 'clonedData'
+    | 'oldIndex'
+    | 'newIndex'
+    | 'oldDraggableIndex'
+    | 'newDraggableIndex'
+    | 'from'
+    | 'to'
+    | 'pullMode'
+  >
+>
 
 type EmitFn = {
   (event: 'update:modelValue', value: DraggableItem[]): void
@@ -15,6 +31,13 @@ type EmitFn = {
  */
 export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
   const isDragging = ref(false)
+  let draggingItem: DraggableItem | undefined
+  let disposed = false
+  onBeforeUnmount(() => {
+    disposed = true
+    isDragging.value = false
+    draggingItem = undefined
+  })
 
   const internalList = computed({
     get: () => props.modelValue ?? [],
@@ -96,39 +119,47 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     { 'is-disabled': props.disabled },
   ]
 
-  const handleStart = (event: any) => {
+  const validIndex = (index: number | undefined): index is number =>
+    index !== undefined && Number.isInteger(index) && index >= 0
+
+  const handleStart = (event: LayoutDragEvent) => {
     isDragging.value = true
-    const item = internalList.value[event.oldIndex]
-    if (item) {
-      emit('drag-start', {
-        oldIndex: event.oldIndex,
-        newIndex: event.oldIndex,
-        item,
-      } as DragEvent)
+    const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+    // 旧版本没有 data 时，仅在拖动开始前从来源列表保存真实业务项。
+    draggingItem =
+      event.data ??
+      (validIndex(oldIndex) ? internalList.value[oldIndex] : undefined)
+    if (draggingItem && validIndex(oldIndex)) {
+      emit('drag-start', { oldIndex, newIndex: oldIndex, item: draggingItem })
     }
   }
 
-  const handleEnd = (event: any) => {
-    const item = internalList.value[event.newIndex]
-    if (item) {
-      emit('drag-end', {
-        oldIndex: event.oldIndex,
-        newIndex: event.newIndex,
-        item,
-      } as DragEvent)
+  const handleEnd = (event: LayoutDragEvent) => {
+    const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+    const newIndex = event.newDraggableIndex ?? event.newIndex
+    const item = event.data ?? draggingItem
+    draggingItem = undefined
+    if (item && validIndex(oldIndex) && validIndex(newIndex)) {
+      emit('drag-end', { oldIndex, newIndex, item })
     }
     nextTick(() => {
-      isDragging.value = false
+      if (!disposed) isDragging.value = false
     })
   }
 
-  const handleAdd = (event: any) => {
-    const item = internalList.value[event.newIndex]
-    if (item) emit('item-add', item, event.newIndex)
+  const handleAdd = (event: LayoutDragEvent) => {
+    const newIndex = event.newDraggableIndex ?? event.newIndex
+    // 跨列表新增实际插入 vendor 克隆的数据，不能按尚未更新的 props 下标猜测。
+    const item = event.clonedData ?? event.data
+    if (item && validIndex(newIndex)) emit('item-add', item, newIndex)
   }
 
-  const handleRemove = (event: any) => {
-    if (event.item) emit('item-remove', event.item, event.oldIndex)
+  const handleRemove = (event: LayoutDragEvent) => {
+    if (event.pullMode === 'clone') return
+    const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+    // event.item 是 DOM；移除完成后该下标可能已经是相邻项。
+    const item = event.data ?? draggingItem
+    if (item && validIndex(oldIndex)) emit('item-remove', item, oldIndex)
   }
 
   const handleUpdate = () => {}

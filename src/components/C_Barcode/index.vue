@@ -13,7 +13,7 @@
     >
       <VueBarcode
         v-bind="barcodeProps"
-        @error="handleError"
+        v-show="isValid"
       />
     </div>
     <div
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import VueBarcode from '@chenfengyuan/vue-barcode'
 
   defineOptions({ name: 'C_Barcode' })
@@ -72,20 +72,34 @@
     error: [error: Error]
   }>()
 
+  const isValid = ref(true)
+  let previousInvalidValue: string | undefined
   const barcodeProps = computed(() => ({
     value: props.value,
-    format: props.format,
-    width: props.width,
-    height: props.height,
-    displayValue: props.showText,
-    fontSize: props.fontSize,
-    textPosition: props.textPosition,
-    lineColor: props.lineColor,
-    background: props.background,
+    options: {
+      format: props.format,
+      width: props.width,
+      height: props.height,
+      displayValue: props.showText,
+      fontSize: props.fontSize,
+      textPosition: props.textPosition,
+      lineColor: props.lineColor,
+      background: props.background,
+      valid: handleValidity,
+    },
   }))
 
-  const handleError = (error: Error) => {
-    emit('error', error)
+  /** 使用 JsBarcode 的校验回调，避免无效值抛出渲染异常或继续展示旧条码。 */
+  function handleValidity(valid: boolean) {
+    isValid.value = valid
+    if (valid) {
+      previousInvalidValue = undefined
+      return
+    }
+    const invalidValue = `${props.format}\0${props.value}`
+    if (previousInvalidValue === invalidValue) return
+    previousInvalidValue = invalidValue
+    emit('error', new Error(`条形码内容不符合 ${props.format} 格式`))
   }
 </script>
 

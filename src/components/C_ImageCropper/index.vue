@@ -171,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch } from 'vue'
+  import { ref, computed, watch, onBeforeUnmount } from 'vue'
   import { NModal, NButton, NSpace } from 'naive-ui'
   import { VueCropper } from 'vue-cropper'
   import C_Icon from '../C_Icon/index.vue'
@@ -220,6 +220,22 @@
   const transforming = ref(false)
   const ready = ref(false)
   const previewData = ref<any>(null)
+  let disposed = false
+  let activeReader: FileReader | null = null
+
+  function cancelFileRead() {
+    const reader = activeReader
+    activeReader = null
+    if (!reader) return
+    reader.onload = null
+    reader.onerror = null
+    if (reader.readyState === FileReader.LOADING) reader.abort()
+  }
+
+  onBeforeUnmount(() => {
+    disposed = true
+    cancelFileRead()
+  })
 
   const inlineCropperRef = ref<any>(null)
   const modalCropperRef = ref<any>(null)
@@ -309,6 +325,7 @@
   }
 
   function reportError(error: unknown) {
+    if (disposed) return
     emit('error', error instanceof Error ? error : new Error(String(error)))
   }
 
@@ -324,7 +341,7 @@
     const source = imgSrc.value
     try {
       const flipped = await flipImageSource(source, axis)
-      if (imgSrc.value === source) imgSrc.value = flipped
+      if (!disposed && imgSrc.value === source) imgSrc.value = flipped
     } catch (error) {
       reportError(error)
     } finally {
@@ -341,11 +358,11 @@
   }
 
   async function getCropResult(): Promise<CropResult> {
-    if (!ready.value || transforming.value)
+    if (disposed || !ready.value || transforming.value)
       throw new Error('Image cropper is not ready')
     const source = imgSrc.value
     const result = await core.getCropResult()
-    if (source !== imgSrc.value || !ready.value)
+    if (disposed || source !== imgSrc.value || !ready.value)
       throw new Error('Image changed during crop export')
     return result
   }
@@ -373,17 +390,30 @@
   }
 
   function loadFile(file: File) {
+    if (disposed) return
     if (!file.type.startsWith('image/')) {
       reportError(new Error('Please select an image file'))
       return
     }
+    cancelFileRead()
     const reader = new FileReader()
-    reader.onerror = () =>
+    activeReader = reader
+    reader.onerror = () => {
+      if (disposed || activeReader !== reader) return
+      activeReader = null
       reportError(new Error('Image file could not be read'))
+    }
     reader.onload = e => {
+      if (disposed || activeReader !== reader) return
+      activeReader = null
       if (typeof e.target?.result === 'string') imgSrc.value = e.target.result
     }
-    reader.readAsDataURL(file)
+    try {
+      reader.readAsDataURL(file)
+    } catch (error) {
+      activeReader = null
+      reportError(error)
+    }
   }
 
   watch(imgSrc, () => {
@@ -393,6 +423,7 @@
   watch(
     () => props.src,
     v => {
+      cancelFileRead()
       imgSrc.value = v
     }
   )
@@ -415,7 +446,10 @@
     },
     loadFile,
     open: (src?: string) => {
-      if (src) imgSrc.value = src
+      if (src) {
+        cancelFileRead()
+        imgSrc.value = src
+      }
       modalVisible.value = true
     },
     close: () => {

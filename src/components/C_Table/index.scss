@@ -144,16 +144,13 @@
 
 // ================= 5. 表格列宽度管理 =================
 
-// 普通列的最小宽度保护
-:deep(.n-data-table-th:not(:last-child), .n-data-table-td:not(:last-child)) {
-  min-width: 80px !important;
+// 列宽与边界由原生列配置负责，不能用统一最小宽度撑大辅助列。
+:deep(.c-table-index-column) {
+  padding-inline: 8px;
 }
 
 // 操作列固定宽度（适应4个按钮的布局）
 :deep(.c-table-actions-column) {
-  width: 180px !important;
-  min-width: 160px !important;
-  max-width: 200px !important;
   text-align: center !important;
   padding: 8px 12px !important;
 }
@@ -447,12 +444,6 @@
 @media (max-width: 768px) {
   .c-table-wrapper {
     overflow-x: auto;
-  }
-
-  // 操作列在移动端的适配
-  :deep(.n-data-table-th:last-child, .n-data-table-td:last-child) {
-    width: 160px !important;
-    min-width: 160px !important;
   }
 
   // 按钮在移动端的优化

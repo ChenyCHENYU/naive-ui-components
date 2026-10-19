@@ -55,6 +55,23 @@ export function useCrossPageSelection<T extends object = DataRecord>(
   const enabled = () => toValue(options.config)?.enabled === true
   const rows = (data = options.allData.value) =>
     flattenTableRows(data, toValue(options.childrenKey))
+  // Programmatic selection may add many keys in sequence; index once per
+  // dataset instead of walking the full local/tree dataset for each key.
+  const indexedRows = computed(() => {
+    const index = new Map<DataTableRowKey, T>()
+    const duplicates = new Map<DataTableRowKey, T[]>()
+    for (const row of rows()) {
+      const key = options.rowKey(row)
+      const first = index.get(key)
+      if (!first) index.set(key, row)
+      else {
+        const candidates = duplicates.get(key)
+        if (candidates) candidates.push(row)
+        else duplicates.set(key, [first, row])
+      }
+    }
+    return { index, duplicates }
+  })
   const selectable = (row: T) => options.rowCheckable?.(row) !== false
   const getMaxSelection = () => {
     const max = toValue(options.config)?.maxSelection
@@ -132,10 +149,10 @@ export function useCrossPageSelection<T extends object = DataRecord>(
   const select = (key: DataTableRowKey) => {
     if (!enabled()) return false
     if (selectedKeys.value.has(key)) return true
-    const row = rows().find(
-      candidate => options.rowKey(candidate) === key && selectable(candidate)
-    )
-    if (!row) return false
+    const { index, duplicates } = indexedRows.value
+    const candidates = duplicates.get(key)
+    const row = candidates ? candidates.find(selectable) : index.get(key)
+    if (!row || (!candidates && !selectable(row))) return false
     const max = getMaxSelection()
     if (max && selectedKeys.value.size >= max) return false
     commit([...selectedKeys.value, key], [row])

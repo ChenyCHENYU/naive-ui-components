@@ -8,7 +8,13 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
  */
 
-import { ref, computed, toValue, type MaybeRefOrGetter, type Ref } from 'vue'
+import {
+  shallowRef,
+  computed,
+  toValue,
+  type MaybeRefOrGetter,
+  type Ref,
+} from 'vue'
 import type { FormModel } from '../types'
 import { cloneFormValue, isFormValueEqual } from '../utils/formModel'
 import { getDataPath } from '../../../utils/data'
@@ -52,34 +58,36 @@ export function useFormDirty(
   formModel: FormModel,
   fields?: MaybeRefOrGetter<readonly string[]>
 ): UseFormDirtyReturn {
-  const initialSnapshot: Ref<Record<string, unknown>> = ref({})
+  const initialSnapshot: Ref<Record<string, unknown>> = shallowRef({})
 
-  const isDirty = computed(() => getChangedFields().length > 0)
+  const fieldNames = () =>
+    new Set(
+      fields
+        ? toValue(fields)
+        : [...Object.keys(initialSnapshot.value), ...Object.keys(formModel)]
+    )
+
+  const isDirty = computed(() => {
+    for (const field of fieldNames()) {
+      if (isFieldDirty(field)) return true
+    }
+    return false
+  })
 
   /** 获取与初始快照相比发生变化的字段名列表 */
   function getChangedFields(): string[] {
-    const snap = initialSnapshot.value
-    const configuredFields = fields ? toValue(fields) : undefined
-    const allKeys = new Set(
-      configuredFields ?? [...Object.keys(snap), ...Object.keys(formModel)]
-    )
     const changed: string[] = []
-    for (const key of allKeys) {
-      const current = getDataPath(formModel, key)
-      trackNestedValue(current)
-      if (!isFormValueEqual(getDataPath(snap, key), current)) {
-        changed.push(key)
-      }
+    for (const field of fieldNames()) {
+      if (isFieldDirty(field)) changed.push(field)
     }
     return changed
   }
 
   /** 检查指定字段是否相对于初始快照已修改 */
   function isFieldDirty(field: string): boolean {
-    return !isFormValueEqual(
-      getDataPath(initialSnapshot.value, field),
-      getDataPath(formModel, field)
-    )
+    const current = getDataPath(formModel, field)
+    trackNestedValue(current)
+    return !isFormValueEqual(getDataPath(initialSnapshot.value, field), current)
   }
 
   /** 将当前 formModel 保存为干净快照 */

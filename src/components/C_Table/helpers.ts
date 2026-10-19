@@ -10,18 +10,23 @@ export function flattenTableRows<T extends object>(
   if (!childrenKey) return rows
   const result: T[] = []
   const visited = new WeakSet<object>()
-  const visit = (row: T) => {
-    if (visited.has(row)) return
+  const stack: T[] = []
+  for (let index = rows.length - 1; index >= 0; index--) {
+    stack.push(rows[index])
+  }
+  while (stack.length) {
+    const row = stack.pop()!
+    if (visited.has(row)) continue
     visited.add(row)
     result.push(row)
     const children = (row as Record<string, unknown>)[childrenKey]
     if (Array.isArray(children)) {
-      children.forEach(child => {
-        if (child && typeof child === 'object') visit(child as T)
-      })
+      for (let index = children.length - 1; index >= 0; index--) {
+        const child = children[index]
+        if (child && typeof child === 'object') stack.push(child as T)
+      }
     }
   }
-  rows.forEach(visit)
   return result
 }
 
