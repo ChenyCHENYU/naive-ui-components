@@ -10,7 +10,7 @@
   <div class="c-file-preview-wrapper">
     <!-- 文件信息卡片模式 -->
     <div
-      v-if="!autoPreview"
+      v-if="!autoPreview && !inline"
       class="file-info-card"
     >
       <div class="file-info">
@@ -64,8 +64,59 @@
       </div>
     </div>
 
+    <div
+      v-if="inline"
+      class="c-file-preview-inline"
+    >
+      <div
+        v-if="loading || error"
+        class="status-container"
+        role="status"
+      >
+        <NSpin
+          v-if="loading"
+          size="large"
+          ><template #description>正在加载文档…</template></NSpin
+        >
+        <NResult
+          v-else
+          status="error"
+          title="预览失败"
+          :description="error"
+          ><template #footer
+            ><NButton
+              size="small"
+              @click="loadFile"
+              >重试</NButton
+            ></template
+          ></NResult
+        >
+      </div>
+      <PdfViewer
+        v-else-if="fileType === 'pdf'"
+        :pdf-url="pdfUrl"
+        :total-pages="pdfTotalPages"
+      />
+      <WordViewer
+        v-else-if="fileType === 'word'"
+        :content="wordContent"
+        :headings="wordHeadings"
+      />
+      <ExcelViewer
+        v-else-if="fileType === 'excel'"
+        :sheets="excelSheets"
+        @reload="loadFile"
+      />
+      <NResult
+        v-else
+        status="warning"
+        title="不支持的文件格式"
+        description="支持 PDF、DOCX、XLSX 和 XLS 文件"
+      />
+    </div>
     <!-- 模态框预览 -->
     <NModal
+      v-if="!inline"
       v-model:show="showModal"
       :mask-closable="false"
       :closable="false"
@@ -251,14 +302,22 @@
       url?: string
       fileName?: string
       autoPreview?: boolean
+      inline?: boolean
     }>(),
     {
       fileName: '未知文件',
       autoPreview: false,
+      inline: false,
     }
   )
 
-  const { file, url, fileName: propFileName, autoPreview } = toRefs(props)
+  const {
+    file,
+    url,
+    fileName: propFileName,
+    autoPreview,
+    inline,
+  } = toRefs(props)
 
   const emit = defineEmits<{
     preview: [file: File | string]
@@ -294,9 +353,13 @@
   })
 
   watch(
-    [file, url, autoPreview],
+    [file, url, autoPreview, inline],
     ([currentFile, currentUrl], previous) => {
       if (typeof window === 'undefined') return
+      if (inline.value) {
+        if (currentFile || currentUrl) void loadFile()
+        return
+      }
       if (showModal.value) {
         if (currentFile !== previous?.[0] || currentUrl !== previous?.[1]) {
           void loadFile()

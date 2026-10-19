@@ -103,7 +103,7 @@ describe('keyboard and status accessibility contracts', () => {
   test('file preview auto mode opens and refreshes when its source changes', () => {
     const source = read('src/components/C_FilePreview/index.vue')
     expect(source).toContain('watch(')
-    expect(source).toContain('[file, url, autoPreview]')
+    expect(source).toContain('[file, url, autoPreview, inline]')
     expect(source).toContain('void openPreview()')
     expect(source).toContain('void loadFile()')
   })

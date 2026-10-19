@@ -53,6 +53,8 @@ export interface OrgChartProps {
   pannable?: boolean
   /** 初始缩放比例 */
   initialZoom?: number
+  /** 首次渲染与数据、布局变化时适配完整树形范围。 */
+  fitOnInit?: boolean
   /** 最小缩放 */
   minZoom?: number
   /** 最大缩放 */

@@ -3,6 +3,17 @@ import { nextTick, ref } from 'vue'
 import { useWaterFallLayout } from '../src/components/C_WaterFall/composables/useWaterFallLayout'
 
 describe('C_WaterFall image layout', () => {
+  test('wrapped captions reserve their actual height after loading more', async () => {
+    const items = ref([{ id: 'one', src: '/one.svg', width: 1, height: 1 }])
+    const layout = useWaterFallLayout(items, ref(1), ref(100), ref(20))
+    layout.cacheItemExtraHeight('one', 62)
+    items.value.push({ id: 'two', src: '/two.svg', width: 1, height: 1 })
+    await nextTick()
+    expect(layout.layoutItems.value[1].y).toBe(182)
+    expect(layout.containerHeight.value).toBe(282)
+    layout.cacheItemExtraHeight('one', 42)
+    expect(layout.layoutItems.value[1].y).toBe(162)
+  })
   test('loaded image ratio reflows immediately and scales across column widths', async () => {
     const items = ref([
       { id: 'photo', src: '/photo.png', width: 100, height: 100 },

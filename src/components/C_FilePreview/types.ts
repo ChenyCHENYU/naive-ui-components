@@ -63,6 +63,8 @@ export interface FilePreviewProps {
   url?: string
   fileName?: string
   autoPreview?: boolean
+  /** 在容器中直接阅读文档，默认保留原有弹窗模式。 */
+  inline?: boolean
 }
 
 /** 文件加载结果 — PDF */

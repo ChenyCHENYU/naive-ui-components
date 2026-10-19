@@ -225,6 +225,8 @@
       } else {
         finishEmitted = false
       }
+      // 传递新快照，让自定义队列同步暂停、恢复、进度及最终状态。
+      emit('change', snapshotList())
     },
     { deep: true }
   )

@@ -16,6 +16,7 @@
         "@robot-admin/form-validate": "3.4.2",
         "@types/leaflet": "^1.9.22",
         "@visactor/vtable": "^1.26.7",
+        "@visactor/vtable-editors": "^1.26.7",
         "@visactor/vtable-gantt": "^1.26.7",
         "@vue-flow/core": "^1.48.2",
         "@wangeditor-next/editor": "6.2.0",

@@ -37,6 +37,7 @@
       <div
         v-for="(lay, index) in layoutItems"
         :key="lay.item.id"
+        :ref="el => observeItem(el, lay.item.id)"
         class="waterfall__item"
         role="button"
         tabindex="0"
@@ -111,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, type Ref } from 'vue'
+  import { ref, computed, onUnmounted, type Ref } from 'vue'
   import { NSpin } from 'naive-ui'
   import type {
     WaterFallItem,
@@ -165,8 +166,44 @@
 
   const itemsRef = computed(() => props.items)
   const gapRef = computed(() => props.gap)
-  const { layoutItems, containerHeight, cacheImageHeight, relayout } =
-    useWaterFallLayout(itemsRef, columns, containerWidth, gapRef)
+  const {
+    layoutItems,
+    containerHeight,
+    cacheImageHeight,
+    cacheItemExtraHeight,
+    relayout,
+  } = useWaterFallLayout(itemsRef, columns, containerWidth, gapRef)
+
+  const observedItems = new Map<Element, string | number>()
+  const itemObserver =
+    typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(entries => {
+          for (const entry of entries) {
+            const id = observedItems.get(entry.target)
+            const layout = layoutItems.value.find(item => item.item.id === id)
+            if (layout)
+              cacheItemExtraHeight(
+                layout.item.id,
+                entry.target.getBoundingClientRect().height - layout.height
+              )
+          }
+        })
+  function observeItem(element: unknown, id: string | number) {
+    if (!(element instanceof HTMLElement) || observedItems.has(element)) return
+    for (const [previous, previousId] of observedItems) {
+      if (!previous.isConnected || previousId === id) {
+        itemObserver?.unobserve(previous)
+        observedItems.delete(previous)
+      }
+    }
+    observedItems.set(element, id)
+    itemObserver?.observe(element)
+  }
+  onUnmounted(() => {
+    itemObserver?.disconnect()
+    observedItems.clear()
+  })
 
   const showSkeleton = computed(
     () => props.skeleton && props.loading && layoutItems.value.length === 0

@@ -160,8 +160,18 @@
     const targetMap = leafletMap
     if (!targetMap || !L || props.mapType !== 'osm') return
     clearLeafletMarkers()
+    // 不依赖 Leaflet 根据 CSS 文件名猜测图片路径；打包器会重命名资源。
+    const icon = L.icon({
+      iconUrl: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="40" viewBox="0 0 28 40"><path d="M14 39S1 24 1 14a13 13 0 0 1 26 0c0 10-13 25-13 25Z" fill="#287be8" stroke="white" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="white"/></svg>')}`,
+      iconSize: [28, 40],
+      iconAnchor: [14, 40],
+      popupAnchor: [0, -35],
+    })
     getValidMapMarkers(props.markers).forEach(marker => {
-      const leafletMarker = L.marker([marker.lat, marker.lng])
+      const leafletMarker = L.marker([marker.lat, marker.lng], {
+        icon,
+        title: marker.title || marker.popup || '',
+      })
       if (marker.popup) {
         const popup = document.createElement('span')
         popup.textContent = marker.popup
