@@ -1,4 +1,12 @@
-import { ref, readonly, watch, type Ref } from 'vue'
+import {
+  ref,
+  readonly,
+  computed,
+  watch,
+  getCurrentScope,
+  onScopeDispose,
+  type Ref,
+} from 'vue'
 import type {
   WaterFallItem,
   WaterFallLayoutItem,
@@ -13,7 +21,8 @@ export function useWaterFallLayout(
   items: Ref<WaterFallItem[]>,
   columns: Readonly<Ref<number>>,
   containerWidth: Readonly<Ref<number>>,
-  gap: Ref<number>
+  gap: Ref<number>,
+  options: { batchImageLoads?: boolean } = {}
 ) {
   const layoutItems = ref<WaterFallLayoutItem[]>([])
   const containerHeight = ref(0)
@@ -21,6 +30,36 @@ export function useWaterFallLayout(
     string | number,
     { height: number; basisWidth?: number; src?: string }
   >()
+  const sourcesById = computed(
+    () => new Map(items.value.map(item => [item.id, item.src]))
+  )
+  let pendingFrame: number | undefined
+  let disposed = false
+  const cancelScheduledLayout = () => {
+    if (pendingFrame !== undefined) cancelAnimationFrame(pendingFrame)
+    pendingFrame = undefined
+  }
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true
+      cancelScheduledLayout()
+      imageHeightCache.clear()
+    })
+  const scheduleLayout = () => {
+    if (disposed) return
+    if (
+      !options.batchImageLoads ||
+      typeof requestAnimationFrame === 'undefined'
+    ) {
+      calculate()
+      return
+    }
+    if (pendingFrame !== undefined) return
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = undefined
+      calculate()
+    })
+  }
 
   function scaleHeight(height: number, basisWidth: number, width: number) {
     const ratio = height / basisWidth
@@ -58,12 +97,9 @@ export function useWaterFallLayout(
     basisWidth?: number,
     src?: string
   ) {
-    if (!Number.isFinite(realHeight) || realHeight <= 0) return
-    if (
-      basisWidth !== undefined &&
-      (!Number.isFinite(basisWidth) || basisWidth <= 0)
-    )
+    if (disposed || (src !== undefined && sourcesById.value.get(id) !== src))
       return
+    if (!isValidMeasurement(realHeight, basisWidth)) return
     const previous = imageHeightCache.get(id)
     if (
       previous?.height === realHeight &&
@@ -72,10 +108,20 @@ export function useWaterFallLayout(
     )
       return
     imageHeightCache.set(id, { height: realHeight, basisWidth, src })
-    calculate()
+    scheduleLayout()
+  }
+
+  function isValidMeasurement(height: number, width?: number) {
+    return (
+      Number.isFinite(height) &&
+      height > 0 &&
+      (width === undefined || (Number.isFinite(width) && width > 0))
+    )
   }
 
   function calculate() {
+    cancelScheduledLayout()
+    if (disposed) return
     const cols = Math.min(24, Math.max(1, Math.floor(columns.value)))
     const width = containerWidth.value
     const g = Math.max(0, gap.value ?? DEFAULT_GAP)

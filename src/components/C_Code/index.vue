@@ -166,13 +166,21 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, inject } from 'vue'
+  import {
+    ref,
+    shallowRef,
+    computed,
+    watch,
+    inject,
+    onBeforeUnmount,
+  } from 'vue'
+  import type { HLJSApi } from 'highlight.js'
   import C_Icon from '../C_Icon/index.vue'
 
-  // 直接在组件内定义 HighlightManager 接口，避免导入错误
+  // 注入能力保持可选；仅引入类型，不额外加载高亮运行时。
   interface HighlightManager {
-    getHljs?: () => any
-    loadLanguage?: (language: string) => Promise<void>
+    getHljs?: () => HLJSApi
+    loadLanguage?: (language: string) => Promise<unknown>
     getLoadedLanguages?: () => string[]
   }
 
@@ -221,15 +229,24 @@
   const isFullscreen = ref(false)
   const languageLoading = ref(false)
 
-  // 安全地获取 hljs 实例
-  const hljs = computed(() => {
+  let disposed = false
+  // NCode 监听 hljs 身份；语言注册完成后刷新薄代理即可重新高亮，无需重建编辑视图。
+  const hljs = shallowRef<Pick<HLJSApi, 'highlight' | 'getLanguage'>>()
+  function refreshHighlighter() {
     try {
-      return highlightManager?.getHljs?.() || null
+      const engine = highlightManager?.getHljs?.()
+      hljs.value = engine
+        ? {
+            highlight: engine.highlight.bind(engine),
+            getLanguage: engine.getLanguage.bind(engine),
+          }
+        : undefined
     } catch (error) {
       console.warn('Highlight.js not available:', error)
-      return null
+      hljs.value = undefined
     }
-  })
+  }
+  refreshHighlighter()
 
   // 语言图标映射（使用标准的 MDI 图标名称）
   const languageIcon = computed(() => {
@@ -273,49 +290,68 @@
     }
   })
 
-  // 自动加载语言包
+  function resolveLanguageLoader(language: string, enabled: boolean) {
+    if (!enabled || language.toLowerCase() === 'text') return
+    const manager = highlightManager
+    if (!manager?.loadLanguage) return
+    return {
+      load: manager.loadLanguage.bind(manager),
+      loaded: manager.getLoadedLanguages?.bind(manager),
+    }
+  }
+
+  // 失效只取消组件状态提交；共享语言模块仍由 HighlightManager 去重与缓存。
   watch(
-    () => props.language,
-    async newLanguage => {
-      if (
-        !props.autoLoadLanguage ||
-        newLanguage === 'text' ||
-        !highlightManager
-      )
-        return
+    [() => props.language, () => props.autoLoadLanguage],
+    async ([newLanguage, enabled], _previous, onCleanup) => {
+      let active = true
+      const isCurrent = () => active && !disposed
+      onCleanup(() => {
+        active = false
+      })
+      languageLoading.value = false
+      const loader = resolveLanguageLoader(newLanguage, enabled)
+      if (!loader) return
 
-      const loadedLanguages = highlightManager.getLoadedLanguages?.() || []
-      if (loadedLanguages.includes(newLanguage)) return
-
-      languageLoading.value = true
       try {
-        await highlightManager.loadLanguage?.(newLanguage)
-        await nextTick()
+        const loadedLanguages = loader.loaded?.() ?? []
+        if (loadedLanguages.includes(newLanguage.toLowerCase())) {
+          refreshHighlighter()
+          return
+        }
+        languageLoading.value = true
+        await loader.load(newLanguage)
+        if (isCurrent()) refreshHighlighter()
       } catch (error) {
-        console.warn(`Failed to load language: ${newLanguage}`, error)
+        if (isCurrent())
+          console.warn(`Failed to load language: ${newLanguage}`, error)
       } finally {
-        languageLoading.value = false
+        if (isCurrent()) languageLoading.value = false
       }
     },
     { immediate: true }
   )
 
-  /**
-   * 复制代码到剪贴板
-   */
+  /** 复制发起时的内容；文本随后变化不会改变已写入剪贴板的事件快照。 */
   async function copyCode() {
-    if (copying.value) return
+    if (copying.value || disposed) return
+    const { code } = props
     copying.value = true
-
     try {
-      await navigator.clipboard.writeText(props.code)
-      emit('copy', props.code)
+      await navigator.clipboard.writeText(code)
+      if (!disposed) emit('copy', code)
     } catch (error) {
-      console.error('Copy failed:', error)
+      if (!disposed) console.error('Copy failed:', error)
     } finally {
-      copying.value = false
+      if (!disposed) copying.value = false
     }
   }
+
+  onBeforeUnmount(() => {
+    disposed = true
+    copying.value = false
+    languageLoading.value = false
+  })
 
   /**
    * 切换全屏显示状态

@@ -38,59 +38,33 @@
         </NInput>
       </div>
 
-      <!-- 联系人列表 -->
-      <div class="c-chat__contact-list">
-        <div
+      <VVirtualList
+        v-if="virtualContacts"
+        class="c-chat__contact-list"
+        :items="filteredContacts"
+        key-field="id"
+        :item-size="56"
+        item-resizable
+      >
+        <template #default="{ index }">
+          <ChatContactItem
+            :contact="filteredContacts[index]"
+            :active="filteredContacts[index].id === currentId"
+            @select="handleSelectContact"
+          />
+        </template>
+      </VVirtualList>
+      <div
+        v-else
+        class="c-chat__contact-list"
+      >
+        <ChatContactItem
           v-for="contact in filteredContacts"
           :key="contact.id"
-          class="c-chat__contact"
-          :class="{ 'is-active': contact.id === currentId }"
-          @click="handleSelectContact(contact.id)"
-        >
-          <div class="c-chat__contact-avatar">
-            <img
-              v-if="contact.avatar"
-              :src="contact.avatar"
-              :alt="contact.name"
-              class="c-chat__avatar"
-            />
-            <div
-              v-else
-              class="c-chat__avatar-fallback"
-            >
-              {{ contact.name.charAt(0) }}
-            </div>
-            <span
-              v-if="contact.online"
-              class="c-chat__online-dot"
-            />
-          </div>
-
-          <div class="c-chat__contact-info">
-            <div class="c-chat__contact-name">
-              <span>{{ contact.name }}</span>
-              <span
-                v-if="contact.lastTime"
-                class="c-chat__contact-time"
-              >
-                {{ formatContactTime(contact.lastTime) }}
-              </span>
-            </div>
-            <div
-              v-if="contact.lastMessage"
-              class="c-chat__contact-last"
-            >
-              {{ contact.lastMessage }}
-            </div>
-          </div>
-
-          <span
-            v-if="contact.unread"
-            class="c-chat__unread"
-          >
-            {{ contact.unread > 99 ? '99+' : contact.unread }}
-          </span>
-        </div>
+          :contact="contact"
+          :active="contact.id === currentId"
+          @select="handleSelectContact"
+        />
       </div>
     </aside>
 
@@ -112,145 +86,76 @@
         </slot>
       </div>
 
-      <!-- 消息列表 -->
+      <VVirtualList
+        v-if="virtualMessages"
+        :key="currentId"
+        ref="virtualMessagesRef"
+        class="c-chat__messages c-chat__messages--virtual"
+        :items="messageList"
+        key-field="id"
+        :item-size="32"
+        item-resizable
+        :padding-top="16"
+        :padding-bottom="16"
+        :items-style="{ paddingLeft: '20px', paddingRight: '20px' }"
+        @scroll="handleMessagesScroll"
+        @wheel="handleScrollIntent"
+        @pointerdown="handleScrollIntent"
+        @keydown="handleScrollIntent"
+      >
+        <template #default="{ index }">
+          <div>
+            <div
+              v-if="index === 0 && mergedProps.loadingHistory"
+              class="c-chat__load-more"
+              ><NSpin size="small"
+            /></div>
+            <ChatMessageItem
+              :msg="messageList[index]"
+              :previous="messageList[index - 1]"
+              :self-avatar="selfAvatar"
+              :self-name="selfName"
+              :show-timestamp="mergedProps.showTimestamp"
+              @image-preview="emit('image-preview', $event)"
+              @file-click="emit('file-click', $event)"
+              @resend="emit('resend', $event)"
+            />
+          </div>
+        </template>
+      </VVirtualList>
       <div
+        v-else
         ref="messagesRef"
         class="c-chat__messages"
         @scroll="handleMessagesScroll"
+        @wheel="handleScrollIntent"
+        @pointerdown="handleScrollIntent"
+        @keydown="handleScrollIntent"
       >
-        <!-- 加载更多 -->
-        <div
-          v-if="mergedProps.loadingHistory"
-          class="c-chat__load-more"
-        >
-          <NSpin size="small" />
-        </div>
-
-        <!-- 消息为空 -->
-        <div
-          v-if="!messageList.length && !mergedProps.loadingHistory"
-          class="c-chat__empty"
-        >
-          暂无消息，发送第一条吧
-        </div>
-
-        <!-- 消息列表 -->
-        <template
-          v-for="(msg, idx) in messageList"
-          :key="msg.id"
-        >
-          <!-- 时间分割 -->
+        <div class="c-chat__message-items">
           <div
-            v-if="shouldShowTimeDivider(msg, idx)"
-            class="c-chat__time-divider"
-          >
-            {{ formatMessageTime(msg.timestamp) }}
-          </div>
-
-          <!-- 消息条目 -->
+            v-if="mergedProps.loadingHistory"
+            class="c-chat__load-more"
+            ><NSpin size="small"
+          /></div>
           <div
-            class="c-chat__msg"
-            :class="`is-${msg.sender}`"
+            v-if="!messageList.length && !mergedProps.loadingHistory"
+            class="c-chat__empty"
+            >暂无消息，发送第一条吧</div
           >
-            <!-- 头像 -->
-            <div
-              v-if="msg.sender !== 'system'"
-              class="c-chat__msg-avatar"
-            >
-              <img
-                v-if="getAvatar(msg)"
-                :src="getAvatar(msg)"
-                class="c-chat__avatar"
-              />
-              <div
-                v-else
-                class="c-chat__avatar-fallback"
-              >
-                {{ getUsername(msg).charAt(0) }}
-              </div>
-            </div>
-
-            <!-- 消息体 -->
-            <div class="c-chat__msg-body">
-              <span
-                v-if="msg.sender === 'other' && msg.username"
-                class="c-chat__msg-username"
-              >
-                {{ msg.username }}
-              </span>
-
-              <!-- 文本消息 -->
-              <div
-                v-if="msg.type === 'text' || msg.type === 'system'"
-                class="c-chat__bubble"
-              >
-                {{ msg.content }}
-              </div>
-
-              <!-- 图片消息 -->
-              <button
-                v-else-if="msg.type === 'image'"
-                type="button"
-                class="c-chat__msg-image-button"
-                :aria-label="`预览${msg.username || '聊天'}的图片`"
-                @click="emit('image-preview', msg.content)"
-              >
-                <img
-                  :src="msg.content"
-                  :alt="msg.fileName || '聊天图片'"
-                  class="c-chat__msg-image"
-                />
-              </button>
-
-              <!-- 文件消息 -->
-              <button
-                v-else-if="msg.type === 'file'"
-                type="button"
-                class="c-chat__msg-file"
-                @click="emit('file-click', msg)"
-              >
-                <C_Icon
-                  name="mdi:file-document-outline"
-                  :size="28"
-                />
-                <div class="c-chat__file-info">
-                  <span class="c-chat__file-name">{{
-                    msg.fileName || '文件'
-                  }}</span>
-                  <span
-                    v-if="msg.fileSize"
-                    class="c-chat__file-size"
-                  >
-                    {{ formatFileSize(msg.fileSize) }}
-                  </span>
-                </div>
-              </button>
-
-              <!-- 时间戳 -->
-              <span
-                v-if="mergedProps.showTimestamp && msg.sender !== 'system'"
-                class="c-chat__msg-time"
-              >
-                {{ formatTime(msg.timestamp) }}
-              </span>
-
-              <!-- 发送状态 -->
-              <button
-                v-if="msg.sender === 'self' && msg.status === 'failed'"
-                type="button"
-                class="c-chat__msg-status is-failed"
-                @click="emit('resend', msg)"
-              >
-                发送失败，点击重试
-              </button>
-              <span
-                v-else-if="msg.sender === 'self' && msg.status === 'sending'"
-                class="c-chat__msg-status is-sending"
-                >发送中...</span
-              >
-            </div>
-          </div>
-        </template>
+          <ChatMessageItem
+            v-for="(msg, index) in messageList"
+            :key="msg.id"
+            :msg="msg"
+            :previous="messageList[index - 1]"
+            :self-avatar="selfAvatar"
+            :self-name="selfName"
+            :show-timestamp="mergedProps.showTimestamp"
+            @image-preview="emit('image-preview', $event)"
+            @file-click="emit('file-click', $event)"
+            @resend="emit('resend', $event)"
+          />
+        </div>
       </div>
 
       <!-- 输入区域 -->
@@ -292,7 +197,7 @@
             :placeholder="mergedProps.placeholder"
             type="textarea"
             :autosize="{ minRows: 1, maxRows: 4 }"
-            @keydown.enter.exact.prevent="handleSend"
+            @keydown.enter.exact="handleSend"
           />
         </div>
 
@@ -329,7 +234,11 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+  import { computed, ref } from 'vue'
+  import { VVirtualList, type VirtualListInst } from 'vueuc'
+  import ChatMessageItem from './components/ChatMessageItem.vue'
+  import ChatContactItem from './components/ChatContactItem.vue'
+  import { useChatScroll } from './composables/useChatScroll'
   import C_Icon from '../C_Icon/index.vue'
   import {
     DEFAULT_CHAT_PROPS,
@@ -351,6 +260,7 @@
     title: DEFAULT_CHAT_PROPS.title,
     selfAvatar: '',
     selfName: '',
+    virtualScroll: true,
   })
 
   const emit = defineEmits<{
@@ -374,6 +284,7 @@
   const inputText = ref('')
   const searchKeyword = ref('')
   const messagesRef = ref<HTMLElement | null>(null)
+  const virtualMessagesRef = ref<VirtualListInst | null>(null)
 
   // ===== 计算属性 =====
   const contactList = computed<ChatContact[]>(() => props.contacts ?? [])
@@ -393,165 +304,41 @@
     return contactList.value.filter(c => c.name.toLowerCase().includes(kw))
   })
 
+  const virtualMessages = computed(
+    () => props.virtualScroll && messageList.value.length >= 200
+  )
+  const virtualContacts = computed(
+    () => props.virtualScroll && filteredContacts.value.length >= 100
+  )
+
   // ===== 方法 =====
   const handleSelectContact = (id: string) => {
     emit('select-contact', id)
   }
 
-  const handleSend = () => {
+  const handleSend = (event?: KeyboardEvent | MouseEvent) => {
+    if (
+      event instanceof KeyboardEvent &&
+      (event.isComposing || event.keyCode === 229)
+    )
+      return
+    event?.preventDefault()
     const text = inputText.value.trim()
     if (!text) return
     emit('send', text)
     inputText.value = ''
   }
 
-  let scrollVersion = 0
-  let disposed = false
-
-  /** DOM 更新后再定位，旧会话/已卸载组件的迟到任务不能移动新视图。 */
-  const scheduleScroll = (apply: (element: HTMLElement) => void) => {
-    const version = ++scrollVersion
-    void nextTick(() => {
-      if (!disposed && version === scrollVersion && messagesRef.value)
-        apply(messagesRef.value)
+  const { scrollToBottom, handleMessagesScroll, handleScrollIntent } =
+    useChatScroll({
+      messages: messageList,
+      contactId: currentId,
+      virtual: virtualMessages,
+      loadingHistory: computed(() => mergedProps.value.loadingHistory),
+      normalRef: messagesRef,
+      virtualRef: virtualMessagesRef,
+      onLoadMore: () => emit('load-more'),
     })
-  }
-
-  /** 公开的主动定位始终滚到底部。 */
-  const scrollToBottom = () => {
-    scheduleScroll(element => {
-      element.scrollTop = element.scrollHeight
-    })
-  }
-
-  // 只观察会话与首尾摘要；不深度遍历全部消息。流式追加仅跟踪末条文本。
-  const messageScrollSummary = () => {
-    const messages = messageList.value
-    const first = messages[0]
-    const last = messages[messages.length - 1]
-    return [
-      currentId.value,
-      messages.length,
-      first?.id,
-      last?.id,
-      last?.content,
-      props.loadingHistory,
-    ] as const
-  }
-  type MessageScrollSummary = ReturnType<typeof messageScrollSummary>
-  const isHistoryPrepend = (
-    next: MessageScrollSummary,
-    previous: MessageScrollSummary
-  ) =>
-    next[1] > previous[1] &&
-    previous[1] > 0 &&
-    next[2] !== previous[2] &&
-    next[3] === previous[3]
-  const isMessageReplacement = (
-    next: MessageScrollSummary,
-    previous: MessageScrollSummary
-  ) =>
-    next[1] > 0 &&
-    previous[1] > 0 &&
-    next[2] !== previous[2] &&
-    next[3] !== previous[3]
-
-  watch(
-    messageScrollSummary,
-    (next, previous) => {
-      const element = messagesRef.value
-      if (!previous || next[0] !== previous[0] || !element) {
-        scrollToBottom()
-        return
-      }
-      const top = element.scrollTop
-      const height = element.scrollHeight
-      const nearBottom = height - top - element.clientHeight <= 64
-      if (isHistoryPrepend(next, previous) || next[5] !== previous[5]) {
-        scheduleScroll(updated => {
-          updated.scrollTop = Math.max(0, top + updated.scrollHeight - height)
-        })
-      } else if (
-        isMessageReplacement(next, previous) ||
-        previous[1] === 0 ||
-        nearBottom
-      ) {
-        scrollToBottom()
-      } else {
-        // 阅读历史时的新消息或流式响应保留当前位置，并使旧定位任务失效。
-        scrollVersion++
-      }
-    },
-    { immediate: true, flush: 'pre' }
-  )
-
-  onBeforeUnmount(() => {
-    disposed = true
-    scrollVersion++
-  })
-
-  /** 滚动到顶部时触发加载更多 */
-  const handleMessagesScroll = () => {
-    if (
-      messagesRef.value &&
-      messagesRef.value.scrollTop === 0 &&
-      !mergedProps.value.loadingHistory
-    ) {
-      emit('load-more')
-    }
-  }
-
-  // ===== 工具函数 =====
-  const getAvatar = (msg: ChatMessage) => {
-    if (msg.sender === 'self') return props.selfAvatar || msg.avatar
-    return msg.avatar
-  }
-
-  const getUsername = (msg: ChatMessage) => {
-    if (msg.sender === 'self') return props.selfName || msg.username || 'Me'
-    return msg.username || '未知'
-  }
-
-  const formatTime = (ts: string | number) => {
-    const d = new Date(ts)
-    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-  }
-
-  const formatMessageTime = (ts: string | number) => {
-    const d = new Date(ts)
-    const now = new Date()
-    const isToday =
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate()
-    if (isToday) return formatTime(ts)
-    return `${d.getMonth() + 1}/${d.getDate()} ${formatTime(ts)}`
-  }
-
-  const formatContactTime = (ts: string | number) => {
-    const d = new Date(ts)
-    const now = new Date()
-    const diff = now.getTime() - d.getTime()
-    if (diff < 60_000) return '刚刚'
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}分钟前`
-    if (diff < 86_400_000) return formatTime(ts)
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes}B`
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`
-    return `${(bytes / 1048576).toFixed(1)}MB`
-  }
-
-  /** 是否显示时间分割线（两条消息间超过 5 分钟） */
-  const shouldShowTimeDivider = (msg: ChatMessage, idx: number) => {
-    if (idx === 0) return true
-    const prev = messageList.value[idx - 1]
-    const curr = new Date(msg.timestamp).getTime()
-    const prevTime = new Date(prev.timestamp).getTime()
-    return curr - prevTime > 5 * 60 * 1000
-  }
 
   // ===== 暴露方法 =====
   defineExpose({ scrollToBottom })

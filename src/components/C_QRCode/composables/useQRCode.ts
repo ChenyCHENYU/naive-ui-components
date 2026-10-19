@@ -1,5 +1,6 @@
 import { ref, computed, watch, onBeforeUnmount, type Ref } from 'vue'
 import QRCode from 'qrcode'
+import { createQRCodeAbortError, drawLogo } from './drawLogo'
 import type {
   ErrorCorrectionLevel,
   ExportType,
@@ -18,63 +19,6 @@ interface UseQRCodeOptions {
   logo: Ref<LogoOptions | undefined>
 }
 
-function drawLogo(
-  canvas: HTMLCanvasElement,
-  logo: LogoOptions,
-  qrSize: number
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return reject(new Error('Canvas context 不可用'))
-
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      const ratio = Math.min(0.3, Math.max(0.05, logo.size ?? 0.2))
-      const logoSize = Math.floor(qrSize * ratio)
-      const padding = Math.max(0, logo.padding ?? 4)
-      const borderRadius = Math.min(
-        logoSize / 2,
-        Math.max(0, logo.borderRadius ?? 4)
-      )
-
-      const x = (canvas.width - logoSize) / 2
-      const y = (canvas.height - logoSize) / 2
-
-      ctx.save()
-      const bgX = x - padding
-      const bgY = y - padding
-      const bgSize = logoSize + padding * 2
-      const r = borderRadius + padding
-
-      ctx.beginPath()
-      ctx.moveTo(bgX + r, bgY)
-      ctx.arcTo(bgX + bgSize, bgY, bgX + bgSize, bgY + bgSize, r)
-      ctx.arcTo(bgX + bgSize, bgY + bgSize, bgX, bgY + bgSize, r)
-      ctx.arcTo(bgX, bgY + bgSize, bgX, bgY, r)
-      ctx.arcTo(bgX, bgY, bgX + bgSize, bgY, r)
-      ctx.closePath()
-      ctx.fillStyle = logo.bgColor ?? '#ffffff'
-      ctx.fill()
-
-      ctx.beginPath()
-      ctx.moveTo(x + borderRadius, y)
-      ctx.arcTo(x + logoSize, y, x + logoSize, y + logoSize, borderRadius)
-      ctx.arcTo(x + logoSize, y + logoSize, x, y + logoSize, borderRadius)
-      ctx.arcTo(x, y + logoSize, x, y, borderRadius)
-      ctx.arcTo(x, y, x + logoSize, y, borderRadius)
-      ctx.closePath()
-      ctx.clip()
-      ctx.drawImage(img, x, y, logoSize, logoSize)
-      ctx.restore()
-
-      resolve()
-    }
-    img.onerror = () => reject(new Error(`Logo 加载失败: ${logo.src}`))
-    img.src = logo.src
-  })
-}
-
 /**
  *
  */
@@ -87,6 +31,20 @@ export function useQRCode(
   const error = ref<Error | null>(null)
   const loading = ref(false)
   let renderVersion = 0
+  let disposed = false
+  let renderController: AbortController | undefined
+  const activeTasks = new Set<AbortController>()
+
+  function beginTask() {
+    if (disposed) throw createQRCodeAbortError()
+    const controller = new AbortController()
+    activeTasks.add(controller)
+    return controller
+  }
+
+  function assertActive(signal: AbortSignal) {
+    if (disposed || signal.aborted) throw createQRCodeAbortError()
+  }
 
   const effectiveLevel = computed<ErrorCorrectionLevel>(() => {
     if (options.logo.value) {
@@ -107,29 +65,42 @@ export function useQRCode(
     },
   }))
 
-  async function createCanvas() {
-    const canvas = document.createElement('canvas')
-    const { value } = options.value
-    const settings = qrOptions.value
+  /** 渲染及导出各自保存一份输入，等待 Logo 时不会混入后续配置。 */
+  function captureOptions() {
     const logo = options.logo.value
-    const size = options.size.value
-    await QRCode.toCanvas(canvas, value, settings)
-    if (logo) {
-      await drawLogo(canvas, logo, size)
+    return {
+      value: options.value.value,
+      settings: qrOptions.value,
+      size: options.size.value,
+      mode: options.mode.value,
+      logo: logo ? { ...logo } : undefined,
     }
+  }
+  type QRCodeSnapshot = ReturnType<typeof captureOptions>
+
+  async function createCanvas(snapshot: QRCodeSnapshot, signal: AbortSignal) {
+    assertActive(signal)
+    const canvas = document.createElement('canvas')
+    await QRCode.toCanvas(canvas, snapshot.value, snapshot.settings)
+    assertActive(signal)
+    if (snapshot.logo)
+      await drawLogo(canvas, snapshot.logo, snapshot.size, signal)
+    assertActive(signal)
     return canvas
   }
 
-  async function createSvg() {
-    if (options.logo.value) {
-      const canvas = await createCanvas()
+  async function createSvg(snapshot: QRCodeSnapshot, signal: AbortSignal) {
+    if (snapshot.logo) {
+      const canvas = await createCanvas(snapshot, signal)
       const raster = canvas.toDataURL('image/png')
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"><image href="${raster}" width="100%" height="100%"/></svg>`
     }
-    return QRCode.toString(options.value.value, {
-      ...qrOptions.value,
+    const svg = await QRCode.toString(snapshot.value, {
+      ...snapshot.settings,
       type: 'svg',
     })
+    assertActive(signal)
+    return svg
   }
 
   function clearCanvas() {
@@ -146,9 +117,13 @@ export function useQRCode(
     clearCanvas()
   }
 
-  async function renderCurrent(version: number) {
-    if (options.mode.value === 'canvas') {
-      const output = await createCanvas()
+  async function renderCurrent(
+    version: number,
+    snapshot: QRCodeSnapshot,
+    signal: AbortSignal
+  ) {
+    if (snapshot.mode === 'canvas') {
+      const output = await createCanvas(snapshot, signal)
       if (version !== renderVersion) return
       const canvas = canvasRef.value
       if (!canvas) return
@@ -162,30 +137,38 @@ export function useQRCode(
       return
     }
 
-    const svg = await createSvg()
+    const svg = await createSvg(snapshot, signal)
     if (version !== renderVersion) return
     svgHtml.value = svg
-    svgTrusted.value = Boolean(options.logo.value)
+    svgTrusted.value = Boolean(snapshot.logo)
     clearCanvas()
   }
 
   async function render() {
+    if (disposed) return
     const version = ++renderVersion
+    renderController?.abort()
+    renderController = undefined
     if (!options.value.value) {
       clearVisual()
       error.value = null
       loading.value = false
       return
     }
+    const controller = beginTask()
+    renderController = controller
+    const snapshot = captureOptions()
     loading.value = true
     error.value = null
     try {
-      await renderCurrent(version)
+      await renderCurrent(version, snapshot, controller.signal)
     } catch (e) {
       if (version !== renderVersion) return
       error.value = e instanceof Error ? e : new Error(String(e))
       clearVisual()
     } finally {
+      activeTasks.delete(controller)
+      if (renderController === controller) renderController = undefined
       if (version === renderVersion) loading.value = false
     }
   }
@@ -194,17 +177,24 @@ export function useQRCode(
     type: ExportType = 'png',
     quality = 0.92
   ): Promise<string> {
-    if (type === 'svg') {
-      const svgStr = await createSvg()
-      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`
+    const controller = beginTask()
+    const snapshot = captureOptions()
+    try {
+      if (type === 'svg') {
+        const svgStr = await createSvg(snapshot, controller.signal)
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`
+      }
+      const tempCanvas = await createCanvas(snapshot, controller.signal)
+      const mimeType = type === 'jpeg' ? 'image/jpeg' : 'image/png'
+      return tempCanvas.toDataURL(mimeType, quality)
+    } finally {
+      activeTasks.delete(controller)
     }
-    const tempCanvas = await createCanvas()
-    const mimeType = type === 'jpeg' ? 'image/jpeg' : 'image/png'
-    return tempCanvas.toDataURL(mimeType, quality)
   }
 
   async function download(filename = 'qrcode', type: ExportType = 'png') {
     const dataUrl = await toDataURL(type)
+    if (disposed) throw createQRCodeAbortError()
     const link = document.createElement('a')
     link.download = `${filename}.${type}`
     link.href = dataUrl
@@ -229,7 +219,12 @@ export function useQRCode(
   )
 
   onBeforeUnmount(() => {
+    disposed = true
     renderVersion++
+    activeTasks.forEach(controller => controller.abort())
+    activeTasks.clear()
+    renderController = undefined
+    loading.value = false
   })
 
   return { svgHtml, svgTrusted, error, loading, render, toDataURL, download }

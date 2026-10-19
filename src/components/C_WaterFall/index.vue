@@ -166,7 +166,9 @@
   const itemsRef = computed(() => props.items)
   const gapRef = computed(() => props.gap)
   const { layoutItems, containerHeight, cacheImageHeight, relayout } =
-    useWaterFallLayout(itemsRef, columns, containerWidth, gapRef)
+    useWaterFallLayout(itemsRef, columns, containerWidth, gapRef, {
+      batchImageLoads: true,
+    })
 
   const showSkeleton = computed(
     () => props.skeleton && props.loading && layoutItems.value.length === 0
@@ -226,6 +228,8 @@
 
   function handleImageLoaded(lay: WaterFallLayoutItem, event: Event) {
     const img = event.target as HTMLImageElement
+    // The old image may finish after its item received a new source.
+    if (img.getAttribute('src') !== lay.item.src) return
     if (img.naturalHeight && img.naturalWidth) {
       const realHeight = (img.naturalHeight / img.naturalWidth) * lay.width
       cacheImageHeight(lay.item.id, realHeight, lay.width, lay.item.src)

@@ -23,11 +23,14 @@
           v-if="showDialog"
           class="robot-dialog-overlay"
           @click="closeDialog"
-          @keydown.esc="closeDialog"
+          @keydown="handleDialogKeydown"
         >
           <div
             class="robot-dialog-container"
             :class="{ 'dialog-dark': isDark }"
+            role="dialog"
+            aria-modal="true"
+            aria-label="全局搜索"
             @click.stop
           >
             <!-- 搜索头部 -->
@@ -39,13 +42,19 @@
                 type="text"
                 :placeholder="placeholder"
                 class="robot-search-input"
-                @keydown.esc="closeDialog"
-                @keydown.enter="handleEnter"
-                @keydown.arrow-down="focusNext"
-                @keydown.arrow-up="focusPrev"
+                role="combobox"
+                aria-label="搜索菜单"
+                aria-autocomplete="list"
+                :aria-expanded="showDialog"
+                :aria-controls="optionListId"
+                :aria-activedescendant="activeOptionId"
+                @keydown="handleInputKeydown"
+                @compositionstart="handleCompositionStart"
+                @compositionend="handleCompositionEnd"
               />
               <button
                 class="robot-close-btn"
+                aria-label="关闭搜索"
                 @click="closeDialog"
               >
                 <div class="i-mdi:close" />
@@ -53,7 +62,13 @@
             </div>
 
             <!-- 搜索内容 -->
-            <div class="robot-search-content">
+            <div
+              class="robot-search-content"
+              :class="{
+                'robot-search-content--virtual':
+                  searchValue.trim() && hasResults,
+              }"
+            >
               <!-- 空状态 -->
               <div
                 v-if="!hasContent"
@@ -85,11 +100,21 @@
                         <div class="i-mdi:delete-outline" />
                       </button>
                     </div>
-                    <div class="robot-group-items">
+                    <div
+                      :id="optionListId"
+                      ref="historyItemsRef"
+                      class="robot-group-items"
+                      role="listbox"
+                      aria-label="最近搜索"
+                    >
                       <div
                         v-for="(historyItem, index) in displayHistory"
                         :key="`history-${index}`"
+                        :id="optionId(index)"
                         :class="getItemClasses(index, true)"
+                        role="option"
+                        :aria-selected="selectedIndex === index"
+                        :data-option-index="index"
                         @click="selectHistoryItem(historyItem)"
                         @mouseenter="selectedIndex = index"
                       >
@@ -151,54 +176,71 @@
                         filteredMenuItems.length
                       }}</span>
                     </div>
-                    <div class="robot-group-items">
-                      <div
-                        v-for="(item, index) in filteredMenuItems"
-                        :key="item.key"
-                        :class="getItemClasses(index, false)"
-                        @click="selectItem(item)"
-                        @mouseenter="selectedIndex = index"
-                      >
-                        <component
-                          v-if="item.icon"
-                          :is="item.icon"
-                          class="robot-item-icon"
-                        />
+                    <VVirtualList
+                      :id="optionListId"
+                      ref="resultListRef"
+                      class="robot-group-items robot-virtual-items"
+                      role="listbox"
+                      :aria-label="resultGroupTitle"
+                      :items="filteredMenuItems"
+                      :item-size="64"
+                      :style="{
+                        height: `${Math.min(filteredMenuItems.length * 64, 336)}px`,
+                      }"
+                    >
+                      <template #default="{ item, index }">
                         <div
-                          v-else
-                          class="robot-item-icon robot-default-icon"
+                          :id="optionId(index)"
+                          :class="getItemClasses(index, false)"
+                          role="option"
+                          :aria-selected="selectedIndex === index"
+                          :aria-posinset="index + 1"
+                          :aria-setsize="filteredMenuItems.length"
+                          :title="`${item.label} · ${formatMenuPath(item.key)}`"
+                          @click="selectItem(item)"
+                          @mouseenter="selectedIndex = index"
                         >
-                          <div class="i-mdi:file-document-outline" />
-                        </div>
-                        <div class="robot-item-content">
-                          <div class="robot-item-label">
-                            <template
-                              v-for="(part, partIndex) in highlightMatch(
-                                item.label,
-                                searchValue
-                              )"
-                              :key="partIndex"
-                            >
-                              <mark
-                                v-if="part.matched"
-                                class="robot-highlight"
-                                >{{ part.text }}</mark
+                          <component
+                            v-if="item.icon"
+                            :is="item.icon"
+                            class="robot-item-icon"
+                          />
+                          <div
+                            v-else
+                            class="robot-item-icon robot-default-icon"
+                          >
+                            <div class="i-mdi:file-document-outline" />
+                          </div>
+                          <div class="robot-item-content">
+                            <div class="robot-item-label">
+                              <template
+                                v-for="(part, partIndex) in highlightMatch(
+                                  item.label,
+                                  searchValue
+                                )"
+                                :key="partIndex"
                               >
-                              <template v-else>{{ part.text }}</template>
-                            </template>
+                                <mark
+                                  v-if="part.matched"
+                                  class="robot-highlight"
+                                  >{{ part.text }}</mark
+                                >
+                                <template v-else>{{ part.text }}</template>
+                              </template>
+                            </div>
+                            <div class="robot-item-desc">
+                              {{ formatMenuPath(item.key) }}
+                            </div>
                           </div>
-                          <div class="robot-item-desc">
-                            {{ formatMenuPath(item.key) }}
+                          <div
+                            v-if="item.children?.length"
+                            class="robot-item-badge"
+                          >
+                            {{ item.children.length }}
                           </div>
                         </div>
-                        <div
-                          v-if="item.children?.length"
-                          class="robot-item-badge"
-                        >
-                          {{ item.children.length }}
-                        </div>
-                      </div>
-                    </div>
+                      </template>
+                    </VVirtualList>
                   </div>
                 </div>
               </template>
@@ -239,6 +281,8 @@
 </template>
 
 <script setup lang="ts">
+  import { computed, nextTick, ref, useId, watch } from 'vue'
+  import { VVirtualList, type VirtualListInst } from 'vueuc'
   import { useGlobalSearch } from './composables/useGlobalSearch'
   import type { GlobalSearchOptions } from './types'
 
@@ -280,10 +324,61 @@
     closeDialog,
     selectHistoryItem,
     selectItem,
-    handleEnter,
-    focusNext,
-    focusPrev,
-  } = useGlobalSearch(props.options)
+    handleInputKeydown: processInputKeydown,
+    handleDialogKeydown,
+    handleCompositionStart,
+    handleCompositionEnd,
+  } = useGlobalSearch(() => props.options)
+
+  const optionListId = `robot-search-options-${useId()}`
+  const optionId = (index: number) => `${optionListId}-${index}`
+  const activeOptionId = computed(() => {
+    const count = searchValue.value.trim()
+      ? filteredMenuItems.value.length
+      : displayHistory.value.length
+    return count > 0 ? optionId(selectedIndex.value) : undefined
+  })
+  const resultListRef = ref<VirtualListInst>()
+  const historyItemsRef = ref<HTMLElement>()
+  let scrollPending = false
+
+  const scrollToSelected = async () => {
+    if (scrollPending) return
+    scrollPending = true
+    await nextTick()
+    scrollPending = false
+    if (!showDialog.value) return
+    if (searchValue.value.trim()) {
+      if (filteredMenuItems.value.length) {
+        resultListRef.value?.scrollTo({ index: selectedIndex.value })
+      }
+    } else {
+      historyItemsRef.value
+        ?.querySelector<HTMLElement>(
+          `[data-option-index="${selectedIndex.value}"]`
+        )
+        ?.scrollIntoView({ block: 'nearest' })
+    }
+  }
+  const handleInputKeydown = (event: KeyboardEvent) => {
+    const alreadyHandled = event.defaultPrevented
+    processInputKeydown(event)
+    if (
+      !alreadyHandled &&
+      event.defaultPrevented &&
+      (event.key === 'ArrowDown' || event.key === 'ArrowUp')
+    ) {
+      // At a boundary the index is unchanged; still restore its visibility
+      // after the user has scrolled away with the pointer.
+      void scrollToSelected()
+    }
+  }
+
+  watch(
+    [selectedIndex, filteredMenuItems, displayHistory, showDialog],
+    scrollToSelected,
+    { flush: 'post' }
+  )
 
   defineExpose({ openDialog, closeDialog })
 </script>

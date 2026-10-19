@@ -79,7 +79,7 @@ describe('keyboard and status accessibility contracts', () => {
   })
 
   test('chat preview, file, and retry actions use native keyboard controls', () => {
-    const source = read('src/components/C_Chat/index.vue')
+    const source = read('src/components/C_Chat/components/ChatMessageItem.vue')
     expect(source).toMatch(/<button\s+v-else-if="msg\.type === 'image'"/)
     expect(source).toMatch(/<button\s+v-else-if="msg\.type === 'file'"/)
     expect(source).toMatch(

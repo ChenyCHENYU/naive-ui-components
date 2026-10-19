@@ -20,4 +20,25 @@ describe('C_Transfer action selection', () => {
       )
     ).toBe(false)
   })
+
+  test('empty selection avoids scanning and an unchecked enabled item ends the all-checked probe', () => {
+    let reads = 0
+    const items = [
+      { key: 0, label: 'First' },
+      {
+        key: 1,
+        label: 'Later',
+        get disabled() {
+          reads++
+          return false
+        },
+      },
+    ]
+    expect(movableKeys(items, new Set())).toEqual([])
+    expect(reads).toBe(0)
+    expect(allMovableChecked(items, new Set())).toBe(false)
+    expect(reads).toBe(0)
+    expect(allMovableChecked(items, new Set([0, 1]))).toBe(true)
+    expect(reads).toBe(1)
+  })
 })

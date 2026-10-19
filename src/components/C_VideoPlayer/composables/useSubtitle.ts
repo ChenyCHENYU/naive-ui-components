@@ -15,6 +15,11 @@ import {
   type ShallowRef,
 } from 'vue'
 import type { PlayerInstance, SubtitleTrack } from '../types'
+import {
+  buildSubtitleTimeline,
+  findSubtitleText,
+  type SubtitleTimeline,
+} from './subtitleTimeline'
 
 /** 解析后的字幕条目 */
 export interface SubtitleCue {
@@ -81,7 +86,9 @@ export function useSubtitle(
   const activeLanguage = ref<string | null>(null)
   const subtitleList = ref<SubtitleTrack[]>([...subtitles])
   // Cue 数据按轨道整体替换；播放时间高频读取不需要为每条 cue 创建深层代理。
-  const cueMap = shallowRef<Record<string, SubtitleCue[]>>({})
+  const cueMap = shallowRef<
+    Record<string, { cues: SubtitleCue[]; timeline: SubtitleTimeline }>
+  >({})
   const isLoading = ref(false)
   const pendingTracks = new Map<
     string,
@@ -92,10 +99,8 @@ export function useSubtitle(
 
   const currentText = computed(() => {
     if (!activeLanguage.value) return ''
-    const cues = cueMap.value[activeLanguage.value]
-    if (!cues?.length) return ''
-    const t = currentTime.value
-    return cues.find(cue => t >= cue.start && t < cue.end)?.text ?? ''
+    const track = cueMap.value[activeLanguage.value]
+    return track ? findSubtitleText(track.timeline, currentTime.value) : ''
   })
   const hasSubtitles = computed(() => subtitleList.value.length > 0)
 
@@ -103,7 +108,7 @@ export function useSubtitle(
   function loadTrack(language: string): Promise<SubtitleCue[]> {
     if (disposed) return Promise.resolve([])
     if (Object.prototype.hasOwnProperty.call(cueMap.value, language))
-      return Promise.resolve(cueMap.value[language])
+      return Promise.resolve(cueMap.value[language].cues)
     const pending = pendingTracks.get(language)
     if (pending) return pending.promise
     const track = subtitleList.value.find(item => item.language === language)
@@ -120,7 +125,10 @@ export function useSubtitle(
         const text = await response.text()
         if (disposed || controller.signal.aborted) return []
         const cues = parseVtt(text)
-        cueMap.value = { ...cueMap.value, [language]: cues }
+        cueMap.value = {
+          ...cueMap.value,
+          [language]: { cues, timeline: buildSubtitleTimeline(cues) },
+        }
         return cues
       })
       .catch(error => {

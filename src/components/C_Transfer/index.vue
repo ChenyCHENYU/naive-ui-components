@@ -37,7 +37,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
-          aria-label="搜索可选列表"
+          :input-props="{ 'aria-label': '搜索可选列表' }"
         >
           <template #prefix>
             <C_Icon name="mdi:magnify" />
@@ -45,39 +45,15 @@
         </NInput>
       </div>
 
-      <div
+      <TransferList
         v-if="filteredSourceList.length"
-        class="c-transfer__list"
-      >
-        <template
-          v-for="item in filteredSourceList"
-          :key="item.key"
-        >
-          <div
-            class="c-transfer__item"
-            :class="{
-              'is-disabled': item.disabled,
-              'is-checked': sourceChecked.has(item.key),
-            }"
-            @click="!item.disabled && toggleSourceCheck(item.key)"
-          >
-            <NCheckbox
-              :checked="sourceChecked.has(item.key)"
-              :disabled="item.disabled"
-              :aria-label="item.label"
-              size="small"
-              @update:checked="toggleSourceCheck(item.key)"
-              @click.stop
-            />
-            <C_Icon
-              v-if="item.icon"
-              :name="item.icon"
-              class="c-transfer__item-icon"
-            />
-            <span class="c-transfer__item-label">{{ item.label }}</span>
-          </div>
-        </template>
-      </div>
+        :items="filteredSourceList"
+        :checked="sourceChecked"
+        :query="sourceQuery"
+        :size="mergedProps.size"
+        :virtual-scroll="mergedProps.virtualScroll"
+        @check="toggleSourceCheck"
+      />
       <div
         v-else
         class="c-transfer__empty"
@@ -141,7 +117,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
-          aria-label="搜索已选列表"
+          :input-props="{ 'aria-label': '搜索已选列表' }"
         >
           <template #prefix>
             <C_Icon name="mdi:magnify" />
@@ -149,39 +125,15 @@
         </NInput>
       </div>
 
-      <div
+      <TransferList
         v-if="filteredTargetList.length"
-        class="c-transfer__list"
-      >
-        <template
-          v-for="item in filteredTargetList"
-          :key="item.key"
-        >
-          <div
-            class="c-transfer__item"
-            :class="{
-              'is-disabled': item.disabled,
-              'is-checked': targetChecked.has(item.key),
-            }"
-            @click="!item.disabled && toggleTargetCheck(item.key)"
-          >
-            <NCheckbox
-              :checked="targetChecked.has(item.key)"
-              :disabled="item.disabled"
-              :aria-label="item.label"
-              size="small"
-              @update:checked="toggleTargetCheck(item.key)"
-              @click.stop
-            />
-            <C_Icon
-              v-if="item.icon"
-              :name="item.icon"
-              class="c-transfer__item-icon"
-            />
-            <span class="c-transfer__item-label">{{ item.label }}</span>
-          </div>
-        </template>
-      </div>
+        :items="filteredTargetList"
+        :checked="targetChecked"
+        :query="targetQuery"
+        :size="mergedProps.size"
+        :virtual-scroll="mergedProps.virtualScroll"
+        @check="toggleTargetCheck"
+      />
       <div
         v-else
         class="c-transfer__empty"
@@ -194,7 +146,9 @@
 
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
+  import { NCheckbox, NInput } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
+  import TransferList from './components/TransferList.vue'
   import { movableKeys, allMovableChecked } from './transferSelection'
   import {
     DEFAULT_TRANSFER_PROPS,
@@ -214,6 +168,7 @@
       sourceEmptyText?: string
       targetEmptyText?: string
       size?: TransferProps['size']
+      virtualScroll?: boolean
     }>(),
     {
       titles: () => DEFAULT_TRANSFER_PROPS.titles as [string, string],
@@ -223,6 +178,7 @@
       sourceEmptyText: DEFAULT_TRANSFER_PROPS.sourceEmptyText,
       targetEmptyText: DEFAULT_TRANSFER_PROPS.targetEmptyText,
       size: DEFAULT_TRANSFER_PROPS.size,
+      virtualScroll: DEFAULT_TRANSFER_PROPS.virtualScroll,
     }
   )
 

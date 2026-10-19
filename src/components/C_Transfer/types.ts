@@ -42,6 +42,8 @@ export interface TransferProps {
   targetEmptyText?: string
   /** 尺寸 */
   size?: 'small' | 'medium' | 'large'
+  /** 大列表自动使用虚拟滚动；自定义可变行高或需要完整 DOM 时可关闭。默认 true，100 项起启用。 */
+  virtualScroll?: boolean
 }
 
 /** 默认 Props */
@@ -53,4 +55,5 @@ export const DEFAULT_TRANSFER_PROPS: Partial<TransferProps> = {
   sourceEmptyText: '暂无数据',
   targetEmptyText: '未选择任何项',
   size: 'medium',
+  virtualScroll: true,
 }

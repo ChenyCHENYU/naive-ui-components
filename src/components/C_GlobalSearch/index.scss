@@ -270,6 +270,10 @@
     overflow-y: auto;
     overscroll-behavior: contain;
 
+    &--virtual {
+      overflow: hidden;
+    }
+
     &::-webkit-scrollbar {
       width: 6px;
     }
@@ -421,6 +425,24 @@
     padding: 0 12px;
   }
 
+  .robot-virtual-items {
+    max-height: max(64px, calc(100dvh - 288px));
+    overscroll-behavior: contain;
+
+    .robot-result-item {
+      height: 64px;
+      box-sizing: border-box;
+      margin-block: 0;
+    }
+
+    .robot-item-label,
+    .robot-item-desc {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
   // 结果项
   .robot-result-item {
     display: flex;
@@ -432,6 +454,7 @@
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     margin: 2px 0;
+    border: 1px solid transparent;
 
     &::before {
       content: '';

@@ -1,5 +1,19 @@
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  toValue,
+  type MaybeRefOrGetter,
+} from 'vue'
 import type { SearchMenuItem, HistoryItem, GlobalSearchOptions } from '../types'
+import {
+  createMenuSearchIndex,
+  formatSearchMenuPath,
+  searchMenuIndex,
+} from './searchIndex'
 
 /**
  * 全局搜索逻辑 — 管理菜单搜索、历史记录、键盘导航
@@ -7,19 +21,22 @@ import type { SearchMenuItem, HistoryItem, GlobalSearchOptions } from '../types'
  * 已解耦：不依赖任何项目级 store / router，
  * 所有外部数据通过 options 注入。
  */
-export function useGlobalSearch(options: GlobalSearchOptions) {
-  const {
-    menuItems: getMenuItems,
-    isDark: getIsDark,
-    onSelect,
-    storageKey = 'robot-search-history',
-    maxHistory = 10,
-    maxDisplayHistory = 5,
-  } = options
-  const historyLimit = Math.min(100, Math.max(0, Math.trunc(maxHistory)))
-  const displayHistoryLimit = Math.min(
-    historyLimit,
-    Math.max(0, Math.trunc(maxDisplayHistory))
+export function useGlobalSearch(
+  options: MaybeRefOrGetter<GlobalSearchOptions>
+) {
+  const getOptions = () => toValue(options)
+  const getMenuItems = () => getOptions().menuItems()
+  const storageKey = computed(
+    () => getOptions().storageKey ?? 'robot-search-history'
+  )
+  const historyLimit = computed(() =>
+    Math.min(100, Math.max(0, Math.trunc(getOptions().maxHistory ?? 10)))
+  )
+  const displayHistoryLimit = computed(() =>
+    Math.min(
+      historyLimit.value,
+      Math.max(0, Math.trunc(getOptions().maxDisplayHistory ?? 5))
+    )
   )
 
   // ==================== 响应式状态 ====================
@@ -28,27 +45,28 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
   const selectedIndex = ref(0)
   const searchInputRef = ref<HTMLInputElement>()
   const searchHistory = ref<HistoryItem[]>([])
+  const isComposing = ref(false)
 
   // ==================== 计算属性 ====================
-  const isDark = computed(() => getIsDark?.() ?? false)
+  const isDark = computed(() => getOptions().isDark?.() ?? false)
+  const menuIndex = computed(() => createMenuSearchIndex(getMenuItems()))
 
   const filteredMenuItems = computed(() => {
     if (!searchValue.value.trim()) return []
-    const query = searchValue.value.toLowerCase()
-    const items = getMenuItems()
-    return items.filter(
-      item =>
-        item.label.toLowerCase().includes(query) ||
-        formatMenuPath(item.key).toLowerCase().includes(query)
-    )
+    return searchMenuIndex(menuIndex.value, searchValue.value)
   })
 
   const displayHistory = computed(() =>
-    searchHistory.value.slice(0, displayHistoryLimit)
+    searchHistory.value.slice(0, displayHistoryLimit.value)
   )
   const hasResults = computed(() => filteredMenuItems.value.length > 0)
   const hasContent = computed(
-    () => hasResults.value || displayHistory.value.length > 0
+    () => Boolean(searchValue.value.trim()) || displayHistory.value.length > 0
+  )
+  const activeItemCount = computed(() =>
+    searchValue.value.trim()
+      ? filteredMenuItems.value.length
+      : displayHistory.value.length
   )
 
   // ==================== 工具函数 ====================
@@ -77,7 +95,7 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
   }
 
   const formatMenuPath = (key: string): string =>
-    key.replace(/^\//, '').replace(/\//g, ' > ') || '首页'
+    menuIndex.value.paths.get(key) ?? formatSearchMenuPath(key)
 
   // ==================== 搜索历史管理 ====================
   const persistHistory = () => {
@@ -88,7 +106,10 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
         menuKey: item.menuItem?.key ?? null,
         timestamp: item.timestamp,
       }))
-      localStorage.setItem(storageKey, JSON.stringify(serializableHistory))
+      localStorage.setItem(
+        storageKey.value,
+        JSON.stringify(serializableHistory)
+      )
     } catch {
       // Storage can be unavailable or full; search remains usable in memory.
     }
@@ -104,14 +125,15 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
     searchHistory.value = [
       { query, menuItem, timestamp: Date.now() },
       ...filtered,
-    ].slice(0, historyLimit)
+    ].slice(0, historyLimit.value)
     persistHistory()
   }
 
   const loadHistory = () => {
+    searchHistory.value = []
     if (typeof localStorage === 'undefined') return
     try {
-      const saved = localStorage.getItem(storageKey)
+      const saved = localStorage.getItem(storageKey.value)
       if (saved) {
         const parsed: unknown = JSON.parse(saved)
         if (!Array.isArray(parsed)) return
@@ -150,7 +172,7 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
               },
             ]
           })
-          .slice(0, historyLimit)
+          .slice(0, historyLimit.value)
       }
     } catch {
       searchHistory.value = []
@@ -161,7 +183,7 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
     searchHistory.value = []
     if (typeof localStorage === 'undefined') return
     try {
-      localStorage.removeItem(storageKey)
+      localStorage.removeItem(storageKey.value)
     } catch {
       // Keep the in-memory state cleared when storage is unavailable.
     }
@@ -180,6 +202,7 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
     showDialog.value = true
     searchValue.value = ''
     selectedIndex.value = 0
+    isComposing.value = false
     await nextTick()
     searchInputRef.value?.focus()
   }
@@ -188,13 +211,14 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
     showDialog.value = false
     searchValue.value = ''
     selectedIndex.value = 0
+    isComposing.value = false
   }
 
   // ==================== 选择项目 ====================
   const selectHistoryItem = (historyItem: HistoryItem) => {
     if (historyItem.menuItem) {
       const hasChildren = !!historyItem.menuItem.children?.length
-      onSelect?.(historyItem.menuItem.key, hasChildren)
+      getOptions().onSelect?.(historyItem.menuItem.key, hasChildren)
       closeDialog()
     } else {
       searchValue.value = historyItem.query
@@ -205,12 +229,30 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
   const selectItem = (item: SearchMenuItem) => {
     addToHistory(item)
     const hasChildren = !!item.children?.length
-    onSelect?.(item.key, hasChildren)
+    getOptions().onSelect?.(item.key, hasChildren)
     closeDialog()
   }
 
   // ==================== 键盘导航 ====================
-  const handleEnter = () => {
+  const ignoresNavigation = (event?: KeyboardEvent) =>
+    isComposing.value ||
+    Boolean(
+      event &&
+      (event.defaultPrevented ||
+        event.isComposing ||
+        event.keyCode === 229 ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.shiftKey)
+    )
+
+  const handleEnter = (event?: KeyboardEvent) => {
+    if (ignoresNavigation(event)) return
+    selectedIndex.value = Math.max(
+      0,
+      Math.min(selectedIndex.value, activeItemCount.value - 1)
+    )
     const isHistoryMode =
       !searchValue.value.trim() && displayHistory.value.length > 0
     const isSearchMode =
@@ -218,31 +260,66 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
 
     if (isHistoryMode) {
       const historyItem = displayHistory.value[selectedIndex.value]
-      if (historyItem) selectHistoryItem(historyItem)
+      if (historyItem) {
+        event?.preventDefault()
+        selectHistoryItem(historyItem)
+      }
     } else if (isSearchMode) {
       const item = filteredMenuItems.value[selectedIndex.value]
-      if (item) selectItem(item)
+      if (item) {
+        event?.preventDefault()
+        selectItem(item)
+      }
     }
   }
 
-  const focusNext = () => {
-    const maxIndex = !searchValue.value.trim()
-      ? displayHistory.value.length - 1
-      : filteredMenuItems.value.length - 1
-    selectedIndex.value = Math.min(selectedIndex.value + 1, maxIndex)
+  const focusNext = (event?: KeyboardEvent) => {
+    if (ignoresNavigation(event)) return
+    event?.preventDefault()
+    selectedIndex.value = Math.max(
+      0,
+      Math.min(selectedIndex.value + 1, activeItemCount.value - 1)
+    )
   }
 
-  const focusPrev = () => {
-    selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
+  const focusPrev = (event?: KeyboardEvent) => {
+    if (ignoresNavigation(event)) return
+    event?.preventDefault()
+    selectedIndex.value = Math.max(
+      0,
+      Math.min(selectedIndex.value - 1, activeItemCount.value - 1)
+    )
+  }
+
+  const handleDialogKeydown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || ignoresNavigation(event)) return
+    event.preventDefault()
+    closeDialog()
+  }
+  const handleInputKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'ArrowDown') focusNext(event)
+    else if (event.key === 'ArrowUp') focusPrev(event)
+    else if (event.key === 'Enter') handleEnter(event)
+    else handleDialogKeydown(event)
   }
 
   // ==================== 监听器和生命周期 ====================
   watch(searchValue, () => {
     selectedIndex.value = 0
   })
+  watch(activeItemCount, count => {
+    selectedIndex.value = Math.max(0, Math.min(selectedIndex.value, count - 1))
+  })
+  watch(storageKey, loadHistory)
 
   const handleKeydown = (e: KeyboardEvent) => {
-    if (e.defaultPrevented) return
+    if (
+      e.defaultPrevented ||
+      e.isComposing ||
+      e.keyCode === 229 ||
+      isComposing.value
+    )
+      return
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault()
       void openDialog()
@@ -277,5 +354,13 @@ export function useGlobalSearch(options: GlobalSearchOptions) {
     handleEnter,
     focusNext,
     focusPrev,
+    handleInputKeydown,
+    handleDialogKeydown,
+    handleCompositionStart: () => {
+      isComposing.value = true
+    },
+    handleCompositionEnd: () => {
+      isComposing.value = false
+    },
   }
 }

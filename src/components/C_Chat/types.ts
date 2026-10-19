@@ -80,6 +80,8 @@ export interface ChatProps {
   showSendBtn?: boolean
   /** 是否正在加载历史消息 */
   loadingHistory?: boolean
+  /** 大列表自动窗口化；false 可保留完整 DOM（消息 200 条、联系人 100 条起）。 */
+  virtualScroll?: boolean
   /** 标题（无联系人模式时显示） */
   title?: string
 }

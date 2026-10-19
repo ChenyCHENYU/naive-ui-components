@@ -8,7 +8,11 @@
   --chat-input-bg: var(--c-bg-body, var(--body-color, #f8fafc));
   --chat-input-height: 56px;
   --chat-bubble-self: var(--c-primary, var(--primary-color, #2080f0));
-  --chat-bubble-other: color-mix(in srgb, var(--c-text-1, #262626) 5%, var(--c-bg-card, #fff));
+  --chat-bubble-other: color-mix(
+    in srgb,
+    var(--c-text-1, #262626) 5%,
+    var(--c-bg-card, #fff)
+  );
   --chat-bubble-system: transparent;
   --chat-text-primary: var(--c-text-1, var(--text-color-1, #262626));
   --chat-text-secondary: var(--c-text-3, var(--text-color-3, #a3a3a3));
@@ -63,7 +67,8 @@
   padding: 8px 12px;
 }
 
-.c-chat__contact-list {
+.c-chat__contact-list,
+:deep(.c-chat__contact-list.v-vl) {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -76,120 +81,6 @@
     background: var(--chat-scrollbar-thumb);
     border-radius: 2px;
   }
-}
-
-.c-chat__contact {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: color-mix(
-      in srgb,
-      var(--c-primary, var(--primary-color, #2080f0)) 6%,
-      transparent
-    );
-  }
-
-  &.is-active {
-    background: color-mix(
-      in srgb,
-      var(--c-primary, var(--primary-color, #2080f0)) 12%,
-      transparent
-    );
-  }
-}
-
-.c-chat__contact-avatar {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.c-chat__avatar {
-  width: var(--chat-avatar-size);
-  height: var(--chat-avatar-size);
-  border-radius: 50%;
-  object-fit: cover;
-  background: color-mix(
-    in srgb,
-    var(--c-border, var(--border-color, #e5e7eb)) 50%,
-    transparent
-  );
-}
-
-.c-chat__avatar-fallback {
-  width: var(--chat-avatar-size);
-  height: var(--chat-avatar-size);
-  border-radius: 50%;
-  background: color-mix(
-    in srgb,
-    var(--c-primary, var(--primary-color, #2080f0)) 25%,
-    transparent
-  );
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-text-1, var(--text-color-1, #262626));
-}
-
-.c-chat__online-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--chat-online-color);
-  border: 2px solid var(--chat-sidebar-bg);
-}
-
-.c-chat__contact-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.c-chat__contact-name {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.c-chat__contact-time {
-  font-size: 11px;
-  color: var(--chat-text-secondary);
-  margin-left: 8px;
-  flex-shrink: 0;
-}
-
-.c-chat__contact-last {
-  font-size: 12px;
-  color: var(--chat-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.c-chat__unread {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: var(--chat-unread-bg);
-  color: var(--chat-unread-color);
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 /* ─── 主聊天区域 ──────────────────────────────────────── */
@@ -220,14 +111,14 @@
 }
 
 /* ─── 消息区域 ────────────────────────────────────────── */
-.c-chat__messages {
+.c-chat__messages,
+:deep(.c-chat__messages--virtual) {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
   background: color-mix(
     in srgb,
     var(--c-bg-body, var(--body-color, #f8fafc)) 50%,
@@ -256,180 +147,6 @@
   justify-content: center;
   color: var(--chat-text-secondary);
   font-size: 13px;
-}
-
-/* ─── 消息气泡 ────────────────────────────────────────── */
-.c-chat__msg {
-  display: flex;
-  gap: 8px;
-  max-width: 75%;
-
-  &.is-self {
-    margin-left: auto;
-    flex-direction: row-reverse;
-  }
-
-  &.is-system {
-    max-width: 100%;
-    justify-content: center;
-    align-self: center;
-  }
-}
-
-.c-chat__msg-avatar {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.c-chat__msg-body {
-  display: flex;
-  flex-direction: column;
-}
-
-.c-chat__msg-username {
-  font-size: 12px;
-  color: var(--chat-text-secondary);
-  margin-bottom: 2px;
-
-  .is-self & {
-    text-align: right;
-  }
-}
-
-.c-chat__bubble {
-  padding: 10px 14px;
-  border-radius: 16px;
-  line-height: 1.5;
-  word-break: break-word;
-  white-space: pre-wrap;
-
-  .is-other & {
-    background: var(--chat-bubble-other);
-    border: 1px solid var(--chat-border);
-    border-top-left-radius: 4px;
-  }
-
-  .is-self & {
-    background: var(--chat-bubble-self);
-    color: var(--chat-text-self);
-    border-top-right-radius: 4px;
-  }
-
-  .is-system & {
-    background: var(--chat-bubble-system);
-    color: var(--chat-text-secondary);
-    font-size: 12px;
-    padding: 4px 12px;
-  }
-}
-
-.c-chat__msg-image-button {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.c-chat__msg-image {
-  max-width: 240px;
-  max-height: 180px;
-  border-radius: 12px;
-  cursor: pointer;
-  object-fit: cover;
-
-  .is-self & {
-    border-top-right-radius: 4px;
-  }
-
-  .is-other & {
-    border-top-left-radius: 4px;
-  }
-}
-
-.c-chat__msg-file {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  border: 0;
-
-  .is-other & {
-    background: var(--chat-bubble-other);
-    border: 1px solid var(--chat-border);
-    border-top-left-radius: 4px;
-  }
-
-  .is-self & {
-    background: var(--chat-bubble-self);
-    color: var(--chat-text-self);
-    border-top-right-radius: 4px;
-  }
-}
-
-.c-chat__file-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.c-chat__file-name {
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.c-chat__file-size {
-  font-size: 11px;
-  opacity: 0.6;
-}
-
-.c-chat__msg-time {
-  font-size: 11px;
-  color: var(--chat-text-secondary);
-  margin-top: 4px;
-
-  .is-self & {
-    text-align: right;
-  }
-}
-
-.c-chat__msg-status {
-  font-size: 11px;
-  margin-top: 2px;
-  text-align: right;
-
-  &:is(button) {
-    align-self: flex-end;
-    padding: 0;
-    border: 0;
-    background: none;
-    font-family: inherit;
-  }
-
-  &.is-sending {
-    color: var(--chat-text-secondary);
-  }
-
-  &.is-failed {
-    color: var(--chat-failed-color);
-    cursor: pointer;
-  }
-}
-
-/* ─── 时间分割线 ──────────────────────────────────────── */
-.c-chat__time-divider {
-  text-align: center;
-  font-size: 11px;
-  color: var(--chat-text-secondary);
-  padding: 4px 0;
 }
 
 /* ─── 输入区域 ────────────────────────────────────────── */
@@ -480,14 +197,30 @@
     --chat-sidebar-width: 72px;
   }
 
-  .c-chat__contact-info,
-  .c-chat__search,
-  .c-chat__unread {
+  .c-chat__search {
     display: none;
   }
+}
 
-  .c-chat__contact {
-    justify-content: center;
-    padding: 10px 8px;
-  }
+.c-chat__main {
+  min-height: 0;
+}
+.c-chat__messages,
+:deep(.c-chat__messages--virtual) {
+  min-height: 0;
+}
+.c-chat__messages--virtual,
+:deep(.c-chat__messages--virtual) {
+  display: block;
+  padding: 0;
+  overflow-anchor: none;
+}
+.c-chat__message-items {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.c-chat__contact-list,
+:deep(.c-chat__contact-list.v-vl) {
+  min-height: 0;
 }
