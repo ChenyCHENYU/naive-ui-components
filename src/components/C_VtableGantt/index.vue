@@ -40,7 +40,15 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+  import {
+    ref,
+    shallowRef,
+    computed,
+    watch,
+    nextTick,
+    onMounted,
+    onUnmounted,
+  } from 'vue'
   import { NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import {
@@ -82,7 +90,8 @@
   }>()
 
   const ganttContainerRef = ref<HTMLDivElement>()
-  const ganttInstance = ref<any>()
+  // 图库实例不参与模板深层响应式，保留原始实例和其内部记录。
+  const ganttInstance = shallowRef<any>()
   const isFullscreen = ref(false)
   let initVersion = 0
   let initTimer: ReturnType<typeof setTimeout> | undefined
@@ -185,6 +194,8 @@
   }
 
   const initGantt = async () => {
+    clearTimeout(initTimer)
+    initTimer = undefined
     const container = ganttContainerRef.value
     if (!container || disposed) return
     const version = ++initVersion
@@ -289,21 +300,16 @@
   )
 
   watch(
-    () => [props.options, props.preset],
-    () => nextTick(() => initGantt()),
-    { deep: true }
-  )
-
-  watch(
-    () => props.theme,
-    () => nextTick(() => initGantt())
+    () => [props.options, props.preset, props.theme],
+    () => void initGantt(),
+    { deep: true, flush: 'post' }
   )
 
   onMounted(() => {
     disposed = false
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     nextTick(() => {
-      if (disposed) return
+      if (disposed || initVersion > 0) return
       initTimer = setTimeout(() => initGantt(), 100)
     })
   })

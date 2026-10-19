@@ -129,6 +129,8 @@ export function useWorkflowValidation(
     if (jumpTimer) clearTimeout(jumpTimer)
     jumpTimer = setTimeout(() => {
       jumpTimer = undefined
+      // 定位动画期间数据可能被重置或替换，不再打开过期节点的配置。
+      if (!nodes.value.includes(node)) return
       options?.onShowNodeConfig?.(node)
       showValidationErrors.value = false
     }, 900)
@@ -145,6 +147,8 @@ export function useWorkflowValidation(
 
   /** 重置验证状态 */
   const resetValidation = (): void => {
+    if (jumpTimer) clearTimeout(jumpTimer)
+    jumpTimer = undefined
     validationErrors.value = []
     showValidationErrors.value = false
   }

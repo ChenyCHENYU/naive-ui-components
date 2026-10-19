@@ -147,27 +147,23 @@ export function useTagsView(options: UseTagsViewOptions = {}) {
   }
 
   const removeOtherTags = (index: number) => {
-    if (index === 0) {
-      tagsViewList.value = [tagsViewList.value[0]].filter(Boolean)
-    } else {
-      tagsViewList.value = [
-        tagsViewList.value[0],
-        tagsViewList.value[index],
-      ].filter(Boolean)
-    }
+    tagsViewList.value = tagsViewList.value.filter(
+      (tag, position) => position === 0 || tag.meta?.affix || position === index
+    )
     syncPersist()
   }
 
   const removeLeftTags = (index: number) => {
-    tagsViewList.value = [
-      tagsViewList.value[0],
-      ...tagsViewList.value.slice(index),
-    ]
+    tagsViewList.value = tagsViewList.value.filter(
+      (tag, position) => position === 0 || tag.meta?.affix || position >= index
+    )
     syncPersist()
   }
 
   const removeRightTags = (index: number) => {
-    tagsViewList.value = tagsViewList.value.slice(0, index + 1)
+    tagsViewList.value = tagsViewList.value.filter(
+      (tag, position) => tag.meta?.affix || position <= index
+    )
     syncPersist()
   }
 

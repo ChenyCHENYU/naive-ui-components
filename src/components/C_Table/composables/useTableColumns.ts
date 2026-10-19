@@ -227,6 +227,8 @@ export interface UseTableColumnsOptions {
   config: ComputedRef<ResolvedConfig>
   /** 默认列宽 */
   columnWidth: number
+  /** 区分使用侧显式统一列宽与内部默认值，不把默认值强加给弹性业务列。 */
+  columnWidthExplicit?: boolean
   /** 用户设定的 scrollX */
   scrollX?: number | string
   /** 行键获取函数 */
@@ -264,7 +266,6 @@ export function useTableColumns(
   const {
     rawColumns,
     config,
-    columnWidth,
     rowKey,
     tableManager,
     actionsRenderer,
@@ -279,6 +280,9 @@ export function useTableColumns(
 
   /** 同步外部列配置到响应式状态 */
   const syncColumns = (newColumns: TableColumn[]) => {
+    const declaredActions = newColumns.find(
+      col => (col as ColumnWithKey).key === '_actions'
+    )
     const existingActions = reactiveColumns.value.find(
       col => (col as ColumnWithKey).key === '_actions'
     )
@@ -288,7 +292,8 @@ export function useTableColumns(
     reactiveColumns.value = showActionsColumn.value
       ? [
           ...regularColumns,
-          existingActions ||
+          declaredActions ||
+            existingActions ||
             ({
               key: '_actions',
               title: '操作',
@@ -413,23 +418,27 @@ export function useTableColumns(
 
   /* ================= 列映射 ================= */
 
-  const getColWidth = (col: TableColumn): number => {
-    const w = (col as ColumnWithKey).width || columnWidth || 180
-    return typeof w === 'number' ? w : 180
+  const getColWidth = (col: TableColumn): number | string => {
+    if (col.width !== undefined) return col.width
+    if (col.type === 'selection' || col.type === 'expand') return 40
+    if (col.type === 'index') return 50
+    return options.columnWidth ?? 180
   }
 
   /** 序号列 */
   const mapIndexColumn = (column: TableColumn): DataTableColumn => {
     const col = column as ColumnWithKey
     return {
+      ...col,
+      type: undefined,
       key: '_index',
-      title: col.title || '序号',
-      width:
-        typeof (col.width || 50) === 'number'
-          ? (col.width as number) || 50
-          : 50,
-      titleAlign: 'center' as const,
-      align: 'center' as const,
+      title: col.title ?? '序号',
+      width: getColWidth(column),
+      className: [col.className, 'c-table-index-column']
+        .filter(Boolean)
+        .join(' '),
+      titleAlign: col.titleAlign ?? 'center',
+      align: col.align ?? 'center',
       render: (_: DataRecord, index: number) => index + 1,
       fixed: column.fixed,
     }
@@ -438,9 +447,16 @@ export function useTableColumns(
   /** 普通数据列 */
   const mapRegularColumn = (column: TableColumn): DataTableColumn => {
     const col = column as ColumnWithKey
+    const naturalWidth =
+      !col.fixed &&
+      col.width === undefined &&
+      col.maxWidth === undefined &&
+      options.columnWidthExplicit === false
     const base: Record<string, unknown> = {
       ...col,
-      width: getColWidth(column),
+      width: naturalWidth ? undefined : getColWidth(column),
+      minWidth:
+        col.minWidth ?? (naturalWidth ? options.columnWidth : undefined),
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
       render: (rowData: DataRecord, rowIndex: number) =>
@@ -451,8 +467,8 @@ export function useTableColumns(
 
     if (column.resizable && typeof base.width === 'number') {
       base.resizable = true
-      base.minWidth = column.minWidth || 80
-      base.maxWidth = column.maxWidth || 500
+      base.minWidth = column.minWidth ?? 80
+      base.maxWidth = column.maxWidth ?? 500
     }
 
     return base as unknown as DataTableColumn
@@ -468,9 +484,12 @@ export function useTableColumns(
       })
       .map(c => {
         const col = c as ColumnWithKey
-        return (col as any).type === 'index'
-          ? mapIndexColumn(c)
-          : mapRegularColumn(c)
+        if (c.type === 'index') return mapIndexColumn(c)
+        // 原生辅助列保持自己的渲染和宽度，不套用业务数据列的 180px。
+        if (c.type === 'selection' || c.type === 'expand') {
+          return { ...col, width: getColWidth(c) } as DataTableColumn
+        }
+        return mapRegularColumn(c)
       }) as DataTableColumn[]
 
     if (tableManager.dynamicRowsState) {
@@ -493,12 +512,16 @@ export function useTableColumns(
         c => (c as ColumnWithKey).key === '_actions'
       )
       cols.push({
+        ...actionsMeta,
+        type: undefined,
         key: '_actions',
-        title: '操作',
+        title: (actionsMeta as ColumnWithKey)?.title ?? '操作',
         width: (actionsMeta as ColumnWithKey)?.width ?? 180,
-        className: 'c-table-actions-column',
-        align: 'center' as const,
-        titleAlign: 'center' as const,
+        className: [actionsMeta?.className, 'c-table-actions-column']
+          .filter(Boolean)
+          .join(' '),
+        align: actionsMeta?.align ?? 'center',
+        titleAlign: actionsMeta?.titleAlign ?? 'center',
         render: actionsRenderer,
         fixed: (actionsMeta as ColumnWithKey)?.fixed,
       })
@@ -512,17 +535,38 @@ export function useTableColumns(
   const computedScrollX = computed(() => {
     if (options.scrollX !== undefined) return options.scrollX
 
-    const hasFixed = reactiveColumns.value.some(c => {
-      const col = c as ColumnWithKey
-      return col.fixed && col.visible !== false
-    })
-    if (!hasFixed) return undefined
+    const hasFixed = computedColumns.value.some(col => col.fixed)
+    const hasAuxiliary = computedColumns.value.some(
+      col =>
+        col.type === 'selection' ||
+        col.type === 'expand' ||
+        col.key === '_index'
+    )
+    const hasNatural = computedColumns.value.some(
+      col =>
+        !col.type &&
+        !col.fixed &&
+        col.key !== '_index' &&
+        col.key !== '_actions' &&
+        col.width === undefined
+    )
+    // fixed 布局需要实际最小滚动宽度，窄容器中也不能压扁业务列 minWidth。
+    if (!hasFixed && !(hasAuxiliary && hasNatural)) return undefined
 
-    const total = reactiveColumns.value
-      .filter(c => (c as ColumnWithKey).visible !== false)
-      .reduce((sum: number, c) => sum + getColWidth(c), 0)
-
-    return total + 200
+    // 使用最终可见列：包含实际选择/展开/序号/操作列，不再额外猜测 200px。
+    return computedColumns.value.reduce((sum, col) => {
+      const width = col.width
+      const pixels =
+        typeof width === 'number'
+          ? width
+          : typeof width === 'string' &&
+              /^\s*\d+(?:\.\d+)?(?:px)?\s*$/.test(width)
+            ? Number.parseFloat(width)
+            : typeof col.minWidth === 'number'
+              ? col.minWidth
+              : 180
+      return sum + pixels
+    }, 0)
   })
 
   /* ================= 列设置变更 ================= */
@@ -534,7 +578,7 @@ export function useTableColumns(
         ...col,
         visible: c.visible !== false,
         fixed: col.fixed,
-        width: c.width || columnWidth,
+        width: c.width ?? (c.type ? getColWidth(col) : undefined),
         align: c.align || 'center',
         titleAlign: c.titleAlign || 'center',
       } as unknown as TableColumn

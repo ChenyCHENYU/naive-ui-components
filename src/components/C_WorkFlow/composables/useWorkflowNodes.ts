@@ -314,12 +314,14 @@ export function useWorkflowNodes(
 
   /* ─── 画布操作 ──────────────────────────────────────────── */
   const fitView = (): void => {
-    if (!vueFlowRef.value?.fitView) {
+    const target = vueFlowRef.value
+    if (!target?.fitView) {
       message.warning('画布未准备就绪，请稍后重试')
       return
     }
     nextTick(() => {
-      vueFlowRef.value.fitView({
+      if (disposed || vueFlowRef.value !== target) return
+      target.fitView({
         padding: 50,
         includeHiddenNodes: false,
         minZoom: 0.5,

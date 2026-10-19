@@ -167,6 +167,7 @@
       @update:checked-row-keys="handleCheckedKeysChange"
       :scroll-x="computedScrollX"
       :virtual-scroll="resolved.virtualScroll"
+      :virtual-scroll-x="props.virtualScrollX"
       :min-row-height="
         resolved.virtualScroll ? resolved.virtualItemHeight : undefined
       "
@@ -346,6 +347,8 @@
       wrapperClass?: import('vue').HTMLAttributes['class']
       /** 填满已确定高度的根容器，并为工具栏和分页预留空间。 */
       flexHeight?: boolean
+      /** 原生横向虚拟滚动；未声明业务列宽时仍提供可计算的数值兜底。 */
+      virtualScrollX?: boolean
       /** 列配置（crud 模式下可省略） */
       columns?: TableColumn<T>[]
       /** 数据源（crud 模式下可省略） */
@@ -612,8 +615,18 @@
   const columnState = useTableColumns({
     rawColumns: effectiveColumns,
     config: resolved,
-    columnWidth: resolved.value.columnWidth,
-    scrollX: resolved.value.scrollX,
+    get columnWidth() {
+      return resolved.value.columnWidth
+    },
+    get columnWidthExplicit() {
+      return (
+        props.virtualScrollX === true ||
+        effectiveConfig.value.display?.columnWidth !== undefined
+      )
+    },
+    get scrollX() {
+      return resolved.value.scrollX
+    },
     rowKey: resolvedRowKey,
     // Column rendering consumes a non-generic manager view of the same rows.
     tableManager: tableManager as unknown as Parameters<
@@ -895,6 +908,25 @@
     singleLine: resolved.value.singleLine,
     size: resolved.value.size,
     maxHeight: resolved.value.maxHeight,
+    // 自然弹性业务列吸收余量，避免展开/序号等辅助列被平均撑大。
+    // 显式原生 table-layout 仍通过 $attrs 优先覆盖。
+    tableLayout:
+      computedColumns.value.some(
+        col =>
+          col.type === 'selection' ||
+          col.type === 'expand' ||
+          col.key === '_index'
+      ) &&
+      computedColumns.value.some(
+        col =>
+          !col.type &&
+          !col.fixed &&
+          col.key !== '_index' &&
+          col.key !== '_actions' &&
+          col.width === undefined
+      )
+        ? ('fixed' as const)
+        : undefined,
   }))
 
   /* ================= 编辑弹窗 ================= */

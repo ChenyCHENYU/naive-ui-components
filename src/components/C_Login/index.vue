@@ -89,7 +89,7 @@
       <slot
         name="password-fields"
         :username="passwordForm.username"
-        :loading="props.loading"
+        :loading="props.loading || submitting"
       />
 
       <!-- 记住我 + 忘记密码 -->
@@ -202,9 +202,10 @@
       v-if="activeTab === 'password' || activeTab === 'captcha'"
       type="primary"
       block
-      :loading="props.loading"
+      :loading="props.loading || submitting"
       :disabled="
         props.loading ||
+        submitting ||
         props.submitDisabled ||
         (activeTab === 'password' && feat.captchaVerify && !captchaValid)
       "
@@ -404,7 +405,8 @@
       v-if="activeTab === 'register'"
       type="primary"
       block
-      :loading="props.loading"
+      :loading="props.loading || submitting"
+      :disabled="props.loading || props.submitDisabled || submitting"
       class="c-login__submit-btn"
       @click="handleRegisterSubmit"
     >
@@ -496,13 +498,22 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+  import {
+    computed,
+    onMounted,
+    onUnmounted,
+    reactive,
+    ref,
+    watch,
+    type Ref,
+  } from 'vue'
   import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import C_Captcha from '../C_Captcha/index.vue'
   import type { CaptchaSuccessPayload } from '../C_Captcha/types'
   import C_QRCode from '../C_QRCode/index.vue'
   import { getItem, removeItem, setItem } from '../../utils/storage'
+  import { useActionTask } from '../../composables/useActionTask'
   import {
     DEFAULT_FEATURES,
     DEFAULT_SOCIAL_PROVIDERS,
@@ -586,6 +597,52 @@
   const activeTab = ref<'password' | 'captcha' | 'qrcode' | 'register'>(
     'password'
   )
+  type SubmissionMode = 'password' | 'captcha' | 'register'
+  const submitTasks = useActionTask<string>()
+  const submitting = computed(() => submitTasks.isRunning(activeTab.value))
+  let disposed = false
+  let tabVersion = 0
+  watch(activeTab, () => tabVersion++, { flush: 'sync' })
+
+  const canSubmit = (mode: SubmissionMode) =>
+    !disposed &&
+    activeTab.value === mode &&
+    !props.loading &&
+    !props.submitDisabled &&
+    (mode === 'register' || !feat.value.captchaVerify || captchaValid.value)
+
+  async function submitValidated<T extends object>(
+    mode: SubmissionMode,
+    formRef: Ref<FormInst | null>,
+    model: T,
+    publish: (snapshot: T) => void
+  ) {
+    await submitTasks.run(
+      mode,
+      async () => {
+        const form = formRef.value
+        if (!form) return
+        const version = tabVersion
+        const snapshot = { ...model }
+        try {
+          await form.validate()
+        } catch {
+          return // 原生表单显示行内错误，任务锁在 finally 中释放。
+        }
+        if (
+          !canSubmit(mode) ||
+          version !== tabVersion ||
+          form !== formRef.value ||
+          !Object.keys(snapshot).every(
+            key => snapshot[key as keyof T] === model[key as keyof T]
+          )
+        )
+          return
+        publish(snapshot)
+      },
+      () => canSubmit(mode)
+    )
+  }
 
   // ===== 密码表单 =====
   const passwordFormRef = ref<FormInst | null>(null)
@@ -638,36 +695,20 @@
   })
 
   // ===== 密码登录提交 =====
-  const handlePasswordSubmit = async () => {
-    if (
-      props.loading ||
-      props.submitDisabled ||
-      (feat.value.captchaVerify && !captchaValid.value)
-    )
-      return
-    try {
-      await passwordFormRef.value?.validate()
-    } catch {
-      return // 校验失败，表单会显示行内错误提示
-    }
-    if (
-      props.loading ||
-      props.submitDisabled ||
-      (feat.value.captchaVerify && !captchaValid.value)
-    )
-      return
-    emit('submit', {
-      ...passwordForm,
-      ...(captchaValid.value
-        ? {
-            captchaToken: captchaToken.value,
-            captchaTimestamp: captchaTimestamp.value,
-            captchaType: captchaType.value,
-            captchaVerifiedBy: captchaVerifiedBy.value,
-          }
-        : {}),
+  const handlePasswordSubmit = () =>
+    submitValidated('password', passwordFormRef, passwordForm, snapshot => {
+      emit('submit', {
+        ...snapshot,
+        ...(captchaValid.value
+          ? {
+              captchaToken: captchaToken.value,
+              captchaTimestamp: captchaTimestamp.value,
+              captchaType: captchaType.value,
+              captchaVerifiedBy: captchaVerifiedBy.value,
+            }
+          : {}),
+      })
     })
-  }
 
   // ===== 验证码表单 =====
   const captchaFormRef = ref<FormInst | null>(null)
@@ -723,16 +764,10 @@
     captchaRef.value?.reset()
   }
 
-  const handleCaptchaSubmit = async () => {
-    if (props.loading || props.submitDisabled) return
-    try {
-      await captchaFormRef.value?.validate()
-    } catch {
-      return
-    }
-    if (feat.value.captchaVerify && !captchaValid.value) return
-    emit('captcha-submit', { ...captchaForm })
-  }
+  const handleCaptchaSubmit = () =>
+    submitValidated('captcha', captchaFormRef, captchaForm, snapshot =>
+      emit('captcha-submit', snapshot)
+    )
 
   // ===== 发送验证码 =====
   const handleSendCode = () => {
@@ -821,17 +856,14 @@
     }, 1000)
   }
 
-  const handleRegisterSubmit = async () => {
-    try {
-      await registerFormRef.value?.validate()
-    } catch {
-      return
-    }
-    emit('register-submit', { ...registerForm })
-  }
+  const handleRegisterSubmit = () =>
+    submitValidated('register', registerFormRef, registerForm, snapshot =>
+      emit('register-submit', snapshot)
+    )
 
   // ===== 清理定时器 =====
   onUnmounted(() => {
+    disposed = true
     if (countdownTimer) {
       clearInterval(countdownTimer)
       countdownTimer = null

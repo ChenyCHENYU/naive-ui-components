@@ -65,3 +65,23 @@ const config = {
 分页、树表、虚拟滚动、选择、导出继续使用各自的分组配置。它们是可组合能力，不设隐含开启多种行为的“万能模式”。
 
 多表分屏请参阅[分割面板](./split-pane.md)；表单优先级与布局示例请参阅[表单密度](./form-density.md)。
+
+## 展开、序号和弹性业务列
+
+默认辅助列宽度：选择列 `40px`、展开列 `40px`、序号列 `50px`。普通未固定的业务列不再被统一填上 `width: 180`；未指定宽度时，它按首选最小宽度吸收容器余量。有辅助列和自然弹性业务列时，默认使用原生 `fixed` 表格布局，避免空余空间把展开与序号撑大：
+
+```ts
+const columns: TableColumn<Order>[] = [
+  { type: 'selection' },
+  { type: 'expand' },
+  { type: 'index' },
+  { key: 'name', title: '订单名称', minWidth: 220 }, // 自然弹性列
+  { key: 'amount', title: '金额', width: 140 },
+]
+```
+
+不需要给每张表写辅助列 CSS。显式列 `width / minWidth / maxWidth / fixed / className / cellProps` 保持转发；`config.display.columnWidth`（包括全局配置中的显式 `180`）仍表示统一列宽。固定业务列继续使用可计算的数值默认宽度；原生 `table-layout` 属性可覆盖自动选择的布局。
+
+若所有业务列都显式指定宽度，且总宽小于容器，保留原生表格的剩余空间分配规则；这时声明的 `width` 不保证等于最后测量的像素。通常让名称或描述列保持弹性，比给所有列设宽更合适。虚拟横向滚动仍需按 Naive UI 的契约提供具体列宽。
+
+独立的列 `renderExpand` 直接转交原生表格；配置 `config.expand.onLoadData / renderContent` 后由组件的加载、失败重试和内容渲染器接管展开区。不要同时配置两套展开内容并依赖原生渲染器优先。自动横向滚动宽度按最终可见列计算，包含辅助列、动态选择列和操作列，不再额外追加固定留白。

@@ -67,11 +67,19 @@ const useDataUtils = <T extends object, C>(
   )
 
   const getRowKey = options.rowKey
+  const rowIndex = computed(() => {
+    const index = new Map<DataTableRowKey, T>()
+    for (const row of data.value) {
+      const key = getRowKey(row)
+      if (!index.has(key)) index.set(key, row)
+    }
+    return index
+  })
   const getChildRowKey =
     options.childRowKey || ((child: C): DataTableRowKey => (child as any).id)
 
   const findRow = (key: DataTableRowKey): T | undefined =>
-    data.value.find(row => getRowKey(row) === key)
+    rowIndex.value.get(key)
 
   const isRowExpandable = (row: T): boolean =>
     options.rowExpandable?.(row) ?? true
@@ -239,12 +247,10 @@ const useExpandLogic = <T extends object, C>(
   const handleExpandChange = async (keys: DataTableRowKey[]): Promise<void> => {
     const version = ++transitionVersion
     desiredExpandedKeys = new Set(keys)
-    const newExpandedKeys = keys.filter(
-      key => !state.expandedKeys.value.includes(key)
-    )
-    const collapsedKeys = state.expandedKeys.value.filter(
-      key => !keys.includes(key)
-    )
+    const previous = new Set(state.expandedKeys.value)
+    const next = new Set(keys)
+    const newExpandedKeys = [...next].filter(key => !previous.has(key))
+    const collapsedKeys = state.expandedKeys.value.filter(key => !next.has(key))
 
     // 等待数据时先打开内容区；随后收起或切换的操作优先于迟到响应。
     for (const key of collapsedKeys) {
@@ -631,10 +637,14 @@ const useRenderer = <T extends object, C>(
   const getTableColumns = (originalColumns: TableColumn<T>[]): unknown[] => {
     return originalColumns.map(column => {
       if ((column as any).type === 'selection' && options.enableSelection) {
+        const disabled = 'disabled' in column ? column.disabled : undefined
+        const multiple = 'multiple' in column ? column.multiple : undefined
         return {
+          ...column,
           type: 'selection',
-          disabled: (row: T) => !utils.isRowCheckable(row),
-          multiple: !options.maxSelection || options.maxSelection > 1,
+          disabled: (row: T) =>
+            Boolean(disabled?.(row)) || !utils.isRowCheckable(row),
+          multiple: options.maxSelection === 1 ? false : (multiple ?? true),
         }
       }
 
@@ -643,8 +653,11 @@ const useRenderer = <T extends object, C>(
         (options.onLoadData || options.renderContent)
       ) {
         return {
+          ...column,
           type: 'expand',
-          expandable: utils.isRowExpandable,
+          expandable: (row: T) =>
+            utils.isRowExpandable(row) &&
+            (!('expandable' in column) || column.expandable?.(row) !== false),
           renderExpand: renderExpandContent,
         }
       }

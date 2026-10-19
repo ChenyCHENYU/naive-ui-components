@@ -243,6 +243,7 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
 export interface NormalTableColumn<
   T extends object = DataRecord,
 > extends BaseTableColumn<T> {
+  type?: never
   key: Extract<keyof T, DataTableRowKey> | DataTableRowKey
   title: string
 }
@@ -252,6 +253,12 @@ export interface BuiltInTableColumn<
 > extends BaseTableColumn<T> {
   /** 内置列类型：无需 key / title */
   type: 'selection' | 'expand' | 'index'
+  /** 原生选择列禁用判定；与 config.selection.rowCheckable 一起生效。 */
+  disabled?: (row: T) => boolean
+  /** 原生选择列是否多选；maxSelection=1 时仍使用单选。 */
+  multiple?: boolean
+  /** 原生展开列判定；与 config.expand.rowExpandable 一起生效。 */
+  expandable?: (row: T) => boolean
   /** 展开行渲染函数（仅当 type = expand 时有效） */
   renderExpand?: (rowData: T, rowIndex: number) => VNodeChild
 }

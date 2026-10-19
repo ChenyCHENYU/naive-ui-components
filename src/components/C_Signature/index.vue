@@ -215,6 +215,8 @@
   const backgroundImage = shallowRef<HTMLImageElement | null>(null)
   const importedImage = shallowRef<HTMLImageElement | null>(null)
   const interactionDisabled = computed(() => props.disabled || props.readonly)
+  let importedImageVersion = 0
+  let disposed = false
   const currentMode = ref<PenMode>('pen')
   const currentPenConfig = reactive<PenConfig>({
     ...DEFAULT_PEN_CONFIG,
@@ -278,6 +280,7 @@
   }
 
   const handleClear = () => {
+    importedImageVersion++
     importedImage.value = null
     clear()
     emit('clear')
@@ -314,14 +317,21 @@
       canvasInstance.redrawStrokes(strokes.value)
       return
     }
-    const image = await readImage(imageUrl)
-    if (version !== backgroundVersion) return
-    backgroundImage.value = image
-    canvasInstance.redrawStrokes(strokes.value)
+    try {
+      const image = await readImage(imageUrl)
+      if (disposed || version !== backgroundVersion) return
+      backgroundImage.value = image
+      canvasInstance.redrawStrokes(strokes.value)
+    } catch (error) {
+      if (!disposed && version === backgroundVersion) throw error
+    }
   }
 
   const loadImage = async (imageUrl: string): Promise<void> => {
+    if (disposed) return
+    const version = ++importedImageVersion
     const image = await readImage(imageUrl)
+    if (disposed || version !== importedImageVersion) return
     importedImage.value = image
     clear()
   }
@@ -332,6 +342,7 @@
       points: stroke.points.map(point => ({ ...point })),
     }))
   const loadSignatureData = (data: SignatureStroke[]): void => {
+    importedImageVersion++
     importedImage.value = null
     loadData(data)
   }
@@ -362,6 +373,8 @@
   )
 
   onUnmounted(() => {
+    disposed = true
+    importedImageVersion++
     backgroundVersion++
     resizeObserver?.disconnect()
     canvasInstance.unbindEvents()
