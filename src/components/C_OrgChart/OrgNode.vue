@@ -76,7 +76,17 @@
         @node-click="$emit('node-click', $event)"
         @node-expand="$emit('node-expand', $event)"
         @node-collapse="$emit('node-collapse', $event)"
-      />
+      >
+        <template
+          v-if="$slots.node"
+          #node="slotProps: OrgNodeSlotProps"
+        >
+          <slot
+            name="node"
+            v-bind="slotProps"
+          />
+        </template>
+      </OrgNode>
     </div>
   </div>
 </template>
@@ -86,6 +96,13 @@
   import type { OrgChartNode } from './types'
 
   defineOptions({ name: 'OrgNode' })
+
+  interface OrgNodeSlotProps {
+    node: OrgChartNode
+    isLeaf: boolean
+    isExpanded: boolean
+  }
+  defineSlots<{ node?: (props: OrgNodeSlotProps) => unknown }>()
 
   const props = defineProps<{
     node: OrgChartNode

@@ -58,6 +58,7 @@
     type GanttPreset,
   } from './data'
   import { mergeGanttOptions } from './optionsMerge'
+  import { bindGanttEvents } from './ganttEvents'
 
   defineOptions({ name: 'C_VtableGantt' })
 
@@ -173,7 +174,7 @@
     underlayBackgroundColor: themeColors.underlayBackgroundColor,
     taskListTable: {
       ...finalConfig.taskListTable,
-      theme: tableTheme,
+      theme: tableTheme.extends(finalConfig.taskListTable?.theme ?? {}),
     },
     timelineHeader: applyThemeToTimelineHeader(
       finalConfig.timelineHeader,
@@ -181,17 +182,6 @@
     ),
     grid: applyThemeToGrid(finalConfig.grid, themeColors),
   })
-
-  const bindGanttEvents = (instance: any) => {
-    instance.on('click_cell', (args: any) => {
-      const { record, event } = args || {}
-      if (record) emit('taskClick', record, event)
-    })
-    instance.on('change_data', (args: any) => {
-      const { record, changes } = args || {}
-      if (record && changes) emit('taskChange', record, changes)
-    })
-  }
 
   const initGantt = async () => {
     clearTimeout(initTimer)
@@ -201,8 +191,14 @@
     const version = ++initVersion
     try {
       const { Gantt } = await import('@visactor/vtable-gantt')
-      const { themes } = await import('@visactor/vtable')
+      const { themes, register } = await import('@visactor/vtable')
+      const { InputEditor, DateInputEditor } =
+        await import('@visactor/vtable-editors')
       if (!isCurrentInitialization(version, container)) return
+      // Preserve applications' own editor registrations.
+      if (!register.editor('input')) register.editor('input', new InputEditor())
+      if (!register.editor('date-input'))
+        register.editor('date-input', new DateInputEditor())
       const isDark = props.theme === 'dark'
       const presetConfig = presetConfigs[props.preset] || presetConfigs.basic
       const finalConfig = mergeGanttOptions(presetConfig, props.options)
@@ -222,7 +218,11 @@
         return
       }
       ganttInstance.value = instance
-      bindGanttEvents(instance)
+      bindGanttEvents(
+        instance,
+        (task, event) => emit('taskClick', task, event),
+        (task, changes) => emit('taskChange', task, changes)
+      )
       emit('ganttCreated', instance)
     } catch (error) {
       console.error('甘特图初始化失败:', error)

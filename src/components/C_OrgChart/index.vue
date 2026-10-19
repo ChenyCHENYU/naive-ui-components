@@ -21,6 +21,7 @@
     @mouseleave="handlePanEnd"
   >
     <div
+      ref="viewportRef"
       class="c-orgchart__viewport"
       :style="viewportStyle"
     >
@@ -78,7 +79,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
+  import {
+    ref,
+    computed,
+    nextTick,
+    onMounted,
+    onBeforeUnmount,
+    watch,
+  } from 'vue'
   import OrgNode from './OrgNode.vue'
   import type { OrgChartProps, OrgChartNode } from './types'
 
@@ -94,6 +102,7 @@
     zoomable: true,
     pannable: true,
     initialZoom: 1,
+    fitOnInit: false,
     minZoom: 0.3,
     maxZoom: 2,
     collapsible: true,
@@ -106,6 +115,10 @@
   }>()
 
   const containerRef = ref<HTMLElement | null>(null)
+  const viewportRef = ref<HTMLElement | null>(null)
+  const fitting = ref(false)
+  let observer: ResizeObserver | undefined
+  let disposed = false
 
   // ─── 缩放 & 平移 ───
   const zoom = ref(props.initialZoom)
@@ -127,6 +140,7 @@
   const viewportStyle = computed(() => ({
     transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
     transformOrigin: 'center top',
+    transition: fitting.value ? 'none' : undefined,
   }))
 
   /**
@@ -183,6 +197,51 @@
     panY.value = 0
   }
 
+  /** 按真实内容尺寸适配视野，不以固定缩放值猜测节点范围。 */
+  const fitView = async () => {
+    await nextTick()
+    const container = containerRef.value
+    const content = viewportRef.value?.firstElementChild as
+      HTMLElement | undefined
+    if (disposed || !container || !content || !container.clientWidth) return
+    fitting.value = true
+    zoom.value = Math.max(
+      props.minZoom,
+      Math.min(
+        props.maxZoom,
+        1,
+        (container.clientWidth - 48) / Math.max(content.scrollWidth, 1),
+        (container.clientHeight - 64) / Math.max(content.scrollHeight, 1)
+      )
+    )
+    panX.value = 0
+    panY.value = 0
+    await nextTick()
+    if (disposed) return
+    const outer = container.getBoundingClientRect()
+    const inner = content.getBoundingClientRect()
+    panX.value = outer.left + outer.width / 2 - inner.left - inner.width / 2
+    panY.value = outer.top + 24 - inner.top
+    await nextTick()
+    fitting.value = false
+  }
+  onMounted(() => {
+    if (props.fitOnInit) void fitView()
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        if (props.fitOnInit) void fitView()
+      })
+      if (containerRef.value) observer.observe(containerRef.value)
+    }
+  })
+  watch([() => props.data, () => props.direction], () => {
+    if (props.fitOnInit) void fitView()
+  })
+  onBeforeUnmount(() => {
+    disposed = true
+    observer?.disconnect()
+  })
+
   // ─── 事件桥接 ───
   const handleNodeClick = (node: OrgChartNode) => emit('node-click', node)
   const handleNodeExpand = (node: OrgChartNode) => emit('node-expand', node)
@@ -192,6 +251,7 @@
     zoomIn,
     zoomOut,
     resetView,
+    fitView,
     zoom,
   })
 </script>

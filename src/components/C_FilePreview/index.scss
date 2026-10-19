@@ -142,3 +142,36 @@
     }
   }
 }
+
+.c-file-preview-inline {
+  container-type: inline-size;
+  height: 580px;
+  min-width: 0;
+  overflow: hidden;
+  .status-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 24px;
+  }
+  :deep(.file-container) {
+    min-width: 0;
+  }
+  :deep(.word-main),
+  :deep(.word-content) {
+    min-width: 0;
+  }
+  @container (max-width:600px) {
+    :deep(.word-outline) {
+      display: none;
+    }
+    :deep(.file-toolbar > div) {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    :deep(.excel-info) {
+      overflow: auto;
+    }
+  }
+}

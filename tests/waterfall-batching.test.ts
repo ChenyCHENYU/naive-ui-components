@@ -73,6 +73,41 @@ describe('waterfall image-load batching', () => {
     scope.stop()
   })
 
+  test('image and caption measurements share one frame and stop after disposal', () => {
+    const scope = effectScope()
+    const items = ref(
+      Array.from({ length: 1000 }, (_, id) => ({
+        id,
+        src: `/img-${id}.png`,
+        width: 100,
+        height: 100,
+      }))
+    )
+    let updates = 0
+    const layout = scope.run(() => {
+      const value = useWaterFallLayout(items, ref(4), ref(400), ref(0), {
+        batchImageLoads: true,
+      })
+      watch(value.layoutItems, () => updates++, { flush: 'sync' })
+      return value
+    })!
+    for (let id = 0; id < 100; id++) {
+      layout.cacheImageHeight(id, 200, 100, `/img-${id}.png`)
+      layout.cacheItemExtraHeight(id, 40)
+    }
+    expect(updates).toBe(0)
+    expect(frames.size).toBe(1)
+    flushFrame()
+    expect(updates).toBe(1)
+    expect(layout.containerHeight.value).toBe(28_500)
+    layout.cacheItemExtraHeight(0, 40.2)
+    layout.cacheItemExtraHeight('removed', 200)
+    expect(frames.size).toBe(0)
+    scope.stop()
+    layout.cacheItemExtraHeight(0, 500)
+    expect(frames.size).toBe(0)
+  })
+
   test('stale/removed image sources cannot overwrite a newer valid ratio', async () => {
     const scope = effectScope()
     const items = ref([{ id: 1, src: '/old.png', width: 100, height: 100 }])

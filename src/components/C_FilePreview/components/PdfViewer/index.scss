@@ -1,19 +1,37 @@
-.file-container {
+/*
+ * @Author: ChenYu ycyplus@gmail.com
+ * @Date: 2026-10-19
+ * @Description: 原生 PDF 阅读器容器和工具留白
+ * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
+ */
+.pdf-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-
-  .file-toolbar {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--c-border, #e0e0e0);
-    background-color: var(--c-bg-card, #f9f9f9);
-    flex-shrink: 0;
-    z-index: 8;
-    position: relative;
+  min-height: 320px;
+  min-width: 0;
+}
+.file-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--c-border, #e0e0e0);
+  span {
+    font-size: 11px;
+    color: var(--c-text-2, #666);
   }
-
-  .file-viewer {
-    flex: 1;
-    min-height: 300px;
-  }
+}
+.file-viewer {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
 }

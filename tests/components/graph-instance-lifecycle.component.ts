@@ -50,7 +50,19 @@ vi.mock('@visactor/vtable-gantt', () => ({
   },
 }))
 
-vi.mock('@visactor/vtable', () => ({ themes: { DARK: {}, DEFAULT: {} } }))
+vi.mock('@visactor/vtable', () => {
+  const editors = new Map<string, unknown>()
+  const theme = { extends: (options: unknown) => options }
+  return {
+    themes: { DARK: theme, DEFAULT: theme },
+    register: {
+      editor: (name: string, editor?: unknown) => {
+        if (editor !== undefined) editors.set(name, editor)
+        return editors.get(name)
+      },
+    },
+  }
+})
 
 afterEach(() => {
   vi.useRealTimers()
@@ -87,8 +99,7 @@ test('Gantt retains raw instances and cancels delayed startup after an early con
     theme: 'dark',
     options: { grid: { backgroundColor: '#111' } },
   })
-  await flushPromises()
-  expect(instances.gantts).toHaveLength(1)
+  await vi.waitFor(() => expect(instances.gantts).toHaveLength(1))
   const first = instances.gantts[0]
   expect(wrapper.vm.ganttInstance).toBe(first)
   expect(isReactive(wrapper.vm.ganttInstance)).toBe(false)
@@ -103,8 +114,7 @@ test('Gantt retains raw instances and cancels delayed startup after an early con
     theme: 'light',
     options: { grid: { backgroundColor: '#fff' } },
   })
-  await flushPromises()
-  expect(instances.gantts).toHaveLength(2)
+  await vi.waitFor(() => expect(instances.gantts).toHaveLength(2))
   expect(first.released).toBe(true)
   const current = instances.gantts[1]
   wrapper.unmount()

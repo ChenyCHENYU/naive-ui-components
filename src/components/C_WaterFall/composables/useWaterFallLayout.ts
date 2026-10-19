@@ -26,6 +26,7 @@ export function useWaterFallLayout(
 ) {
   const layoutItems = ref<WaterFallLayoutItem[]>([])
   const containerHeight = ref(0)
+  const itemExtraHeights = new Map<string | number, number>()
   const imageHeightCache = new Map<
     string | number,
     { height: number; basisWidth?: number; src?: string }
@@ -44,6 +45,7 @@ export function useWaterFallLayout(
       disposed = true
       cancelScheduledLayout()
       imageHeightCache.clear()
+      itemExtraHeights.clear()
     })
   const scheduleLayout = () => {
     if (disposed) return
@@ -78,7 +80,10 @@ export function useWaterFallLayout(
   function clearLayout() {
     layoutItems.value = []
     containerHeight.value = 0
-    if (items.value.length === 0) imageHeightCache.clear()
+    if (items.value.length === 0) {
+      imageHeightCache.clear()
+      itemExtraHeights.clear()
+    }
   }
 
   function hasUsableLayout(cols: number, width: number, gap: number) {
@@ -117,6 +122,23 @@ export function useWaterFallLayout(
       height > 0 &&
       (width === undefined || (Number.isFinite(width) && width > 0))
     )
+  }
+
+  /** Include captions, borders and custom slot content in column placement. */
+  function cacheItemExtraHeight(id: string | number, extraHeight: number) {
+    if (disposed || !sourcesById.value.has(id) || !Number.isFinite(extraHeight))
+      return
+    if (Math.abs((itemExtraHeights.get(id) ?? 0) - extraHeight) < 0.5) return
+    itemExtraHeights.set(id, extraHeight)
+    scheduleLayout()
+  }
+
+  function pruneMeasurements(presentIds: Set<string | number>) {
+    for (const cache of [imageHeightCache, itemExtraHeights]) {
+      for (const id of cache.keys()) {
+        if (!presentIds.has(id)) cache.delete(id)
+      }
+    }
   }
 
   function calculate() {
@@ -164,12 +186,11 @@ export function useWaterFallLayout(
         height: itemHeight,
       })
 
-      shortest.height = y + itemHeight + g
+      shortest.height =
+        y + itemHeight + (itemExtraHeights.get(item.id) ?? 0) + g
     }
 
-    for (const id of imageHeightCache.keys()) {
-      if (!presentIds.has(id)) imageHeightCache.delete(id)
-    }
+    pruneMeasurements(presentIds)
 
     layoutItems.value = result
     containerHeight.value = Math.max(...columnState.map(c => c.height)) - g
@@ -185,6 +206,7 @@ export function useWaterFallLayout(
     layoutItems: readonly(layoutItems),
     containerHeight: readonly(containerHeight),
     cacheImageHeight,
+    cacheItemExtraHeight,
     relayout: calculate,
   }
 }
