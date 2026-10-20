@@ -8,7 +8,11 @@ import { ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, TableColumn } from '../types'
 import { cloneData } from '../../../utils/data'
-import { validateTableRule } from './tableValidation'
+import {
+  isEditableDataColumn,
+  resolveTableColumnRules,
+  validateTableRule,
+} from './tableValidation'
 
 /** 行级校验错误 */
 export interface RowValidationError {
@@ -115,13 +119,19 @@ export function useRowEdit(options: RowEditOptions) {
   ): Promise<boolean> => {
     const expectedRevision = revision
     const tasks = (options.columns?.() || [])
-      .filter(col => col.editable !== false && col.editProps?.rules?.length)
+      .filter(isEditableDataColumn)
       .map(async col => {
-        const key = typeof col.key === 'string' ? col.key : ''
+        const key = String(col.key)
         if (!key) return null
         const results = await Promise.all(
-          col.editProps!.rules!.map(rule =>
-            validateTableRule(rule, rowData[key], col.title || key, rowData)
+          resolveTableColumnRules(col).map(rule =>
+            validateTableRule(
+              rule,
+              rowData[key],
+              col.title || key,
+              rowData,
+              key
+            )
           )
         )
         const firstError = results.find(Boolean)

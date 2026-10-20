@@ -70,7 +70,7 @@
 <script lang="ts" setup>
   import { NTimePicker } from 'naive-ui'
   import { useTimeSelection } from './composables/useTimeSelection'
-  import type { TimeProps, TimeEmits, TimeExpose } from './types'
+  import type { TimeProps, TimeEmits } from './types'
 
   defineOptions({ name: 'C_Time' })
 
@@ -118,7 +118,7 @@
     reset,
   } = useTimeSelection(props, emit)
 
-  defineExpose<TimeExpose>({
+  defineExpose({
     reset,
     startTime,
     endTime,

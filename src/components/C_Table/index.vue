@@ -987,18 +987,14 @@
     },
   })
 
-  const editableColumns = computed(() =>
-    effectiveColumns.value.filter(
-      (col): col is TableColumn => col.editable !== false
-    )
-  )
-
   const formKey = computed(
     () =>
       `edit-form-${tableManager.editStates.modalEdit.editingRowKey.value ?? 'new'}`
   )
 
-  const formOptions = computed(() => generateFormOptions(editableColumns.value))
+  const formOptions = computed(() =>
+    generateFormOptions(effectiveColumns.value, () => localEditingData.value)
+  )
 
   watch(
     () => tableManager.editStates.modalEdit.editingData.value,

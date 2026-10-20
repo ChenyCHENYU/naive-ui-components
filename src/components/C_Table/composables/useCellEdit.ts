@@ -8,7 +8,7 @@ import { ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, TableColumn } from '../types'
 import { cloneData } from '../../../utils/data'
-import { validateTableRule } from './tableValidation'
+import { resolveTableColumnRules, validateTableRule } from './tableValidation'
 
 /**
  * 单元格编辑配置选项
@@ -94,7 +94,7 @@ export function useCellEdit(options: CellEditOptions) {
    * 校验当前编辑单元格
    */
   const findColumn = (columnKey: string) =>
-    (options.columns?.() ?? []).find(column => column.key === columnKey)
+    (options.columns?.() ?? []).find(column => String(column.key) === columnKey)
 
   const validateCell = async (): Promise<boolean> => {
     const expectedRevision = revision
@@ -103,7 +103,7 @@ export function useCellEdit(options: CellEditOptions) {
     if (rowKey === null || columnKey === null) return true
 
     const col = findColumn(columnKey)
-    if (!col || !col.editProps?.rules) return true
+    if (!col) return true
 
     const cellKey = createCellKey(rowKey, columnKey)
     const value = editingData.value[cellKey]
@@ -111,8 +111,8 @@ export function useCellEdit(options: CellEditOptions) {
     const source = { ...findRowData(rowKey), [columnKey]: value }
 
     const results = await Promise.all(
-      col.editProps.rules.map(rule =>
-        validateTableRule(rule, value, label, source)
+      resolveTableColumnRules(col).map(rule =>
+        validateTableRule(rule, value, label, source, columnKey)
       )
     )
     if (revision !== expectedRevision) return false

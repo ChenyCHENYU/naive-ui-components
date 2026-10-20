@@ -3,9 +3,22 @@
  * @Migration: naive-ui-components 组件库迁移版本
  */
 
-import { defineAsyncComponent, h } from 'vue'
-import { NInput, NInputNumber, NSwitch, NSelect } from 'naive-ui'
-import type { TableColumn, EditType } from './types'
+import { defineAsyncComponent, h, type Component } from 'vue'
+import {
+  NInput,
+  NInputNumber,
+  NSwitch,
+  NSelect,
+  type InputProps,
+  type SelectProps,
+  type DatePickerProps,
+} from 'naive-ui'
+import type { ComponentType, FormOption } from '../C_Form/types'
+import {
+  isEditableDataColumn,
+  resolveTableColumnRules,
+} from './composables/tableValidation'
+import type { TableColumn, EditType, DataRecord } from './types'
 
 const NDatePicker = defineAsyncComponent(
   () => import('../../internal/naive-fields/date-picker')
@@ -13,35 +26,23 @@ const NDatePicker = defineAsyncComponent(
 
 /* ================= 编辑组件映射 ================= */
 
-export const EDIT_COMPONENTS: Record<EditType, any> = {
+export const EDIT_COMPONENTS: Record<EditType, Component> = {
   number: NInputNumber,
   switch: NSwitch,
   input: NInput,
   email: NInput,
   mobile: NInput,
-  date: (props: any) =>
+  date: (props: DatePickerProps) =>
     h(NDatePicker, { ...props, type: 'date', format: 'yyyy-MM-dd' }),
-  select: (props: any) =>
+  select: (props: SelectProps) =>
     h(NSelect, { ...props, options: props.options || [] }),
-  textarea: (props: any) => h(NInput, { ...props, type: 'textarea', rows: 3 }),
+  textarea: (props: InputProps) =>
+    h(NInput, { ...props, type: 'textarea', rows: 3 }),
 }
 
 /* ================= 表单选项生成 ================= */
 
-interface FormOption {
-  prop: string
-  label: string
-  type: string
-  placeholder: string
-  rules: any[]
-  attrs: any
-  layout: { span: number }
-  show: boolean
-}
-
-type ComponentType = string
-
-const EDIT_TO_FORM_TYPE: Record<string, ComponentType> = {
+const EDIT_TO_FORM_TYPE: Partial<Record<EditType, ComponentType>> = {
   number: 'inputNumber',
   date: 'datePicker',
   textarea: 'textarea',
@@ -52,29 +53,20 @@ const EDIT_TO_FORM_TYPE: Record<string, ComponentType> = {
 /**
  * 根据可编辑列配置自动生成表单选项（用于编辑弹窗）
  */
-export const generateFormOptions = (columns: TableColumn[]): FormOption[] =>
-  columns.map(column => {
-    const rules: any[] = (column as any).required
-      ? [
-          {
-            required: true,
-            message: `请输入${(column as any).title}`,
-            trigger: ['blur', 'input'],
-            validator: async (_: any, value: any) => {
-              if (!value && value !== 0 && value !== false)
-                throw new Error(`请输入${(column as any).title}`)
-            },
-          },
-        ]
-      : []
-
+export const generateFormOptions = (
+  columns: TableColumn[],
+  getSource?: () => DataRecord
+): FormOption[] =>
+  columns.filter(isEditableDataColumn).map(column => {
+    const attrs = { ...column.editProps }
+    delete attrs.rules
     return {
-      prop: (column as any).key,
-      label: (column as any).title || (column as any).key,
-      type: EDIT_TO_FORM_TYPE[(column as any).editType || 'input'] || 'input',
-      placeholder: `请输入${(column as any).title}`,
-      rules,
-      attrs: (column as any).editProps || {},
+      prop: String(column.key),
+      label: column.title || String(column.key),
+      type: EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input',
+      placeholder: `请输入${column.title}`,
+      rules: resolveTableColumnRules(column, getSource),
+      attrs,
       layout: { span: 1 },
       show: true,
     }

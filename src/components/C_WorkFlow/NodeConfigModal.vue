@@ -230,6 +230,7 @@
 </template>
 
 <script setup lang="ts">
+  import { isCompleteCondition } from './conditions'
   import { ref, computed, watch } from 'vue'
   import {
     NModal,
@@ -416,7 +417,7 @@
       return false
     }
     const hasIncompleteCondition = conditions.value.some(
-      c => !c.name?.trim() || !c.field || !c.operator || !c.value?.trim()
+      condition => !isCompleteCondition(condition)
     )
     if (hasIncompleteCondition) {
       message.error('请完善所有条件配置')

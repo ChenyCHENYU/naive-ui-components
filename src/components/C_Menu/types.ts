@@ -1,4 +1,3 @@
-import type { Ref } from 'vue'
 import type { DropdownProps, MenuInst, MenuOption } from 'naive-ui'
 import type { MenuAdapterConfig, RouteItem } from '../_shared/public'
 
@@ -37,5 +36,6 @@ export interface MenuEmits {
 
 export interface MenuExpose {
   showOption: (key: string) => void
-  menuRef: Ref<MenuInst | null>
+  /** Vue 公开实例会解包顶层 Ref。 */
+  menuRef: MenuInst | null
 }

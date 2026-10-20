@@ -37,7 +37,7 @@ const invalidField: FieldPath<Model> = 'missing'
 
 declare const menu: MenuExpose
 declare const search: ReturnType<typeof useSearchState>
-menu.menuRef.value?.showOption('settings')
+menu.menuRef?.showOption('settings')
 search.formRef.value?.restoreValidation()
 const highlight: HighlightAPI = createHighlight({ autoDetect: true })
 const renderers = createFormRendererRegistry({

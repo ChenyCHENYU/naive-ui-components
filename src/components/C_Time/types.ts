@@ -1,5 +1,3 @@
-import type { Ref } from 'vue'
-
 export type TimeMode = 'range' | 'single'
 export type TimeRangeValue = [number | null, number | null]
 export type TimeModelValue = number | null | TimeRangeValue
@@ -38,7 +36,8 @@ export interface TimeEmits {
 
 export interface TimeExpose {
   reset: () => void
-  startTime: Ref<number | null>
-  endTime: Ref<number | null>
-  singleTime: Ref<number | null>
+  /** 公开实例的顶层 Ref 已由 Vue 解包，直接读取值。 */
+  startTime: number | null
+  endTime: number | null
+  singleTime: number | null
 }

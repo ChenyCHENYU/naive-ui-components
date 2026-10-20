@@ -411,6 +411,14 @@ Default, inline, and grid layouts are synchronous. Card, tabs, steps, dynamic, a
 
 For `C_Tree`, read `tree.value?.selectedKeys`, `expandedKeys`, and `checkedKeys` directly as arrays with `ref<TreeExpose>()`. Prefer `v-model:*` for controlled state. The standalone `useTreeOperations()` composable retains internal refs.
 
+### Table editing validation
+
+`required` and `editProps.rules` share the same extraction and native validation semantics in modal, row, and cell editing. Use Naive `FormItemRule` entries such as `{ type: 'email', message: 'Invalid email' }`. Number and switch editors infer their basic type unless explicitly specified. Prefer Promise-based async rules; `asyncValidator` callbacks are supported too. Warning-level rules do not block saves.
+
+Selection, expansion, index, and action columns are automatically excluded from generated form fields. Read-only business columns remain excluded. Numeric field keys are converted to form field strings. Existing configuration and compatibility entries remain supported.
+
+Read `TimeExpose.startTime/endTime/singleTime` directly as numbers or null, and `MenuExpose.menuRef` directly as the native menu instance or null. Vue unwraps these top-level exposed refs.
+
 ### Table pagination, selection, and export
 
 `TableProps<Row>` includes `config`, `crud`, `remote`, and `virtualScrollX`; columns and data may be omitted when supplied by CRUD. Legacy edit, expansion, and selection prop types remain as compatibility declarations; component features belong in `config`.

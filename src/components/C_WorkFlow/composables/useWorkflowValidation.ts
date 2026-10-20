@@ -8,6 +8,7 @@ import { useComponentFeedback } from '../../../config'
 import type { WorkflowNode, WorkflowEdge, ValidationError } from '../types'
 import { FIELD_DISPLAY_NAMES, ERROR_TYPE_TEXTS } from '../data'
 import { validateWorkflowStructure } from './workflowStructure'
+import { isCompleteCondition } from '../conditions'
 
 export interface WorkflowValidationOptions {
   /** 定位错误节点后打开配置弹窗的回调 */
@@ -46,7 +47,10 @@ export function useWorkflowValidation(
     nodes.value.forEach(node => {
       /* 审批节点：必须有审批人 */
       if (node.type === 'approval') {
-        const approvers = (node.data as any).approvers || []
+        const approvers =
+          'approvers' in node.data && Array.isArray(node.data.approvers)
+            ? node.data.approvers
+            : []
         if (approvers.length === 0) {
           errors.push({
             nodeId: node.id,
@@ -60,7 +64,10 @@ export function useWorkflowValidation(
 
       /* 条件节点：必须有分支且配置完整 */
       if (node.type === 'condition') {
-        const conditions = (node.data as any).conditions || []
+        const conditions =
+          'conditions' in node.data && Array.isArray(node.data.conditions)
+            ? node.data.conditions
+            : []
         if (conditions.length === 0) {
           errors.push({
             nodeId: node.id,
@@ -72,7 +79,7 @@ export function useWorkflowValidation(
           })
         } else {
           const incomplete = conditions.filter(
-            (c: any) => !c.name || !c.field || !c.operator || !c.value
+            condition => !isCompleteCondition(condition)
           )
           if (incomplete.length > 0) {
             errors.push({

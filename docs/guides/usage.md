@@ -472,6 +472,14 @@ function preview() {
 
 `C_Tree` 的公开实例遵循同一规则：`ref<TreeExpose>()` 后直接读取 `tree.value?.selectedKeys`、`expandedKeys` 和 `checkedKeys` 数组，受控状态仍推荐通过 `v-model:*` 管理。独立 `useTreeOperations()` 返回的内部状态保持 Ref。
 
+### 表格编辑校验
+
+`required` 和 `editProps.rules` 在弹窗、行编辑、单元格编辑中使用同一口径。类型规则沿用 Naive 的 `FormItemRule`，例如 `{ type: 'email', message: '请输入正确邮箱' }`；数字与开关编辑器可推断基础类型，也可显式指定 `type`。异步规则推荐返回 Promise，`asyncValidator` 也支持 callback。警告级规则不阻止保存。
+
+选择、展开、序号和操作列自动排除于编辑字段，业务侧无需为它们额外声明 `editable: false`。`editable: false` 的业务列仍只读；字段键为数字时转换成表单字段字符串。校验规则属于 `rules`，编辑控件属性属于 `attrs`，组件内部统一完成转换。旧兼容入口按弃用说明继续保留。
+
+`C_Time` 的 `TimeExpose.startTime/endTime/singleTime` 直接读取数值或 null；`C_Menu` 的 `MenuExpose.menuRef` 直接读取原生菜单实例或 null，均无需第二层 `.value`。
+
 ### 表格分页、选择与导出
 
 `TableProps<Row>` 支持 `config`、`crud`、`remote` 与 `virtualScrollX`；CRUD 绑定已提供列和数据时不必重复传入。旧编辑、展开和选择属性类型仅保留兼容声明，组件功能统一放在 `config` 中。

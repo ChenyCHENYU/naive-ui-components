@@ -1,91 +1,118 @@
+import type { RuleItem, ValidateError } from 'async-validator'
 import type { FormItemRule } from 'naive-ui'
-import type { DataRecord } from '../types'
+import type { DataRecord, NormalTableColumn, TableColumn } from '../types'
+import { createRequiredFormRule } from '../../C_Form/utils/formValidation'
 
-function getRuleMessage(rule: FormItemRule, fallback: string): string {
-  const message =
-    typeof rule.message === 'function' ? rule.message() : rule.message
-  return message || fallback
-}
-
-function isEmptyValue(value: unknown): boolean {
+/** 功能列不参与编辑和表单转换，数字字段键与普通业务列保持一致。 */
+export function isEditableDataColumn<T extends object>(
+  column: TableColumn<T>
+): column is NormalTableColumn<T> {
   return (
-    value === null ||
-    value === undefined ||
-    value === '' ||
-    (Array.isArray(value) && value.length === 0)
+    column.type === undefined &&
+    column.editable !== false &&
+    column.key !== '_actions' &&
+    String(column.key ?? '').trim().length > 0
   )
 }
 
-function getComparableLength(value: unknown): number | undefined {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string' || Array.isArray(value)) return value.length
-  return undefined
-}
-
-function normalizeValidationError(
-  result: unknown,
-  fallback: string
-): string | null {
-  if (result === false) return fallback
-  if (result instanceof Error) return result.message || fallback
-  if (typeof result === 'string') return result || fallback
-  if (Array.isArray(result) && result.length > 0) {
-    return normalizeValidationError(result[0], fallback)
+/** 三种编辑模式共用列规则，复用表单的必填语义且不修改业务配置。 */
+export function resolveTableColumnRules(
+  column: TableColumn,
+  getSource?: () => DataRecord
+): FormItemRule[] {
+  if (!isEditableDataColumn(column)) return []
+  const rules = [...(column.editProps?.rules ?? [])]
+  if (column.required && !rules.some(rule => rule.required)) {
+    rules.unshift(
+      createRequiredFormRule(column.title, `${column.title}不能为空`)
+    )
   }
-  return null
+  return rules.map(rule => {
+    const normalized = { ...rule }
+    if (normalized.type === undefined) {
+      if (column.editType === 'number') normalized.type = 'number'
+      if (column.editType === 'switch') normalized.type = 'boolean'
+    }
+    if (rule.validator) {
+      const validate = rule.validator
+      normalized.validator = (nativeRule, value, callback, source, options) => {
+        let called = false
+        try {
+          const result = validate(
+            nativeRule,
+            value,
+            error => {
+              called = true
+              callback(error)
+            },
+            getSource?.() ?? source,
+            options
+          )
+          // Naive 同步校验允许无返回值；已使用 callback 的校验不再重复完成。
+          return result === undefined && !called ? true : result
+        } catch (error) {
+          return error instanceof Error ? error : new Error(String(error))
+        }
+      }
+    }
+    if (rule.asyncValidator) {
+      const validate = rule.asyncValidator
+      normalized.asyncValidator = (
+        nativeRule,
+        value,
+        _callback,
+        source,
+        options
+      ) =>
+        new Promise<void>((resolve, reject) => {
+          const result = validate(
+            nativeRule,
+            value,
+            error => {
+              if (error) reject(error)
+              else resolve()
+            },
+            getSource?.() ?? source,
+            options
+          )
+          result?.then(resolve, reject)
+        })
+    }
+    return normalized
+  })
 }
 
-/** Execute the common async-validator rule subset used by editable table cells. */
-// eslint-disable-next-line complexity -- One dispatcher mirrors the supported async-validator rule branches.
+/** 与 Naive 表单使用同一校验引擎，完整处理类型、嵌套、转换及异步规则。 */
 export async function validateTableRule(
   rule: FormItemRule,
-  rawValue: unknown,
+  value: unknown,
   label: string,
-  source: DataRecord
+  source: DataRecord,
+  field = rule.key ?? 'value'
 ): Promise<string | null> {
-  const fallback = getRuleMessage(rule, `${label}校验失败`)
-  const value = rule.transform ? rule.transform(rawValue) : rawValue
-
-  if (rule.required && isEmptyValue(value)) {
-    return getRuleMessage(rule, `${label}不能为空`)
-  }
-  if (!rule.required && isEmptyValue(value)) return null
-
-  if (rule.enum && !rule.enum.includes(value as never)) return fallback
-  if (rule.pattern && !new RegExp(rule.pattern).test(String(value))) {
-    return fallback
-  }
-
-  const length = getComparableLength(value)
-  if (rule.len !== undefined && length !== rule.len) return fallback
-  if (rule.min !== undefined && length !== undefined && length < rule.min) {
-    return fallback
-  }
-  if (rule.max !== undefined && length !== undefined && length > rule.max) {
-    return fallback
-  }
-
-  let callbackError: string | Error | undefined
-  const callback = (error?: string | Error) => {
-    callbackError = error
-  }
-
+  if (rule.level === 'warning') return null
+  const fallback = `${label}校验失败`
   try {
-    if (rule.validator) {
-      const result = await rule.validator(rule, value, callback, source, {})
-      const error = normalizeValidationError(result, fallback)
-      if (error) return error
-    }
-    if (callbackError) return normalizeValidationError(callbackError, fallback)
-
-    if (rule.asyncValidator) {
-      await rule.asyncValidator(rule, value, callback, source, {})
-      if (callbackError)
-        return normalizeValidationError(callbackError, fallback)
-    }
+    // 只读表格不加载校验引擎；兼容浏览器打包器和 Node 的 CJS 默认导出形态。
+    const module = await import('async-validator')
+    const imported = module.default as
+      typeof module.default | { default: typeof module.default }
+    const Schema = 'default' in imported ? imported.default : imported
+    const validator = new Schema({ [field]: rule as RuleItem })
+    await validator.validate(
+      { ...source, [field]: value },
+      {
+        first: true,
+        suppressWarning: true,
+        suppressValidatorError: true,
+      }
+    )
+    return null
   } catch (error) {
-    return error instanceof Error && error.message ? error.message : fallback
+    const errors = (error as { errors?: ValidateError[] } | null)?.errors
+    return (
+      errors?.[0]?.message ??
+      (error instanceof Error ? error.message : fallback)
+    )
   }
-
-  return null
 }
