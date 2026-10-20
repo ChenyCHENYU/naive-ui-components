@@ -1,4 +1,4 @@
-export { default as C_WorkFlow } from "./index.vue";
+export { default as C_WorkFlow } from './index.vue'
 export type {
   User,
   Role,
@@ -15,6 +15,8 @@ export type {
   ConditionNodeData,
   NodeData,
   WorkflowNode,
+  WorkflowNodeDataMap,
+  WorkflowExpose,
   WorkflowEdge,
   WorkflowData,
   WorkflowProps,
@@ -28,7 +30,7 @@ export type {
   WorkflowUtils,
   WorkflowApiResponse,
   WorkflowHistory,
-} from "./types";
-export { useWorkflowNodes } from "./composables/useWorkflowNodes";
-export { useWorkflowPreview } from "./composables/useWorkflowPreview";
-export { useWorkflowValidation } from "./composables/useWorkflowValidation";
+} from './types'
+export { useWorkflowNodes } from './composables/useWorkflowNodes'
+export { useWorkflowPreview } from './composables/useWorkflowPreview'
+export { useWorkflowValidation } from './composables/useWorkflowValidation'

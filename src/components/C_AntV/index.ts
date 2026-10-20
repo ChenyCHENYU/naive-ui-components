@@ -1,4 +1,4 @@
-export { default as C_AntV } from "./index.vue";
+export { default as C_AntV } from './index.vue'
 export type {
   Position,
   ERField,
@@ -14,6 +14,7 @@ export type {
   UMLRelation,
   UMLDiagramData,
   DiagramData,
+  DiagramExpose,
   DiagramType,
   DiagramConfig,
   ToolbarAction,
@@ -35,7 +36,7 @@ export type {
   HistoryConfig,
   ClipboardConfig,
   GraphConfig,
-} from "./types";
-export { useGraphBase } from "./composables/useGraphBase";
-export { useGraphExport } from "./composables/useGraphExport";
-export { useEdgeInteraction } from "./composables/useEdgeInteraction";
+} from './types'
+export { useGraphBase } from './composables/useGraphBase'
+export { useGraphExport } from './composables/useGraphExport'
+export { useEdgeInteraction } from './composables/useEdgeInteraction'

@@ -4,7 +4,7 @@
  */
 
 import { ref, type Ref } from 'vue'
-import type { WorkflowNode, WorkflowEdge } from '../types'
+import type { WorkflowNode, WorkflowEdge, WorkflowNodeDataMap } from '../types'
 
 /** 详情项类型 */
 export type DetailItemType = 'text' | 'mode' | 'users' | 'warning'
@@ -88,7 +88,9 @@ export function useWorkflowPreview(
 
   /* ─── 节点详情提取 ──────────────────────────────────────── */
   /** 提取开始节点详情 */
-  const extractStartDetails = (data: any): DetailItem[] => {
+  const extractStartDetails = (
+    data: WorkflowNodeDataMap['start']
+  ): DetailItem[] => {
     const initiators = data.initiators || []
     return initiators.length > 0
       ? [{ type: 'users', label: '发起人', users: initiators }]
@@ -96,7 +98,9 @@ export function useWorkflowPreview(
   }
 
   /** 提取审批节点详情 */
-  const extractApprovalDetails = (data: any): DetailItem[] => {
+  const extractApprovalDetails = (
+    data: WorkflowNodeDataMap['approval']
+  ): DetailItem[] => {
     const mode = data.approvalMode || 'any'
     const approvers = data.approvers || []
     const items: DetailItem[] = [
@@ -116,7 +120,9 @@ export function useWorkflowPreview(
   }
 
   /** 提取抄送节点详情 */
-  const extractCopyDetails = (data: any): DetailItem[] => {
+  const extractCopyDetails = (
+    data: WorkflowNodeDataMap['copy']
+  ): DetailItem[] => {
     const copyUsers = data.copyUsers || []
     return copyUsers.length > 0
       ? [{ type: 'users', label: '抄送人', users: copyUsers }]
@@ -124,12 +130,14 @@ export function useWorkflowPreview(
   }
 
   /** 提取条件节点详情 */
-  const extractConditionDetails = (data: any): DetailItem[] => {
+  const extractConditionDetails = (
+    data: WorkflowNodeDataMap['condition']
+  ): DetailItem[] => {
     const conditions = data.conditions || []
     if (conditions.length === 0) {
       return [{ type: 'warning', label: '条件分支', value: '未配置' }]
     }
-    return conditions.map((cond: any, i: number) => {
+    return conditions.map((cond, i) => {
       const op = OPERATOR_LABELS[cond.operator] || cond.operator
       return {
         type: 'text' as const,
@@ -139,18 +147,18 @@ export function useWorkflowPreview(
     })
   }
 
-  /** 节点详情提取策略 */
-  const detailExtractors: Record<string, (data: any) => DetailItem[]> = {
-    start: extractStartDetails,
-    approval: extractApprovalDetails,
-    copy: extractCopyDetails,
-    condition: extractConditionDetails,
-  }
-
-  /** 从节点数据中提取可读的配置详情 */
+  /** 节点判别联合确保每类数据只进入对应的提取器。 */
   const extractNodeDetails = (node: WorkflowNode): DetailItem[] => {
-    const extractor = detailExtractors[node.type || 'start']
-    return extractor ? extractor(node.data) : []
+    switch (node.type) {
+      case 'start':
+        return extractStartDetails(node.data)
+      case 'approval':
+        return extractApprovalDetails(node.data)
+      case 'copy':
+        return extractCopyDetails(node.data)
+      case 'condition':
+        return extractConditionDetails(node.data)
+    }
   }
 
   /* ─── 拓扑排序 ──────────────────────────────────────────── */

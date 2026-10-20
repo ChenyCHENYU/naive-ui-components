@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import type { TimeModelValue, TimeProps } from '../types'
+import type { TimeModelValue, TimeRuntimeProps } from '../types'
 
 type EmitFn = {
   (event: 'update:modelValue', value: TimeModelValue): void
@@ -15,7 +15,9 @@ type EmitFn = {
 }
 
 /** 时间选择器逻辑 — 管理时间段/单选模式、智能限制 */
-export function useTimeSelection(props: TimeProps, emit: EmitFn) {
+export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
+  const mode = computed(() => props.mode ?? 'range')
+
   /* ==================== 响应式状态 ==================== */
   const startTime = ref<number | null>(props.defaultStartTime ?? null)
   const endTime = ref<number | null>(props.defaultEndTime ?? null)
@@ -50,7 +52,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
   }
 
   const endTimeDisabled = computed(
-    () => props.mode === 'range' && startTime.value === null
+    () => mode.value === 'range' && startTime.value === null
   )
 
   const mergedStartAttrs = computed(() => ({
@@ -67,7 +69,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
 
   const emitModel = () => {
     const value: TimeModelValue =
-      props.mode === 'range'
+      mode.value === 'range'
         ? [startTime.value, endTime.value]
         : singleTime.value
     emit('update:modelValue', value)
@@ -127,7 +129,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
       endTime.value = null
     }
     emit('change-start', value)
-    if (props.mode === 'range') emit('change-range', value, endTime.value)
+    if (mode.value === 'range') emit('change-range', value, endTime.value)
     emitModel()
   }
 
@@ -141,7 +143,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
         : value
     endTime.value = accepted
     emit('change-end', accepted)
-    if (props.mode === 'range') emit('change-range', startTime.value, accepted)
+    if (mode.value === 'range') emit('change-range', startTime.value, accepted)
     emitModel()
   }
 
@@ -164,7 +166,7 @@ export function useTimeSelection(props: TimeProps, emit: EmitFn) {
     // eslint-disable-next-line complexity -- Compatibility sync handles two modes and legacy defaults atomically.
     () => {
       if (props.modelValue !== undefined) {
-        if (props.mode === 'range') {
+        if (mode.value === 'range') {
           startTime.value = Array.isArray(props.modelValue)
             ? (props.modelValue[0] ?? null)
             : null

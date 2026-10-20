@@ -274,7 +274,7 @@
   </div>
 </template>
 
-<script setup lang="ts" generic="T extends object = DataRecord">
+<script setup lang="ts" generic="T extends object = DataRecord, C = unknown">
   import {
     h,
     ref,
@@ -304,6 +304,8 @@
   import type {
     TableColumn,
     TableEmits,
+    TableInstance,
+    TableRowKey,
     DataRecord,
     MaybeRefLike,
   } from './types'
@@ -362,9 +364,9 @@
       /** 加载状态 */
       loading?: MaybeRefLike<boolean>
       /** 行唯一键 */
-      rowKey?: string | ((row: T) => DataTableRowKey)
+      rowKey?: TableRowKey<T>
       /** 统一功能配置（edit / selection / expand / pagination / dynamicRows / toolbar / display） */
-      config?: TableConfig<T>
+      config?: TableConfig<T, C>
       /** Native pagination compatibility path; takes ownership over config.pagination. */
       pagination?: PaginationProps | false
       /** Native remote mode, used with the native pagination compatibility path. */
@@ -373,55 +375,52 @@
       crud?: CrudBinding<T>
     }>(),
     {
-      rowKey: 'id',
       config: () => ({}),
       pagination: undefined,
       remote: undefined,
     }
   )
 
-  const emit = defineEmits<
-    TableEmits & {
-      'row-add': [newRow: DataRecord]
-      'row-delete': [deletedRow: DataRecord, index: number]
-      'row-copy': [originalRow: DataRecord, newRow: DataRecord]
-      'row-move': [row: DataRecord, fromIndex: number, toIndex: number]
-      'row-selection-change': [
-        selectedKey: DataTableRowKey | null,
-        selectedRow: DataRecord | null,
-      ]
-      'pagination-change': [page: number, pageSize: number]
-      'view-detail': [data: DataRecord]
-      'column-change': [columns: TableColumn[]]
-    }
-  >()
+  const publicEmit = defineEmits<TableEmits<T, C>>()
 
+  // 内部状态引擎使用规范化记录；公开事件始终保留 props 推导的业务模型。
+  type InternalTableEvent = {
+    [K in keyof TableEmits]: [event: K, ...args: TableEmits[K]]
+  }[keyof TableEmits]
+  const emit = publicEmit as unknown as (...event: InternalTableEvent) => void
   const tableRef = ref<DataTableInst | null>(null)
 
   /* ================= CRUD 桥接 ================= */
 
-  /** 包装 emit：在触发事件的同时自动调用 crud 对应的方法 */
-  const bridgedEmit: typeof emit = (event: any, ...args: any[]) => {
-    ;(emit as any)(event, ...args)
-
-    if (!props.crud) return undefined as never
-    const handlers: Record<string, ((...a: any[]) => void) | undefined> = {
-      save: props.crud.save,
-      cancel: props.crud.handleCancel,
-      'pagination-change': props.crud.handlePaginationChange,
-      'row-delete': props.crud.handleRowDelete,
-      'view-detail': props.crud.detail?.show,
+  /** 事件桥接只适配实际拥有的业务入口，不泄漏内部可变参数签名。 */
+  // eslint-disable-next-line complexity -- Keep the five typed CRUD ownership paths in one discriminated event dispatch.
+  const bridgedEmit = (...event: InternalTableEvent): unknown => {
+    emit(...event)
+    const { crud } = props
+    if (!crud) return
+    switch (event[0]) {
+      case 'save':
+        return crud.save?.(event[1] as unknown as T, event[2], event[3])
+      case 'cancel':
+        return crud.handleCancel?.()
+      case 'pagination-change':
+        return crud.handlePaginationChange?.(event[1], event[2])
+      case 'row-delete':
+        return crud.handleRowDelete?.(event[1] as unknown as T, event[2])
+      case 'view-detail':
+        return crud.detail?.show(event[1] as unknown as T)
     }
-    return handlers[event]?.(...args) as never
   }
 
   /* ================= 有效值（全局 → crud → props 覆盖） ================= */
 
   const globalConfig = useTableGlobalConfig()
-  const resolvedRowKey = (row: DataRecord): DataTableRowKey =>
-    typeof props.rowKey === 'function'
-      ? (props.rowKey as (record: DataRecord) => DataTableRowKey)(row)
-      : (row[props.rowKey] as DataTableRowKey)
+  const resolvedRowKey = (row: DataRecord): DataTableRowKey => {
+    const key = props.rowKey ?? 'id'
+    return typeof key === 'function'
+      ? (key as (record: DataRecord) => DataTableRowKey)(row)
+      : (row[key] as DataTableRowKey)
+  }
 
   /** 合并 crud 返回的 actions/pagination 到用户 config，并叠加全局配置 */
   const effectiveConfig = computed<TableConfig>(() => {
@@ -568,7 +567,7 @@
     data: () => normalizedData.value,
     rowKey: resolvedRowKey,
     rowKeyField: () =>
-      typeof props.rowKey === 'string' ? props.rowKey : undefined,
+      typeof props.rowKey === 'function' ? undefined : (props.rowKey ?? 'id'),
     emit: bridgedEmit,
     columns: () => effectiveColumns.value,
     renderLoading: () => h(C_Loading, { size: 32, label: t('table.loading') }),
@@ -1146,7 +1145,7 @@
       isCrossPageSelectionEnabled.value
         ? crossPageState.getSelectedRows()
         : selection.getSelected(),
-    getEditingData: edit.getEditingData,
+    getEditingData: () => edit.getEditingData() ?? null,
     isEditing: edit.isEditing,
     isExpanded: expand.isExpanded,
     getManager: () => tableManager.stateManager,
@@ -1165,12 +1164,15 @@
     },
   }
 
-  defineExpose(exposedApi)
+  // 先校验内部结构，再在唯一公开边界恢复数据输入已经确定的模型类型。
+  const publicApi =
+    exposedApi satisfies TableInstance as unknown as TableInstance<T, C>
+  defineExpose(publicApi)
 
   /* 自动连接 crud.tableRef */
   onMounted(() => {
     const crudRef = props.crud?.tableRef
-    if (crudRef) crudRef.value = exposedApi
+    if (crudRef) crudRef.value = publicApi
     void initColumnDrag()
     if (tableWrapperRef.value) {
       void rowDragState.initRowDrag(tableWrapperRef.value)

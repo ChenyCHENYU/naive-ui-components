@@ -169,8 +169,8 @@
   </NCard>
 </template>
 
-<script setup lang="ts">
-  import { computed, watch, type CSSProperties } from 'vue'
+<script setup lang="ts" generic="T extends object = SearchFormParams">
+  import { computed, watch, type CSSProperties, type Ref } from 'vue'
   import { resolveComponentDensity } from '../../core/density'
   import {
     NCard,
@@ -185,20 +185,26 @@
     NIcon,
   } from 'naive-ui'
   import { useSearchState } from './composables/useSearchState'
+  import { normalizeSearchFieldValue } from './fieldValue'
   import { resolveDateRangeInput } from './dateRange'
   import { createSearchSelectBinding } from './select'
-  import type { FormSearchEmits, FormSearchProps } from './types'
+  import type {
+    FormSearchEmits,
+    FormSearchExpose,
+    FormSearchRuntimeProps,
+    SearchFormParams,
+  } from './types'
 
   defineOptions({ name: 'C_FormSearch' })
 
-  const props = withDefaults(defineProps<FormSearchProps>(), {
+  const props = withDefaults(defineProps<FormSearchRuntimeProps<T>>(), {
     bordered: true,
     formItemList: () => [],
-    formParams: () => ({}),
+    formParams: () => ({}) as T,
     loading: false,
   })
 
-  const emits = defineEmits<FormSearchEmits>()
+  const emits = defineEmits<FormSearchEmits<T>>()
   const densityTokens = computed(() =>
     resolveComponentDensity(props.config?.density)
   )
@@ -238,18 +244,21 @@
 
   const selectBindings = computed(
     () =>
-      new Map(
+      new Map<string, ReturnType<typeof createSearchSelectBinding>>(
         visibleFields.value
           .filter(item => item.type === 'select')
           .map(item => [
             item.prop,
-            createSearchSelectBinding(item.list, formParams.value[item.prop]),
+            createSearchSelectBinding(
+              item.list,
+              (formParams.value as Record<string, unknown>)[item.prop]
+            ),
           ])
       )
   )
 
   const inputValue = (field: string): string | null => {
-    const value = formParams.value[field]
+    const value = (formParams.value as Record<string, unknown>)[field]
     return typeof value === 'string' ? value : null
   }
 
@@ -261,11 +270,16 @@
   }
 
   const setFieldValue = (field: string, value: unknown): void => {
-    formParams.value[field] = value
+    const item = visibleFields.value.find(item => item.prop === field)
+    const values = formParams.value as Record<string, unknown>
+    if (item)
+      values[field] = normalizeSearchFieldValue(item, value, values[field])
   }
 
   const dateRangeBinding = (field: string) => {
-    const range = resolveDateRangeInput(formParams.value[field])
+    const range = resolveDateRangeInput(
+      (formParams.value as Record<string, unknown>)[field]
+    )
     return range.mode === 'formatted'
       ? {
           formattedValue: range.value,
@@ -291,6 +305,9 @@
     searchFn,
     cleanFn: resetFn,
     changeFoldState: toggleFold,
+  } satisfies {
+    [K in keyof FormSearchExpose<T>]:
+      FormSearchExpose<T>[K] | Ref<FormSearchExpose<T>[K]>
   })
 </script>
 

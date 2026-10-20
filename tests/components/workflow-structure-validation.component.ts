@@ -16,7 +16,17 @@ vi.mock('@vue-flow/core', () => ({
 }))
 
 function node(id: string, type: WorkflowNode['type'] = 'copy'): WorkflowNode {
-  return { id, type, position: { x: 0, y: 0 }, data: { title: id } }
+  const base = { id, position: { x: 0, y: 0 } }
+  switch (type) {
+    case 'start':
+      return { ...base, type, data: { title: id, status: 'active' } }
+    case 'approval':
+      return { ...base, type, data: { title: id } }
+    case 'copy':
+      return { ...base, type, data: { title: id } }
+    case 'condition':
+      return { ...base, type, data: { title: id } }
+  }
 }
 
 function edge(source: string, target: string): WorkflowEdge {

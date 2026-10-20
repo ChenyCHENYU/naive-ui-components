@@ -365,21 +365,21 @@
   const addCondition = () => conditions.value.push(createDefaultCondition())
   const removeCondition = (index: number) => conditions.value.splice(index, 1)
 
-  const configureStartNode = (node: WorkflowNode) => {
-    const { initiators } = node.data as any
+  const configureStartNode = (node: WorkflowNode<'start'>) => {
+    const { initiators } = node.data
     selectedUsers.value = initiators ? initiators.map((u: User) => u.id) : []
   }
-  const configureApprovalNode = (node: WorkflowNode) => {
-    const approvers = (node.data as any).approvers || []
+  const configureApprovalNode = (node: WorkflowNode<'approval'>) => {
+    const approvers = node.data.approvers || []
     selectedUsers.value = approvers.map((u: User) => u.id)
-    approvalMode.value = (node.data as any).approvalMode || 'any'
+    approvalMode.value = node.data.approvalMode || 'any'
   }
-  const configureCopyNode = (node: WorkflowNode) => {
-    const copyUsers = (node.data as any).copyUsers || []
+  const configureCopyNode = (node: WorkflowNode<'copy'>) => {
+    const copyUsers = node.data.copyUsers || []
     selectedCopyUsers.value = copyUsers.map((u: User) => u.id)
   }
-  const configureConditionNode = (node: WorkflowNode) => {
-    conditions.value = cloneData((node.data as any).conditions || [])
+  const configureConditionNode = (node: WorkflowNode<'condition'>) => {
+    conditions.value = cloneData(node.data.conditions || [])
   }
 
   const saveStartNodeConfig = async (): Promise<boolean> => {
@@ -456,16 +456,19 @@
     newNode => {
       if (newNode) {
         searchKeyword.value = ''
-        const nodeConfigurators = {
-          start: configureStartNode,
-          approval: configureApprovalNode,
-          copy: configureCopyNode,
-          condition: configureConditionNode,
-        }
-        const configurator =
-          nodeConfigurators[newNode.type as keyof typeof nodeConfigurators]
-        if (configurator) {
-          configurator(newNode)
+        switch (newNode.type) {
+          case 'start':
+            configureStartNode(newNode)
+            break
+          case 'approval':
+            configureApprovalNode(newNode)
+            break
+          case 'copy':
+            configureCopyNode(newNode)
+            break
+          case 'condition':
+            configureConditionNode(newNode)
+            break
         }
       }
     },

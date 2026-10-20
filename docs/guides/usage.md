@@ -737,3 +737,18 @@ loading.finish(id)
 `createHighlight()`、`setupHighlight()` 各自持有独立高亮实例；组件中的 `useHighlight()` 读取应用注入，独立调用创建新的 API。默认不写入 `window.hljs`，只有兼容旧窗口用法时显式开启 `exposeToWindow: true`。
 
 全量插件为每个应用持有独立表单 registry。已有全局 `registerRenderer()` 用法应迁移到 `createFormRendererRegistry()` 与插件的 `formRenderers` 选项；子路径接入可以显式提供 `FORM_RENDERER_REGISTRY_KEY`。示例、优先级和所有权规则见[架构与隔离](../architecture.md)。
+
+### 业务模型与公开类型（0.18）
+
+使用侧定义业务模型，组件负责保留其类型，无需继承 `DataRecord`、`SearchFormParams` 或 `TreeNodeData`。这些宽松默认类型用于动态配置；继承字符串索引会削弱字段拼写检查。
+
+- 表单继续使用 `defineFormOptions<Model>(...)`；字段初值和 `valueWhen` 返回值与 `prop` 关联，空值应在业务模型中如实声明。递归模型支持有限深度的常用字段路径，避免类型循环展开。
+- 搜索从 `v-model` 推导查询模型，字段名、配置回调与事件同步保留类型；日期范围可使用 `SearchDateRangeValue`。`config.onSearch` 可以直接返回请求 Promise，无需额外包装。
+- 表格用 `defineTableColumns<Row>(...)` 校验业务字段；父子表使用 `TableConfig<Row, Child>`、`TableInstance<Row, Child>`。配置、模板事件及公开实例保留父子记录类型，展开回调直接获得 `Child[]` 与 `ChildSelectionState`。
+- 树、拖拽与穿梭框由 `data` / `modelValue` 推导业务项，回调与插槽无需强制断言。业务扩展字段仍由项目模型定义。
+- 日期/时间推荐 `mode` 加标准 `v-model`；静态模式推导单值或范围，动态模式保留联合值类型。旧别名继续兼容。
+- 工作流节点可通过 `node.type` 直接缩窄对应 `node.data`。复杂组件可导入 `WorkflowExpose`、`DiagramExpose`、`GanttExpose`，甘特配置和布局上下文沿用 SDK 的准确类型；业务任务属性通过扩展 `GanttTask` 定义。同构任务声明 `children?: MyTask[]`；异构后代在回调中保留联合，按业务判别字段缩窄。SDK 编辑后的任务日期为 `string | Date`。
+
+CRUD 控制器只需满足结构契约；`@robot-admin/request-core` 0.6.3 起可直接接收组件列，无需应用内列转换器。组件库与请求包保持独立依赖关系。
+
+明确业务模型启用动态增行时，提供已有 `dynamicRows.defaultRowData` 工厂返回完整记录和合法唯一主键；`false` 仍可直接关闭。工厂主键不会被组件改成字符串。复制使用字符串主键时保留原业务字段、从工厂取得新主键；函数主键场景由工厂接收可选原行副本并返回完整新记录。缺失、重复或无效主键会反馈失败并保持原数据。宽松动态记录继续支持原有空行简写。

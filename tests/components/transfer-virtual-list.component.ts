@@ -2,6 +2,7 @@ import { afterAll, expect, test, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { NCheckbox, NInput } from 'naive-ui'
 import { VVirtualList } from 'vueuc'
+import { toRaw } from 'vue'
 import C_Transfer from '../../src/components/C_Transfer/index.vue'
 import type { TransferItem } from '../../src/components/C_Transfer/types'
 
@@ -245,4 +246,30 @@ test('normal and virtual paths retain disabled, search, title and checked state 
   expect(wrapper.findAll('.c-transfer__empty')[0].text()).toBe(
     'No matching people'
   )
+})
+
+test('business filter receives the original typed record and numeric keys remain numeric', async () => {
+  interface Person {
+    key: number
+    label: string
+    teamCode: string
+  }
+  const data: Person[] = [
+    { key: 0, label: 'Zero', teamCode: 'eng' },
+    { key: 1, label: 'One', teamCode: 'ops' },
+  ]
+  const filterMethod = vi.fn(
+    (query: string, item: Person) => item.teamCode === query
+  )
+  const wrapper = mount(C_Transfer<Person>, {
+    props: { data, modelValue: [], filterable: true, filterMethod },
+  })
+  wrapper.findAllComponents(NInput)[0].vm.$emit('update:value', 'eng')
+  await flushPromises()
+  expect(toRaw(filterMethod.mock.calls[0][1])).toBe(data[0])
+  expect(rows(wrapper).map(row => row.text())).toEqual(['Zero'])
+  await rows(wrapper)[0].trigger('click')
+  await wrapper.get('[aria-label="移至已选列表"]').trigger('click')
+  expect(wrapper.emitted('change')).toEqual([[[0], 'right', [0]]])
+  wrapper.unmount()
 })

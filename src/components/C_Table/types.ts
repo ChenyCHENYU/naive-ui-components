@@ -13,7 +13,6 @@ import type {
 } from 'naive-ui'
 import type { TableConfig, CrudBinding } from './composables/useTableConfig'
 import type { UseCrossPageSelectionReturn } from './composables/useCrossPageSelection'
-import type { useTableManager } from './composables/useTableManager'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
 
@@ -383,7 +382,7 @@ export interface TableProps<T extends object = DataRecord, C = DataRecord>
     TableExpandProps<T, C>,
     TableSelectionProps<T, C> {
   /** 功能配置的统一入口。 */
-  config?: TableConfig<T>
+  config?: TableConfig<T, C>
   /** CRUD 模式自动提供 columns / data / loading，可省略对应属性。 */
   crud?: CrudBinding<T>
   /** 原生分页入口；声明后优先于 config.pagination。 */
@@ -440,6 +439,15 @@ export interface TableEmits<T extends object = DataRecord, C = DataRecord>
   'row-delete': [deletedRow: T, index: number]
   'batch-action-error': [error: unknown, actionKey: string]
   'row-key-error': [issues: TableRowKeyIssue<T>[]]
+  'row-add': [newRow: T]
+  'row-copy': [originalRow: T, newRow: T]
+  'row-move': [row: T, fromIndex: number, toIndex: number]
+  'row-selection-change': [
+    selectedKey: DataTableRowKey | null,
+    selectedRow: T | null,
+  ]
+  'view-detail': [data: T]
+  'column-change': [columns: TableColumn<T>[]]
 }
 
 /* ================= 实例方法系统 ================= */
@@ -507,6 +515,56 @@ export interface TablePaginationMethods {
   getTotalPages: () => number
 }
 
+/** 高级兼容入口的稳定契约；业务行类型与顶层实例保持一致。 */
+export interface TableManagerApi<
+  T extends object = DataRecord,
+  C = DataRecord,
+> {
+  edit: {
+    start: TableEditMethods<T>['startEdit']
+    cancel: TableEditMethods<T>['cancelEdit']
+    save: TableEditMethods<T>['saveEdit']
+    isEditing: TableEditMethods<T>['isEditing']
+    getEditingData: () => T | null | undefined
+  }
+  expand: {
+    row: TableExpandMethods['expandRow']
+    collapse: TableExpandMethods['collapseRow']
+    toggle: TableExpandMethods['toggleExpand']
+    all: TableExpandMethods['expandAll']
+    collapseAll: TableExpandMethods['collapseAll']
+    isExpanded: TableExpandMethods['isExpanded']
+  }
+  selection: {
+    select: TableSelectionMethods<T, C>['selectRow']
+    unselect: TableSelectionMethods<T, C>['unselectRow']
+    all: TableSelectionMethods<T, C>['selectAll']
+    clear: TableSelectionMethods<T, C>['clearSelection']
+    isSelected: TableSelectionMethods<T, C>['isRowSelected']
+    getSelected: TableSelectionMethods<T, C>['getSelectedRows']
+  }
+  childSelection: {
+    select: TableSelectionMethods<T, C>['selectChildRow']
+    unselect: TableSelectionMethods<T, C>['unselectChildRow']
+    selectAll: TableSelectionMethods<T, C>['selectAllChildren']
+    clear: TableSelectionMethods<T, C>['clearChildrenSelection']
+    getSelected: TableSelectionMethods<T, C>['getChildSelectedRows']
+  }
+  dynamicRows: {
+    add: TableDynamicRowsMethods<T>['addRow']
+    insert: TableDynamicRowsMethods<T>['insertRow']
+    delete: TableDynamicRowsMethods<T>['deleteRow']
+    copy: TableDynamicRowsMethods<T>['copyRow']
+    moveUp: TableDynamicRowsMethods<T>['moveRowUp']
+    moveDown: TableDynamicRowsMethods<T>['moveRowDown']
+    clearSelection: TableDynamicRowsMethods<T>['clearRowSelection']
+    getSelected: TableDynamicRowsMethods<T>['getSelectedRowData']
+    print: TableDynamicRowsMethods<T>['printTable']
+    download: TableDynamicRowsMethods<T>['downloadTableScreenshot']
+  }
+  clearAllSelections: TableSelectionMethods<T, C>['clearAllSelections']
+}
+
 export interface TableInstance<T extends object = DataRecord, C = DataRecord>
   extends
     TableEditMethods<T>,
@@ -516,7 +574,7 @@ export interface TableInstance<T extends object = DataRecord, C = DataRecord>
     TablePaginationMethods {
   exportData: () => Promise<void>
   /** 高级兼容入口；常规操作优先使用实例上的选择、展开和编辑方法。 */
-  getManager: () => ReturnType<typeof useTableManager>['stateManager']
+  getManager: () => TableManagerApi<T, C>
   /** 此嵌套对象中的 Ref 保持响应式，读取时使用 .value。 */
   crossPageSelection: Pick<
     UseCrossPageSelectionReturn<T>,

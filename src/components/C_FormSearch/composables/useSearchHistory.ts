@@ -10,9 +10,9 @@ export interface SearchHistoryOptions {
 /**
  *
  */
-export function useSearchHistory(
-  fields: Ref<SearchFormItem[]>,
-  formParams: Ref<SearchFormParams>,
+export function useSearchHistory<T extends object = SearchFormParams>(
+  fields: Ref<SearchFormItem<T>[]>,
+  formParams: Ref<T>,
   options: MaybeRefOrGetter<SearchHistoryOptions> = {}
 ) {
   const currentOptions = () => toValue(options)
@@ -62,7 +62,8 @@ export function useSearchHistory(
   const closeAllPanels = () => setAllFieldsFocus()
 
   const selectHistoryItem = (value: string, prop: string) => {
-    formParams.value[prop] = value
+    if (findField(prop)?.type !== 'input') return
+    ;(formParams.value as Record<string, unknown>)[prop] = value
     closeAllPanels()
   }
 
@@ -94,7 +95,7 @@ export function useSearchHistory(
   const saveCurrentInputs = () => {
     if (!enabled.value) return
     Object.keys(formParams.value).forEach(key => {
-      const val = formParams.value[key]
+      const val = (formParams.value as Record<string, unknown>)[key]
       if (val === undefined || val === null || val === '') return
       const field = findField(key)
       if (field?.type !== 'input' || !field.hisList) return

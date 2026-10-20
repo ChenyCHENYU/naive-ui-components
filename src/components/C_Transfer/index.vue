@@ -144,8 +144,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
-  import { computed, reactive, ref, watch } from 'vue'
+<script setup lang="ts" generic="T extends TransferItem = TransferItem">
+  import { computed, shallowReactive, ref, watch } from 'vue'
   import { NCheckbox, NInput } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import TransferList from './components/TransferList.vue'
@@ -154,49 +154,29 @@
     DEFAULT_TRANSFER_PROPS,
     type TransferItem,
     type TransferProps,
+    type TransferEmits,
   } from './types'
 
-  const props = withDefaults(
-    defineProps<{
-      data: TransferProps['data']
-      modelValue: TransferProps['modelValue']
-      titles?: TransferProps['titles']
-      filterable?: boolean
-      filterPlaceholder?: string
-      filterMethod?: TransferProps['filterMethod']
-      showSelectAll?: boolean
-      sourceEmptyText?: string
-      targetEmptyText?: string
-      size?: TransferProps['size']
-      virtualScroll?: boolean
-    }>(),
-    {
-      titles: () => DEFAULT_TRANSFER_PROPS.titles as [string, string],
-      filterable: DEFAULT_TRANSFER_PROPS.filterable,
-      filterPlaceholder: DEFAULT_TRANSFER_PROPS.filterPlaceholder,
-      showSelectAll: DEFAULT_TRANSFER_PROPS.showSelectAll,
-      sourceEmptyText: DEFAULT_TRANSFER_PROPS.sourceEmptyText,
-      targetEmptyText: DEFAULT_TRANSFER_PROPS.targetEmptyText,
-      size: DEFAULT_TRANSFER_PROPS.size,
-      virtualScroll: DEFAULT_TRANSFER_PROPS.virtualScroll,
-    }
-  )
+  const props = withDefaults(defineProps<TransferProps<T>>(), {
+    titles: () => DEFAULT_TRANSFER_PROPS.titles as [string, string],
+    filterable: DEFAULT_TRANSFER_PROPS.filterable,
+    filterPlaceholder: DEFAULT_TRANSFER_PROPS.filterPlaceholder,
+    showSelectAll: DEFAULT_TRANSFER_PROPS.showSelectAll,
+    sourceEmptyText: DEFAULT_TRANSFER_PROPS.sourceEmptyText,
+    targetEmptyText: DEFAULT_TRANSFER_PROPS.targetEmptyText,
+    size: DEFAULT_TRANSFER_PROPS.size,
+    virtualScroll: DEFAULT_TRANSFER_PROPS.virtualScroll,
+  })
 
-  const emit = defineEmits<{
-    'update:modelValue': [value: Array<string | number>]
-    change: [
-      targetKeys: Array<string | number>,
-      direction: 'left' | 'right',
-      moveKeys: Array<string | number>,
-    ]
-  }>()
+  defineOptions({ name: 'C_Transfer' })
+  const emit = defineEmits<TransferEmits<T>>()
 
   const mergedProps = computed(() => ({ ...DEFAULT_TRANSFER_PROPS, ...props }))
 
   // ==================== 数据列表 ====================
 
   const dataMap = computed(() => {
-    const m = new Map<string | number, TransferItem>()
+    const m = new Map<string | number, T>()
     for (const item of props.data) m.set(item.key, item)
     return m
   })
@@ -208,7 +188,7 @@
   )
 
   const targetList = computed(() => {
-    const result: TransferItem[] = []
+    const result: T[] = []
     for (const key of new Set(props.modelValue)) {
       const item = dataMap.value.get(key)
       if (item) result.push(item)
@@ -222,7 +202,7 @@
   const targetQuery = ref('')
 
   /** 默认过滤方法 */
-  function defaultFilter(query: string, item: TransferItem): boolean {
+  function defaultFilter(query: string, item: T): boolean {
     return item.label.toLowerCase().includes(query.toLowerCase())
   }
 
@@ -244,8 +224,8 @@
 
   // ==================== 选中态 ====================
 
-  const sourceChecked = reactive(new Set<string | number>())
-  const targetChecked = reactive(new Set<string | number>())
+  const sourceChecked = shallowReactive(new Set<T['key']>())
+  const targetChecked = shallowReactive(new Set<T['key']>())
   const movableSourceKeys = computed(() =>
     movableKeys(sourceList.value, sourceChecked)
   )
@@ -268,14 +248,18 @@
 
   /** 切换源列表项选中状态 */
   function toggleSourceCheck(key: string | number) {
-    if (sourceChecked.has(key)) sourceChecked.delete(key)
-    else sourceChecked.add(key)
+    const item = dataMap.value.get(key)
+    if (!item || item.disabled) return
+    if (sourceChecked.has(item.key)) sourceChecked.delete(item.key)
+    else sourceChecked.add(item.key)
   }
 
   /** 切换目标列表项选中状态 */
   function toggleTargetCheck(key: string | number) {
-    if (targetChecked.has(key)) targetChecked.delete(key)
-    else targetChecked.add(key)
+    const item = dataMap.value.get(key)
+    if (!item || item.disabled) return
+    if (targetChecked.has(item.key)) targetChecked.delete(item.key)
+    else targetChecked.add(item.key)
   }
 
   const isSourceAllChecked = computed(() =>

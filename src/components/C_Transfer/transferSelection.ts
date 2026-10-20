@@ -1,21 +1,21 @@
 import type { TransferItem } from './types'
 
 /** Return checked keys that still exist and can currently be moved. */
-export function movableKeys(
-  items: TransferItem[],
-  checked: ReadonlySet<string | number>
-): Array<string | number> {
+export function movableKeys<T extends TransferItem>(
+  items: readonly T[],
+  checked: ReadonlySet<T['key']>
+): Array<T['key']> {
   if (!checked.size) return []
-  const result: Array<string | number> = []
+  const result: Array<T['key']> = []
   for (const item of items)
     if (!item.disabled && checked.has(item.key)) result.push(item.key)
   return result
 }
 
 /** An all-selected state requires at least one enabled, visible item. */
-export function allMovableChecked(
-  items: TransferItem[],
-  checked: ReadonlySet<string | number>
+export function allMovableChecked<T extends TransferItem>(
+  items: readonly T[],
+  checked: ReadonlySet<T['key']>
 ): boolean {
   let enabled = false
   for (const item of items) {

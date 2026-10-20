@@ -21,8 +21,8 @@ import { presetConfigs } from '../data'
 import { indexTreeNodes } from '../treeKeys'
 import { resolveComponentDensity } from '../../../core/density'
 import type {
-  TreeOption,
   TreeNodeData,
+  ActionConfig,
   TreeProps,
   TreeExpose,
   TreeEmits,
@@ -33,16 +33,16 @@ import type {
   TreeSlots,
 } from '../types'
 
-type EmitFn = <E extends keyof TreeEmits>(
+type EmitFn<T extends object> = <E extends keyof TreeEmits<T>>(
   event: E,
-  ...args: TreeEmits[E]
+  ...args: TreeEmits<T>[E]
 ) => void
 
 /** State coordination only; checking, filtering, keyboard and loading stay native. */
-export function useTreeOperations(
-  props: TreeProps,
-  emit: EmitFn,
-  slots: TreeSlots = {}
+export function useTreeOperations<T extends object = TreeNodeData>(
+  props: TreeProps<T>,
+  emit: EmitFn<T>,
+  slots: TreeSlots<T> = {}
 ) {
   const native = computed(() => props.treeProps ?? {})
   const preset = computed(() => presetConfigs[props.mode ?? 'custom'])
@@ -56,6 +56,9 @@ export function useTreeOperations(
   const showLine = computed(
     () =>
       props.showLine ?? native.value.showLine ?? preset.value.showLine ?? true
+  )
+  const actions = computed<ActionConfig<T>[]>(
+    () => props.actions ?? preset.value.actions ?? []
   )
   const mergedConfig = computed(() => ({
     ...preset.value,
@@ -75,7 +78,7 @@ export function useTreeOperations(
         ...props.iconConfig?.colorMap,
       },
     },
-    actions: props.actions ?? preset.value.actions ?? [],
+    actions: actions.value,
   }))
   const keyField = computed(
     () => props.keyField ?? native.value.keyField ?? 'id'
@@ -178,7 +181,7 @@ export function useTreeOperations(
   const handleExpandedKeysChange = (
     keys: TreeKey[],
     options = optionsFor(keys),
-    meta: TreeUpdateMeta = { node: null, action: 'expand' }
+    meta: TreeUpdateMeta<T> = { node: null, action: 'expand' }
   ) => {
     if (meta.action !== 'filter') retainExpandAll.value = false
     internalExpanded.value = [...keys]
@@ -189,7 +192,7 @@ export function useTreeOperations(
   const handleSelectedKeysChange = (
     keys: TreeKey[],
     options = optionsFor(keys),
-    meta: TreeUpdateMeta = {
+    meta: TreeUpdateMeta<T> = {
       node: options[0] ?? null,
       action: keys.length ? 'select' : 'unselect',
     }
@@ -203,7 +206,7 @@ export function useTreeOperations(
   const handleCheckedKeysChange = (
     keys: TreeKey[],
     options = optionsFor(keys),
-    meta: TreeUpdateMeta = {
+    meta: TreeUpdateMeta<T> = {
       node: null,
       action: keys.length ? 'check' : 'uncheck',
     }
@@ -216,14 +219,16 @@ export function useTreeOperations(
   const selectedNode = computed(
     () => index.value.nodes.get(selectedKeys.value[0]) ?? null
   )
-  const renderPrefix = (info: TreeRenderContext) => {
+  const renderPrefix = (info: TreeRenderContext<T>) => {
     if (slots.prefix) return slots.prefix(info)
     if (native.value.renderPrefix) return native.value.renderPrefix(info)
-    if (typeof info.option.prefix === 'function') return info.option.prefix()
+    const prefix: unknown = Reflect.get(info.option, 'prefix')
+    if (typeof prefix === 'function') return prefix()
     const node = info.option
     const config = mergedConfig.value.iconConfig
-    const type = typeof node.type === 'string' ? node.type : ''
-    const icon = node[props.iconField ?? 'icon']
+    const nodeType: unknown = Reflect.get(node, 'type')
+    const type = typeof nodeType === 'string' ? nodeType : ''
+    const icon: unknown = Reflect.get(node, props.iconField ?? 'icon')
     return h(C_Icon, {
       name:
         typeof icon === 'string'
@@ -234,14 +239,14 @@ export function useTreeOperations(
       class: 'c-tree-node-icon',
     })
   }
-  const renderLabel = (info: TreeRenderContext) => {
+  const renderLabel = (info: TreeRenderContext<T>) => {
     if (slots.label) return slots.label(info)
     if (native.value.renderLabel) return native.value.renderLabel(info)
-    const text = String(info.option[labelField.value] ?? '')
+    const text = String(Reflect.get(info.option, labelField.value) ?? '')
     return h('span', { class: 'c-tree-node-label' }, [
       h('span', { class: 'c-tree-node-title', title: text }, text),
       ...(props.statusConfigs ?? []).flatMap(config => {
-        const value = info.option[config.field]
+        const value: unknown = Reflect.get(info.option, config.field)
         const status =
           typeof value === 'number' || typeof value === 'string'
             ? config.values[value]
@@ -262,14 +267,15 @@ export function useTreeOperations(
       }),
     ])
   }
-  const handleNodeAction = (action: string, node: TreeNodeData) => {
+  const handleNodeAction = (action: string, node: T) => {
     if (action === 'add') emit('add', node)
     else emit('node-action', action, node)
   }
-  const renderSuffix = (info: TreeRenderContext) => {
+  const renderSuffix = (info: TreeRenderContext<T>) => {
     if (slots.suffix) return slots.suffix(info)
     if (native.value.renderSuffix) return native.value.renderSuffix(info)
-    if (typeof info.option.suffix === 'function') return info.option.suffix()
+    const suffix: unknown = Reflect.get(info.option, 'suffix')
+    if (typeof suffix === 'function') return suffix()
     const node = info.option
     const actions = mergedConfig.value.actions.filter(
       action => !action.show || action.show(node)
@@ -291,7 +297,7 @@ export function useTreeOperations(
               quaternary: true,
               disabled: Boolean(
                 native.value.disabled ||
-                node[native.value.disabledField ?? 'disabled']
+                Reflect.get(node, native.value.disabledField ?? 'disabled')
               ),
               'aria-label': action.text || action.key,
               title: action.text,
@@ -320,11 +326,11 @@ export function useTreeOperations(
   const handleLoad = computed(() => {
     const load = native.value.onLoad
     if (!load) return undefined
-    return async (node: TreeOption) => {
+    return async (node: T) => {
       try {
         return await load(node)
       } catch (error) {
-        const key = node[keyField.value]
+        const key: unknown = Reflect.get(node, keyField.value)
         const current =
           typeof key === 'string' || typeof key === 'number'
             ? index.value.nodes.get(key)
@@ -349,8 +355,8 @@ export function useTreeOperations(
     const normalized = pattern.toLowerCase()
     const filter =
       native.value.filter ??
-      ((_pattern: string, node: TreeOption) => {
-        const label = node[labelField.value]
+      ((_pattern: string, node: T) => {
+        const label: unknown = Reflect.get(node, labelField.value)
         return (
           typeof label === 'string' && label.toLowerCase().includes(normalized)
         )
@@ -361,47 +367,52 @@ export function useTreeOperations(
   })
   const treeRef = shallowRef<TreeInst>()
   const density = computed(() => resolveComponentDensity(props.density))
-  const treeBindings = computed<NaiveTreeProps>(() => ({
-    ...native.value,
-    // Native indexing accepts ordinary objects at runtime; keep this bridge internal.
-    data: props.data as TreeNodeData[],
-    virtualScroll: Boolean(native.value.virtualScroll && hasVisibleNodes.value),
-    keyField: keyField.value,
-    labelField: labelField.value,
-    childrenField: childrenField.value,
-    draggable: mergedConfig.value.draggable,
-    showLine: mergedConfig.value.showLine,
-    blockLine: native.value.blockLine ?? true,
-    blockNode: native.value.blockNode ?? true,
-    pattern: currentSearchPattern.value,
-    expandedKeys: expandedKeys.value,
-    selectedKeys: selectedKeys.value,
-    checkedKeys: checkedKeys.value,
-    renderPrefix,
-    renderLabel,
-    renderSuffix,
-    themeOverrides: {
-      nodeHeight:
-        props.density === 'compact'
-          ? '28px'
-          : props.density === 'comfortable'
-            ? '40px'
-            : '34px',
-      nodeWrapperPadding: '0',
-      ...native.value.themeOverrides,
-    },
-    onLoad: handleLoad.value,
-    onUpdateExpandedKeys: undefined,
-    onUpdateSelectedKeys: undefined,
-    onUpdateCheckedKeys: undefined,
-    'onUpdate:expandedKeys': handleExpandedKeysChange,
-    'onUpdate:selectedKeys': handleSelectedKeysChange,
-    'onUpdate:checkedKeys': handleCheckedKeysChange,
-    onDrop: (info: DropInfo) => {
-      emit('node-drop', info)
-      callNative('onDrop', [info])
-    },
-  }))
+  // 业务节点无需 Naive 的字符串索引签名；仅在原生渲染器边界适配一次。
+  const treeBindings = computed<NaiveTreeProps>(
+    () =>
+      ({
+        ...native.value,
+        data: props.data,
+        virtualScroll: Boolean(
+          native.value.virtualScroll && hasVisibleNodes.value
+        ),
+        keyField: keyField.value,
+        labelField: labelField.value,
+        childrenField: childrenField.value,
+        draggable: mergedConfig.value.draggable,
+        showLine: mergedConfig.value.showLine,
+        blockLine: native.value.blockLine ?? true,
+        blockNode: native.value.blockNode ?? true,
+        pattern: currentSearchPattern.value,
+        expandedKeys: expandedKeys.value,
+        selectedKeys: selectedKeys.value,
+        checkedKeys: checkedKeys.value,
+        renderPrefix,
+        renderLabel,
+        renderSuffix,
+        themeOverrides: {
+          nodeHeight:
+            props.density === 'compact'
+              ? '28px'
+              : props.density === 'comfortable'
+                ? '40px'
+                : '34px',
+          nodeWrapperPadding: '0',
+          ...native.value.themeOverrides,
+        },
+        onLoad: handleLoad.value,
+        onUpdateExpandedKeys: undefined,
+        onUpdateSelectedKeys: undefined,
+        onUpdateCheckedKeys: undefined,
+        'onUpdate:expandedKeys': handleExpandedKeysChange,
+        'onUpdate:selectedKeys': handleSelectedKeysChange,
+        'onUpdate:checkedKeys': handleCheckedKeysChange,
+        onDrop: (info: DropInfo<T>) => {
+          emit('node-drop', info)
+          callNative('onDrop', [info])
+        },
+      }) as unknown as NaiveTreeProps
+  )
   const toggleExpandAll = () =>
     isAllExpanded.value ? collapseAll() : expandAll()
   const expandAll = () => {
@@ -413,7 +424,7 @@ export function useTreeOperations(
   const handleAdd = () => emit('add')
   const handleRefresh = () => emit('refresh')
   const expose: Omit<
-    TreeExpose,
+    TreeExpose<T>,
     'expandedKeys' | 'selectedKeys' | 'checkedKeys'
   > & {
     expandedKeys: Ref<TreeKey[]>
@@ -427,13 +438,21 @@ export function useTreeOperations(
     setCheckedKeys: keys => handleCheckedKeysChange([...keys]),
     clearChecked: () => handleCheckedKeysChange([]),
     getSelectedNode: () => selectedNode.value,
-    getCheckedData: () =>
-      treeRef.value?.getCheckedData() ?? {
-        keys: [...checkedKeys.value],
-        options: optionsFor(checkedKeys.value),
-      },
-    getIndeterminateData: () =>
-      treeRef.value?.getIndeterminateData() ?? { keys: [], options: [] },
+    getCheckedData: () => {
+      const result = treeRef.value?.getCheckedData()
+      return result
+        ? { keys: result.keys, options: result.options as Array<T | null> }
+        : {
+            keys: [...checkedKeys.value],
+            options: optionsFor(checkedKeys.value),
+          }
+    },
+    getIndeterminateData: () => {
+      const result = treeRef.value?.getIndeterminateData()
+      return result
+        ? { keys: result.keys, options: result.options as Array<T | null> }
+        : { keys: [], options: [] }
+    },
     scrollTo: (...args: unknown[]) => {
       const scroll = treeRef.value?.scrollTo as
         ((...values: unknown[]) => void) | undefined
@@ -461,7 +480,7 @@ export function useTreeOperations(
     handleExpandedKeysChange,
     handleSelectedKeysChange,
     handleCheckedKeysChange,
-    handleDrop: (info: DropInfo) => emit('node-drop', info),
+    handleDrop: (info: DropInfo<T>) => emit('node-drop', info),
     handleAdd,
     handleRefresh,
     expose,

@@ -2,10 +2,16 @@ import { expect, test, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { NButton, NDropdown, NSelect } from 'naive-ui'
-import C_FormSearch from '../../src/components/C_FormSearch/index.vue'
+import FormSearchComponent from '../../src/components/C_FormSearch/index.vue'
 import C_ActionBar from '../../src/components/C_ActionBar/index.vue'
-import type { SearchFormParams } from '../../src/components/C_FormSearch/types'
+import type {
+  SearchFormParams,
+  FormSearchExpose,
+} from '../../src/components/C_FormSearch/types'
 import type { ActionItem } from '../../src/components/C_ActionBar/types'
+
+// Vue Test Utils 的 mount/h 使用显式动态模型；业务推导由 consumer SFC 夹具覆盖。
+const C_FormSearch = FormSearchComponent<SearchFormParams>
 
 const deferred = () => {
   let resolve!: () => void
@@ -190,6 +196,7 @@ test('native form submissions used by Enter prevent navigation and share the sea
 })
 
 test('reset publishes one final model before its compatible reset notification', async () => {
+  const search = ref<FormSearchExpose<SearchFormParams> | null>(null)
   const model = ref<SearchFormParams>({
     name: 'old',
     status: 'active',
@@ -203,6 +210,7 @@ test('reset publishes one final model before its compatible reset notification',
     defineComponent({
       setup: () => () =>
         h(C_FormSearch, {
+          ref: search,
           formItemList: [
             { type: 'input', prop: 'name', defaultValue: 'default' },
           ],
@@ -219,14 +227,20 @@ test('reset publishes one final model before its compatible reset notification',
         }),
     })
   )
-  wrapper.findComponent(C_FormSearch).vm.cleanFn()
-  const expected = { name: 'default', status: null, pageNum: 8, pageSize: 10 }
+  search.value?.cleanFn()
+  const expected = {
+    name: 'default',
+    status: 'active',
+    pageNum: 8,
+    pageSize: 10,
+  }
   expect(model.value).toEqual(expected)
   expect(snapshots).toEqual([expected])
   await nextTick()
   await nextTick()
   expect(updates).toEqual([expected])
   expect(onSearch).not.toHaveBeenCalled()
+  wrapper.unmount()
 })
 
 test('ActionBar retains the same task lock when same-key action objects are replaced', async () => {

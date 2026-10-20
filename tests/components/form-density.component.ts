@@ -29,7 +29,8 @@ import {
   NTag,
 } from 'naive-ui'
 import C_Form from '../../src/components/C_Form/index.vue'
-import C_FormSearch from '../../src/components/C_FormSearch/index.vue'
+import FormSearchComponent from '../../src/components/C_FormSearch/index.vue'
+import type { SearchFormParams } from '../../src/components/C_FormSearch/types'
 import C_FormModal from '../../src/components/C_FormModal/index.vue'
 import C_ActionBar from '../../src/components/C_ActionBar/index.vue'
 import { FORM_GLOBAL_CONFIG_KEY } from '../../src/components/C_Form'
@@ -59,6 +60,9 @@ const components = {
   NTabs,
   NTag,
 }
+
+// Vue Test Utils 的 mount/h 使用显式动态模型；业务推导由 consumer SFC 夹具覆盖。
+const C_FormSearch = FormSearchComponent<SearchFormParams>
 
 test('form controls, upload trigger and actions follow density while field sizes win', async () => {
   const wrapper = mount(C_Form<FormRecord>, {

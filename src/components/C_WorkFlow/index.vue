@@ -421,7 +421,7 @@
   import { NButton, NDrawer, NDrawerContent, NTag } from 'naive-ui'
   import { C_Icon } from '../C_Icon'
   import { useComponentFeedback } from '../../config'
-  import type { WorkflowProps, WorkflowEmits } from './types'
+  import type { WorkflowProps, WorkflowEmits, WorkflowExpose } from './types'
   import { NODE_TYPE_OPTIONS } from './data'
   import NodeConfigModal from './NodeConfigModal.vue'
   import { useWorkflowNodes } from './composables/useWorkflowNodes'
@@ -527,6 +527,9 @@
     previewWorkflow,
     deleteNode,
     stats: workflowStats,
+  } satisfies {
+    [K in keyof WorkflowExpose]:
+      WorkflowExpose[K] | import('vue').Ref<WorkflowExpose[K]>
   })
 </script>
 

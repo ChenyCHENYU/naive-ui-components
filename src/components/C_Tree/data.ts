@@ -1,25 +1,30 @@
-import type { TreeMode, TreeProps } from "./types";
+import type { TreeMode, TreeProps, ActionConfig } from './types'
 
-export const presetConfigs: Record<TreeMode, Partial<TreeProps>> = {
+export const presetConfigs: Record<
+  TreeMode,
+  Partial<Omit<TreeProps, 'data' | 'treeProps' | 'actions'>> & {
+    actions?: Omit<ActionConfig, 'show'>[]
+  }
+> = {
   menu: {
     draggable: true,
     showLine: true,
     iconConfig: {
       typeMap: {
-        directory: "mdi:folder",
-        menu: "mdi:file-document",
-        button: "mdi:button-cursor",
+        directory: 'mdi:folder',
+        menu: 'mdi:file-document',
+        button: 'mdi:button-cursor',
       },
     },
     actions: [
-      { key: "add", text: "新增子菜单", icon: "mdi:plus", type: "primary" },
-      { key: "edit", text: "编辑", icon: "mdi:pencil", type: "info" },
+      { key: 'add', text: '新增子菜单', icon: 'mdi:plus', type: 'primary' },
+      { key: 'edit', text: '编辑', icon: 'mdi:pencil', type: 'info' },
       {
-        key: "delete",
-        text: "删除",
-        icon: "mdi:delete",
-        type: "error",
-        confirm: "确认删除该菜单吗？",
+        key: 'delete',
+        text: '删除',
+        icon: 'mdi:delete',
+        type: 'error',
+        confirm: '确认删除该菜单吗？',
       },
     ],
   },
@@ -28,22 +33,22 @@ export const presetConfigs: Record<TreeMode, Partial<TreeProps>> = {
     showLine: false,
     iconConfig: {
       typeMap: {
-        folder: "mdi:folder",
-        file: "mdi:file-document",
-        image: "mdi:file-image",
-        video: "mdi:file-video",
-        audio: "mdi:file-music",
+        folder: 'mdi:folder',
+        file: 'mdi:file-document',
+        image: 'mdi:file-image',
+        video: 'mdi:file-video',
+        audio: 'mdi:file-music',
       },
     },
     actions: [
-      { key: "open", text: "打开", icon: "mdi:folder-open", type: "primary" },
-      { key: "rename", text: "重命名", icon: "mdi:rename-box", type: "info" },
+      { key: 'open', text: '打开', icon: 'mdi:folder-open', type: 'primary' },
+      { key: 'rename', text: '重命名', icon: 'mdi:rename-box', type: 'info' },
       {
-        key: "delete",
-        text: "删除",
-        icon: "mdi:delete",
-        type: "error",
-        confirm: "确认删除该文件吗？",
+        key: 'delete',
+        text: '删除',
+        icon: 'mdi:delete',
+        type: 'error',
+        confirm: '确认删除该文件吗？',
       },
     ],
   },
@@ -52,15 +57,15 @@ export const presetConfigs: Record<TreeMode, Partial<TreeProps>> = {
     showLine: true,
     iconConfig: {
       typeMap: {
-        department: "mdi:domain",
-        user: "mdi:account",
-        manager: "mdi:account-tie",
+        department: 'mdi:domain',
+        user: 'mdi:account',
+        manager: 'mdi:account-tie',
       },
     },
     actions: [
-      { key: "add", text: "新增下级", icon: "mdi:plus", type: "primary" },
-      { key: "edit", text: "编辑", icon: "mdi:pencil", type: "info" },
+      { key: 'add', text: '新增下级', icon: 'mdi:plus', type: 'primary' },
+      { key: 'edit', text: '编辑', icon: 'mdi:pencil', type: 'info' },
     ],
   },
   custom: {},
-};
+}

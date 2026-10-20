@@ -67,15 +67,20 @@
   </div>
 </template>
 
-<script lang="ts" setup>
+<script lang="ts" setup generic="M extends TimeMode | undefined = 'range'">
+  import { computed, type Ref } from 'vue'
   import { NTimePicker } from 'naive-ui'
   import { useTimeSelection } from './composables/useTimeSelection'
-  import type { TimeProps, TimeEmits } from './types'
+  import type {
+    TimeRuntimeProps,
+    TimeEmits,
+    TimeMode,
+    TimeExpose,
+  } from './types'
 
   defineOptions({ name: 'C_Time' })
 
-  const props = withDefaults(defineProps<TimeProps>(), {
-    mode: 'range',
+  const props = withDefaults(defineProps<TimeRuntimeProps<M>>(), {
     startPlaceholder: '请选择开始时间',
     endPlaceholder: '请选择结束时间',
     placeholder: '请选择时间',
@@ -95,7 +100,8 @@
     enableTimeRestriction: false,
   })
 
-  const emit = defineEmits<TimeEmits>()
+  const emit = defineEmits<TimeEmits<M>>()
+  const mode = computed(() => props.mode ?? 'range')
 
   const {
     startTime,
@@ -116,13 +122,19 @@
     handleEndTimeChange,
     handleSingleTimeChange,
     reset,
-  } = useTimeSelection(props, emit)
+  } = useTimeSelection(
+    props,
+    // 引擎按当前 mode 生成对应值；桥接层保留公开事件的模式推导。
+    emit as Parameters<typeof useTimeSelection>[1]
+  )
 
   defineExpose({
     reset,
     startTime,
     endTime,
     singleTime,
+  } satisfies {
+    [K in keyof TimeExpose]: TimeExpose[K] | Ref<TimeExpose[K]>
   })
 </script>
 

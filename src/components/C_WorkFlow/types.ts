@@ -82,19 +82,24 @@ export interface ConditionNodeData extends BaseNodeData {
   conditions?: Condition[]
 }
 
+/** 节点类型与其数据一一对应，使用侧按 type 即可缩窄。 */
+export interface WorkflowNodeDataMap {
+  start: StartNodeData
+  approval: ApprovalNodeData
+  copy: CopyNodeData
+  condition: ConditionNodeData
+}
+
 /* 联合节点数据类型 */
-export type NodeData =
-  StartNodeData | ApprovalNodeData | CopyNodeData | ConditionNodeData
+export type NodeData = WorkflowNodeDataMap[NodeType]
 
 /* 扩展 Vue Flow 的 Node 类型 */
-export interface WorkflowNode {
+interface WorkflowNodeBase {
   id: string
-  type: NodeType
   position: {
     x: number
     y: number
   }
-  data: NodeData
   selected?: boolean
   dragging?: boolean
   connectable?: boolean
@@ -107,6 +112,24 @@ export interface WorkflowNode {
   zIndex?: number
   extent?: 'parent' | [[number, number], [number, number]]
   expandParent?: boolean
+}
+
+/** 默认覆盖所有节点，也可使用 WorkflowNode<'approval'> 描述具体节点。 */
+export type WorkflowNode<T extends NodeType = NodeType> = {
+  [K in T]: WorkflowNodeBase & { type: K; data: WorkflowNodeDataMap[K] }
+}[T]
+
+/** 组件公开实例；Vue 会自动解包 stats 的顶层计算引用。 */
+export interface WorkflowExpose {
+  validateWorkflow: () => ValidationError[]
+  getCurrentWorkflowData: () => WorkflowData
+  saveWorkflow: () => void
+  previewWorkflow: () => void
+  deleteNode: (nodeId: string) => void
+  stats: Pick<
+    WorkflowStats,
+    'totalNodes' | 'approvalNodes' | 'copyNodes' | 'conditionNodes'
+  >
 }
 
 /* 扩展 Vue Flow 的 Edge 类型 */

@@ -79,9 +79,9 @@ export function defineTableColumns<T extends object>(
 }
 
 /** Preserve row types across edit, action, summary and batch callbacks. */
-export function defineTableConfig<T extends object>(
-  config: TableConfig<T>
-): TableConfig<T> {
+export function defineTableConfig<T extends object, C = unknown>(
+  config: TableConfig<T, C>
+): TableConfig<T, C> {
   return config
 }
 

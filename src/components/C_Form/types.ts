@@ -33,25 +33,72 @@ type AtomicFormValue =
   | File
   | Blob
 
-type NestedFieldPath<T extends object> = {
+/**
+ * 最多展开五次子模型，保留六层字段路径及递归业务模型支持。
+ * 每层引用独立别名，避免 TypeScript 5.8 方差检查递归路径自身时栈溢出。
+ */
+type FieldPathChild<T> =
+  NonNullable<T> extends AtomicFormValue
+    ? never
+    : NonNullable<T> extends readonly (infer Item)[]
+      ? NonNullable<Item> extends AtomicFormValue
+        ? never
+        : NonNullable<Item> extends object
+          ? NonNullable<Item>
+          : never
+      : NonNullable<T> extends object
+        ? NonNullable<T>
+        : never
+
+type FieldPathStep<
+  T extends object,
+  Children extends { [K in keyof T]: string },
+> = {
   [K in Extract<keyof T, string>]: NonNullable<T[K]> extends AtomicFormValue
     ? K
     : NonNullable<T[K]> extends readonly (infer Item)[]
       ? NonNullable<Item> extends AtomicFormValue
         ? K | `${K}.${number}`
         : NonNullable<Item> extends object
-          ? | K
-            | `${K}.${number}`
-            | `${K}.${number}.${NestedFieldPath<NonNullable<Item>>}`
+          ? K | `${K}.${number}` | `${K}.${number}.${Children[K]}`
           : K
       : NonNullable<T[K]> extends object
-        ? K | `${K}.${NestedFieldPath<NonNullable<T[K]>>}`
+        ? K | `${K}.${Children[K]}`
         : K
 }[Extract<keyof T, string>]
 
-export type FieldPath<T extends object = FormRecord> = string extends keyof T
+type NestedFieldPath0<T extends object> = Extract<keyof T, string>
+
+type NestedFieldPath1<T extends object> = FieldPathStep<
+  T,
+  { [K in keyof T]: NestedFieldPath0<FieldPathChild<T[K]>> }
+>
+
+type NestedFieldPath2<T extends object> = FieldPathStep<
+  T,
+  { [K in keyof T]: NestedFieldPath1<FieldPathChild<T[K]>> }
+>
+
+type NestedFieldPath3<T extends object> = FieldPathStep<
+  T,
+  { [K in keyof T]: NestedFieldPath2<FieldPathChild<T[K]>> }
+>
+
+type NestedFieldPath4<T extends object> = FieldPathStep<
+  T,
+  { [K in keyof T]: NestedFieldPath3<FieldPathChild<T[K]>> }
+>
+
+type NestedFieldPath5<T extends object> = FieldPathStep<
+  T,
+  { [K in keyof T]: NestedFieldPath4<FieldPathChild<T[K]>> }
+>
+
+export type FieldPath<T extends object = FormRecord> = keyof T extends never
   ? string
-  : NestedFieldPath<T>
+  : string extends keyof T
+    ? string
+    : NestedFieldPath5<T>
 
 type NestedFieldPathValue<
   T,
@@ -369,12 +416,10 @@ export interface LayoutConfig {
  * 表单配置项接口
  * @description 单个表单项的完整配置
  */
-export interface FormOption<T extends object = FormRecord> {
+interface FormOptionBase<T extends object> {
   id?: string
   type: ComponentType | string
-  prop: FieldPath<T>
   label?: string
-  value?: unknown
   placeholder?: string
   rules?: readonly FormValidationRule[]
   attrs?: Record<string, unknown>
@@ -393,9 +438,6 @@ export interface FormOption<T extends object = FormRecord> {
   /** 字段级只读（优先级高于全局 config.readonly） */
   readonly?: boolean | ((formModel: FormModel<T>) => boolean)
 
-  /** 联动赋值：其他字段变化时自动计算本字段的值 */
-  valueWhen?: (formModel: FormModel<T>) => unknown
-
   /** 异步数据源：select / cascader / checkbox / radio 的远程选项加载 */
   asyncOptions?: (
     formModel: FormModel<T>,
@@ -408,6 +450,17 @@ export interface FormOption<T extends object = FormRecord> {
   /** 跨字段校验：需要引用多个字段值的验证函数，返回错误消息或 null */
   crossFieldValidator?: (formModel: FormModel<T>) => MaybePromise<string | null>
 }
+
+/** 字段名与初值、联动返回值关联；未声明业务模型时保持动态表单的宽松契约。 */
+export type FormOption<T extends object = FormRecord> = FormOptionBase<T> &
+  {
+    [P in FieldPath<T>]: {
+      prop: P
+      value?: FieldPathValue<T, P>
+      /** 联动赋值：其他字段变化时自动计算本字段的值。 */
+      valueWhen?: (formModel: FormModel<T>) => FieldPathValue<T, P>
+    }
+  }[FieldPath<T>]
 
 /* =================== 组件 Props 类型 =================== */
 

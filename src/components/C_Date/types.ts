@@ -3,11 +3,16 @@ export type DatePickerMode =
 
 export type DateValue = string | null
 export type DateRangeValue = [string, string] | null
-export type DateModelValue = DateValue | DateRangeValue
+/** 静态 mode 保留单值或范围；动态 mode 使用完整联合类型。 */
+export type DateModelValue<
+  M extends DatePickerMode | undefined = DatePickerMode,
+> = M extends 'date' | 'datetime' | undefined ? DateValue : DateRangeValue
 
-export interface DateProps {
-  modelValue?: DateModelValue
-  mode?: DatePickerMode
+export interface DateRuntimeProps<
+  M extends DatePickerMode | undefined = DatePickerMode,
+> {
+  modelValue?: DateModelValue<NoInfer<M>>
+  mode?: M
   placeholder?: string
   startPlaceholder?: string
   endPlaceholder?: string
@@ -29,14 +34,26 @@ export interface DateProps {
   smartRange?: DateRangeValue
 }
 
-export interface DateEmits {
-  'update:modelValue': [value: DateModelValue]
+/** 显式模式保留 undefined；省略模式时只允许默认分支的模型。 */
+export type DateProps<M extends DatePickerMode | undefined = DatePickerMode> =
+  Omit<DateRuntimeProps<M>, 'mode' | 'modelValue'> &
+    (
+      | { mode: M; modelValue?: DateModelValue<NoInfer<M>> }
+      | ('date' extends M
+          ? { mode?: undefined; modelValue?: DateValue }
+          : never)
+    )
+
+export interface DateEmits<
+  M extends DatePickerMode | undefined = DatePickerMode,
+> {
+  'update:modelValue': [value: DateModelValue<M>]
   'update:singleDate': [value: DateValue]
   'update:singleDateTime': [value: DateValue]
   'update:dateRange': [value: DateRangeValue]
   'update:dateTimeRange': [value: DateRangeValue]
   'update:smartRange': [value: DateRangeValue]
-  change: [value: DateModelValue]
+  change: [value: DateModelValue<M>]
 }
 
 export interface DateExpose {

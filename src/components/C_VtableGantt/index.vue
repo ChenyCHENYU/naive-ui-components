@@ -56,7 +56,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends GanttTask = GanttTask">
   import {
     ref,
     shallowRef,
@@ -67,32 +67,26 @@
     onUnmounted,
   } from 'vue'
   import { NButton, NResult } from 'naive-ui'
-  import type { Gantt as GanttInstance } from '@visactor/vtable-gantt'
+  import type {
+    Gantt as GanttInstance,
+    GanttConstructorOptions,
+  } from '@visactor/vtable-gantt'
   import type { IEditor } from '@visactor/vtable-editors'
   import C_Icon from '../C_Icon/index.vue'
-  import {
-    presetConfigs,
-    type GanttTask,
-    type GanttOptions,
-    type GanttPreset,
-  } from './data'
+  import { presetConfigs } from './data'
+  import type {
+    GanttTask,
+    GanttOptions,
+    GanttProps,
+    GanttEmits,
+    GanttExpose,
+  } from './types'
   import { mergeGanttOptions } from './optionsMerge'
   import { bindGanttEvents } from './ganttEvents'
 
   defineOptions({ name: 'C_VtableGantt' })
 
-  interface Props {
-    data?: GanttTask[]
-    options?: GanttOptions
-    preset?: GanttPreset
-    height?: string | number
-    title?: string
-    showToolbar?: boolean
-    showFullscreenButton?: boolean
-    theme?: 'light' | 'dark'
-  }
-
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<GanttProps<T>>(), {
     data: () => [],
     options: () => ({}),
     preset: 'basic',
@@ -103,23 +97,21 @@
     theme: 'light',
   })
 
-  const emit = defineEmits<{
-    ganttCreated: [gantt: any]
-    taskClick: [task: GanttTask, event: Event]
-    taskChange: [task: GanttTask, changes: any]
-    error: [error: Error]
-  }>()
+  const emit = defineEmits<GanttEmits<T>>()
 
   const ganttContainerRef = ref<HTMLDivElement>()
   // 图库实例不参与模板深层响应式，保留原始实例和其内部记录。
-  const ganttInstance = shallowRef<any>()
+  const ganttInstance = shallowRef<GanttInstance>()
   const isFullscreen = ref(false)
   const loading = ref(false)
   const initializationError = shallowRef<Error>()
   let initVersion = 0
   let initTimer: ReturnType<typeof setTimeout> | undefined
-  let resizeTimer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
+  let currentOptions: GanttConstructorOptions | undefined
+  // 保存应用主题前的配置，补丁只合并普通配置，不能展开 SDK Theme 类实例。
+  let currentConfig: Record<string, unknown> | undefined
+  let currentThemes: typeof import('@visactor/vtable').themes | undefined
 
   const containerHeight = computed(() =>
     typeof props.height === 'number' ? `${props.height}px` : props.height
@@ -133,7 +125,7 @@
     version === initVersion &&
     ganttContainerRef.value === container
 
-  const processData = (data: GanttTask[]): GanttTask[] => {
+  const processData = <D extends GanttTask>(data: D[]): D[] => {
     return data.map(item => ({
       ...item,
       title: item.title || `任务${item.id}`,
@@ -206,14 +198,14 @@
   })
 
   const resolveGanttOptions = (
-    themes: typeof import('@visactor/vtable').themes
+    themes: typeof import('@visactor/vtable').themes,
+    config: Record<string, unknown>,
+    records: GanttTask[]
   ) => {
     const isDark = props.theme === 'dark'
-    const presetConfig = presetConfigs[props.preset] || presetConfigs.basic
-    const finalConfig = mergeGanttOptions(presetConfig, props.options)
     return buildGanttOptions(
-      finalConfig,
-      processData(props.data),
+      config,
+      records,
       isDark ? themes.DARK : themes.DEFAULT,
       getThemeConfig(isDark)
     )
@@ -259,7 +251,13 @@
       // Preserve applications' own editor registrations.
       ensureEditor(register, 'input', () => new InputEditor())
       ensureEditor(register, 'date-input', () => new DateInputEditor())
-      const ganttOptions = resolveGanttOptions(themes)
+      const presetConfig = presetConfigs[props.preset] || presetConfigs.basic
+      const config = mergeGanttOptions(presetConfig, props.options)
+      const ganttOptions = resolveGanttOptions(
+        themes,
+        config,
+        processData(props.data)
+      )
       destroyGantt()
       const instance = new Gantt(container, ganttOptions)
       candidate = instance
@@ -267,12 +265,15 @@
         instance.release()
         return
       }
-      bindGanttEvents(
+      bindGanttEvents<T>(
         instance,
         (task, event) => emit('taskClick', task, event),
         (task, changes) => emit('taskChange', task, changes)
       )
       ganttInstance.value = instance
+      currentOptions = ganttOptions
+      currentConfig = config
+      currentThemes = themes
       candidate = undefined
       emit('ganttCreated', instance)
     } catch (error) {
@@ -286,14 +287,6 @@
     }
   }
 
-  const scheduleResize = () => {
-    if (resizeTimer) clearTimeout(resizeTimer)
-    resizeTimer = setTimeout(() => {
-      resizeTimer = undefined
-      if (!disposed) ganttInstance.value?.resize?.()
-    }, 100)
-  }
-
   const toggleFullscreen = async () => {
     const container = ganttContainerRef.value
     if (!container) return
@@ -304,32 +297,46 @@
         await container.requestFullscreen()
       }
       isFullscreen.value = document.fullscreenElement === container
-      scheduleResize()
     } catch (error) {
       console.warn('全屏切换失败:', error)
       isFullscreen.value = document.fullscreenElement === container
     }
   }
 
+  // SDK 自带容器 ResizeObserver，尺寸变化由它处理，避免调用内部 _resize。
   const handleFullscreenChange = () => {
     isFullscreen.value = document.fullscreenElement === ganttContainerRef.value
-    scheduleResize()
   }
 
-  const updateData = (newData: GanttTask[]) => {
+  const updateData = (newData: T[]) => {
     if (ganttInstance.value && newData) {
       try {
-        ganttInstance.value.setRecords(processData(newData))
+        const records = processData(newData)
+        ganttInstance.value.setRecords(records)
+        if (currentOptions) currentOptions = { ...currentOptions, records }
       } catch (error) {
         console.warn('更新数据失败:', error)
       }
     }
   }
 
-  const updateOptions = (newOptions: GanttOptions) => {
-    if (ganttInstance.value && newOptions) {
+  const updateOptions = (newOptions: GanttOptions<T>) => {
+    if (
+      ganttInstance.value &&
+      currentOptions &&
+      currentConfig &&
+      currentThemes
+    ) {
       try {
-        ganttInstance.value.updateOption(newOptions)
+        const nextConfig = mergeGanttOptions(currentConfig, newOptions)
+        const nextOptions = resolveGanttOptions(
+          currentThemes,
+          nextConfig,
+          currentOptions.records ?? []
+        )
+        ganttInstance.value.updateOption(nextOptions)
+        currentOptions = nextOptions
+        currentConfig = nextConfig
       } catch (error) {
         console.warn('更新配置失败:', error)
       }
@@ -339,6 +346,9 @@
   const destroyGantt = () => {
     const instance = ganttInstance.value
     ganttInstance.value = undefined
+    currentOptions = undefined
+    currentConfig = undefined
+    currentThemes = undefined
     releaseInstance(instance)
   }
 
@@ -370,7 +380,6 @@
     loading.value = false
     initVersion += 1
     if (initTimer) clearTimeout(initTimer)
-    if (resizeTimer) clearTimeout(resizeTimer)
     document.removeEventListener('fullscreenchange', handleFullscreenChange)
     destroyGantt()
   })
@@ -383,6 +392,9 @@
     updateData,
     updateOptions,
     toggleFullscreen,
+  } satisfies {
+    [K in keyof GanttExpose<T>]:
+      GanttExpose<T>[K] | import('vue').Ref<GanttExpose<T>[K]>
   })
 </script>
 

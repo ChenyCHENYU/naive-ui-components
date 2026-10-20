@@ -213,21 +213,30 @@ export function useWorkflowNodes(
   const createNewNode = (
     type: NodeType,
     targetNode: WorkflowNode | null
-  ): WorkflowNode => ({
-    id: generateWorkflowId(type),
-    type,
-    position: {
-      x: targetNode?.position.x ?? 150,
-      y: (targetNode?.position.y ?? 130) + NODE_Y_GAP,
-    },
-    data: {
-      title: NODE_TITLES[type],
-      status: 'pending',
-      ...(type === 'approval' && { approvers: [], approvalMode: 'any' }),
-      ...(type === 'copy' && { copyUsers: [] }),
-      ...(type === 'condition' && { conditions: [] }),
-    },
-  })
+  ): WorkflowNode => {
+    const base = {
+      id: generateWorkflowId(type),
+      position: {
+        x: targetNode?.position.x ?? 150,
+        y: (targetNode?.position.y ?? 130) + NODE_Y_GAP,
+      },
+    }
+    const data = { title: NODE_TITLES[type], status: 'pending' as const }
+    switch (type) {
+      case 'start':
+        return { ...base, type, data: { ...data, status: 'active' } }
+      case 'approval':
+        return {
+          ...base,
+          type,
+          data: { ...data, approvers: [], approvalMode: 'any' },
+        }
+      case 'copy':
+        return { ...base, type, data: { ...data, copyUsers: [] } }
+      case 'condition':
+        return { ...base, type, data: { ...data, conditions: [] } }
+    }
+  }
 
   /** 将新节点插入到 targetNode 之后，重连所有边 */
   const reconnectEdges = (
@@ -299,10 +308,8 @@ export function useWorkflowNodes(
 
     const nodeIndex = nodes.value.findIndex(n => n.id === currentNode.value!.id)
     if (nodeIndex !== -1) {
-      const updatedNode = {
-        ...nodes.value[nodeIndex],
-        data: { ...nodes.value[nodeIndex].data, ...cloneData(configData) },
-      }
+      const updatedNode = cloneData(nodes.value[nodeIndex])
+      Object.assign(updatedNode.data, cloneData(configData))
       nodes.value.splice(nodeIndex, 1, updatedNode)
       currentNode.value = updatedNode
     }

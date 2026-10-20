@@ -2,6 +2,9 @@ export type DateRangeInput =
   | { mode: 'formatted'; value: [string, string] }
   | { mode: 'timestamp'; value: [number, number] | null }
 
+/** 搜索日期范围模型，同时支持时间戳和显式格式化日期。 */
+export type SearchDateRangeValue = DateRangeInput['value']
+
 /** Keep existing timestamp models while accepting explicitly formatted ranges. */
 export const resolveDateRangeInput = (value: unknown): DateRangeInput => {
   if (Array.isArray(value) && value.length === 2) {

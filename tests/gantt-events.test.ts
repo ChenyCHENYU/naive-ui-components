@@ -7,7 +7,11 @@
 import { test, expect } from 'bun:test'
 import type { Gantt } from '@visactor/vtable-gantt'
 import { bindGanttEvents } from '../src/components/C_VtableGantt/ganttEvents'
-import type { GanttTask } from '../src/components/C_VtableGantt/data'
+import type {
+  GanttTask,
+  GanttTaskRecord,
+  GanttTaskChanges,
+} from '../src/components/C_VtableGantt/types'
 test('native task-bar, date, progress and table events publish usable records', () => {
   const handlers = new Map<string, (args: unknown) => void>()
   const tableHandlers = new Map<string, (args: unknown) => void>()
@@ -55,4 +59,46 @@ test('native task-bar, date, progress and table events publish usable records', 
     { progress: 75 },
     { title: 'Reviewed' },
   ])
+})
+
+test('date changes retain business fields and expose the actual SDK date representation', () => {
+  interface StringTask extends GanttTask {
+    start: string
+    end: string
+    ownerCode: string
+    children?: StringTask[]
+  }
+  const handlers = new Map<string, (args: unknown) => void>()
+  const instance = {
+    on: (event: string, handler: (args: unknown) => void) =>
+      handlers.set(event, handler),
+  } as unknown as Gantt
+  const updates: Array<{
+    task: GanttTaskRecord<StringTask>
+    changes: GanttTaskChanges<StringTask>
+  }> = []
+  bindGanttEvents<StringTask>(
+    instance,
+    () => {},
+    (task, changes) => updates.push({ task, changes })
+  )
+  const startDate = new Date(2026, 9, 22),
+    endDate = new Date(2026, 9, 23)
+  handlers.get('change_date_range')!({
+    record: {
+      id: 1,
+      title: 'Task',
+      start: '2026-10-22',
+      end: '2026-10-23',
+      ownerCode: 'team-a',
+    },
+    startDate,
+    endDate,
+  })
+  const [update] = updates
+  expect(update.task.ownerCode).toBe('team-a')
+  expect(update.task.start).toBe(startDate)
+  expect(update.changes).toEqual({ start: startDate, end: endDate })
+  // 公开 SDK 视图接受运行时的 Date，使用侧的字符串业务字段不会得到虚假承诺。
+  expect(new Date(update.task.start).getTime()).toBe(startDate.getTime())
 })

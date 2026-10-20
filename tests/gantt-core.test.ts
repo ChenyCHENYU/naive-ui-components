@@ -30,7 +30,7 @@ describe('C_VtableGantt option and lifecycle contracts', () => {
     expect(result.grid).toEqual({ hasOwnProperty: 'value' })
   })
 
-  test('fullscreen listeners and resize timers are released on unmount', () => {
+  test('fullscreen listeners are released and native sizing stays inside the SDK', () => {
     const source = fs.readFileSync(
       path.resolve(
         import.meta.dir,
@@ -39,7 +39,8 @@ describe('C_VtableGantt option and lifecycle contracts', () => {
       'utf8'
     )
     expect(source).toContain("removeEventListener('fullscreenchange'")
-    expect(source).toContain('if (resizeTimer) clearTimeout(resizeTimer)')
+    expect(source).not.toContain('ganttInstance.value?.resize')
+    expect(source).not.toContain('ganttInstance.value?._resize')
     expect(source).toContain(
       'document.fullscreenElement === ganttContainerRef.value'
     )

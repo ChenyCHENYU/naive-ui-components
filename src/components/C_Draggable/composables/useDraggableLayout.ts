@@ -2,9 +2,9 @@ import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import type { DraggableEvent } from 'vue-draggable-plus'
 import type { DraggableItem, DragEvent, DraggableProps } from '../types'
 
-type LayoutDragEvent = Partial<
+type LayoutDragEvent<T extends object> = Partial<
   Pick<
-    DraggableEvent<DraggableItem>,
+    DraggableEvent<T>,
     | 'data'
     | 'clonedData'
     | 'oldIndex'
@@ -17,21 +17,24 @@ type LayoutDragEvent = Partial<
   >
 >
 
-type EmitFn = {
-  (event: 'update:modelValue', value: DraggableItem[]): void
-  (event: 'drag-start', dragEvent: DragEvent): void
-  (event: 'drag-end', dragEvent: DragEvent): void
-  (event: 'item-add', item: DraggableItem, index: number): void
-  (event: 'item-remove', item: DraggableItem, index: number): void
-  (event: 'list-change', list: DraggableItem[]): void
+type EmitFn<T extends object> = {
+  (event: 'update:modelValue', value: T[]): void
+  (event: 'drag-start', dragEvent: DragEvent<T>): void
+  (event: 'drag-end', dragEvent: DragEvent<T>): void
+  (event: 'item-add', item: T, index: number): void
+  (event: 'item-remove', item: T, index: number): void
+  (event: 'list-change', list: T[]): void
 }
 
 /**
  *
  */
-export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
+export function useDraggableLayout<T extends object = DraggableItem>(
+  props: DraggableProps<T>,
+  emit: EmitFn<T>
+) {
   const isDragging = ref(false)
-  let draggingItem: DraggableItem | undefined
+  let draggingItem: T | undefined
   let disposed = false
   onBeforeUnmount(() => {
     disposed = true
@@ -41,7 +44,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
 
   const internalList = computed({
     get: () => props.modelValue ?? [],
-    set: (value: DraggableItem[]) => {
+    set: (value: T[]) => {
       emit('update:modelValue', value)
       emit('list-change', value)
     },
@@ -76,7 +79,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
   })
 
   const draggableOptions = computed(() => {
-    const options: Record<string, any> = {
+    const options: Record<string, unknown> = {
       disabled: props.disabled,
       group: props.group,
       sort: props.sort,
@@ -98,19 +101,29 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     return options
   })
 
-  const getItemKey = (item: DraggableItem, index: number): string | number =>
-    props.itemKey ? props.itemKey(item, index) : (item.id ?? index)
+  const readItemField = (item: T, field: string): unknown =>
+    Reflect.get(item, field)
 
-  const getItemTitle = (item: DraggableItem): string => {
+  const getItemKey = (item: T, index: number): string | number => {
+    if (props.itemKey) return props.itemKey(item, index)
+    const key = readItemField(item, 'id')
+    return typeof key === 'string' || typeof key === 'number' ? key : index
+  }
+
+  const getItemTitle = (item: T): string => {
     if (props.itemTitle) return props.itemTitle(item)
-    return (
-      item.title || item.name || item.label || String(item.id) || '未命名项目'
+    return String(
+      readItemField(item, 'title') ||
+        readItemField(item, 'name') ||
+        readItemField(item, 'label') ||
+        String(readItemField(item, 'id')) ||
+        '未命名项目'
     )
   }
 
-  const getItemDescription = (item: DraggableItem): string => {
+  const getItemDescription = (item: T): string => {
     if (props.itemDescription) return props.itemDescription(item)
-    return item.description || ''
+    return String(readItemField(item, 'description') || '')
   }
 
   const getItemClass = () => [
@@ -122,7 +135,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
   const validIndex = (index: number | undefined): index is number =>
     index !== undefined && Number.isInteger(index) && index >= 0
 
-  const handleStart = (event: LayoutDragEvent) => {
+  const handleStart = (event: LayoutDragEvent<T>) => {
     isDragging.value = true
     const oldIndex = event.oldDraggableIndex ?? event.oldIndex
     // 旧版本没有 data 时，仅在拖动开始前从来源列表保存真实业务项。
@@ -134,7 +147,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     }
   }
 
-  const handleEnd = (event: LayoutDragEvent) => {
+  const handleEnd = (event: LayoutDragEvent<T>) => {
     const oldIndex = event.oldDraggableIndex ?? event.oldIndex
     const newIndex = event.newDraggableIndex ?? event.newIndex
     const item = event.data ?? draggingItem
@@ -147,14 +160,14 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     })
   }
 
-  const handleAdd = (event: LayoutDragEvent) => {
+  const handleAdd = (event: LayoutDragEvent<T>) => {
     const newIndex = event.newDraggableIndex ?? event.newIndex
     // 跨列表新增实际插入 vendor 克隆的数据，不能按尚未更新的 props 下标猜测。
     const item = event.clonedData ?? event.data
     if (item && validIndex(newIndex)) emit('item-add', item, newIndex)
   }
 
-  const handleRemove = (event: LayoutDragEvent) => {
+  const handleRemove = (event: LayoutDragEvent<T>) => {
     if (event.pullMode === 'clone') return
     const oldIndex = event.oldDraggableIndex ?? event.oldIndex
     // event.item 是 DOM；移除完成后该下标可能已经是相邻项。
@@ -164,7 +177,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
 
   const handleUpdate = () => {}
 
-  const addItem = (item: DraggableItem, index?: number): void => {
+  const addItem = (item: T, index?: number): void => {
     const list = [...internalList.value]
     if (typeof index === 'number' && index >= 0 && index <= list.length) {
       list.splice(index, 0, item)
@@ -174,7 +187,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     internalList.value = list
   }
 
-  const removeItem = (index: number): DraggableItem | null => {
+  const removeItem = (index: number): T | null => {
     if (index >= 0 && index < internalList.value.length) {
       const list = [...internalList.value]
       const [removed] = list.splice(index, 1)
@@ -202,7 +215,7 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     return false
   }
 
-  const updateList = (newList: DraggableItem[]): void => {
+  const updateList = (newList: T[]): void => {
     internalList.value = [...newList]
   }
 
@@ -210,10 +223,9 @@ export function useDraggableLayout(props: DraggableProps, emit: EmitFn) {
     internalList.value = []
   }
 
-  const getItem = (index: number): DraggableItem | undefined =>
-    internalList.value[index]
+  const getItem = (index: number): T | undefined => internalList.value[index]
 
-  const findIndex = (predicate: (item: DraggableItem) => boolean): number =>
+  const findIndex = (predicate: (item: T) => boolean): number =>
     internalList.value.findIndex(predicate)
 
   return {

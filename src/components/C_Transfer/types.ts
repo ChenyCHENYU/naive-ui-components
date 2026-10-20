@@ -3,9 +3,9 @@
  */
 
 /** 穿梭框数据项 */
-export interface TransferItem {
+export interface TransferItem<K extends string | number = string | number> {
   /** 唯一标识 */
-  key: string | number
+  key: K
   /** 显示标签 */
   label: string
   /** 是否禁用 */
@@ -21,11 +21,11 @@ export interface TransferItem {
 }
 
 /** 组件 Props */
-export interface TransferProps {
+export interface TransferProps<T extends TransferItem = TransferItem> {
   /** 数据源 */
-  data: TransferItem[]
+  data: readonly T[]
   /** 右侧已选 key 列表 (v-model) */
-  modelValue: Array<string | number>
+  modelValue: readonly NoInfer<T['key']>[]
   /** 左右栏标题 */
   titles?: [string, string]
   /** 是否可搜索 */
@@ -33,7 +33,7 @@ export interface TransferProps {
   /** 搜索占位符 */
   filterPlaceholder?: string
   /** 自定义筛选函数 */
-  filterMethod?: (query: string, item: TransferItem) => boolean
+  filterMethod?: (query: string, item: T) => boolean
   /** 是否显示全选复选框 */
   showSelectAll?: boolean
   /** 左侧空状态描述 */
@@ -44,6 +44,16 @@ export interface TransferProps {
   size?: 'small' | 'medium' | 'large'
   /** 大列表自动使用虚拟滚动；自定义可变行高或需要完整 DOM 时可关闭。默认 true，100 项起启用。 */
   virtualScroll?: boolean
+}
+
+/** 事件保留数据源的键类型，例如纯数字键仍为 number[]。 */
+export interface TransferEmits<T extends TransferItem = TransferItem> {
+  'update:modelValue': [value: Array<T['key']>]
+  change: [
+    targetKeys: Array<T['key']>,
+    direction: 'left' | 'right',
+    moveKeys: Array<T['key']>,
+  ]
 }
 
 /** 默认 Props */

@@ -12,6 +12,7 @@ export type { ComponentDensity } from '../../core/density'
 export type {
   TableColumn,
   TableInstance,
+  TableManagerApi,
   TableProps,
   TableRowKey,
   TableRowKeyIssue,

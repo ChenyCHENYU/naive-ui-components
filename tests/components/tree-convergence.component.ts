@@ -23,7 +23,7 @@ const api = (wrapper: ReturnType<typeof mount>) =>
 
 describe('C_Tree state and native capability contracts', () => {
   test('controlled empty search stays empty and external changes update the input', async () => {
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: { data: nodes(), searchPattern: '' },
     })
     expect(
@@ -42,7 +42,7 @@ describe('C_Tree state and native capability contracts', () => {
   test('uncontrolled search filters through NTree without mutating data', async () => {
     const source = nodes()
     const before = JSON.stringify(source)
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: source,
         treeProps: { showIrrelevantNodes: false, animated: false },
@@ -60,7 +60,7 @@ describe('C_Tree state and native capability contracts', () => {
 
   test('native selection supplies full metadata once and controlled values remain authoritative', async () => {
     const listener = vi.fn()
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: nodes(),
         selectedKeys: [],
@@ -85,7 +85,7 @@ describe('C_Tree state and native capability contracts', () => {
 
   test('native checkbox cascade and disabled semantics remain unchanged', async () => {
     const listener = vi.fn()
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: nodes(),
         defaultExpandAll: true,
@@ -129,7 +129,7 @@ describe('C_Tree state and native capability contracts', () => {
     Object.freeze(data[0].nodes)
     Object.freeze(data[0])
     Object.freeze(data)
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data,
         defaultExpandAll: true,
@@ -161,7 +161,7 @@ describe('C_Tree state and native capability contracts', () => {
     const source: BusinessNode[] = [
       { code: 'a', title: 'Business', items: [{ code: 'b', title: 'Child' }] },
     ]
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<BusinessNode>, {
       props: {
         data: source,
         defaultExpandAll: true,
@@ -182,7 +182,9 @@ describe('C_Tree state and native capability contracts', () => {
   })
 
   test('mode defaults work while explicit false and empty actions override them', async () => {
-    const wrapper = mount(C_Tree, { props: { data: nodes(), mode: 'menu' } })
+    const wrapper = mount(C_Tree<TreeNodeData>, {
+      props: { data: nodes(), mode: 'menu' },
+    })
     expect(wrapper.getComponent(NTree).props('draggable')).toBe(true)
     expect(wrapper.findAll('.tree-actions button')).toHaveLength(3)
     await wrapper.setProps({ draggable: false, showLine: false, actions: [] })
@@ -193,7 +195,7 @@ describe('C_Tree state and native capability contracts', () => {
 
   test('slots override native renderers and nodeProps reach native nodes', async () => {
     const render = vi.fn(() => h('b', 'native label'))
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: nodes(),
         treeProps: {
@@ -212,7 +214,7 @@ describe('C_Tree state and native capability contracts', () => {
     expect(wrapper.text()).toContain('prefix')
     expect(wrapper.text()).toContain('suffix')
     expect(render).not.toHaveBeenCalled()
-    const nativeWrapper = mount(C_Tree, {
+    const nativeWrapper = mount(C_Tree<TreeNodeData>, {
       props: { data: nodes(), treeProps: { renderLabel: render } },
     })
     expect(nativeWrapper.get('b').text()).toBe('native label')
@@ -247,7 +249,7 @@ describe('C_Tree state and native capability contracts', () => {
   })
 
   test('virtual mode shows the official empty slot for zero search matches and restores virtualization', async () => {
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: nodes(),
         treeProps: {
@@ -285,7 +287,7 @@ describe('C_Tree state and native capability contracts', () => {
 
   test('expand and collapse commands emit updates and include newly loaded parents until collapsed', async () => {
     const nativeUpdate = vi.fn()
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: nodes(),
         defaultExpandAll: true,
@@ -338,7 +340,7 @@ describe('C_Tree state and native capability contracts', () => {
     const source = reactive<TreeNodeData[]>([
       { id: 0, name: 'Lazy', isLeaf: false },
     ])
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: { data: source, treeProps: { onLoad, animated: false } },
     })
     api(wrapper).expandAll()
@@ -373,7 +375,7 @@ describe('C_Tree state and native capability contracts', () => {
             rejectB = reject
           })
     )
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: { data: source, treeProps: { onLoad, animated: false } },
     })
     const nativeLoad = wrapper.getComponent(NTree).props('onLoad')!
@@ -408,7 +410,7 @@ describe('C_Tree state and native capability contracts', () => {
           reject = rejectPromise
         })
     )
-    const wrapper = mount(C_Tree, {
+    const wrapper = mount(C_Tree<TreeNodeData>, {
       props: {
         data: [{ id: 0, name: 'Old', isLeaf: false }],
         treeProps: { onLoad, animated: false },
@@ -423,7 +425,7 @@ describe('C_Tree state and native capability contracts', () => {
     expect(wrapper.emitted('load-error')).toBeUndefined()
     expect(wrapper.getComponent(NTree).props('expandedKeys')).toEqual([])
     expect(wrapper.text()).toContain('Replacement')
-    const second = mount(C_Tree, {
+    const second = mount(C_Tree<TreeNodeData>, {
       props: {
         data: [{ id: 1, name: 'Unmounted', isLeaf: false }],
         treeProps: { onLoad },
@@ -438,7 +440,7 @@ describe('C_Tree state and native capability contracts', () => {
 })
 
 test('tree public state is unwrapped and stays current after instance operations', async () => {
-  const wrapper = mount(C_Tree, {
+  const wrapper = mount(C_Tree<TreeNodeData>, {
     props: {
       data: nodes(),
       defaultSelectedKeys: [1],

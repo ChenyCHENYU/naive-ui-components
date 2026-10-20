@@ -89,12 +89,14 @@
   </div>
 </template>
 
-<script lang="ts" setup>
+<script lang="ts" setup generic="M extends DatePickerMode | undefined = 'date'">
   import { ref, watch, computed } from 'vue'
   import { NDatePicker } from 'naive-ui'
   import { localDayStart } from './dateUtils'
   import type {
-    DateProps,
+    DateRuntimeProps,
+    DatePickerMode,
+    DateModelValue,
     DateRangeValue,
     DateValue,
     DateEmits,
@@ -103,8 +105,7 @@
 
   defineOptions({ name: 'C_Date' })
 
-  const props = withDefaults(defineProps<DateProps>(), {
-    mode: 'date',
+  const props = withDefaults(defineProps<DateRuntimeProps<M>>(), {
     placeholder: '',
     startPlaceholder: '',
     endPlaceholder: '',
@@ -120,7 +121,12 @@
     smartRange: null,
   })
 
-  const emits = defineEmits<DateEmits>()
+  const emits = defineEmits<DateEmits<M>>()
+  const mode = computed(() => props.mode ?? 'date')
+
+  /** 模式分支确定值形状；类型转换仅留在包的事件桥接边界。 */
+  const modeValue = (value: DateModelValue): DateModelValue<M> =>
+    value as DateModelValue<M>
 
   const getTodayStart = (): number => {
     const d = new Date()
@@ -130,7 +136,7 @@
 
   const resolvedValueFormat = computed(() => {
     if (props.valueFormat) return props.valueFormat
-    return props.mode.includes('datetime')
+    return mode.value.includes('datetime')
       ? 'yyyy-MM-dd HH:mm:ss'
       : 'yyyy-MM-dd'
   })
@@ -143,9 +149,9 @@
         ? (props.modelValue as DateValue)
         : (props.singleDate ?? null),
     set: val => {
-      emits('update:modelValue', val)
+      emits('update:modelValue', modeValue(val))
       emits('update:singleDate', val)
-      emits('change', val)
+      emits('change', modeValue(val))
     },
   })
 
@@ -155,9 +161,9 @@
         ? (props.modelValue as DateValue)
         : (props.singleDateTime ?? null),
     set: val => {
-      emits('update:modelValue', val)
+      emits('update:modelValue', modeValue(val))
       emits('update:singleDateTime', val)
-      emits('change', val)
+      emits('change', modeValue(val))
     },
   })
 
@@ -167,9 +173,9 @@
         ? (props.modelValue as DateRangeValue)
         : (props.dateRange ?? null),
     set: val => {
-      emits('update:modelValue', val)
+      emits('update:modelValue', modeValue(val))
       emits('update:dateRange', val)
-      emits('change', val)
+      emits('change', modeValue(val))
     },
   })
 
@@ -179,9 +185,9 @@
         ? (props.modelValue as DateRangeValue)
         : (props.dateTimeRange ?? null),
     set: val => {
-      emits('update:modelValue', val)
+      emits('update:modelValue', modeValue(val))
       emits('update:dateTimeRange', val)
-      emits('change', val)
+      emits('change', modeValue(val))
     },
   })
 
@@ -231,9 +237,9 @@
       }
       const value: DateRangeValue =
         startVal !== null && endVal !== null ? [startVal, endVal] : null
-      emits('update:modelValue', value)
+      emits('update:modelValue', modeValue(value))
       emits('update:smartRange', value)
-      emits('change', value)
+      emits('change', modeValue(value))
     },
     { deep: true, flush: 'sync' }
   )
@@ -259,13 +265,13 @@
       startDate.value = null
       endDate.value = null
       syncingSmartRange = false
-      emits('update:modelValue', null)
+      emits('update:modelValue', modeValue(null))
       emits('update:singleDate', null)
       emits('update:singleDateTime', null)
       emits('update:dateRange', null)
       emits('update:dateTimeRange', null)
       emits('update:smartRange', null)
-      emits('change', null)
+      emits('change', modeValue(null))
     },
   })
 </script>

@@ -68,16 +68,21 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends object = DraggableItem">
   import { readonly } from 'vue'
   import { VueDraggable } from 'vue-draggable-plus'
   import { useDraggableLayout } from './composables/useDraggableLayout'
-  import type { DraggableProps, DraggableEmits } from './types'
+  import type {
+    DraggableProps,
+    DraggableEmits,
+    DraggableItem,
+    DraggableSlots,
+  } from './types'
 
   defineOptions({ name: 'C_Draggable' })
 
-  const props = withDefaults(defineProps<DraggableProps>(), {
-    modelValue: () => [],
+  const props = withDefaults(defineProps<DraggableProps<T>>(), {
+    modelValue: () => [] as T[],
     disabled: false,
     group: 'default',
     sort: true,
@@ -106,7 +111,8 @@
     customStyles: () => ({}),
   })
 
-  const emit = defineEmits<DraggableEmits>()
+  const emit = defineEmits<DraggableEmits<T>>()
+  defineSlots<DraggableSlots<T>>()
 
   const {
     isDragging,

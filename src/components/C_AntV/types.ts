@@ -320,3 +320,9 @@ export interface GraphConfig {
   history?: HistoryConfig
   clipboard?: ClipboardConfig
 }
+
+/** 公开图实例；初始化和布局切换期间尚无实例时返回 undefined。 */
+export interface DiagramExpose {
+  getGraph: () => Graph | undefined
+  getData: () => DiagramData | undefined
+}

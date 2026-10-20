@@ -52,8 +52,8 @@ for (const filename of files) {
 const consoleCallCount = count(/console\.(?:log|warn|error|debug)\s*\(/g)
 const failures = []
 
-if (unsafeAnyCount > 157) {
-  failures.push(`unsafe any baseline increased: ${unsafeAnyCount} > 157`)
+if (unsafeAnyCount > 117) {
+  failures.push(`unsafe any baseline increased: ${unsafeAnyCount} > 117`)
 }
 if (consoleCallCount > 15) {
   failures.push(
@@ -61,10 +61,10 @@ if (consoleCallCount > 15) {
   )
 }
 for (const [component, budget] of Object.entries({
-  C_Table: 34,
+  C_Table: 23,
   C_Form: 13,
   C_AntV: 34,
-  C_WorkFlow: 12,
+  C_WorkFlow: 1,
 })) {
   const actual = componentCounts.get(component) ?? 0
   if (actual > budget)

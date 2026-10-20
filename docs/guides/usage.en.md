@@ -654,3 +654,18 @@ loading.finish(id)
 `createHighlight()` and `setupHighlight()` own isolated highlighters. Component `useHighlight()` reads the app injection; standalone calls create separate APIs. Default installation does not write `window.hljs`; use `exposeToWindow: true` only for explicit legacy integration.
 
 The full plugin owns one form registry per application. Migrate global `registerRenderer()` usage to `createFormRendererRegistry()` and the plugin's `formRenderers` option. With component subpaths, provide `FORM_RENDERER_REGISTRY_KEY` explicitly. See [architecture and isolation](../architecture.en.md) for examples, precedence and ownership rules.
+
+### Business models and public types (0.18)
+
+Define domain models in the application. Components preserve their types without requiring `DataRecord`, `SearchFormParams`, or `TreeNodeData` inheritance. Those defaults support dynamic configuration; adding an open string index weakens field-name checks.
+
+- Keep `defineFormOptions<Model>(...)`: initial values and `valueWhen` correlate with `prop`. Declare nullable fields explicitly. Recursive field paths use an internal depth bound.
+- Search infers the query model from `v-model` across fields, configuration and events. Use `SearchDateRangeValue` for ranges; `onSearch` can return a request Promise directly.
+- Use `defineTableColumns<Row>(...)` for field checks and `TableConfig<Row, Child>` / `TableInstance<Row, Child>` for nested tables. Expansion receives typed child records and selection state; events and public methods preserve both models.
+- Tree, draggable and transfer callbacks and slots preserve the model inferred from input data. Domain-specific fields remain application-owned.
+- Prefer standard `v-model` with date/time `mode`. Static modes infer scalar or range values; dynamic modes retain a union. Legacy aliases remain compatible.
+- Workflow nodes narrow their payload through `node.type`. Import `WorkflowExpose`, `DiagramExpose`, or `GanttExpose` instead of rebuilding instance handles. Gantt SDK configuration and layout contexts are typed; extend `GanttTask` for domain metadata. Declare `children?: MyTask[]` for homogeneous trees; callbacks preserve heterogeneous descendant unions for domain narrowing. SDK-edited task dates are `string | Date`.
+
+CRUD bindings remain structural. `@robot-admin/request-core` 0.6.3 accepts component columns directly, without application converters or a dependency between the two packages.
+
+For a concrete business model, enable dynamic insertion with the existing `dynamicRows.defaultRowData` factory returning a complete row and valid unique key; `false` still disables it directly. Factory keys retain their original type. Copying with a string key preserves business fields and takes a fresh key from the factory. With a function key, the factory receives an optional source copy and returns a complete new record. Missing, duplicate or invalid factory keys report failure without changing data. Open dynamic records retain the legacy empty-row shorthand.

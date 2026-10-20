@@ -87,15 +87,15 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends object = TreeNodeData">
   import { computed } from 'vue'
   import { NInput, NButton, NTree, useThemeVars } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import { useTreeOperations } from './composables/useTreeOperations'
-  import type { TreeProps, TreeEmits, TreeSlots } from './types'
+  import type { TreeProps, TreeEmits, TreeSlots, TreeNodeData } from './types'
 
   defineOptions({ name: 'C_Tree' })
-  const props = withDefaults(defineProps<TreeProps>(), {
+  const props = withDefaults(defineProps<TreeProps<T>>(), {
     mode: 'custom',
     density: 'default',
     draggable: undefined,
@@ -108,8 +108,8 @@
     addText: '新增',
     refreshable: true,
   })
-  const emit = defineEmits<TreeEmits>()
-  const slots = defineSlots<TreeSlots>()
+  const emit = defineEmits<TreeEmits<T>>()
+  const slots = defineSlots<TreeSlots<T>>()
   const theme = useThemeVars()
   const themeStyle = computed(() => ({
     '--c-tree-border': theme.value.borderColor,

@@ -1,4 +1,4 @@
-export { default as C_Draggable } from "./index.vue";
+export { default as C_Draggable } from './index.vue'
 export type {
   DraggableItem,
   DragEvent,
@@ -8,5 +8,7 @@ export type {
   AlignItems,
   DraggableProps,
   DraggableEmits,
-} from "./types";
-export { useDraggableLayout } from "./composables/useDraggableLayout";
+  DraggableSlots,
+  DraggableExpose,
+} from './types'
+export { useDraggableLayout } from './composables/useDraggableLayout'

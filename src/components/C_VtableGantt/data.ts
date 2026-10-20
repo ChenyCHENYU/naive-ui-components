@@ -1,46 +1,26 @@
 // 甘特图相关类型定义和预设配置
 
-// ==================== 类型定义 ====================
-export interface GanttTask {
-  id: string | number
-  title: string
-  start: string | Date
-  end?: string | Date
-  progress?: number
-  priority?: string
-  type?: 'milestone' | 'task'
-  children?: GanttTask[]
-  [key: string]: any
-}
-
-export interface GanttOptions {
-  [key: string]: any
-}
-
-export type GanttPreset =
-  | 'basic'
-  | 'project'
-  | 'timeline'
-  | 'milestone'
-  | 'official'
+import type { GanttOptions, GanttPreset } from './types'
+export type { GanttTask, GanttOptions, GanttPreset } from './types'
 
 // ==================== 通用主题配置 ====================
 // 移除硬编码颜色，让背景透明以跟随系统主题
-export const commonTheme = {
-  headerStyle: {
-    borderColor: 'rgba(128, 128, 128, 0.2)',
-    borderLineWidth: 1,
-    fontSize: 14,
-    fontWeight: 'bold',
-    // bgColor 留空或透明，自动跟随主题
-  },
-  bodyStyle: {
-    borderColor: 'rgba(128, 128, 128, 0.2)',
-    borderLineWidth: [1, 0, 1, 0],
-    fontSize: 13,
-    // bgColor 留空或透明，自动跟随主题
-  },
-}
+export const commonTheme: NonNullable<GanttOptions['taskListTable']>['theme'] =
+  {
+    headerStyle: {
+      borderColor: 'rgba(128, 128, 128, 0.2)',
+      borderLineWidth: 1,
+      fontSize: 14,
+      fontWeight: 'bold',
+      // bgColor 留空或透明，自动跟随主题
+    },
+    bodyStyle: {
+      borderColor: 'rgba(128, 128, 128, 0.2)',
+      borderLineWidth: [1, 0, 1, 0],
+      fontSize: 13,
+      // bgColor 留空或透明，自动跟随主题
+    },
+  }
 
 // ==================== 预设配置 ====================
 export const presetConfigs = {
@@ -104,13 +84,13 @@ export const presetConfigs = {
         {
           unit: 'week',
           step: 1,
-          format: (date: any) => `第${date.dateIndex}周`,
+          format: date => `第${date.dateIndex}周`,
           style: { fontSize: 12, fontWeight: 'bold' },
         },
         {
           unit: 'day',
           step: 1,
-          format: (date: any) => `${date.dateIndex}`,
+          format: date => `${date.dateIndex}`,
           style: { fontSize: 11 },
         },
       ],
@@ -196,13 +176,13 @@ export const presetConfigs = {
           unit: 'week',
           step: 1,
           startOfWeek: 'monday',
-          format: (date: any) => `第${date.dateIndex}周`,
+          format: date => `第${date.dateIndex}周`,
           style: { fontSize: 13, fontWeight: 'bold', textAlign: 'center' },
         },
         {
           unit: 'day',
           step: 1,
-          format: (date: any) => `${date.dateIndex}`,
+          format: date => `${date.dateIndex}`,
           style: { fontSize: 11, textAlign: 'center' },
         },
       ],
@@ -272,13 +252,13 @@ export const presetConfigs = {
         {
           unit: 'month',
           step: 1,
-          format: (date: any) => `${date.dateIndex}月`,
+          format: date => `${date.dateIndex}月`,
           style: { fontSize: 13, fontWeight: 'bold' },
         },
         {
           unit: 'day',
           step: 1,
-          format: (date: any) => `${date.dateIndex}`,
+          format: date => `${date.dateIndex}`,
           style: { fontSize: 11 },
         },
       ],
@@ -328,7 +308,7 @@ export const presetConfigs = {
       startDateField: 'start',
       endDateField: 'start',
       labelText: '{title}',
-      labelTextStyle: { fontSize: 12, fontWeight: 'bold' },
+      labelTextStyle: { fontSize: 12 },
       barStyle: { width: 0, barColor: 'transparent' },
       milestoneStyle: {
         borderColor: '#fa8c16',
@@ -343,13 +323,13 @@ export const presetConfigs = {
         {
           unit: 'month',
           step: 1,
-          format: (date: any) => `${date.dateIndex}月`,
+          format: date => `${date.dateIndex}月`,
           style: { fontSize: 13, fontWeight: 'bold' },
         },
         {
           unit: 'week',
           step: 1,
-          format: (date: any) => `第${date.dateIndex}周`,
+          format: date => `第${date.dateIndex}周`,
           style: { fontSize: 11 },
         },
       ],
@@ -475,7 +455,7 @@ export const presetConfigs = {
           unit: 'week',
           step: 1,
           startOfWeek: 'sunday',
-          format: (date: any) => `Week ${date.dateIndex}`,
+          format: date => `Week ${date.dateIndex}`,
           style: {
             fontSize: 20,
             fontWeight: 'bold',
@@ -489,7 +469,7 @@ export const presetConfigs = {
         {
           unit: 'day',
           step: 1,
-          format: (date: any) => date.dateIndex.toString(),
+          format: date => date.dateIndex.toString(),
           style: {
             fontSize: 20,
             fontWeight: 'bold',
@@ -525,4 +505,4 @@ export const presetConfigs = {
       scrollSliderColor: '#1890ff',
     },
   },
-}
+} satisfies Record<GanttPreset, GanttOptions>

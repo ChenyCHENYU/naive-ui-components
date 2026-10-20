@@ -526,3 +526,29 @@ test.each(['row', 'cell'] as const)(
     expect(messages).toHaveLength(1)
   }
 )
+
+test('table manager preserves dynamicRows.enabled=false for every creation operation', () => {
+  const scope = effectScope()
+  const source: DataRecord[] = [{ id: 1, name: 'Original' }]
+  const events: string[] = []
+  const manager = scope.run(() =>
+    useTableManager({
+      data: () => source,
+      rowKey: row => row.id as number,
+      rowKeyField: 'id',
+      config: computed(() =>
+        resolveConfig({ dynamicRows: { enabled: false }, feedback: noFeedback })
+      ),
+      emit: event => {
+        events.push(event)
+      },
+    })
+  )!
+  manager.dynamicRowsState.selectRow(1)
+  manager.stateManager.dynamicRows.add()
+  manager.stateManager.dynamicRows.insert()
+  manager.stateManager.dynamicRows.copy()
+  expect(source).toEqual([{ id: 1, name: 'Original' }])
+  expect(events).toEqual([])
+  scope.stop()
+})

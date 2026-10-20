@@ -15,12 +15,13 @@ import type { FormInst } from 'naive-ui'
 import { useSearchHistory, type SearchHistoryOptions } from './useSearchHistory'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
 import { cloneData, isDataEqual } from '../../../utils/data'
+import { resolveSearchResetValue } from '../fieldValue'
 import { useActionTask } from '../../../composables/useActionTask'
 
-interface UseSearchStateOptions {
-  formItemList: SearchFormItem[]
-  formParams: SearchFormParams
-  config?: MaybeRefOrGetter<SearchConfig | undefined>
+export interface UseSearchStateOptions<T extends object = SearchFormParams> {
+  formItemList: SearchFormItem<T>[]
+  formParams: T
+  config?: MaybeRefOrGetter<SearchConfig<T> | undefined>
   loading?: MaybeRefOrGetter<boolean>
   historyOptions?: MaybeRefOrGetter<SearchHistoryOptions>
 }
@@ -28,14 +29,14 @@ interface UseSearchStateOptions {
 /**
  *
  */
-export function useSearchState(
+export function useSearchState<T extends object = SearchFormParams>(
   emits: {
-    (event: 'search', params: SearchFormParams): void
-    (event: 'reset', params: SearchFormParams): void
-    (event: 'change-params', params: SearchFormParams): void
-    (event: 'update:modelValue', params: SearchFormParams): void
+    (event: 'search', params: T): void
+    (event: 'reset', params: T): void
+    (event: 'change-params', params: T): void
+    (event: 'update:modelValue', params: T): void
   },
-  options: UseSearchStateOptions
+  options: UseSearchStateOptions<T>
 ) {
   const config = computed(() => toValue(options.config) ?? {})
   const feedback = useComponentFeedback(() => config.value.feedback)
@@ -44,10 +45,10 @@ export function useSearchState(
   const foldThreshold = computed(() => config.value.foldThreshold ?? 7)
   const requireValue = computed(() => config.value.requireValue ?? true)
 
-  const fields: Ref<SearchFormItem[]> = ref<SearchFormItem[]>(
-    cloneData(options.formItemList)
-  )
-  const formParams = ref<SearchFormParams>(cloneData(options.formParams))
+  const fields = ref(cloneData(options.formItemList)) as Ref<
+    SearchFormItem<T>[]
+  >
+  const formParams = ref(cloneData(options.formParams)) as Ref<T>
   const expanded = ref(false)
   const searchTasks = useActionTask<string>()
   const searching = computed(() => searchTasks.isRunning('search'))
@@ -73,25 +74,21 @@ export function useSearchState(
     () => availableFields.value.length > foldThreshold.value
   )
 
-  const isEmpty = (value: any): boolean =>
+  const isEmpty = (value: unknown): boolean =>
     value === undefined ||
     value === null ||
     value === '' ||
     (Array.isArray(value) && value.length === 0)
 
   const initialize = () => {
+    const values = formParams.value as Record<string, unknown>
     fields.value.forEach(item => {
       item.isFocus = false
-      if (item.type === 'select') {
-        if (!item.placeholder) item.placeholder = '请选择'
-        if (formParams.value[item.prop] === undefined) {
-          formParams.value[item.prop] = cloneData(item.defaultValue ?? null)
-        }
-      } else if (
-        formParams.value[item.prop] === undefined &&
-        item.defaultValue !== undefined
-      ) {
-        formParams.value[item.prop] = cloneData(item.defaultValue)
+      if (item.show === false) return
+      if (item.type === 'select' && !item.placeholder)
+        item.placeholder = '请选择'
+      if (item.type !== 'spacer' && values[item.prop] === undefined) {
+        values[item.prop] = resolveSearchResetValue(item, values[item.prop])
       }
     })
   }
@@ -105,7 +102,7 @@ export function useSearchState(
     }
   }
 
-  const canSubmit = (params: SearchFormParams): boolean =>
+  const canSubmit = (params: T): boolean =>
     active && !toValue(options.loading) && isDataEqual(formParams.value, params)
 
   const executeSearch = async (): Promise<boolean> => {
@@ -143,7 +140,7 @@ export function useSearchState(
     return result.executed && result.value
   }
 
-  const publishModel = (params: SearchFormParams) => {
+  const publishModel = (params: T) => {
     emits('change-params', cloneData(params))
     emits('update:modelValue', cloneData(params))
   }
@@ -159,11 +156,17 @@ export function useSearchState(
   const resetFn = () => {
     formRef.value?.restoreValidation()
     const params = cloneData(formParams.value)
-    Object.keys(params).forEach(key => {
-      if (key !== 'pageNum' && key !== 'pageSize') {
-        const field = fields.value.find(item => item.prop === key)
-        params[key] = cloneData(field?.defaultValue ?? null)
-      }
+    const values = params as Record<string, unknown>
+    // 只重置已配置的搜索字段，保留租户、路由上下文等宿主参数。
+    fields.value.forEach(field => {
+      if (
+        field.show === false ||
+        field.type === 'spacer' ||
+        field.prop === 'pageNum' ||
+        field.prop === 'pageSize'
+      )
+        return
+      values[field.prop] = resolveSearchResetValue(field, values[field.prop])
     })
     suppressModelUpdates()
     formParams.value = params
@@ -175,10 +178,7 @@ export function useSearchState(
     expanded.value = !expanded.value
   }
 
-  const syncFromProps = (
-    newItems: SearchFormItem[],
-    newParams: SearchFormParams
-  ) => {
+  const syncFromProps = (newItems: SearchFormItem<T>[], newParams: T) => {
     suppressModelUpdates()
     fields.value = cloneData(newItems)
     formParams.value = cloneData(newParams)

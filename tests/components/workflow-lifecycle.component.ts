@@ -70,3 +70,34 @@ test.each(['reset', 'removed', 'replaced', 'unmount', 'unchanged'])(
     if (reason !== 'unmount') wrapper.unmount()
   }
 )
+
+test('node factories preserve the public type/data relation for every node kind', () => {
+  let workflow!: ReturnType<typeof useWorkflowNodes>
+  const wrapper = mount(
+    defineComponent({
+      setup() {
+        workflow = useWorkflowNodes({}, () => {}, shallowRef({}))
+        return () => null
+      },
+    })
+  )
+  for (const type of ['start', 'approval', 'copy', 'condition'] as const)
+    workflow.addNode(type)
+  const { nodes } = workflow.getCurrentWorkflowData()
+  expect(nodes.find(node => node.type === 'approval')?.data).toMatchObject({
+    approvers: [],
+    approvalMode: 'any',
+  })
+  expect(nodes.find(node => node.type === 'copy')?.data).toMatchObject({
+    copyUsers: [],
+  })
+  expect(nodes.find(node => node.type === 'condition')?.data).toMatchObject({
+    conditions: [],
+  })
+  expect(
+    nodes
+      .filter(node => node.type === 'start')
+      .every(node => node.data.status === 'active')
+  ).toBe(true)
+  wrapper.unmount()
+})

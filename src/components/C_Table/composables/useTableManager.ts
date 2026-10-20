@@ -365,7 +365,9 @@ export function useTableManager(params: TableManagerParams) {
           getConfig().dynamicRows?.rowKey ??
           toValue(params.rowKeyField) ??
           rowKey,
-        enabled: Boolean(getConfig().dynamicRows),
+        enabled:
+          Boolean(getConfig().dynamicRows) &&
+          getConfig().dynamicRows?.enabled !== false,
         feedback: getConfig().feedback,
         locale: getConfig().locale,
         onRowChange: eventHandlers.onRowChange,

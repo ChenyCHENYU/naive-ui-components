@@ -13,6 +13,7 @@ import type {
   SimpleTableActions,
   TableColumn,
   EditMode,
+  ChildSelectionState,
 } from '../types'
 import {
   resolveComponentDensity,
@@ -46,21 +47,25 @@ export interface CrudBinding<T extends object = DataRecord> {
 
   pagination?: ComputedRef<PaginationConfig | boolean | undefined>
 
-  tableRef?: Ref<any>
+  tableRef?: Ref<unknown>
 
-  save?: (...args: any[]) => any
+  save?: (
+    row: T,
+    rowIndex?: number,
+    columnKey?: string
+  ) => unknown | Promise<unknown>
   handleCancel?: () => void
   handlePaginationChange?: (page: number, pageSize: number) => void
 
-  handleRowDelete?: (...args: any[]) => any
+  handleRowDelete?: (row: T, index?: number) => unknown | Promise<unknown>
 
-  detail?: { show: (...args: any[]) => void }
+  detail?: { show: (row: T) => unknown }
 }
 
 /* ================= 使用侧配置类型（对外 API） ================= */
 
 /** C_Table :config prop 的类型 — 所有功能配置收拢在此 */
-export interface TableConfig<T extends object = DataRecord> {
+export interface TableConfig<T extends object = DataRecord, C = unknown> {
   /** 与 C_Form / C_FormSearch 共用密度；局部 display.size 等显式配置优先。 */
   density?: ComponentDensity
   /** 组件级反馈适配器；未提供时尝试复用 Naive Provider，再安全降级 */
@@ -76,11 +81,12 @@ export interface TableConfig<T extends object = DataRecord> {
   /** 分页配置 */
   pagination?: PaginationConfig | boolean
   /** 展开行配置 */
-  expand?: ExpandConfig<T> | boolean
+  expand?: ExpandConfig<T, C> | boolean
   /** 选择配置 */
-  selection?: SelectionConfig<T> | boolean
+  selection?: SelectionConfig<T, C> | boolean
   /** 动态行配置 */
-  dynamicRows?: DynamicRowsOptions<T> | boolean
+  dynamicRows?:
+    DynamicRowsOptions<T> | (string extends keyof T ? boolean : false)
   /** 工具栏 */
   toolbar?: ToolbarConfig
   /** 表格显示属性 */
@@ -127,29 +133,29 @@ export interface EditConfig<T extends object = DataRecord> {
   onError?: (error: unknown) => void
 }
 
-export interface ExpandConfig<T extends object = DataRecord> {
+export interface ExpandConfig<T extends object = DataRecord, C = unknown> {
   enabled?: boolean
   defaultExpandedKeys?: DataTableRowKey[]
-  onLoadData?: (row: T) => Promise<unknown[]> | unknown[]
+  onLoadData?: (row: T) => Promise<C[]> | C[]
   /** 展开数据加载失败回调 */
   onError?: (error: unknown, row: T) => void
   renderContent?: (
     row: T,
-    expandData: unknown[],
+    expandData: C[],
     loading: boolean,
-    childSelection?: unknown
+    childSelection?: ChildSelectionState
   ) => VNodeChild
   rowExpandable?: (row: T) => boolean
 }
 
-export interface SelectionConfig<T extends object = DataRecord> {
+export interface SelectionConfig<T extends object = DataRecord, C = unknown> {
   enabled?: boolean
   defaultCheckedKeys?: DataTableRowKey[]
   rowCheckable?: (row: T) => boolean
   maxSelection?: number
   childSelection?: {
     enabled?: boolean
-    childRowCheckable?: (childRow: unknown, parentRow: T) => boolean
+    childRowCheckable?: (childRow: C, parentRow: T) => boolean
   }
   parentChildLink?: {
     enabled?: boolean
@@ -274,7 +280,7 @@ export interface ResolvedConfig {
         row: DataRecord,
         expandData: unknown[],
         loading: boolean,
-        childSelection?: unknown
+        childSelection?: ChildSelectionState
       ) => VNodeChild)
     | undefined
   rowExpandable: ((row: DataRecord) => boolean) | undefined

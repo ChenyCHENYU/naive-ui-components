@@ -150,3 +150,39 @@ describe('C_Draggable business event data', () => {
     expect(draggable.isDragging.value).toBe(false)
   })
 })
+
+test('custom business items need no id or index signature and retain their object identity', () => {
+  interface WorkItem {
+    uuid: string
+    salary: number
+  }
+  const item: WorkItem = { uuid: 'business-key', salary: 2000 }
+  const events: Array<[string, ...unknown[]]> = []
+  let draggable!: ReturnType<typeof useDraggableLayout<WorkItem>>
+  const app = renderer.createApp({
+    setup() {
+      draggable = useDraggableLayout<WorkItem>(
+        {
+          modelValue: [item],
+          itemKey: row => row.uuid,
+          itemTitle: row => row.salary.toFixed(),
+        },
+        (name, ...args) => events.push([name, ...args])
+      )
+      return () => h('div')
+    },
+  })
+  app.mount({})
+  expect(draggable.getItemKey(item, 0)).toBe('business-key')
+  expect(draggable.getItemTitle(item)).toBe('2000')
+  expect(draggable.getItem(0)).toBe(item)
+  draggable.handleStart({ data: item, oldIndex: 0 })
+  draggable.handleEnd({ data: item, oldIndex: 0, newIndex: 1 })
+  expect(events.find(([name]) => name === 'drag-end')?.[1]).toEqual({
+    oldIndex: 0,
+    newIndex: 1,
+    item,
+  })
+  expect(draggable.removeItem(0)).toBe(item)
+  app.unmount()
+})

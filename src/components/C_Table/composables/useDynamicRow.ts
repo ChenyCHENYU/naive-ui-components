@@ -43,12 +43,13 @@ import {
 } from '../../../config'
 
 /* ================= 类型定义 ================= */
-export interface DynamicRowsOptions<T extends object = DataRecord> {
+interface DynamicRowsBaseOptions<T extends object> {
   /** 总开关；关闭时公开方法保持安全 no-op */
   enabled?: boolean
   /* 基础配置 */
   rowKey?: string | ((row: T) => DataTableRowKey)
-  defaultRowData?: () => T
+  /** 新增返回完整业务行；复制时可接收原行副本，函数 rowKey 需返回完整的新副本。 */
+  defaultRowData?: (source?: T) => T
 
   /* 功能开关 */
   enableRadioSelection?: boolean
@@ -82,6 +83,15 @@ export interface DynamicRowsOptions<T extends object = DataRecord> {
   onRowCopy?: (originalRow: T, newRow: T) => void
   onRowMove?: (row: T, fromIndex: number, toIndex: number) => void
 }
+
+/** 明确业务模型必须由工厂创建完整记录；开放记录保留原有空行兼容入口。 */
+export type DynamicRowsOptions<T extends object = DataRecord> =
+  DynamicRowsBaseOptions<T> &
+    (string extends keyof T
+      ? unknown
+      : {
+          defaultRowData: (source?: T) => T
+        })
 
 export interface DynamicRowsReturn<T extends object = DataRecord> {
   /* 状态 */
@@ -141,19 +151,33 @@ function getRowKey<T extends object>(
   row: T,
   rowKey: string | ((row: T) => DataTableRowKey)
 ): DataTableRowKey {
-  return typeof rowKey === 'function' ? rowKey(row) : (row as any)[rowKey]
+  return typeof rowKey === 'function'
+    ? rowKey(row)
+    : (Reflect.get(row, rowKey) as DataTableRowKey)
 }
 
-/** 创建新行数据 */
+/** 工厂拥有业务主键；字符串键复制只替换身份，函数键复制采用工厂给出的完整新行。 */
 function createNewRow<T extends object>(
-  defaultRowData: (() => T) | undefined,
-  rowKey: string | ((row: T) => DataTableRowKey)
-): T {
-  const newRow = cloneData(defaultRowData?.() || ({} as T))
-  const keyField = typeof rowKey === 'string' ? rowKey : 'id'
+  factory: ((source?: T) => T) | undefined,
+  rowKey: string | ((row: T) => DataTableRowKey),
+  source?: T
+): T | null {
+  if (factory) {
+    const created = factory(
+      source === undefined ? undefined : cloneData(source)
+    )
+    if (!created || typeof created !== 'object' || Array.isArray(created))
+      return null
+    const next = cloneData(created)
+    return source && typeof rowKey === 'string'
+      ? { ...cloneData(source), [rowKey]: Reflect.get(next, rowKey) }
+      : next
+  }
+  // 只有开放记录的字符串字段拥有兼容生成规则；函数键不能猜测其字段组成。
+  if (typeof rowKey !== 'string') return null
   return {
-    ...newRow,
-    [keyField]: generateUniqueId(),
+    ...(source ? cloneData(source) : {}),
+    [rowKey]: generateUniqueId(),
   } as T
 }
 
@@ -164,8 +188,11 @@ function createNewRow<T extends object>(
  */
 export function useDynamicRows<T extends object = DataRecord>(
   data: Readonly<Ref<T[]>>,
-  options: MaybeRefOrGetter<DynamicRowsOptions<T>> = {}
+  ...args: string extends keyof T
+    ? [options?: MaybeRefOrGetter<DynamicRowsOptions<T>>]
+    : [options: MaybeRefOrGetter<DynamicRowsOptions<T>>]
 ): DynamicRowsReturn<T> {
+  const options = args[0] ?? {}
   /* 默认配置 */
   const defaults = {
     enabled: true,
@@ -181,12 +208,14 @@ export function useDynamicRows<T extends object = DataRecord>(
     deleteConfirmText: '',
     printPreset: 'table' as const,
     printTargetSelector: '.c-table-wrapper',
-    defaultRowData: () => ({}) as T,
   }
   const finalOptions = reactive({
     ...defaults,
     ...toValue(options),
-  }) as DynamicRowsOptions<T> & typeof defaults
+  }) as DynamicRowsBaseOptions<T> &
+    Omit<typeof defaults, 'rowKey'> & {
+      rowKey: NonNullable<DynamicRowsBaseOptions<T>['rowKey']>
+    }
   watch(
     () => toValue(options),
     next => {
@@ -264,9 +293,8 @@ export function useDynamicRows<T extends object = DataRecord>(
   const canInsertRow = (row: T) => {
     const key = getRowKey(row, finalOptions.rowKey)
     if (
-      key !== undefined &&
-      key !== null &&
-      key !== '' &&
+      ((typeof key === 'string' && key !== '') ||
+        (typeof key === 'number' && Number.isFinite(key))) &&
       !data.value.some(
         existing => getRowKey(existing, finalOptions.rowKey) === key
       )
@@ -276,15 +304,33 @@ export function useDynamicRows<T extends object = DataRecord>(
     return false
   }
 
+  /** 拒绝无效工厂、主键和重复身份，失败时不发送数据变更。 */
+  const createRow = (source?: T): T | null => {
+    try {
+      const next = createNewRow(
+        finalOptions.defaultRowData,
+        finalOptions.rowKey,
+        source
+      )
+      if (next) return canInsertRow(next) ? next : null
+      feedback.warning(t('table.invalidRowKeys', { count: 1 }))
+    } catch (error) {
+      feedback.error(
+        t('table.actionFailed', {
+          action: t(source ? 'table.copyRow' : 'table.addRow'),
+        }),
+        error
+      )
+    }
+    return null
+  }
+
   /** 添加新行到表格末尾 */
   const addRow = () => {
     if (!finalOptions.enabled || !finalOptions.enableAdd) return
 
-    const newRow = createNewRow(
-      finalOptions.defaultRowData,
-      finalOptions.rowKey
-    )
-    if (!canInsertRow(newRow)) return
+    const newRow = createRow()
+    if (!newRow) return
     const newData = [...data.value, newRow]
     updateData(newData)
     finalOptions.onRowAdd?.(newRow)
@@ -302,11 +348,8 @@ export function useDynamicRows<T extends object = DataRecord>(
       return
     }
 
-    const newRow = createNewRow(
-      finalOptions.defaultRowData,
-      finalOptions.rowKey
-    )
-    if (!canInsertRow(newRow)) return
+    const newRow = createRow()
+    if (!newRow) return
     const newData = [...data.value]
     newData.splice(selectedRowIndex.value + 1, 0, newRow)
     updateData(newData)
@@ -362,19 +405,8 @@ export function useDynamicRows<T extends object = DataRecord>(
     }
 
     const originalRow = selectedRowData.value
-    const keyField =
-      typeof finalOptions.rowKey === 'string' ? finalOptions.rowKey : 'id'
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { [keyField]: _originalKey, ...rowData } = cloneData(
-      originalRow
-    ) as Record<string, unknown>
-
-    const newRow = {
-      ...rowData,
-      [keyField]: generateUniqueId(),
-    } as T
-
-    if (!canInsertRow(newRow)) return
+    const newRow = createRow(originalRow)
+    if (!newRow) return
     const newData = [...data.value, newRow]
     updateData(newData)
     finalOptions.onRowCopy?.(originalRow, newRow)

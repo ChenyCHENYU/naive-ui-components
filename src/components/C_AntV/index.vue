@@ -23,7 +23,12 @@
   import ERLayout from './layout/ER/index.vue'
   import BPMNLayout from './layout/BPMN/index.vue'
   import UMLLayout from './layout/UML/index.vue'
-  import type { BPMNDiagramData, DiagramConfig, DiagramData } from './types'
+  import type {
+    BPMNDiagramData,
+    DiagramConfig,
+    DiagramData,
+    DiagramExpose,
+  } from './types'
   import { fromBpmnCells, toBpmnCells, type BpmnCell } from './bpmnAdapter'
 
   defineOptions({ name: 'C_AntV' })
@@ -51,7 +56,10 @@
     (e: 'data-change', data: DiagramData): void
   }>()
 
-  const layoutRef = ref()
+  const layoutRef = ref<{
+    getGraph: () => Graph | null | undefined
+    getData: () => DiagramData | BpmnCell[] | undefined
+  }>()
 
   const components = {
     er: ERLayout,
@@ -95,16 +103,16 @@
   }
 
   defineExpose({
-    getGraph: () => layoutRef.value?.getGraph?.(),
+    getGraph: () => layoutRef.value?.getGraph() ?? undefined,
     getData: () => {
-      const rawData = layoutRef.value?.getData?.()
+      const rawData = layoutRef.value?.getData()
 
       if (props.type === 'bpmn' && Array.isArray(rawData))
-        return fromBpmnCells(rawData as BpmnCell[])
+        return fromBpmnCells(rawData)
 
-      return rawData
+      return Array.isArray(rawData) ? undefined : rawData
     },
-  })
+  } satisfies DiagramExpose)
 </script>
 
 <style scoped>
