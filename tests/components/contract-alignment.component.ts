@@ -186,3 +186,59 @@ test('utility columns do not become invalid modal fields', async () => {
   await flushPromises()
   expect(errors).toEqual([])
 })
+
+test.each(['row', 'cell'] as const)(
+  '%s editing disables native input while validating and restores it after failure',
+  async mode => {
+    let reject!: (error: Error) => void
+    const pending = new Promise<void>((_resolve, decline) => {
+      reject = decline
+    })
+    const onSave = vi.fn()
+    const wrapper = mount(C_Table, {
+      global: {
+        components: { NButton, NCard, NAlert, NGrid, NGridItem, NSpace },
+      },
+      props: {
+        data: [{ id: 1, name: 'Original' }],
+        columns: [
+          {
+            key: 'name',
+            title: 'Name',
+            editProps: {
+              disabled: false,
+              rules: [
+                {
+                  asyncValidator: (_rule, value) =>
+                    value === 'Valid' ? Promise.resolve() : pending,
+                },
+              ],
+            },
+          },
+        ],
+        config: {
+          edit: { mode, onSave },
+          toolbar: { show: false },
+          pagination: false,
+          feedback: { error: () => undefined },
+        },
+      },
+    })
+    const api = wrapper.vm as unknown as TableInstance
+    api.startEdit(1, mode === 'cell' ? 'name' : undefined)
+    await flushPromises()
+    const save = api.saveEdit()
+    await flushPromises()
+    expect(wrapper.get('tbody input').attributes('disabled')).toBeDefined()
+    reject(new Error('invalid'))
+    await save
+    await flushPromises()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(wrapper.get('tbody input').attributes('disabled')).toBeUndefined()
+    await wrapper.get('tbody input').setValue('Valid')
+    await api.saveEdit()
+    await flushPromises()
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('tbody input').exists()).toBe(false)
+  }
+)

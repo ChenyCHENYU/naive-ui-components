@@ -26,6 +26,7 @@ import C_Icon from '../../C_Icon/index.vue'
 interface TableManagerRef {
   editStates: {
     cellEdit: {
+      isSaving?: Ref<boolean>
       isEditingCell: (rowKey: DataTableRowKey, columnKey: string) => boolean
       getEditingCellValue: (
         rowKey: DataTableRowKey,
@@ -41,6 +42,7 @@ interface TableManagerRef {
       startEditCell: (rowKey: DataTableRowKey, columnKey: string) => void
     }
     rowEdit: {
+      isSaving?: Ref<boolean>
       isEditingRow: (rowKey: DataTableRowKey) => boolean
       getEditingRowData: (rowKey: DataTableRowKey) => DataRecord | undefined
       updateEditingRowData: (
@@ -69,7 +71,8 @@ export function renderEditComponent(
   onUpdate: (val: unknown) => void,
   rowData: DataRecord = {},
   rowIndex = 0,
-  size?: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large',
+  busy = false
 ): VNodeChild {
   if (column.editRender)
     return column.editRender(value, rowData, rowIndex, { onUpdate })
@@ -82,6 +85,7 @@ export function renderEditComponent(
     style: { width: '100%' },
     ...(size ? { size } : {}),
     ...column.editProps,
+    ...(busy ? { disabled: true } : {}),
   }
 
   const Component =
@@ -128,6 +132,7 @@ export function renderEditingCell(
     rowData: DataRecord
     rowIndex: number
     size?: 'small' | 'medium' | 'large'
+    busy?: boolean
   } = {
     rowData: {},
     rowIndex: 0,
@@ -142,6 +147,8 @@ export function renderEditingCell(
       'button',
       {
         class: `cell-action-btn cell-action-${name}`,
+        disabled: context.busy,
+        'aria-busy': context.busy || undefined,
         title,
         type: 'button',
         onClick: (e: Event) => {
@@ -167,7 +174,8 @@ export function renderEditingCell(
         onUpdate,
         context.rowData,
         context.rowIndex,
-        context.size
+        context.size,
+        context.busy
       ),
     ]),
     h('div', { class: 'cell-editing-actions' }, [
@@ -346,6 +354,7 @@ export function useTableColumns(
         {
           rowData,
           rowIndex,
+          busy: tableManager.editStates.cellEdit.isSaving?.value,
           size: config.value.density ? config.value.controlSize : undefined,
         }
       )
@@ -399,7 +408,8 @@ export function useTableColumns(
           ),
         editingRow ?? rowData,
         rowIndex,
-        config.value.density ? config.value.controlSize : undefined
+        config.value.density ? config.value.controlSize : undefined,
+        tableManager.editStates.rowEdit.isSaving?.value
       )
     }
 

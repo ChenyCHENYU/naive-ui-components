@@ -380,6 +380,18 @@ export function useTableManager(params: TableManagerParams) {
 
   /* 初始化所有功能状态 */
   const editStates = initEditStates()
+  // 校验失败沿用组件反馈通道；仅提示仍属于当前编辑会话的错误。
+  watch(editStates.rowEdit.validationErrors, errors => {
+    if (editStates.rowEdit.editingRowKey.value !== null && errors.length) {
+      feedback.error(errors[0].message)
+    }
+  })
+  watch(editStates.cellEdit.cellValidationError, error => {
+    if (editStates.cellEdit.editingCell.value.rowKey !== null && error) {
+      feedback.error(error)
+    }
+  })
+
   const invalidateEdits = () => {
     editRevision++
     editStates.rowEdit.invalidate()

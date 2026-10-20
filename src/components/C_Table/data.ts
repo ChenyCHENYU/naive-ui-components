@@ -64,7 +64,7 @@ export const generateFormOptions = (
       prop: String(column.key),
       label: column.title || String(column.key),
       type: EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input',
-      placeholder: `请输入${column.title}`,
+      placeholder: column.editProps?.placeholder ?? `请输入${column.title}`,
       rules: resolveTableColumnRules(column, getSource),
       attrs,
       layout: { span: 1 },

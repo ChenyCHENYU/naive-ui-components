@@ -467,3 +467,62 @@ test('C_Table does not execute a confirmation that resolves after its scope is d
   await new Promise(resolve => setTimeout(resolve, 0))
   expect(calls).toBe(0)
 })
+
+test.each(['row', 'cell'] as const)(
+  '%s edit failures report once and disposed validation stays silent',
+  async mode => {
+    const scope = effectScope()
+    const messages: string[] = []
+    const validation = deferred<void>()
+    const data = [{ id: 1, name: '' }]
+    const manager = scope.run(() =>
+      useTableManager({
+        data: () => data,
+        rowKey: row => row.id as number,
+        columns: () => [{ key: 'name', title: '姓名', required: true }],
+        config: computed(() =>
+          resolveConfig({
+            edit: mode,
+            feedback: { error: message => messages.push(message) },
+          })
+        ),
+        emit: () => undefined,
+      })
+    )!
+    manager.stateManager.edit.start(1, mode === 'cell' ? 'name' : undefined)
+    await manager.stateManager.edit.save()
+    await nextTick()
+    expect(messages).toEqual(['姓名不能为空'])
+    scope.stop()
+
+    const pendingScope = effectScope()
+    const pending = pendingScope.run(() =>
+      useTableManager({
+        data: () => [{ id: 1, name: 'before' }],
+        rowKey: row => row.id as number,
+        columns: () => [
+          {
+            key: 'name',
+            title: '姓名',
+            editProps: {
+              rules: [{ asyncValidator: () => validation.promise }],
+            },
+          },
+        ],
+        config: computed(() =>
+          resolveConfig({
+            edit: mode,
+            feedback: { error: message => messages.push(message) },
+          })
+        ),
+        emit: () => undefined,
+      })
+    )!
+    pending.stateManager.edit.start(1, mode === 'cell' ? 'name' : undefined)
+    const save = pending.stateManager.edit.save()
+    pendingScope.stop()
+    validation.resolve()
+    await save
+    expect(messages).toHaveLength(1)
+  }
+)
