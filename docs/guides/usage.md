@@ -754,3 +754,20 @@ loading.finish(id)
 CRUD 控制器只需满足结构契约；`@robot-admin/request-core` 0.6.3 起可直接接收组件列，无需应用内列转换器。组件库与请求包保持独立依赖关系。
 
 明确业务模型启用动态增行时，提供已有 `dynamicRows.defaultRowData` 工厂返回完整记录和合法唯一主键；`false` 仍可直接关闭。工厂主键不会被组件改成字符串。复制使用字符串主键时保留原业务字段、从工厂取得新主键；函数主键场景由工厂接收可选原行副本并返回完整新记录。缺失、重复或无效主键会反馈失败并保持原数据。宽松动态记录继续支持原有空行简写。
+
+## 面包屑与目录导航
+
+`C_Breadcrumb` 默认根据当前路由生成路径；父级点击展开目录，末项标识当前页。可选 `menus` 直接接收宿主已授权的菜单（`path/key`、`label/meta.title`、`children`），无需转换成 Naive UI 菜单选项。
+
+```vue
+<C_Breadcrumb
+  :menus="permissionStore.showMenuListGet"
+  :label-formatter="translateRouteTitle"
+  :show-icon="settingsStore.showBreadcrumbIcon"
+  @select="navigateTo"
+/>
+```
+
+组件只发出 `select(path)`，不执行路由跳转或权限请求。传入 `menus`（包括空数组）后，目录仅使用这份数据；隐藏项、无标题占位和不可直接跳转的动态参数叶页不进入快捷导航。隐藏详情页仍保留当前路径，显式 `meta.breadcrumb: false` 可隐藏对应层级。未传 `menus` 时继续使用路由子项；原生路由表并非权限边界，业务项目应传入与侧栏同源的授权菜单。
+
+已有 `items` 手动路径继续优先，标签沿用传入值并接受只读嵌套数据，`disabled` 对目录整支生效。完整路径在窄容器中自动收拢，保留当前页；目录支持方向键、Home/End、Enter/Space 和 Escape。颜色跟随 Naive 主题，浮层中的通用文案使用既有组件国际化服务。组件不保存菜单快照、不读取应用 Store，也不改写传入数据。

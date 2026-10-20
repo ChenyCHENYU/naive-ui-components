@@ -113,6 +113,8 @@ export interface BreadcrumbItem {
   label: string
   /** 图标名称 */
   icon?: string
+  /** 禁用导航；目录禁用时同时禁用其子项。 */
+  disabled?: boolean
   /** 子级列表（用于下拉） */
-  children?: BreadcrumbItem[]
+  children?: readonly BreadcrumbItem[]
 }

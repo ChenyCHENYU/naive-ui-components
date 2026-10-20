@@ -1,0 +1,114 @@
+.c-breadcrumb-menu {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  &[role='group'] {
+    margin-left: 13px;
+    padding-left: 8px;
+    border-left: 1px solid var(--c-crumb-border);
+  }
+  &__item {
+    margin: 2px 0;
+  }
+  &__directory,
+  &__page {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--c-crumb-text);
+    font: inherit;
+    font-size: 13px;
+    line-height: 20px;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+    &:hover:not(:disabled) {
+      background: var(--c-crumb-hover);
+      color: var(--c-crumb-current);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--c-crumb-primary);
+      outline-offset: -2px;
+      background: var(--c-crumb-hover);
+    }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    &[aria-current='page'] {
+      background: color-mix(in srgb, var(--c-crumb-primary) 8%, transparent);
+      color: var(--c-crumb-primary);
+      cursor: default;
+      opacity: 1;
+    }
+  }
+  &__icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--c-crumb-primary) 7%, transparent);
+    color: var(--c-crumb-primary);
+    svg {
+      width: 17px;
+      height: 17px;
+    }
+    &.is-directory {
+      background: var(--c-crumb-hover);
+      color: var(--c-crumb-muted);
+    }
+  }
+  &__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__count,
+  &__current {
+    flex: none;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: var(--c-crumb-hover);
+    color: var(--c-crumb-muted);
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+  }
+  &__current {
+    background: color-mix(in srgb, var(--c-crumb-primary) 10%, transparent);
+    color: var(--c-crumb-primary);
+  }
+  &__chevron {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    color: var(--c-crumb-muted);
+    transition: transform 0.16s ease;
+    &.is-expanded {
+      transform: rotate(90deg);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c-breadcrumb-menu__directory,
+  .c-breadcrumb-menu__page,
+  .c-breadcrumb-menu__chevron {
+    transition: none;
+  }
+}

@@ -6,6 +6,13 @@ import { build } from 'vite'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const cases = [
   {
+    name: 'C_Breadcrumb',
+    component: 'C_Breadcrumb',
+    css: 'C_Breadcrumb.css',
+    props: "{ items: [{ key: '/home', label: 'Home' }] }",
+    budget: 85 * 1024,
+  },
+  {
     name: 'C_Form/base',
     component: 'C_Form',
     css: 'C_Form.base.css',

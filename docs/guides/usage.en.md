@@ -671,3 +671,9 @@ Define domain models in the application. Components preserve their types without
 CRUD bindings remain structural. `@robot-admin/request-core` 0.6.3 accepts component columns directly, without application converters or a dependency between the two packages.
 
 For a concrete business model, enable dynamic insertion with the existing `dynamicRows.defaultRowData` factory returning a complete row and valid unique key; `false` still disables it directly. Factory keys retain their original type. Copying with a string key preserves business fields and takes a fresh key from the factory. With a function key, the factory receives an optional source copy and returns a complete new record. Missing, duplicate or invalid factory keys report failure without changing data. Open dynamic records retain the legacy empty-row shorthand.
+
+## Breadcrumb directory navigation
+
+`C_Breadcrumb` keeps automatic route and manual `items` modes. Optional `menus` accepts the host's authorized menu tree directly (`path/key`, `label/meta.title`, `children`); the component emits `select(path)` and leaves authorization and navigation to the application. Supplying an empty menu explicitly exposes no route-derived shortcuts. Hidden entries and unresolved parameterized leaves are omitted from shortcuts, while the active detail page remains visible unless explicitly excluded with `meta.breadcrumb: false`.
+
+Parent buttons open a themed directory panel with page counts and current-page feedback. Narrow containers collapse intermediate path segments. Arrow keys, Home/End, Enter/Space and Escape are supported. Readonly inputs remain unchanged, disabled directories disable their descendants, and route/query/menu/size changes close stale panels. Generic text uses the existing component locale service. Existing `items`, `showIcon`, `iconSize`, `labelFormatter` and `select` remain available; manual labels are not translated again.

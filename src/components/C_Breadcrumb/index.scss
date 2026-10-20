@@ -1,0 +1,203 @@
+/* 路径与目录浮层仅使用组件自身类名，主题色由 Naive 提供。 */
+.c-breadcrumb {
+  --c-breadcrumb-font-size: 13px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+
+  &__path {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 3px;
+    list-style: none;
+  }
+
+  &__item {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    min-width: 0;
+    &.is-current {
+      flex: 1 1 auto;
+    }
+    &:last-child .c-breadcrumb__separator {
+      display: none;
+    }
+  }
+
+  &__trigger,
+  &__link,
+  &__current {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--c-breadcrumb-gap, 4px);
+    min-width: 0;
+    max-width: 220px;
+    min-height: 28px;
+    padding: 3px 7px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--c-crumb-text);
+    font: inherit;
+    font-size: var(--c-breadcrumb-font-size);
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+    .c-icon {
+      flex: none;
+    }
+  }
+
+  &__trigger,
+  &__link {
+    cursor: pointer;
+    &:hover:not(:disabled),
+    &.is-open {
+      border-color: color-mix(in srgb, var(--c-crumb-primary) 17%, transparent);
+      background: color-mix(in srgb, var(--c-crumb-primary) 6%, transparent);
+      color: var(--c-crumb-primary);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--c-crumb-primary);
+      outline-offset: 1px;
+    }
+    &:disabled {
+      color: var(--c-crumb-muted);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+  }
+
+  &__current {
+    position: relative;
+    max-width: 100%;
+    color: var(--c-crumb-current);
+    font-weight: 600;
+    &::after {
+      position: absolute;
+      right: 7px;
+      bottom: 1px;
+      left: 7px;
+      height: 1.5px;
+      border-radius: 1px;
+      background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--c-crumb-primary) 50%, transparent),
+        transparent
+      );
+      content: '';
+    }
+    .c-icon {
+      color: var(--c-crumb-primary);
+    }
+  }
+
+  &__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__separator {
+    flex: none;
+    margin: 0 5px;
+    color: color-mix(in srgb, var(--c-crumb-muted) 60%, transparent);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  &__chevron {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    color: var(--c-crumb-muted);
+    transition: transform 0.16s ease;
+  }
+  &__trigger.is-open &__chevron {
+    transform: rotate(180deg);
+  }
+}
+
+.c-breadcrumb-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(100vw - 24px);
+  color: var(--c-crumb-text);
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 64px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--c-crumb-border);
+    background: linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--c-crumb-primary) 4%, transparent),
+      transparent
+    );
+  }
+  &__icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid
+      color-mix(in srgb, var(--c-crumb-primary) 12%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--c-crumb-primary) 8%, transparent);
+    color: var(--c-crumb-primary);
+    svg {
+      width: 21px;
+      height: 21px;
+    }
+  }
+  &__heading {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+    h2 {
+      margin: 0;
+      overflow: hidden;
+      color: var(--c-crumb-current);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 21px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    small {
+      color: var(--c-crumb-muted);
+      font-size: 12px;
+      line-height: 18px;
+    }
+  }
+  &__body {
+    max-height: min(380px, 65dvh);
+    padding: 7px;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-crumb-border) transparent;
+    overscroll-behavior: contain;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c-breadcrumb__trigger,
+  .c-breadcrumb__link,
+  .c-breadcrumb__chevron {
+    transition: none;
+  }
+}
