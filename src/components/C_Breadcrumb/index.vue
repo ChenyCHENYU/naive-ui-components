@@ -6,6 +6,7 @@
   <nav
     ref="rootRef"
     class="c-breadcrumb"
+    :class="{ 'is-narrow': availableWidth < 120 }"
     :aria-label="t('breadcrumb.label')"
     :style="themeStyle"
   >
@@ -16,6 +17,7 @@
         class="c-breadcrumb__item"
         :class="{
           'is-current': entry.item && isCurrent(entry.item, entry.index),
+          'is-overflow': entry.overflow,
         }"
       >
         <span

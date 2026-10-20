@@ -26,6 +26,9 @@
     &.is-current {
       flex: 1 1 auto;
     }
+    &.is-overflow {
+      flex: none;
+    }
     &:last-child .c-breadcrumb__separator {
       display: none;
     }
@@ -125,6 +128,32 @@
   }
   &__trigger.is-open &__chevron {
     transform: rotate(180deg);
+  }
+
+  // 顶栏操作区只留少量空间时，优先保留可点击入口和当前页文本。
+  &.is-narrow {
+    .c-breadcrumb__path {
+      gap: 4px;
+      padding: 0;
+    }
+    .c-breadcrumb__separator {
+      display: none;
+    }
+    .c-breadcrumb__item.is-current {
+      flex: 1 1 0;
+    }
+    .c-breadcrumb__item.is-overflow .c-breadcrumb__trigger {
+      width: 28px;
+      padding: 3px 0;
+      justify-content: center;
+    }
+    .c-breadcrumb__current {
+      padding: 3px 0;
+      border: 0;
+      .c-icon {
+        display: none;
+      }
+    }
   }
 }
 
