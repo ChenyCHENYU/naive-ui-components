@@ -84,7 +84,7 @@ export interface CustomAction<T extends object = DataRecord> {
   /** 按钮类型样式 */
   type?: ButtonType | ((row: T, index: number) => ButtonType)
   /** 点击事件处理器 */
-  onClick: (row: T, index: number) => void | Promise<void>
+  onClick: (row: T, index: number) => unknown
   /** 条件显示函数（可选） */
   show?: (row: T, index: number) => boolean
   /** 是否禁用（可选） */
@@ -330,11 +330,7 @@ export interface TableDisplayProps {
 export interface TableEditProps<T extends object = DataRecord> {
   editable?: boolean
   editMode?: EditMode
-  onSave?: (
-    rowData: T,
-    rowIndex: number,
-    columnKey?: string
-  ) => void | Promise<void>
+  onSave?: (rowData: T, rowIndex: number, columnKey?: string) => unknown
   onCancel?: (rowData: T, rowIndex: number) => void
   showRowActions?: boolean
   modalTitle?: string
@@ -373,14 +369,13 @@ export interface TableSelectionProps<
   parentChildLinkMode?: ParentChildLinkMode
 }
 
-/* 组合所有属性的完整表格属性接口 */
-export interface TableProps<T extends object = DataRecord, C = DataRecord>
-  extends
-    Partial<TableBaseProps<T>>,
-    TableDisplayProps,
-    TableEditProps<T>,
-    TableExpandProps<T, C>,
-    TableSelectionProps<T, C> {
+/** 组件声明的实际属性；与 UI 壳共用，避免旧配置重新混入主契约。 */
+export interface TableRuntimeProps<T extends object = DataRecord, C = unknown> {
+  /** CRUD 模式自动提供列和数据，可省略。 */
+  columns?: TableColumn<T>[]
+  data?: MaybeRefLike<T[]>
+  loading?: MaybeRefLike<boolean>
+  rowKey?: TableRowKey<T>
   /** 功能配置的统一入口。 */
   config?: TableConfig<T, C>
   /** CRUD 模式自动提供 columns / data / loading，可省略对应属性。 */
@@ -389,13 +384,26 @@ export interface TableProps<T extends object = DataRecord, C = DataRecord>
   pagination?: PaginationProps | false
   remote?: boolean
   virtualScrollX?: boolean
-  /** @deprecated 使用 config.actions。 */
-  actions?: SimpleTableActions<T>
   /** 根容器 class，原生 class/style 仍转发到内部表格。 */
   wrapperClass?: import('vue').HTMLAttributes['class']
   /** 填满确定高度的容器，保留工具栏和分页空间。 */
   flexHeight?: boolean
 }
+
+/** 事件监听与组件共用同一份事件参数，避免将有效监听器误当作旧功能配置。 */
+type TableListeners<T extends object, C> = {
+  [E in keyof TableEmits<T, C> as `on${Capitalize<E>}`]?: (
+    ...args: TableEmits<T, C>[E]
+  ) => unknown
+}
+
+/** 业务功能统一使用 config；有效的原生显示属性继续由 $attrs 透传。 */
+export type TableProps<
+  T extends object = DataRecord,
+  C = unknown,
+> = TableRuntimeProps<T, C> &
+  Omit<TableDisplayProps, 'maxHeight' | 'scrollX'> &
+  TableListeners<T, C>
 
 /* ================= 事件系统 ================= */
 export interface TableExpandEvents<T extends object = DataRecord> {
@@ -652,7 +660,7 @@ export interface RowAction<T extends object = DataRecord> {
   type?: ButtonType
   disabled?: boolean | ((row: T, index: number) => boolean)
   show?: boolean | ((row: T, index: number) => boolean)
-  onClick?: (row: T, index: number) => void | Promise<void>
+  onClick?: (row: T, index: number) => unknown
   tooltip?: string
 }
 

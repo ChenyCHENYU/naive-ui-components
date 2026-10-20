@@ -69,7 +69,7 @@ for (const staleDependency of ['@tato30/vue-pdf', '@vueuse/core']) {
 }
 
 requireCondition(
-  pkg.dependencies?.['@robot-admin/form-validate'] === '3.4.2' &&
+  pkg.dependencies?.['@robot-admin/form-validate'] === '3.4.4' &&
     fs
       .readFileSync(
         path.join(root, 'src/components/C_Form/utils/formValidation.ts'),

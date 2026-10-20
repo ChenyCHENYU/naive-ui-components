@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Exercise the published CommonJS types with TypeScript's require syntax. */
 import Components = require('@robot-admin/naive-ui-components')
+import Actions = require('@robot-admin/naive-ui-components/C_ActionBar')
+import TableApi = require('@robot-admin/naive-ui-components/C_Table')
 import Form = require('@robot-admin/naive-ui-components/C_Form')
 import Search = require('@robot-admin/naive-ui-components/C_FormSearch')
 import Menu = require('@robot-admin/naive-ui-components/C_Menu')
 import Resolver = require('@robot-admin/naive-ui-components/resolver')
 import Vue = require('vue')
+import Naive = require('naive-ui')
+import Validation = require('@robot-admin/form-validate')
 
 interface Model {
   name: string
@@ -135,6 +139,42 @@ const dynamicField: Form.FormOption<object> = {
   prop: 'applicationField',
   value: { arbitrary: true },
 }
+const directAction: Actions.ActionItem = { key: 'save', onClick: form.submit }
+const directDropdown: Actions.ActionDropdownItem = {
+  key: 'save',
+  label: 'Save',
+  onClick: form.submit,
+}
+const saveModel = async (model: Model) => model
+const callbackConfig: TableApi.TableConfig<Model> = {
+  edit: { onSave: saveModel },
+  display: { maxHeight: 400, scrollX: 1200 },
+  actions: {
+    custom: [{ key: 'save', label: 'Save', icon: 'save', onClick: saveModel }],
+  },
+}
+const submitConfig: Form.FormConfig<Model> = {
+  onSubmit: ({ model }) => saveModel(model),
+}
+const currentProps: TableApi.TableProps<Model> = {
+  data: [form.model.value],
+  config: callbackConfig,
+  size: 'small',
+  minHeight: 100,
+  onSave: saveModel,
+  'onSelection-change': (_keys, rows) => rows.map(row => row.name),
+}
+const unsupportedProps: TableApi.TableProps<Model> = {
+  // @ts-expect-error 旧编辑属性不属于当前公开运行契约。
+  editable: true,
+}
+void [
+  directAction,
+  directDropdown,
+  submitConfig,
+  currentProps,
+  unsupportedProps,
+]
 void [
   deepField,
   arrayField,
@@ -145,3 +185,10 @@ void [
   fieldMetadata,
   dynamicField,
 ]
+
+// Generated validation rules must assign directly to the official UI contracts.
+const nativeRule: Naive.FormItemRule = Validation.PRESET_RULES.required('Name')
+const nativeRules: Naive.FormRules = {
+  name: [nativeRule, ...Validation.NAIVE_COMBOS.username()],
+}
+void nativeRules

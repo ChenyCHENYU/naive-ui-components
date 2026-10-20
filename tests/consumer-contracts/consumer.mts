@@ -1,5 +1,14 @@
 import { computed, createApp, h, ref } from 'vue'
-import { NInput } from 'naive-ui'
+import type {
+  ActionItem,
+  ActionDropdownItem,
+} from '@robot-admin/naive-ui-components/C_ActionBar'
+import type {
+  TableProps,
+  TableConfig,
+} from '@robot-admin/naive-ui-components/C_Table'
+import { NInput, type FormItemRule, type FormRules } from 'naive-ui'
+import { PRESET_RULES, NAIVE_COMBOS } from '@robot-admin/form-validate'
 import Components, {
   C_Form,
   C_Table,
@@ -143,6 +152,47 @@ const dynamicField: FormOption<object> = {
   prop: 'applicationField',
   value: { arbitrary: true },
 }
+const directAction: ActionItem = { key: 'save', onClick: form.submit }
+const directDropdown: ActionDropdownItem = {
+  key: 'save',
+  label: 'Save',
+  onClick: form.submit,
+}
+const saveModel = async (model: Model) => model
+const callbackConfig: TableConfig<Model> = {
+  edit: { onSave: saveModel },
+  display: { maxHeight: 400, scrollX: 1200 },
+  actions: {
+    custom: [{ key: 'save', label: 'Save', icon: 'save', onClick: saveModel }],
+  },
+}
+const submitConfig: FormConfig<Model> = {
+  onSubmit: ({ model }) => saveModel(model),
+}
+const currentProps: TableProps<Model> = {
+  data: [form.model.value],
+  config: callbackConfig,
+  size: 'small',
+  minHeight: 100,
+  onSave: saveModel,
+  'onSelection-change': (_keys, rows) => rows.map(row => row.name),
+}
+const unsupportedScroll: TableProps<Model> = {
+  // @ts-expect-error Use config.display.scrollX; the runtime manages scrolling.
+  scrollX: 1200,
+}
+void unsupportedScroll
+const unsupportedProps: TableProps<Model> = {
+  // @ts-expect-error 旧编辑属性不属于当前公开运行契约。
+  editable: true,
+}
+void [
+  directAction,
+  directDropdown,
+  submitConfig,
+  currentProps,
+  unsupportedProps,
+]
 void [
   deepField,
   arrayField,
@@ -153,3 +203,10 @@ void [
   fieldMetadata,
   dynamicField,
 ]
+
+// Generated validation rules must assign directly to the official UI contracts.
+const nativeRule: FormItemRule = PRESET_RULES.required('Name')
+const nativeRules: FormRules = {
+  name: [nativeRule, ...NAIVE_COMBOS.username()],
+}
+void nativeRules

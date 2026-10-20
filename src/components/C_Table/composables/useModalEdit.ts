@@ -16,8 +16,8 @@ export interface ModalEditOptions<T extends object = DataRecord> {
     editingData: T,
     rowIndex: number,
     originalKey?: DataTableRowKey
-  ) => void | Promise<void>
-  onCancel?: (originalData: T, rowIndex: number) => void | Promise<void>
+  ) => unknown
+  onCancel?: (originalData: T, rowIndex: number) => unknown
 }
 
 /** Modal edit state with lossless snapshots and retry-safe async saves. */

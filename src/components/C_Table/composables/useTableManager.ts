@@ -45,8 +45,8 @@ interface TableManagerConfig {
     rowData: DataRecord,
     rowIndex: number,
     columnKey?: string
-  ) => void | Promise<void>
-  onEditCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
+  ) => unknown
+  onEditCancel?: (rowData: DataRecord, rowIndex: number) => unknown
   onEditError?: (error: unknown) => void
 
   /* 展开配置 */

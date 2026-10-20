@@ -68,7 +68,7 @@ export interface LayoutCallbacks<T extends object = FormRecord> {
   onSubmit?: (
     payload: SubmitEventPayload<T>,
     context?: FormSubmitContext
-  ) => MaybePromise<void>
+  ) => unknown
   onError?: (error: unknown, context: FormErrorContext) => void
 }
 

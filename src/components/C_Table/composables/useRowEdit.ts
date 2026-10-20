@@ -30,8 +30,8 @@ export interface RowEditOptions {
     rowData: DataRecord,
     rowIndex: number,
     originalKey?: DataTableRowKey
-  ) => void | Promise<void>
-  onCancel?: (rowData: DataRecord, rowIndex: number) => void | Promise<void>
+  ) => unknown
+  onCancel?: (rowData: DataRecord, rowIndex: number) => unknown
   /** 列配置（用于提取校验规则） */
   columns?: () => TableColumn[]
 }

@@ -305,7 +305,7 @@
     TableColumn,
     TableEmits,
     TableInstance,
-    TableRowKey,
+    TableRuntimeProps,
     DataRecord,
     MaybeRefLike,
   } from './types'
@@ -313,7 +313,6 @@
     resolveConfig,
     createEditModeChecker,
     type TableConfig,
-    type CrudBinding,
   } from './composables/useTableConfig'
   import { useTableManager } from './composables/useTableManager'
   import { usePagination } from './composables/usePagination'
@@ -349,37 +348,11 @@
 
   /* ================= Props（极简 API） ================= */
 
-  const props = withDefaults(
-    defineProps<{
-      /** 根容器 class；普通 class/style 仍按既有契约转发到 NDataTable。 */
-      wrapperClass?: import('vue').HTMLAttributes['class']
-      /** 填满已确定高度的根容器，并为工具栏和分页预留空间。 */
-      flexHeight?: boolean
-      /** 原生横向虚拟滚动；未声明业务列宽时仍提供可计算的数值兜底。 */
-      virtualScrollX?: boolean
-      /** 列配置（crud 模式下可省略） */
-      columns?: TableColumn<T>[]
-      /** 数据源（crud 模式下可省略） */
-      data?: MaybeRefLike<T[]>
-      /** 加载状态 */
-      loading?: MaybeRefLike<boolean>
-      /** 行唯一键 */
-      rowKey?: TableRowKey<T>
-      /** 统一功能配置（edit / selection / expand / pagination / dynamicRows / toolbar / display） */
-      config?: TableConfig<T, C>
-      /** Native pagination compatibility path; takes ownership over config.pagination. */
-      pagination?: PaginationProps | false
-      /** Native remote mode, used with the native pagination compatibility path. */
-      remote?: boolean
-      /** CRUD 绑定 — 传入 useTableCrud() 的返回值，自动接管 data/columns/loading/actions/pagination/events */
-      crud?: CrudBinding<T>
-    }>(),
-    {
-      config: () => ({}),
-      pagination: undefined,
-      remote: undefined,
-    }
-  )
+  const props = withDefaults(defineProps<TableRuntimeProps<T, C>>(), {
+    config: () => ({}),
+    pagination: undefined,
+    remote: undefined,
+  })
 
   const publicEmit = defineEmits<TableEmits<T, C>>()
 
@@ -806,10 +779,7 @@
   const batchTasks = useActionTask<string>()
   type BatchAction = {
     key: string
-    onClick: (
-      keys: DataTableRowKey[],
-      rows: DataRecord[]
-    ) => void | Promise<void>
+    onClick: (keys: DataTableRowKey[], rows: DataRecord[]) => unknown
   }
 
   /** 处理批量操作按钮点击 */

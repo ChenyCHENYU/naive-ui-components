@@ -482,7 +482,9 @@ function preview() {
 
 ### 表格分页、选择与导出
 
-`TableProps<Row>` 支持 `config`、`crud`、`remote` 与 `virtualScrollX`；CRUD 绑定已提供列和数据时不必重复传入。旧编辑、展开和选择属性类型仅保留兼容声明，组件功能统一放在 `config` 中。
+`TableProps<Row>` 支持 `config`、`crud`、`remote` 与 `virtualScrollX`；CRUD 绑定已提供列和数据时不必重复传入。`TableProps` 与组件共用实际运行属性，并保留 `size`、`minHeight` 等原生显示属性和真实事件监听器。从 0.19 起，主契约不再接受未生效的旧属性（如 `editable`、`editMode`、`onLoadExpandData`、`enableSelection`）；分别迁移到 `config.edit`、`config.expand`、`config.selection`。高度上限和横向滚动使用 `config.display.maxHeight` / `config.display.scrollX`；顶层同名属性会被内部绑定覆盖，因此不再列入主契约。独立旧类型仍保留弃用声明。
+
+表单 `onSubmit`、表格 `onSave` 和操作按钮 `onClick` 可直接传入业务函数，例如 `onClick: form.submit` 或 `onSave: saveRow`，即使函数返回 `Promise<Row>` 或 `Promise<boolean>` 也无需包装。组件等待异步完成以维护 loading、并发和错误状态；这些回调的返回值不参与业务判断。返回值有语义的切换守卫继续保留自己的布尔契约。
 
 新页面统一通过 `config.pagination` 配置分页；远程表格直接使用上例 `useTableQuery().bindings`，分页、总数、loading 与请求只维护一份状态。兼容路径 `:pagination="..."` 由 Naive 原生分页负责；只要显式传入该 prop（包括 `false`），它就优先于 `config.pagination`，组件不会再显示第二个分页器。原生远程模式同时传 `remote` 并自行管理请求及原生更新事件。
 

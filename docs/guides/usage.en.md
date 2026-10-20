@@ -421,7 +421,9 @@ Read `TimeExpose.startTime/endTime/singleTime` directly as numbers or null, and 
 
 ### Table pagination, selection, and export
 
-`TableProps<Row>` includes `config`, `crud`, `remote`, and `virtualScrollX`; columns and data may be omitted when supplied by CRUD. Legacy edit, expansion, and selection prop types remain as compatibility declarations; component features belong in `config`.
+`TableProps<Row>` includes `config`, `crud`, `remote`, and `virtualScrollX`; columns and data may be omitted when supplied by CRUD. `TableProps` shares runtime props with the component and retains native display attributes such as `size` / `minHeight` and actual event listeners. Since 0.19 it rejects previously ignored legacy props (`editable`, `editMode`, `onLoadExpandData`, `enableSelection`); use `config.edit`, `config.expand`, and `config.selection`. Use `config.display.maxHeight` and `config.display.scrollX` for height limits and horizontal scrolling; top-level attributes are overridden internally and are excluded from the main contract. Standalone deprecated types remain available.
+
+Form submission, table save, and action callbacks accept business return values such as `Promise<Row>` or `Promise<boolean>` directly. For example, use `onClick: form.submit` or `onSave: saveRow`. The component waits for asynchronous completion and retains its loading, concurrency, and error handling; callback results are ignored. Boolean guards keep their separate result contract.
 
 Use `config.pagination` for new pages. For remote tables, bind the `useTableQuery().bindings` shown above so pagination, totals, loading, and requests have one owner. The compatibility `:pagination="..."` prop delegates pagination to Naive UI. Explicitly passing that prop, including `false`, takes precedence over `config.pagination`; the component does not render a second pager. With native remote pagination, also pass `remote` and manage requests and native update events yourself.
 

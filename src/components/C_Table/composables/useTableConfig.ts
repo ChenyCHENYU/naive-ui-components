@@ -122,13 +122,9 @@ export interface EditConfig<T extends object = DataRecord> {
   modalTitle?: string
   modalWidth?: number
   /** 保存前回调；抛出异常会保留编辑态，便于修正或重试 */
-  onSave?: (
-    rowData: T,
-    rowIndex: number,
-    columnKey?: string
-  ) => void | Promise<void>
+  onSave?: (rowData: T, rowIndex: number, columnKey?: string) => unknown
   /** 取消编辑回调 */
-  onCancel?: (rowData: T, rowIndex: number) => void | Promise<void>
+  onCancel?: (rowData: T, rowIndex: number) => unknown
   /** 编辑或保存失败回调 */
   onError?: (error: unknown) => void
 }
@@ -232,7 +228,7 @@ export interface ErrorConfig {
   /** 错误描述文案 */
   message?: string
   /** 重试回调 */
-  onRetry?: () => void | Promise<void>
+  onRetry?: () => unknown
 }
 
 /** 批量操作配置 */
@@ -248,10 +244,7 @@ export interface BatchActionsConfig<T extends object = DataRecord> {
     label: string
     icon?: string
     type?: string
-    onClick: (
-      selectedKeys: DataTableRowKey[],
-      selectedRows: T[]
-    ) => void | Promise<void>
+    onClick: (selectedKeys: DataTableRowKey[], selectedRows: T[]) => unknown
   }>
 }
 

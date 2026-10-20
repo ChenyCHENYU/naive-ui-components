@@ -26,7 +26,8 @@ export interface ActionDropdownItem {
   icon?: string
   disabled?: ActionState
   show?: ActionState
-  onClick?: () => void | Promise<void>
+  /** 返回值忽略；Promise 用于执行锁、loading 与错误传播。 */
+  onClick?: () => unknown
 }
 
 export interface ActionItem {
@@ -45,7 +46,8 @@ export interface ActionItem {
   dropdown?: ActionDropdownItem[]
   /** 是否自动显示 loading；执行期间始终阻止同 key 动作重复触发。 */
   autoLoading?: boolean
-  onClick?: () => void | Promise<void>
+  /** 返回值忽略；Promise 用于执行锁、loading 与错误传播。 */
+  onClick?: () => unknown
   /** 视觉属性透传。disabled/loading 与动作状态合并；onClick 作为原生点击观察者保留。 */
   buttonProps?: Partial<ButtonProps>
   directives?: Array<

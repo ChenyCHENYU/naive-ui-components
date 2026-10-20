@@ -21,7 +21,7 @@ export interface CellEditOptions {
     rowIndex: number,
     columnKey: string,
     originalKey?: DataTableRowKey
-  ) => void | Promise<void>
+  ) => unknown
   /** 列配置（用于提取校验规则） */
   columns?: () => TableColumn[]
 }
