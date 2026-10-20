@@ -464,15 +464,23 @@ function preview() {
 
 `setValues(values, shouldValidate = false)` 在挂载后直接调用表单实例，挂载前更新绑定模型；`getValues()` 返回副本。`reset()` 恢复当前干净快照，`markAsClean()` 可更新该基线。设置嵌套对象时传完整对象，或使用实例的 `setFieldValue('profile.email', value)` 修改单个路径。
 
+`useCForm().validate()` 必须在 `formRef` 绑定后调用；挂载前或卸载后会拒绝执行，不能将未校验视为通过。`submit()` 此时返回 `false`，挂载前仍可用 `setValues()`、`getValues()` 和 `reset()` 管理草稿。
+
 组件模板 ref 的公开状态已由 Vue 解包：脚本中读取 `formRef.value?.isSubmitting`、`formRef.value?.isDirty` 和 `formRef.value?.formModel`，无需再取一层 `.value`。助手返回的 `model`、`formRef`、`bindings` 本身仍是 Vue ref。
 
 普通、行内、网格布局同步提供；卡片、标签、步骤、动态和自定义布局按需加载。异步布局尚未挂载时，`submit()` 返回 `false`，`validate()` 拒绝执行，避免把未呈现的字段当成通过校验。标签和步骤布局就绪后会挂载各面板字段，整表提交也校验未访问的面板；异步选项请求按字段隔离，更新请求后晚到的旧结果不会覆盖新选项。
 
+`C_Tree` 的公开实例遵循同一规则：`ref<TreeExpose>()` 后直接读取 `tree.value?.selectedKeys`、`expandedKeys` 和 `checkedKeys` 数组，受控状态仍推荐通过 `v-model:*` 管理。独立 `useTreeOperations()` 返回的内部状态保持 Ref。
+
 ### 表格分页、选择与导出
+
+`TableProps<Row>` 支持 `config`、`crud`、`remote` 与 `virtualScrollX`；CRUD 绑定已提供列和数据时不必重复传入。旧编辑、展开和选择属性类型仅保留兼容声明，组件功能统一放在 `config` 中。
 
 新页面统一通过 `config.pagination` 配置分页；远程表格直接使用上例 `useTableQuery().bindings`，分页、总数、loading 与请求只维护一份状态。兼容路径 `:pagination="..."` 由 Naive 原生分页负责；只要显式传入该 prop（包括 `false`），它就优先于 `config.pagination`，组件不会再显示第二个分页器。原生远程模式同时传 `remote` 并自行管理请求及原生更新事件。
 
 本地数据先筛选、排序，再分页；远程模式显示服务器返回的这一页，不再次切片。`crossPageSelection: true` 保留已访问远程页中选中的行对象；`selectAll()` 只追加当前加载页，不能代表选中尚未获取的全部服务器记录。批量操作用 `getSelectedRows()`／`@selection-change` 的行对象；需要服务器“全部命中”操作时由业务提供查询条件或服务端任务。
+
+`TableInstance<Row>` 的 `selectRow()`、`getSelectedRows()` 和 `clearSelection()` 会自动使用当前选择模式。需要响应式数量时读取 `table.value?.crossPageSelection.selectedCount.value`；嵌套对象的 Ref 不会被 Vue 顶层解包。`getManager()` 保留为高级兼容入口，常用操作不必依赖内部管理器。
 
 导出范围应显式选择：
 
@@ -503,6 +511,28 @@ const fullExport = defineTableConfig({
 动态行新增、复制必须生成与表格一致的唯一键。优先传字符串 `row-key="uuid"`；若表格必须传函数 `:row-key="row => row.uuid"`，同时指定 `config.dynamicRows.rowKey: 'uuid'`，让新增和复制知道应生成哪个字段。组件不推断任意复合键；键缺失或重复时拒绝插入，关闭动态行后相关实例方法不修改数据。
 
 ### 搜索与远程表格连接
+
+选择字段沿用 `list` 和 `attrs`：多选只需 `attrs: { multiple: true }`，模型使用数组。`list.value` 支持字符串、数字和布尔值，展示适配由组件完成，`false`、`0` 和空值保持区分，搜索回调不会收到内部编码值。
+
+```ts
+const filters: SearchFormItem[] = [
+  {
+    type: 'select',
+    prop: 'roles',
+    attrs: { multiple: true },
+    list: [{ label: '管理员', value: 'admin' }],
+  },
+  {
+    type: 'select',
+    prop: 'enabled',
+    list: [
+      { label: '停用', value: false },
+      { label: '启用', value: true },
+    ],
+  },
+]
+// 对应模型：{ roles: ['admin'], enabled: false }
+```
 
 搜索表单使用 `C_FormSearch`，推荐 `v-model`；旧 `formParams` 继续兼容。业务请求放在 `config.onSearch`，`@search` 用于通知；两处同时发请求会由业务执行两次。下面将请求、分页和 loading 交给一份表格控制器：
 

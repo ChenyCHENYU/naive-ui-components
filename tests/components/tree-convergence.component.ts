@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { h, reactive, toRaw } from 'vue'
+import { h, isRef, reactive, toRaw } from 'vue'
 import { NConfigProvider, NTree, NInput, darkTheme } from 'naive-ui'
 import C_Tree from '../../src/components/C_Tree/index.vue'
 import type {
@@ -435,4 +435,35 @@ describe('C_Tree state and native capability contracts', () => {
     await flushPromises()
     expect(second.emitted('load-error')).toBeUndefined()
   })
+})
+
+test('tree public state is unwrapped and stays current after instance operations', async () => {
+  const wrapper = mount(C_Tree, {
+    props: {
+      data: nodes(),
+      defaultSelectedKeys: [1],
+      defaultExpandedKeys: [0],
+      defaultCheckedKeys: [1],
+      treeProps: { checkable: true },
+    },
+  })
+  const tree = api(wrapper)
+  expect(isRef(tree.selectedKeys)).toBe(false)
+  expect(tree.selectedKeys).toEqual([1])
+  expect(tree.expandedKeys).toEqual([0])
+  expect(tree.checkedKeys).toEqual([1])
+  tree.clearSelection()
+  tree.collapseAll()
+  tree.clearChecked()
+  await flushPromises()
+  expect(tree.selectedKeys).toEqual([])
+  expect(tree.expandedKeys).toEqual([])
+  expect(tree.checkedKeys).toEqual([])
+  tree.selectNode(1)
+  tree.expandAll()
+  tree.setCheckedKeys([1])
+  await flushPromises()
+  expect(tree.selectedKeys).toEqual([1])
+  expect(tree.expandedKeys).toEqual([0])
+  expect(tree.checkedKeys).toEqual([1])
 })

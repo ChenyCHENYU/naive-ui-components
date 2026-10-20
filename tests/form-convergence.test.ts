@@ -501,3 +501,23 @@ test('useCForm convenience operations work before and after mounting with isolat
   helper.reset()
   expect(helper.model.value).toEqual({ name: 'Clean', count: 2 })
 })
+
+test('useCForm rejects validation until a form is bound and forwards real validation failures', async () => {
+  const helper = useCForm({ initialValues: { name: '' }, options: [] })
+  await expect(helper.validate()).rejects.toThrow('C_Form is not mounted')
+  expect(await helper.submit()).toBe(false)
+  let error: Error | undefined = new Error('required')
+  let calls = 0
+  helper.formRef.value = {
+    validate: async () => {
+      calls++
+      if (error) throw error
+    },
+  } as unknown as FormInstance<{ name: string }>
+  await expect(helper.validate()).rejects.toThrow('required')
+  error = undefined
+  await expect(helper.validate()).resolves.toBeUndefined()
+  expect(calls).toBe(2)
+  helper.formRef.value = null
+  await expect(helper.validate()).rejects.toThrow('C_Form is not mounted')
+})

@@ -1,4 +1,4 @@
-import type { Ref, VNodeChild } from 'vue'
+import type { VNodeChild } from 'vue'
 import type {
   TreeProps as NaiveTreeProps,
   TreeInst,
@@ -103,9 +103,10 @@ export interface TreeExpose {
   getCheckedData: TreeInst['getCheckedData']
   getIndeterminateData: TreeInst['getIndeterminateData']
   scrollTo: TreeInst['scrollTo']
-  expandedKeys: Ref<TreeKey[]>
-  selectedKeys: Ref<TreeKey[]>
-  checkedKeys: Ref<TreeKey[]>
+  /** Vue 公开实例会解包顶层 Ref；这些属性直接读取数组。 */
+  expandedKeys: TreeKey[]
+  selectedKeys: TreeKey[]
+  checkedKeys: TreeKey[]
 }
 export interface TreeEmits {
   'update:searchPattern': [pattern: string]

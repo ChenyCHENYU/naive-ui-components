@@ -9,7 +9,11 @@ import type {
   DataTableBaseColumn,
   DataTableRowKey,
   FormItemRule,
+  PaginationProps,
 } from 'naive-ui'
+import type { TableConfig, CrudBinding } from './composables/useTableConfig'
+import type { UseCrossPageSelectionReturn } from './composables/useCrossPageSelection'
+import type { useTableManager } from './composables/useTableManager'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
 
@@ -323,6 +327,7 @@ export interface TableDisplayProps {
   size?: 'small' | 'medium' | 'large'
 }
 
+/** @deprecated 旧类型兼容；组件功能请使用 config.edit。 */
 export interface TableEditProps<T extends object = DataRecord> {
   editable?: boolean
   editMode?: EditMode
@@ -338,6 +343,7 @@ export interface TableEditProps<T extends object = DataRecord> {
   columnWidth?: number
 }
 
+/** @deprecated 旧类型兼容；组件功能请使用 config.expand。 */
 export interface TableExpandProps<
   T extends object = DataRecord,
   C = DataRecord,
@@ -354,6 +360,7 @@ export interface TableExpandProps<
   defaultExpandedKeys?: DataTableRowKey[]
 }
 
+/** @deprecated 旧类型兼容；组件功能请使用 config.selection。 */
 export interface TableSelectionProps<
   T extends object = DataRecord,
   C = DataRecord,
@@ -370,12 +377,20 @@ export interface TableSelectionProps<
 /* 组合所有属性的完整表格属性接口 */
 export interface TableProps<T extends object = DataRecord, C = DataRecord>
   extends
-    TableBaseProps<T>,
+    Partial<TableBaseProps<T>>,
     TableDisplayProps,
     TableEditProps<T>,
     TableExpandProps<T, C>,
     TableSelectionProps<T, C> {
-  pagination?: PaginationConfig | boolean
+  /** 功能配置的统一入口。 */
+  config?: TableConfig<T>
+  /** CRUD 模式自动提供 columns / data / loading，可省略对应属性。 */
+  crud?: CrudBinding<T>
+  /** 原生分页入口；声明后优先于 config.pagination。 */
+  pagination?: PaginationProps | false
+  remote?: boolean
+  virtualScrollX?: boolean
+  /** @deprecated 使用 config.actions。 */
   actions?: SimpleTableActions<T>
   /** 根容器 class，原生 class/style 仍转发到内部表格。 */
   wrapperClass?: import('vue').HTMLAttributes['class']
@@ -500,6 +515,19 @@ export interface TableInstance<T extends object = DataRecord, C = DataRecord>
     TableDynamicRowsMethods<T>,
     TablePaginationMethods {
   exportData: () => Promise<void>
+  /** 高级兼容入口；常规操作优先使用实例上的选择、展开和编辑方法。 */
+  getManager: () => ReturnType<typeof useTableManager>['stateManager']
+  /** 此嵌套对象中的 Ref 保持响应式，读取时使用 .value。 */
+  crossPageSelection: Pick<
+    UseCrossPageSelectionReturn<T>,
+    | 'selectedKeys'
+    | 'selectedCount'
+    | 'select'
+    | 'unselect'
+    | 'selectAll'
+    | 'clearAll'
+    | 'getSelectedRows'
+  > & { enabled: ComputedRef<boolean> }
 }
 
 /* ================= useTableExpand Hook类型 ================= */

@@ -7,7 +7,13 @@
     type ComponentDensity,
   } from '@robot-admin/naive-ui-components/C_FormSearch'
 
-  const query = ref<SearchFormParams>({ name: '', pageNum: 1, pageSize: 10 })
+  const query = ref<SearchFormParams>({
+    name: '',
+    enabled: false,
+    roles: ['admin'],
+    pageNum: 1,
+    pageSize: 10,
+  })
   const density: ComponentDensity = 'compact'
   const config: SearchConfig = { density }
   const onReset = (params: SearchFormParams) => {
@@ -19,7 +25,20 @@
 <template>
   <C_FormSearch
     v-model="query"
-    :form-item-list="[{ type: 'input', prop: 'name' }]"
+    :form-item-list="[
+      { type: 'input', prop: 'name' },
+      {
+        type: 'select',
+        prop: 'enabled',
+        list: [{ label: '停用', value: false }],
+      },
+      {
+        type: 'select',
+        prop: 'roles',
+        attrs: { multiple: true },
+        list: [{ label: '管理员', value: 'admin' }],
+      },
+    ]"
     :config="config"
     @reset="onReset"
   />

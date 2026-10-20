@@ -48,10 +48,14 @@ describe('C_Table combined feature contracts', () => {
       'first',
       'second',
     ])
+    expect(instance.crossPageSelection.enabled.value).toBe(true)
+    expect(instance.crossPageSelection.selectedCount.value).toBe(2)
+    expect([...instance.crossPageSelection.selectedKeys.value]).toEqual([1, 2])
     instance.clearSelection()
     await flushPromises()
     expect(wrapper.emitted('selection-change')).toHaveLength(3)
     expect(instance.getSelectedRows()).toEqual([])
+    expect(instance.crossPageSelection.selectedCount.value).toBe(0)
   })
 
   test('failed expansion makes one request and offers an explicit retry', async () => {

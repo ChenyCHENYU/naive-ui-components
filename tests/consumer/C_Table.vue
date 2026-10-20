@@ -45,6 +45,7 @@
   } from '@robot-admin/naive-ui-components'
   import {
     type TableInstance,
+    type TableProps,
     type ComponentDensity,
     resolveComponentDensity,
   } from '@robot-admin/naive-ui-components/C_Table'
@@ -60,6 +61,15 @@
   }
 
   declare const crud: CrudBinding<EmployeeRow>
+  const crudProps: TableProps<EmployeeRow> = { crud, config: { edit: 'row' } }
+  const nativeProps: TableProps<EmployeeRow> = {
+    columns: [],
+    data: [],
+    remote: true,
+    virtualScrollX: true,
+    pagination: { page: 1, pageSize: 10, itemCount: 20 },
+  }
+  void [crudProps, nativeProps]
 
   interface ExternalTableColumn<T> {
     key?: string
@@ -85,6 +95,14 @@
   const exportCurrentRows: () => Promise<void> = tableApi.exportData
   const retryRow: (key: string | number) => Promise<void> = tableApi.retryExpand
   tableApi.invalidateExpand()
+  const crossPageRows: ChildRow[] =
+    tableApi.crossPageSelection.getSelectedRows()
+  const selectedCount: number = tableApi.crossPageSelection.selectedCount.value
+  const selectedKeys: Set<string | number> =
+    tableApi.crossPageSelection.selectedKeys.value
+  const crossPageEnabled: boolean = tableApi.crossPageSelection.enabled.value
+  tableApi.getManager().clearAllSelections()
+  void [crossPageRows, selectedCount, selectedKeys, crossPageEnabled]
 
   // 原生表格迁移后继续提供排序与筛选的强类型配置。
   const searchableColumns: TableColumn<ChildRow>[] = [

@@ -79,12 +79,12 @@
 
           <NSelect
             v-if="item.type === 'select'"
-            :value="selectValue(item.prop)"
-            @update:value="value => setFieldValue(item.prop, value)"
+            :value="selectBindings.get(item.prop)?.value"
+            @update:value="value => setSelectValue(item.prop, value)"
             :placeholder="item.placeholder || '请选择'"
             clearable
             :size="resolvedSize"
-            :options="normalizeOptions(item.list) as any"
+            :options="selectBindings.get(item.prop)?.options"
             v-bind="item.attrs"
           />
 
@@ -186,11 +186,8 @@
   } from 'naive-ui'
   import { useSearchState } from './composables/useSearchState'
   import { resolveDateRangeInput } from './dateRange'
-  import type {
-    SearchOptionItem,
-    FormSearchEmits,
-    FormSearchProps,
-  } from './types'
+  import { createSearchSelectBinding } from './select'
+  import type { FormSearchEmits, FormSearchProps } from './types'
 
   defineOptions({ name: 'C_FormSearch' })
 
@@ -239,22 +236,28 @@
     }),
   })
 
-  const normalizeOptions = (list?: SearchOptionItem[]) =>
-    list?.map(opt => ({
-      ...opt,
-      label: opt.label ?? opt.labelDefault ?? '',
-      value:
-        opt.value !== undefined ? opt.value : (opt.label ?? opt.labelDefault),
-    }))
+  const selectBindings = computed(
+    () =>
+      new Map(
+        visibleFields.value
+          .filter(item => item.type === 'select')
+          .map(item => [
+            item.prop,
+            createSearchSelectBinding(item.list, formParams.value[item.prop]),
+          ])
+      )
+  )
 
   const inputValue = (field: string): string | null => {
     const value = formParams.value[field]
     return typeof value === 'string' ? value : null
   }
 
-  const selectValue = (field: string): string | number | null => {
-    const value = formParams.value[field]
-    return typeof value === 'string' || typeof value === 'number' ? value : null
+  const setSelectValue = (
+    field: string,
+    value: string | number | Array<string | number> | null
+  ): void => {
+    setFieldValue(field, selectBindings.value.get(field)?.decode(value) ?? null)
   }
 
   const setFieldValue = (field: string, value: unknown): void => {

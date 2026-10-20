@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, ref } from 'vue'
-import { NButton, NDropdown } from 'naive-ui'
+import { NButton, NDropdown, NSelect } from 'naive-ui'
 import C_FormSearch from '../../src/components/C_FormSearch/index.vue'
 import C_ActionBar from '../../src/components/C_ActionBar/index.vue'
 import type { SearchFormParams } from '../../src/components/C_FormSearch/types'
@@ -405,4 +405,104 @@ test('ActionBar keeps normal and primary button sizes consistent and follows run
   expect(wrapper.getComponent(NButton).props('size')).toBe('large')
   expect(wrapper.get('.c-icon').attributes('style')).toContain('18px')
   wrapper.unmount()
+})
+
+test('search selects retain arrays and round-trip boolean values without changing business types', async () => {
+  const onSearch = vi.fn()
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      modelValue: { roles: ['admin', 0], enabled: false },
+      formItemList: [
+        {
+          type: 'select',
+          prop: 'roles',
+          attrs: { multiple: true },
+          list: [
+            { label: '管理员', value: 'admin' },
+            { label: '访客', value: 0 },
+          ],
+        },
+        {
+          type: 'select',
+          prop: 'enabled',
+          list: [
+            { label: '启用', value: true },
+            { label: '停用', value: false },
+          ],
+        },
+      ],
+      config: { onSearch },
+    },
+  })
+  const [roles, enabled] = wrapper.findAllComponents(NSelect)
+  expect(roles.props('value')).toEqual(['admin', 0])
+  expect(enabled.text()).toContain('停用')
+  expect(typeof enabled.props('value')).toBe('string')
+  expect(await wrapper.vm.searchFn()).toBe(true)
+  expect(onSearch).toHaveBeenLastCalledWith({
+    roles: ['admin', 0],
+    enabled: false,
+  })
+
+  const options = enabled.props('options')!
+  enabled.vm.$emit('update:value', options[0].value, options[0])
+  roles.vm.$emit('update:value', [0], [])
+  await nextTick()
+  expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual({
+    roles: [0],
+    enabled: true,
+  })
+  expect(await wrapper.vm.searchFn()).toBe(true)
+  expect(onSearch).toHaveBeenLastCalledWith({ roles: [0], enabled: true })
+
+  await wrapper.setProps({ modelValue: { roles: ['admin'], enabled: false } })
+  expect(roles.props('value')).toEqual(['admin'])
+  expect(enabled.text()).toContain('停用')
+  roles.vm.$emit('update:value', [], [])
+  enabled.vm.$emit('update:value', null, null)
+  await nextTick()
+  expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual({
+    roles: [],
+    enabled: null,
+  })
+})
+
+test('search boolean encoding keeps false, zero and conflicting string options distinct in multiple mode', async () => {
+  const collision = '__c_form_search_boolean_false__'
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      modelValue: { flags: [false, 0, collision, true] },
+      formItemList: [
+        {
+          type: 'select',
+          prop: 'flags',
+          attrs: { multiple: true },
+          defaultValue: [false],
+          list: [
+            { label: '否', value: false },
+            { label: '零', value: 0 },
+            { label: '字符串', value: collision },
+            { label: '是', value: true },
+          ],
+        },
+      ],
+    },
+  })
+  const select = wrapper.getComponent(NSelect)
+  const options = select.props('options')!
+  expect(new Set(options.map(option => option.value)).size).toBe(4)
+  expect(select.props('value')).toEqual(options.map(option => option.value))
+  select.vm.$emit(
+    'update:value',
+    options.map(option => option.value),
+    options
+  )
+  await nextTick()
+  expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual({
+    flags: [false, 0, collision, true],
+  })
+  wrapper.vm.cleanFn()
+  await nextTick()
+  expect(select.props('value')).toEqual([options[0].value])
+  expect(wrapper.emitted('reset')?.at(-1)?.[0]).toEqual({ flags: [false] })
 })

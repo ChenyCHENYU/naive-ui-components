@@ -403,11 +403,17 @@ function preview() {
 
 `setValues(values, shouldValidate = false)` delegates to the mounted form instance, or updates the bound model before mounting. `getValues()` returns a copy. `reset()` restores the current clean snapshot; `markAsClean()` updates that baseline. Supply a complete nested object when setting it, or call the instance's `setFieldValue('profile.email', value)` for one path.
 
+`useCForm().validate()` rejects before `formRef` is bound or after unmount. `submit()` returns `false` in that state. Draft `setValues()`, `getValues()`, and `reset()` remain available before mounting.
+
 Vue unwraps state exposed through a component template ref: scripts read `formRef.value?.isSubmitting`, `formRef.value?.isDirty`, and `formRef.value?.formModel` without a second `.value`. The helper's own `model`, `formRef`, and `bindings` remain Vue refs.
 
 Default, inline, and grid layouts are synchronous. Card, tabs, steps, dynamic, and custom layouts load on demand. Before an asynchronous layout mounts, `submit()` returns `false` and `validate()` rejects rather than accepting fields that have not rendered. Once ready, tab and step layouts mount fields across their panels, so full submission also validates unvisited panels. Async option requests are isolated per field; late responses from superseded requests cannot replace newer options.
 
+For `C_Tree`, read `tree.value?.selectedKeys`, `expandedKeys`, and `checkedKeys` directly as arrays with `ref<TreeExpose>()`. Prefer `v-model:*` for controlled state. The standalone `useTreeOperations()` composable retains internal refs.
+
 ### Table pagination, selection, and export
+
+`TableProps<Row>` includes `config`, `crud`, `remote`, and `virtualScrollX`; columns and data may be omitted when supplied by CRUD. Legacy edit, expansion, and selection prop types remain as compatibility declarations; component features belong in `config`.
 
 Use `config.pagination` for new pages. For remote tables, bind the `useTableQuery().bindings` shown above so pagination, totals, loading, and requests have one owner. The compatibility `:pagination="..."` prop delegates pagination to Naive UI. Explicitly passing that prop, including `false`, takes precedence over `config.pagination`; the component does not render a second pager. With native remote pagination, also pass `remote` and manage requests and native update events yourself.
 
@@ -442,6 +448,8 @@ Failed asynchronous expansion retains its error state and provides retry in the 
 Dynamic add/copy operations must generate keys consistent with the table. Prefer a string `row-key="uuid"`. If the table requires `:row-key="row => row.uuid"`, also set `config.dynamicRows.rowKey: 'uuid'` so add/copy operations know which field to generate. Arbitrary composite keys are not inferred. Missing or duplicate keys reject insertion; the related instance methods do not mutate data when dynamic rows are disabled.
 
 ### Connect search to a remote table
+
+Select fields use the existing `list` and `attrs` entries. Set `attrs: { multiple: true }` with an array model for multiple selection. Option values support strings, numbers, and booleans; `false`, `0`, and empty values remain distinct. Search callbacks receive original business values without internal encoding. Standard `TableInstance<Row>` selection methods follow the active selection mode; nested `crossPageSelection.selectedCount` remains a ref and needs `.value`.
 
 Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put requests in `config.onSearch` and use `@search` for notification. Sending requests from both paths executes both application handlers. The following example gives a single table controller ownership of requests, pagination, and loading:
 

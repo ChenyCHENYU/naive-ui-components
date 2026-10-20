@@ -1,5 +1,14 @@
 # @robot-admin/naive-ui-components
 
+## 0.17.4
+
+### Patch Changes
+
+- 修复搜索选择字段的多选数组和布尔值回显，搜索、清空、重置及外部模型更新保留原始业务类型，区分 `false`、`0` 与字符串值；沿用 `list` 和 `attrs.multiple`，无需新增配置。
+- 补齐 `TableProps` 的 config / crud / remote / virtualScrollX 与原生分页类型，CRUD 模式不再要求重复列和数据；`TableInstance` 补齐已存在的跨页选择与管理器接口，保留现有运行行为和属性透传。
+- 修正 `TreeExpose` 的公开状态为 Vue 实际解包后的数组，内部组合函数仍使用 Ref；`useCForm().validate()` 在未挂载或卸载后拒绝执行，保留挂载前草稿操作。
+- 增加真实组件回归和发布包消费者类型验证，更新中英文接入说明。
+
 ## 0.17.3
 
 ### Patch Changes

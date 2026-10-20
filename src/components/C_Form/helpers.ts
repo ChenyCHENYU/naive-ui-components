@@ -39,6 +39,7 @@ export interface UseCFormReturn<T extends object> {
     config: FormConfig<T> | undefined
     'onUpdate:modelValue': (value: FormModel<T>) => void
   }>
+  /** 未挂载或已卸载时拒绝校验；请先绑定 formRef。 */
   validate: () => Promise<void>
   submit: () => Promise<boolean>
   reset: () => void
@@ -70,7 +71,10 @@ export function useCForm<T extends object>(
     model,
     formRef,
     bindings,
-    validate: () => formRef.value?.validate() ?? Promise.resolve(),
+    validate: async () => {
+      if (!formRef.value) throw new Error('C_Form is not mounted')
+      await formRef.value.validate()
+    },
     submit: () => formRef.value?.submit() ?? Promise.resolve(false),
     reset: () => {
       if (formRef.value) {

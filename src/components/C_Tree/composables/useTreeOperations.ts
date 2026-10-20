@@ -7,6 +7,7 @@ import {
   onScopeDispose,
   shallowRef,
   toRaw,
+  type Ref,
 } from 'vue'
 import {
   NTag,
@@ -411,7 +412,14 @@ export function useTreeOperations(
     handleExpandedKeysChange([], [], { node: null, action: 'collapse' })
   const handleAdd = () => emit('add')
   const handleRefresh = () => emit('refresh')
-  const expose: TreeExpose = {
+  const expose: Omit<
+    TreeExpose,
+    'expandedKeys' | 'selectedKeys' | 'checkedKeys'
+  > & {
+    expandedKeys: Ref<TreeKey[]>
+    selectedKeys: Ref<TreeKey[]>
+    checkedKeys: Ref<TreeKey[]>
+  } = {
     expandAll,
     collapseAll,
     selectNode: key => handleSelectedKeysChange([key]),

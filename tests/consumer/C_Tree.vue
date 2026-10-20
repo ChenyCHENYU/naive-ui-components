@@ -92,6 +92,12 @@
     void error
     void node
   }
+  const readPublicKeys = (): TreeKey[][] => [
+    tree.value?.selectedKeys ?? [],
+    tree.value?.expandedKeys ?? [],
+    tree.value?.checkedKeys ?? [],
+  ]
+  void readPublicKeys
   const scroll = () => {
     tree.value?.scrollTo({ key: 'frontend' })
     tree.value?.scrollTo(0, 100)

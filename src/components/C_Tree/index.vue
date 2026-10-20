@@ -92,7 +92,7 @@
   import { NInput, NButton, NTree, useThemeVars } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
   import { useTreeOperations } from './composables/useTreeOperations'
-  import type { TreeProps, TreeEmits, TreeExpose, TreeSlots } from './types'
+  import type { TreeProps, TreeEmits, TreeSlots } from './types'
 
   defineOptions({ name: 'C_Tree' })
   const props = withDefaults(defineProps<TreeProps>(), {
@@ -127,7 +127,7 @@
     handleRefresh,
     expose,
   } = useTreeOperations(props, emit, slots)
-  defineExpose<TreeExpose>(expose)
+  defineExpose(expose)
 </script>
 
 <style lang="scss" scoped>
