@@ -8,7 +8,8 @@ const distDir = path.join(root, 'dist')
 const budgets = {
   // 组件自身的 scoped 工具类与图标随包发布，免除宿主生成约束。
   // 0.14 的两个完整编辑工作区增加约 20 KB；预算仍约束全部组件及供应商样式。
-  'style.css': { min: 430 * 1024, max: 580 * 1024 },
+  // 0.21.1 恢复先前丢失的 Markdown 六套主题，增加约 55 KiB。
+  'style.css': { min: 430 * 1024, max: 640 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
   'C_Table.base.css': { min: 30 * 1024, max: 65 * 1024 },
@@ -43,7 +44,8 @@ const totalSize = files.reduce(
 )
 // 0.20 目录面包屑与 0.21 双格式状态保护/文案/配置入口各保留 48 KiB；
 // 独立入口仍受单独的首屏 gzip 预算约束，不能用总预算掩盖懒加载回退。
-const totalLimit = 4 * 1024 * 1024 + 96 * 1024
+// 两个发布 CSS 入口恢复约 109 KiB 主题样式，另留序列化保护代码的有限空间。
+const totalLimit = 4 * 1024 * 1024 + 224 * 1024
 if (totalSize > totalLimit) {
   failures.push(
     `dist total: ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${(totalLimit / 1024 / 1024).toFixed(2)} MB`

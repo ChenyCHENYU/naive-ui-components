@@ -18,8 +18,9 @@
               v-for="sheet in sheets"
               :key="sheet.name"
               :name="sheet.name"
-              :tab="sheet.name"
-            />
+            >
+              <template #tab>{{ sheet.name }}</template>
+            </NTabPane>
           </NTabs>
           <span
             v-else

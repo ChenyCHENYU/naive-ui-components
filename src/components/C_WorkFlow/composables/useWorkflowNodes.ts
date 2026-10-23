@@ -23,6 +23,12 @@ import type {
 } from '@vue-flow/core'
 import { useComponentFeedback } from '../../../config'
 import { cloneData, isDataEqual } from '../../../utils/data'
+import {
+  getWorkflowFields,
+  pruneWorkflowFields,
+  snapshotWorkflowEdge,
+  snapshotWorkflowNode,
+} from './workflowSnapshot'
 import type {
   WorkflowNode,
   WorkflowEdge,
@@ -71,6 +77,8 @@ export function useWorkflowNodes(
     cloneData(props.modelValue?.nodes ?? [INITIAL_NODE])
   )
   const edges = ref<WorkflowEdge[]>(cloneData(props.modelValue?.edges ?? []))
+  let declaredNodeFields = getWorkflowFields(nodes.value)
+  let declaredEdgeFields = getWorkflowFields(edges.value)
   const workflowConfig = ref<WorkflowData['config']>(
     props.modelValue
       ? cloneData(props.modelValue.config)
@@ -112,13 +120,21 @@ export function useWorkflowNodes(
 
   /* ─── 数据操作 ──────────────────────────────────────────── */
   /** 获取当前工作流完整数据 */
-  const getCurrentWorkflowData = (): WorkflowData => ({
-    nodes: cloneData(nodes.value),
-    edges: cloneData(edges.value),
-    ...(workflowConfig.value !== undefined && {
-      config: cloneData(workflowConfig.value),
-    }),
-  })
+  const getCurrentWorkflowData = (): WorkflowData => {
+    pruneWorkflowFields(nodes.value, declaredNodeFields)
+    pruneWorkflowFields(edges.value, declaredEdgeFields)
+    return {
+      nodes: nodes.value.map(node =>
+        snapshotWorkflowNode(node, declaredNodeFields.get(node.id))
+      ),
+      edges: edges.value.map(edge =>
+        snapshotWorkflowEdge(edge, declaredEdgeFields.get(edge.id))
+      ),
+      ...(workflowConfig.value !== undefined && {
+        config: cloneData(workflowConfig.value),
+      }),
+    }
+  }
 
   /** 触发数据变更事件 */
   const emitChange = (): void => {
@@ -143,6 +159,17 @@ export function useWorkflowNodes(
   const handleCanvasChanges = (changes: NodeChange[] | EdgeChange[]): void => {
     if (changes.some(change => change.type === 'remove')) commitCanvasChange()
   }
+  const createEdge = (source: string, target: string): WorkflowEdge => {
+    const edge: WorkflowEdge = {
+      id: generateEdgeId(source, target),
+      source,
+      target,
+      animated: true,
+      type: 'default',
+    }
+    declaredEdgeFields.set(edge.id, new Set(Object.keys(edge)))
+    return edge
+  }
   const canConnect = (
     connection: Connection,
     excludingEdgeId?: string
@@ -159,13 +186,7 @@ export function useWorkflowNodes(
     if (props.readonly || !canConnect(connection)) return
     edges.value = [
       ...edges.value,
-      {
-        id: generateEdgeId(connection.source, connection.target),
-        source: connection.source,
-        target: connection.target,
-        animated: true,
-        type: 'default',
-      },
+      createEdge(connection.source, connection.target),
     ]
     commitCanvasChange()
   }
@@ -232,13 +253,7 @@ export function useWorkflowNodes(
     /* 重连上下游 */
     incomingEdges.forEach(inEdge => {
       outgoingEdges.forEach(outEdge => {
-        edges.value.push({
-          id: generateEdgeId(inEdge.source, outEdge.target),
-          source: inEdge.source,
-          target: outEdge.target,
-          animated: true,
-          type: 'default',
-        })
+        edges.value.push(createEdge(inEdge.source, outEdge.target))
       })
     })
 
@@ -310,23 +325,11 @@ export function useWorkflowNodes(
     edges.value = edges.value.filter(e => e.source !== targetNode.id)
 
     /* 原节点 → 新节点 */
-    edges.value.push({
-      id: generateEdgeId(targetNode.id, newNode.id),
-      source: targetNode.id,
-      target: newNode.id,
-      animated: true,
-      type: 'default',
-    })
+    edges.value.push(createEdge(targetNode.id, newNode.id))
 
     /* 新节点 → 原下游 */
     outgoing.forEach(edge => {
-      edges.value.push({
-        id: generateEdgeId(newNode.id, edge.target),
-        source: newNode.id,
-        target: edge.target,
-        animated: true,
-        type: 'default',
-      })
+      edges.value.push(createEdge(newNode.id, edge.target))
     })
   }
 
@@ -336,6 +339,7 @@ export function useWorkflowNodes(
     try {
       const { targetNodeIndex, targetNode } = getTargetNodeInfo()
       const newNode = createNewNode(type, targetNode)
+      declaredNodeFields.set(newNode.id, new Set(Object.keys(newNode)))
 
       nodes.value.splice(targetNodeIndex + 1, 0, newNode)
 
@@ -363,7 +367,10 @@ export function useWorkflowNodes(
       currentNode.value = node
       showNodeConfig.value = true
     }
-    emit('node-click', cloneData(node))
+    emit(
+      'node-click',
+      snapshotWorkflowNode(node, declaredNodeFields.get(node.id))
+    )
   }
 
   const handleConfigSave = (configData: Record<string, unknown>): void => {
@@ -371,7 +378,10 @@ export function useWorkflowNodes(
 
     const nodeIndex = nodes.value.findIndex(n => n.id === currentNode.value!.id)
     if (nodeIndex !== -1) {
-      const updatedNode = cloneData(nodes.value[nodeIndex])
+      const updatedNode = snapshotWorkflowNode(
+        nodes.value[nodeIndex],
+        declaredNodeFields.get(currentNode.value.id)
+      )
       Object.assign(updatedNode.data, cloneData(configData))
       nodes.value.splice(nodeIndex, 1, updatedNode)
       currentNode.value = updatedNode
@@ -407,6 +417,8 @@ export function useWorkflowNodes(
     if (props.readonly) return
     nodes.value = cloneData([INITIAL_NODE])
     edges.value = []
+    declaredNodeFields = getWorkflowFields(nodes.value)
+    declaredEdgeFields.clear()
     emitChange()
     deferFitView(80, 600)
     message.success('画布已清空')
@@ -417,15 +429,20 @@ export function useWorkflowNodes(
     () => props.modelValue,
     newValue => {
       if (!newValue) return
+      const current = getCurrentWorkflowData()
+      const nextNodes = newValue.nodes ?? []
+      const nextEdges = newValue.edges ?? []
       if (
-        isDataEqual(newValue.nodes ?? [], nodes.value) &&
-        isDataEqual(newValue.edges ?? [], edges.value) &&
+        isDataEqual(nextNodes, current.nodes) &&
+        isDataEqual(nextEdges, current.edges) &&
         isDataEqual(newValue.config, workflowConfig.value)
       )
         return
       modelRevision += 1
-      nodes.value = cloneData(newValue.nodes ?? [])
-      edges.value = cloneData(newValue.edges ?? [])
+      declaredNodeFields = getWorkflowFields(nextNodes)
+      declaredEdgeFields = getWorkflowFields(nextEdges)
+      nodes.value = cloneData(nextNodes)
+      edges.value = cloneData(nextEdges)
       workflowConfig.value = cloneData(newValue.config)
     },
     { deep: true }

@@ -14,7 +14,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 import { assertComponentStyleBoundary } from './build/style-boundary.js'
-import { isolateVendorStyles } from './build/vendor-style-boundary.js'
+import { readVendorStyles } from './build/vendor-style-boundary.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -116,10 +116,7 @@ const readVendorStyle = packagePath => {
   if (!fs.existsSync(filename)) {
     throw new Error(`Missing vendor style: ${packagePath}`)
   }
-  const css = isolateVendorStyles(
-    fs.readFileSync(filename, 'utf8'),
-    packagePath
-  )
+  const css = readVendorStyles(filename, packagePath)
   vendorStyleCache.set(packagePath, css)
   return css
 }
