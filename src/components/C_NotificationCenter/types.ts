@@ -8,7 +8,7 @@
 
 /* ─── 消息基础类型 ─────────────────────────────── */
 
-import type { Ref } from 'vue'
+import type { Ref, VNodeChild } from 'vue'
 
 /** 远程模式缺少接口时明确报错，不回退演示数据。 */
 export type NotificationDataMode = 'demo' | 'remote'
@@ -173,8 +173,30 @@ export interface NotificationCenterController {
 
 /* ─── 组件 Props / Emits / Expose ──────────────── */
 
+/** 仅定制现有类别的显示与顺序，不改变服务端消息协议。 */
+export interface NotificationCategoryOption {
+  key: NotificationCategory | 'all'
+  label?: string
+}
+export interface NotificationItemSlotContext {
+  message: NotificationMessage
+  index: number
+  busy: boolean
+  select: () => void
+  read: () => void
+  remove: () => void
+}
+export interface NotificationCenterSlots {
+  filters?: (context: {
+    controller: NotificationCenterController
+  }) => VNodeChild
+  item?: (context: NotificationItemSlotContext) => VNodeChild
+  'item-actions'?: (context: NotificationItemSlotContext) => VNodeChild
+}
+
 /** 组件 Props */
 export interface NotificationCenterProps {
+  categoryOptions?: readonly NotificationCategoryOption[]
   /** 不传时根据 fetchNotifications 推断，保留无接口演示兼容性。 */
   dataMode?: NotificationDataMode
   /** 外部共享控制器；传入后不再初始化本地数据、轮询或 WebSocket。 */

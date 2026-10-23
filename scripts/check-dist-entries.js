@@ -82,6 +82,7 @@ for (const name of componentNames) {
 
 const reachableDeclarations = assertDeclarationBoundary(distDir, [
   'index',
+  'config',
   'resolver',
   ...componentNames,
 ])
@@ -191,6 +192,17 @@ const cjsTable = require(path.join(distDir, 'C_Table.cjs'))
 const cjsMarkdown = require(path.join(distDir, 'C_Markdown.cjs'))
 const esmRoot = await import(pathToFileURL(path.join(distDir, 'index.js')).href)
 const cjsRoot = require(path.join(distDir, 'index.cjs'))
+const esmConfig = await import(
+  pathToFileURL(path.join(distDir, 'config.js')).href
+)
+const cjsConfig = require(path.join(distDir, 'config.cjs'))
+for (const [config, namespace] of [
+  [esmConfig, esmRoot],
+  [cjsConfig, cjsRoot],
+]) {
+  assert.equal(config.COMPONENT_LOCALE_KEY, namespace.COMPONENT_LOCALE_KEY)
+  assert.equal(config.COMPONENT_FEEDBACK_KEY, namespace.COMPONENT_FEEDBACK_KEY)
+}
 
 const checkRootInstallation = (namespace, format) => {
   assert.equal(

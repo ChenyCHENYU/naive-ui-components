@@ -1,3 +1,12 @@
+import {
+  COMPONENT_LOCALE_KEY,
+  COMPONENT_FEEDBACK_KEY,
+  type ComponentLocale,
+  type ComponentFeedback,
+} from '@robot-admin/naive-ui-components/config'
+const locale: ComponentLocale = { locale: 'en-US' }
+const feedback: ComponentFeedback = { confirm: async () => true }
+void [COMPONENT_LOCALE_KEY, COMPONENT_FEEDBACK_KEY, locale, feedback]
 import { C_Icon } from '@robot-admin/naive-ui-components/C_Icon'
 import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
 import { C_Table } from '@robot-admin/naive-ui-components/C_Table'

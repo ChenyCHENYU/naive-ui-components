@@ -25,7 +25,9 @@
 - ESM 使用 `.d.ts`，CJS 使用 `.d.cts`；条件类型入口与相应 JavaScript 格式对应。
 - 公共可达声明同时检查 ESM / CJS，不能引用 `naive-ui/es/*` 或 `naive-ui/lib/*` 内部路径。
 
-新增消费者契约验证使用真实 tarball，在临时目录解包并接入仓库已解析的依赖；覆盖 Node16 / NodeNext 的 ESM / CJS 类型与缺失可选 peer 的子路径运行行为。它不联网重新安装依赖，因此不能代替最低／最新依赖版本矩阵或真实应用验收。
+消费者契约验证使用真实 tarball，覆盖 Node16 / NodeNext 的 ESM / CJS 类型、轻量配置入口的注入键一致性和缺失可选 peer 的子路径运行行为。默认检查复用本地安装；`bun run check:consumer-contracts minimum` / `latest` 在临时目录联网全新安装依赖并渲染表单、表格、原生数字键菜单。CI 分别运行两种组合。类型检查保留 `skipLibCheck`，不将第三方声明内部检查冒充业务消费验证。
+
+`/config` 是独立公共配置入口，只包含注入键和协议类型，不引入呈现层。组件注册、样式与反馈适配仍由各自入口负责。
 
 ## 高亮实例
 

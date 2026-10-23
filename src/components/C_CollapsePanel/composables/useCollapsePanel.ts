@@ -180,7 +180,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
 
   /* ─── 同步外部 v-model 变化 ───────────────────── */
   watch(
-    () => externalKeys.value,
+    () => externalKeys.value?.slice(),
     newVal => {
       if (newVal !== undefined) {
         internalKeys.value = [...newVal]

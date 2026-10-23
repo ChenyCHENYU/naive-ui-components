@@ -146,6 +146,24 @@ export function usePlayerCore(props: VideoPlayerProps) {
     return config
   }
 
+  /** 仅加载被选择的协议；未配置的可选协议在创建实例前明确失败。 */
+  async function loadPlayerConstructor(sourceType: VideoSourceType) {
+    if (sourceType === 'dash' || sourceType === 'flv') {
+      const adapter = props.sourceAdapters?.[sourceType]
+      if (!adapter)
+        throw new Error(
+          `视频协议 ${sourceType.toUpperCase()} 未配置 sourceAdapters 适配器`
+        )
+      return await adapter()
+    } else if (sourceType === 'hls') {
+      const { default: HlsPlayer } = await import('xgplayer-hls')
+      return HlsPlayer as unknown as typeof import('xgplayer').default
+    } else {
+      const { default: PresetPlayer } = await import('xgplayer')
+      return PresetPlayer
+    }
+  }
+
   /** 初始化播放器 */
   async function initPlayer() {
     if (disposed || !containerRef.value) return
@@ -162,16 +180,7 @@ export function usePlayerCore(props: VideoPlayerProps) {
 
     let PlayerConstructor: typeof import('xgplayer').default
     try {
-      /* 根据源类型动态加载对应的播放器 */
-      if (sourceType === 'hls') {
-        const { default: HlsPlayer } = await import('xgplayer-hls')
-        PlayerConstructor =
-          HlsPlayer as unknown as typeof import('xgplayer').default
-      } else {
-        const { default: PresetPlayer } = await import('xgplayer')
-        PlayerConstructor = PresetPlayer
-      }
-
+      PlayerConstructor = await loadPlayerConstructor(sourceType)
       // A route may unmount while the player chunk is still loading.
       if (disposed || version !== initVersion || !containerRef.value) return
       const player = new PlayerConstructor(config)

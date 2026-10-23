@@ -1,3 +1,4 @@
+import type { UploadScheduler } from './uploadScheduler'
 /**
  * 分片上传引擎
  */
@@ -13,6 +14,7 @@ import type {
 } from '../types'
 
 interface UseChunkUploadOptions {
+  scheduler?: UploadScheduler
   /** 分片大小 */
   chunkSize: Ref<number>
   /** 最大并发数 */
@@ -151,9 +153,10 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
       }
 
       try {
-        const req = options.customRequest?.value
-          ? options.customRequest.value(requestOptions)
-          : defaultUploadRequest(requestOptions)
+        const send = options.customRequest?.value ?? defaultUploadRequest
+        const req = options.scheduler
+          ? options.scheduler(send, requestOptions)
+          : send(requestOptions)
         ctx.abortControllers.push(() => {
           try {
             req.abort()

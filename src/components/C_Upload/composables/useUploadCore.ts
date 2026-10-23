@@ -1,3 +1,4 @@
+import { createUploadScheduler } from './uploadScheduler'
 /**
  * 核心上传逻辑
  */
@@ -47,7 +48,19 @@ export function useUploadCore(props: UploadProps) {
 
   const { hashing, hashProgress, calculateHash } = useFileHash(chunkSize)
 
+  const scheduler = createUploadScheduler(concurrency)
+  const hashControllers = new Map<string, AbortController>()
+  const cancelHash = (uid: string) => {
+    hashControllers.get(uid)?.abort()
+    hashControllers.delete(uid)
+  }
+  const cancelHashes = () => {
+    hashControllers.forEach(controller => controller.abort())
+    hashControllers.clear()
+  }
+
   const chunkUploader = useChunkUpload({
+    scheduler,
     chunkSize,
     concurrency,
     action,
@@ -59,6 +72,7 @@ export function useUploadCore(props: UploadProps) {
   })
 
   const uploadQueue = useUploadQueue({
+    scheduler,
     concurrency,
     action,
     headers,
@@ -134,6 +148,7 @@ export function useUploadCore(props: UploadProps) {
 
   /** 移除文件 */
   function removeFile(uid: string) {
+    cancelHash(uid)
     operationVersions.set(uid, Symbol(uid))
     chunkUploader.abortUpload(uid)
     uploadQueue.abort(uid)
@@ -149,6 +164,8 @@ export function useUploadCore(props: UploadProps) {
 
   /** 清空所有 */
   function clearAll() {
+    scheduler.abortAll()
+    cancelHashes()
     chunkUploader.abortAll()
     uploadQueue.abortAll()
     pausedSet.clear()
@@ -197,12 +214,23 @@ export function useUploadCore(props: UploadProps) {
     )
   }
 
-  function calculateItemHash(item: UploadFileItem, version: symbol) {
-    return calculateHash(item.raw!, percent => {
-      if (isOperationCurrent(item.uid, version)) {
-        updateFile(item.uid, { percent })
-      }
-    })
+  async function calculateItemHash(item: UploadFileItem, version: symbol) {
+    cancelHash(item.uid)
+    const controller = new AbortController()
+    hashControllers.set(item.uid, controller)
+    try {
+      return await calculateHash(
+        item.raw!,
+        percent => {
+          if (isOperationCurrent(item.uid, version))
+            updateFile(item.uid, { percent })
+        },
+        controller.signal
+      )
+    } finally {
+      if (hashControllers.get(item.uid) === controller)
+        hashControllers.delete(item.uid)
+    }
   }
 
   /** 上传单个文件 */
@@ -355,12 +383,14 @@ export function useUploadCore(props: UploadProps) {
 
   /** 暂停所有 */
   function pauseAll() {
+    scheduler.abortAll()
     fileList.value.forEach(f => {
       if (
         f.status === 'uploading' ||
         f.status === 'hashing' ||
         f.status === 'validating'
       ) {
+        cancelHash(f.uid)
         pausedSet.add(f.uid)
         operationVersions.set(f.uid, Symbol(f.uid))
         chunkUploader.abortUpload(f.uid)
@@ -399,6 +429,8 @@ export function useUploadCore(props: UploadProps) {
 
   // 清理 ObjectURL
   onBeforeUnmount(() => {
+    scheduler.abortAll()
+    cancelHashes()
     chunkUploader.abortAll()
     uploadQueue.abortAll()
     operationVersions.clear()

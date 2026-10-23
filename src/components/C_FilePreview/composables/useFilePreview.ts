@@ -11,10 +11,16 @@ import {
   loadWord,
   loadExcel,
 } from '../data'
-import type { FilePreviewType, DocHeading, ExcelSheet } from '../types'
+import type {
+  FilePreviewType,
+  DocHeading,
+  ExcelSheet,
+  FilePreviewLimits,
+} from '../types'
 import { resolvePreviewUrl } from '../fileUrl'
 
 export interface UseFilePreviewOptions {
+  previewLimits?: Ref<FilePreviewLimits | undefined>
   file: Ref<File | undefined>
   url: Ref<string | undefined>
   fileName: Ref<string>
@@ -32,7 +38,7 @@ export function useFilePreview(
     (e: 'download', file: File | string): void
   }
 ) {
-  const { file, url, fileName } = options
+  const { file, url, fileName, previewLimits } = options
 
   /* ==================== 基础状态 ==================== */
   const loading = ref(false)
@@ -148,7 +154,7 @@ export function useFilePreview(
         break
       }
       case 'excel': {
-        const result = await loadExcel(currentFile)
+        const result = await loadExcel(currentFile, previewLimits?.value)
         if (version !== loadVersion) return
         excelSheets.value = result.sheets
         break

@@ -45,7 +45,11 @@
   />
 </template>
 
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="Options extends MenuOption[] | undefined = undefined"
+>
   import {
     ref,
     computed,
@@ -56,11 +60,11 @@
   } from 'vue'
   import { type MenuOption, type MenuInst } from 'naive-ui'
   import { createMenuOptions, type MenuAdapterConfig } from '../_shared/public'
-  import type { MenuEmits, MenuProps } from './types'
+  import type { MenuEmits, MenuProps, MenuKey, MenuSelectionKey } from './types'
 
   defineOptions({ name: 'C_Menu' })
 
-  const props = withDefaults(defineProps<MenuProps>(), {
+  const props = withDefaults(defineProps<MenuProps<Options>>(), {
     mode: 'vertical',
     collapsed: false,
     collapsedWidth: 64,
@@ -76,19 +80,19 @@
     defaultExpandedKeys: () => [],
   })
 
-  const emit = defineEmits<MenuEmits>()
+  const emit = defineEmits<MenuEmits<Options>>()
 
   const menuRef: Ref<MenuInst | null> = ref<MenuInst | null>(null)
-  const internalExpandedKeys = ref<string[]>([...props.defaultExpandedKeys])
-  const sameKeys = (left: string[], right: string[]) =>
+  const internalExpandedKeys = ref<MenuKey[]>([...props.defaultExpandedKeys])
+  const sameKeys = (left: MenuKey[], right: MenuKey[]) =>
     left.length === right.length &&
     left.every((key, index) => key === right[index])
   const expandedKeys = computed({
     get: () => props.expandedKeys ?? internalExpandedKeys.value,
-    set: (keys: string[]) => {
+    set: (keys: MenuKey[]) => {
       if (sameKeys(expandedKeys.value, keys)) return
       internalExpandedKeys.value = keys
-      emit('update:expandedKeys', keys)
+      emit('update:expandedKeys', keys as MenuSelectionKey<Options>[])
     },
   })
 
@@ -120,14 +124,16 @@
   /** 从 MenuOption[] 中查找所有祖先 key */
   const findParentKeys = (
     items: MenuOption[],
-    targetKey: string,
-    parentKeys: string[] = []
-  ): string[] => {
+    targetKey: MenuKey,
+    parentKeys: MenuKey[] = []
+  ): MenuKey[] => {
     for (const item of items) {
       const children = item.children as MenuOption[] | undefined
       if (children?.length) {
         const currentKeys =
-          typeof item.key === 'string' ? [...parentKeys, item.key] : parentKeys
+          typeof item.key === 'string' || typeof item.key === 'number'
+            ? [...parentKeys, item.key]
+            : parentKeys
         if (children.some(child => child.key === targetKey)) {
           return currentKeys
         }
@@ -139,9 +145,10 @@
   }
 
   /** 通过路径段推导展开 key + 查找祖先 key */
-  const computeExpandedKeys = (path: string): Set<string> => {
-    const segments = path.split('/').filter(Boolean)
-    const keys = new Set<string>()
+  const computeExpandedKeys = (path: MenuKey): Set<MenuKey> => {
+    const segments =
+      typeof path === 'string' ? path.split('/').filter(Boolean) : []
+    const keys = new Set<MenuKey>()
     let currentPath = ''
     segments.forEach(segment => {
       currentPath += `/${segment}`
@@ -153,20 +160,23 @@
 
   // ====== 事件处理 ======
 
-  const handleMenuClick = (key: string) => {
-    if (!key) return
+  const handleMenuClick = (key: MenuKey) => {
+    if (key === null || key === undefined) return
     if (key !== activeKey.value) {
-      emit('update:modelValue', key)
-      emit('update:value', key)
+      emit('update:modelValue', key as MenuSelectionKey<Options>)
+      emit('update:value', key as MenuSelectionKey<Options>)
     }
-    emit('select', key)
+    emit('select', key as MenuSelectionKey<Options>)
   }
 
   /** 在点击前暴露鼠标/键盘导航意图，供宿主安全预取目标路由。 */
   const getNodeProps = (option: MenuOption): HTMLAttributes => {
     const notifyIntent = () => {
-      if (typeof option.key === 'string' && !option.children?.length) {
-        emit('intent', option.key)
+      if (
+        (typeof option.key === 'string' || typeof option.key === 'number') &&
+        !option.children?.length
+      ) {
+        emit('intent', option.key as MenuSelectionKey<Options>)
       }
     }
     return {
@@ -175,12 +185,12 @@
     }
   }
 
-  const onExpandedKeysChange = (keys: string[]) => {
+  const onExpandedKeysChange = (keys: MenuKey[]) => {
     expandedKeys.value = keys
   }
 
   // ====== 暴露方法 ======
-  const showOption = (key: string) => menuRef.value?.showOption(key)
+  const showOption = (key: MenuKey) => menuRef.value?.showOption(key)
   defineExpose({ showOption, menuRef })
 
   // ====== 路由跟踪 ======
@@ -188,7 +198,7 @@
   watch(
     [activeKey, mergedOptions],
     ([newKey]) => {
-      if (!newKey) return
+      if (newKey === null || newKey === undefined) return
       const newKeys = computeExpandedKeys(newKey)
       expandedKeys.value = Array.from(
         new Set([...expandedKeys.value, ...newKeys])

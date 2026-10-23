@@ -96,7 +96,9 @@
           :aria-expanded="Boolean(expandedMap.get(item.id))"
           @click="toggleExpand(item)"
         >
-          {{ expandedMap.get(item.id) ? '收起' : '展开详情' }}
+          {{
+            expandedMap.get(item.id) ? t('common.collapse') : t('common.expand')
+          }}
           <C_Icon
             name="mdi:chevron-down"
             class="collapse-arrow"
@@ -111,12 +113,13 @@
       class="c-timeline__pending"
     >
       <span class="pending-dot" />
-      <span>{{ props.pendingText }}</span>
+      <span>{{ props.pendingText ?? t('timeline.loading') }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../config'
   import { computed, reactive, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import { sanitizeRichHtml } from '../../utils/html'
@@ -129,12 +132,12 @@
 
   defineOptions({ name: 'C_Timeline' })
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<TimelineProps>(), {
     items: () => [],
     mode: DEFAULT_TIMELINE_PROPS.mode,
     labelPlacement: DEFAULT_TIMELINE_PROPS.labelPlacement,
     pending: DEFAULT_TIMELINE_PROPS.pending,
-    pendingText: DEFAULT_TIMELINE_PROPS.pendingText,
     reverse: DEFAULT_TIMELINE_PROPS.reverse,
     size: DEFAULT_TIMELINE_PROPS.size,
     lineType: DEFAULT_TIMELINE_PROPS.lineType,

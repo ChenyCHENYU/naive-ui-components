@@ -13,7 +13,10 @@
     :value="modelValue"
     @select="handleLanguageChange"
   >
-    <NButton text>
+    <NButton
+      text
+      :aria-label="tooltipText"
+    >
       <div class="flex items-center">
         <C_Icon
           name="mdi:language"
@@ -26,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../config'
   import { computed, h } from 'vue'
   import { NDropdown, NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
@@ -39,6 +43,7 @@
     iconClass?: string
   }
 
+  const { t } = useComponentLocale()
   const props = withDefaults(
     defineProps<{
       modelValue?: string
@@ -48,7 +53,6 @@
     }>(),
     {
       modelValue: 'zh-cn',
-      tooltip: '语言切换',
       options: () => [
         { key: 'zh-cn', label: '简体中文', iconClass: 'mdi:alpha-c' },
         { key: 'en', label: 'English', iconClass: 'mdi:alpha-u' },
@@ -69,7 +73,9 @@
     return opt?.label ?? props.modelValue
   })
 
-  const tooltipText = computed(() => `${props.tooltip} (${currentLabel.value})`)
+  const tooltipText = computed(
+    () => `${props.tooltip ?? t('language.switch')} (${currentLabel.value})`
+  )
 
   const finalOptions = computed(() =>
     props.options.map(opt => {

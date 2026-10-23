@@ -1,3 +1,4 @@
+import type { UploadScheduler } from './uploadScheduler'
 /** Concurrent upload queue with exactly-once request settlement. */
 
 import { readonly, ref, watch, type Ref } from 'vue'
@@ -8,6 +9,7 @@ import type {
 } from '../types'
 
 interface UseUploadQueueOptions {
+  scheduler?: UploadScheduler
   concurrency: Ref<number>
   action: Ref<string>
   headers: Ref<Record<string, string>>
@@ -79,9 +81,10 @@ export function useUploadQueue(options: UseUploadQueueOptions) {
       activeRequests.set(file.uid, { abort: () => undefined, settle })
       syncActiveCount()
       try {
-        const request = options.customRequest?.value
-          ? options.customRequest.value(requestOptions)
-          : defaultRequest(requestOptions)
+        const send = options.customRequest?.value ?? defaultRequest
+        const request = options.scheduler
+          ? options.scheduler(send, requestOptions)
+          : send(requestOptions)
         const active = activeRequests.get(file.uid)
         if (active) active.abort = request.abort
       } catch (error) {

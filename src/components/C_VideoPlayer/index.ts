@@ -1,4 +1,4 @@
-export { default as C_VideoPlayer } from "./index.vue";
+export { default as C_VideoPlayer } from './index.vue'
 export type {
   VideoPlayerProps,
   VideoPlayerEmits,
@@ -8,6 +8,7 @@ export type {
   QualityLevel,
   PlaybackRate,
   VideoSourceType,
+  VideoSourceAdapter,
   Chapter,
   Bookmark,
   SubtitleTrack,
@@ -24,11 +25,11 @@ export type {
   AnalyticsReporter,
   IPlayerOptions,
   IDefinition,
-} from "./types";
-export { usePlayerCore } from "./composables/usePlayerCore";
-export { usePlaybackControl } from "./composables/usePlaybackControl";
-export { useBookmarks } from "./composables/useBookmarks";
-export { useChapters } from "./composables/useChapters";
-export { useSubtitle } from "./composables/useSubtitle";
-export { useProgressTracker } from "./composables/useProgressTracker";
-export * from "./constants";
+} from './types'
+export { usePlayerCore } from './composables/usePlayerCore'
+export { usePlaybackControl } from './composables/usePlaybackControl'
+export { useBookmarks } from './composables/useBookmarks'
+export { useChapters } from './composables/useChapters'
+export { useSubtitle } from './composables/useSubtitle'
+export { useProgressTracker } from './composables/useProgressTracker'
+export * from './constants'

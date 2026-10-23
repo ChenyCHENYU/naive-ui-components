@@ -609,7 +609,7 @@
     activeTab.value === mode &&
     !props.loading &&
     !props.submitDisabled &&
-    (mode === 'register' || !feat.value.captchaVerify || captchaValid.value)
+    (mode !== 'password' || !feat.value.captchaVerify || captchaValid.value)
 
   async function submitValidated<T extends object>(
     mode: SubmissionMode,

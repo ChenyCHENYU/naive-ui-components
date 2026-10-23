@@ -41,8 +41,9 @@ const totalSize = files.reduce(
   (sum, filename) => sum + fs.statSync(filename).size,
   0
 )
-// 0.20 的目录面包屑增加约 41 KiB（双格式 JS、声明和主题样式）；独立入口另有首屏预算。
-const totalLimit = 4 * 1024 * 1024 + 48 * 1024
+// 0.20 目录面包屑与 0.21 双格式状态保护/文案/配置入口各保留 48 KiB；
+// 独立入口仍受单独的首屏 gzip 预算约束，不能用总预算掩盖懒加载回退。
+const totalLimit = 4 * 1024 * 1024 + 96 * 1024
 if (totalSize > totalLimit) {
   failures.push(
     `dist total: ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${(totalLimit / 1024 / 1024).toFixed(2)} MB`

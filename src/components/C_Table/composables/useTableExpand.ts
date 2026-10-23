@@ -187,7 +187,14 @@ const useExpandLogic = <T extends object, C>(
   }
 
   watch(utils.data, nextRows => {
-    if (loadedSources.size === 0) return
+    // 数据源更新使等待中的展开事务失效，包括未启用远程加载的模式。
+    transitionVersion += 1
+    if (
+      loadedSources.size === 0 &&
+      state.expandedKeys.value.length === 0 &&
+      desiredExpandedKeys.size === 0
+    )
+      return
     const current = new Map(nextRows.map(row => [utils.getRowKey(row), row]))
     for (const [key, source] of loadedSources) {
       const next = current.get(key)
@@ -196,6 +203,9 @@ const useExpandLogic = <T extends object, C>(
       if (next && state.expandedKeys.value.includes(key)) void loadData(next)
       if (!next) desiredExpandedKeys.delete(key)
     }
+    desiredExpandedKeys = new Set(
+      [...desiredExpandedKeys].filter(key => current.has(key))
+    )
     state.expandedKeys.value = state.expandedKeys.value.filter(key =>
       current.has(key)
     )
@@ -203,6 +213,7 @@ const useExpandLogic = <T extends object, C>(
   if (getCurrentScope())
     onScopeDispose(() => {
       disposed = true
+      transitionVersion += 1
       invalidateExpand()
     })
 
@@ -216,7 +227,12 @@ const useExpandLogic = <T extends object, C>(
         state.expandedKeys.value = [...state.expandedKeys.value, key]
       }
       await loadData(row)
-      if (!desiredExpandedKeys.has(key)) return
+      if (
+        disposed ||
+        utils.findRow(key) !== row ||
+        !desiredExpandedKeys.has(key)
+      )
+        return
     } else {
       desiredExpandedKeys.delete(key)
       state.expandedKeys.value = state.expandedKeys.value.filter(k => k !== key)
@@ -226,12 +242,13 @@ const useExpandLogic = <T extends object, C>(
   }
 
   const expandAll = async (): Promise<void> => {
+    if (disposed) return
     const version = ++transitionVersion
     const expandableRows = utils.data.value.filter(utils.isRowExpandable)
     desiredExpandedKeys = new Set(expandableRows.map(utils.getRowKey))
     state.expandedKeys.value = [...desiredExpandedKeys]
     await Promise.allSettled(expandableRows.map(loadData))
-    if (version !== transitionVersion) return
+    if (disposed || version !== transitionVersion) return
     state.expandedKeys.value = expandableRows.map(utils.getRowKey)
     options.onExpandChange?.(state.expandedKeys.value)
   }
@@ -266,7 +283,7 @@ const useExpandLogic = <T extends object, C>(
         }
       })
     )
-    if (version !== transitionVersion) return
+    if (disposed || version !== transitionVersion) return
 
     options.onExpandChange?.(keys)
   }
@@ -290,14 +307,14 @@ const useSelectionLogic = <T extends object, C>(
 ) => {
   let notifiedKeys: DataTableRowKey[] = []
   let notifiedRows: T[] = []
-  const notify = (keys: DataTableRowKey[], rows: T[]) => {
+  const notify = (keys: DataTableRowKey[], rows: T[], force = false) => {
     const sameKeys =
       keys.length === notifiedKeys.length &&
       keys.every((key, i) => key === notifiedKeys[i])
     const sameRows =
       rows.length === notifiedRows.length &&
       rows.every((row, i) => row === notifiedRows[i])
-    if (sameKeys && sameRows) return
+    if (!force && sameKeys && sameRows) return
     notifiedKeys = [...keys]
     notifiedRows = [...rows]
     options.onSelectionChange?.(keys, rows, state.childSelections.value)
@@ -308,34 +325,11 @@ const useSelectionLogic = <T extends object, C>(
 
   const selectedRowsCount = computed(() => state.checkedKeys.value.length)
 
-  const selectAll = (): void => {
-    if (!options.enableSelection) return
-
-    const keys = selectableRows.value.map(utils.getRowKey)
-    const finalKeys = options.maxSelection
-      ? keys.slice(0, options.maxSelection)
-      : keys
-
-    state.checkedKeys.value = finalKeys
-
-    const selected = new Set(finalKeys)
-    const selectedRows = selectableRows.value.filter(row =>
-      selected.has(utils.getRowKey(row))
-    )
-
-    notify(finalKeys, selectedRows)
-  }
-
-  const clearSelection = (): void => {
-    if (!options.enableSelection) return
-
-    state.checkedKeys.value = []
-    notify([], [])
-  }
-
-  const handleSelectionChange = (keys: DataTableRowKey[]): void => {
-    if (!options.enableSelection) return
-
+  /** 所有主表选择变更统一经过有效行、禁选、去重和数量上限。 */
+  const commitSelection = (
+    keys: DataTableRowKey[],
+    forceNotify = false
+  ): void => {
     const selectableKeySet = new Set(
       selectableRows.value.map(row => utils.getRowKey(row))
     )
@@ -350,10 +344,25 @@ const useSelectionLogic = <T extends object, C>(
     const selectedRows = utils.data.value.filter(row =>
       selected.has(utils.getRowKey(row))
     )
-    notify(finalKeys, selectedRows)
+    notify(finalKeys, selectedRows, forceNotify)
+  }
+
+  const handleSelectionChange = (
+    keys: DataTableRowKey[],
+    forceNotify = false
+  ): void => {
+    if (options.enableSelection) commitSelection(keys, forceNotify)
+  }
+  const selectAll = (): void => {
+    if (!options.enableSelection) return
+    handleSelectionChange(selectableRows.value.map(utils.getRowKey))
+  }
+  const clearSelection = (): void => {
+    handleSelectionChange([])
   }
 
   return {
+    commitSelection,
     selectAll,
     clearSelection,
     handleSelectionChange,
@@ -365,7 +374,8 @@ const useSelectionLogic = <T extends object, C>(
 /* ================= 父子联动逻辑 ================= */
 const useParentChildLink = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
-  options: UseTableExpandOptions<T, C>
+  options: UseTableExpandOptions<T, C>,
+  selection: ReturnType<typeof useSelectionLogic<T, C>>
 ) => {
   const isLinkEnabled = () =>
     Boolean(
@@ -389,11 +399,14 @@ const useParentChildLink = <T extends object, C>(
     const currentKeys = [...state.checkedKeys.value]
     const isParentSelected = currentKeys.includes(parentKey)
 
-    if (shouldSelectParent && !isParentSelected) {
-      state.checkedKeys.value = [...currentKeys, parentKey]
-    } else if (!shouldSelectParent && isParentSelected) {
-      state.checkedKeys.value = currentKeys.filter(k => k !== parentKey)
-    }
+    const nextKeys =
+      shouldSelectParent && !isParentSelected
+        ? [...currentKeys, parentKey]
+        : !shouldSelectParent && isParentSelected
+          ? currentKeys.filter(key => key !== parentKey)
+          : currentKeys
+    // 子项变化同样属于公开选择快照，即使主表 key 因上限保持不变也通知。
+    selection.handleSelectionChange(nextKeys, true)
   }
 
   return {
@@ -407,6 +420,7 @@ const useChildSelectionLogic = <T extends object, C>(
   state: ReturnType<typeof useExpandState<T, C>>,
   utils: ReturnType<typeof useDataUtils<T, C>>,
   parentChildLink: ReturnType<typeof useParentChildLink<T, C>>,
+  selection: ReturnType<typeof useSelectionLogic<T, C>>,
   options: UseTableExpandOptions<T, C>
 ) => {
   const totalChildSelections = computed(() => {
@@ -418,9 +432,8 @@ const useChildSelectionLogic = <T extends object, C>(
   })
 
   const clearAllSelections = (): void => {
-    state.checkedKeys.value = []
     state.childSelections.value.clear()
-    options.onSelectionChange?.([], [], state.childSelections.value)
+    selection.commitSelection([], true)
   }
 
   const handleChildSelectionChange = (
@@ -429,22 +442,36 @@ const useChildSelectionLogic = <T extends object, C>(
   ): void => {
     if (!options.enableChildSelection) return
 
-    state.childSelections.value.set(parentKey, childKeys)
-
+    const parent = utils.findRow(parentKey)
+    if (!parent) return
     const expandData = state.expandDataMap.value.get(parentKey) || []
-    const selectedChildren = expandData.filter((child: any) =>
-      childKeys.includes(utils.getChildRowKey(child as C))
-    ) as C[]
-
-    options.onChildSelectionChange?.(parentKey, childKeys, selectedChildren)
+    const selectableChildren = expandData.filter(child =>
+      utils.isChildRowCheckable(child, parent)
+    )
+    const availableKeys = new Set(selectableChildren.map(utils.getChildRowKey))
+    const nextKeys = [...new Set(childKeys)].filter(key =>
+      availableKeys.has(key)
+    )
+    const previousKeys = state.childSelections.value.get(parentKey) ?? []
+    if (
+      previousKeys.length === nextKeys.length &&
+      previousKeys.every((key, index) => key === nextKeys[index])
+    )
+      return
+    state.childSelections.value.set(parentKey, nextKeys)
+    const selected = new Set(nextKeys)
+    const selectedChildren = selectableChildren.filter(child =>
+      selected.has(utils.getChildRowKey(child))
+    )
 
     if (parentChildLink.isLinkEnabled()) {
       parentChildLink.handleParentChildLink(
         parentKey,
-        childKeys,
-        expandData.length
+        nextKeys,
+        selectableChildren.length
       )
     }
+    options.onChildSelectionChange?.(parentKey, nextKeys, selectedChildren)
   }
 
   return {
@@ -553,7 +580,14 @@ const createDefaultTable = <T extends object, C>(
   const columns: Array<Record<string, unknown>> = []
 
   if (options.enableChildSelection) {
-    columns.push({ type: 'selection', multiple: true })
+    columns.push({
+      type: 'selection',
+      multiple: true,
+      disabled: (child: C) => {
+        const parent = utils.findRow(key)
+        return !parent || !utils.isChildRowCheckable(child, parent)
+      },
+    })
   }
 
   columns.push(...createDefaultColumns(expandData))
@@ -682,11 +716,12 @@ export function useTableExpand<T extends object = DataRecord, C = DataRecord>(
   const utils = useDataUtils(options)
   const expandLogic = useExpandLogic(state, utils, options)
   const selectionLogic = useSelectionLogic(state, utils, options)
-  const parentChildLink = useParentChildLink(state, options)
+  const parentChildLink = useParentChildLink(state, options, selectionLogic)
   const childLogic = useChildSelectionLogic(
     state,
     utils,
     parentChildLink,
+    selectionLogic,
     options
   )
   const renderer = useRenderer(state, utils, childLogic, expandLogic, options)

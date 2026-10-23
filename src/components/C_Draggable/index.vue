@@ -84,7 +84,6 @@
   const props = withDefaults(defineProps<DraggableProps<T>>(), {
     modelValue: () => [] as T[],
     disabled: false,
-    group: 'default',
     sort: true,
     animation: 200,
     delay: 0,

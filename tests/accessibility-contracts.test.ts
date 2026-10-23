@@ -85,7 +85,19 @@ describe('keyboard and status accessibility contracts', () => {
     expect(source).toMatch(
       /<button\s+v-if="msg\.sender === 'self' && msg\.status === 'failed'"/
     )
-    expect(source).toContain(':alt="msg.fileName || \'聊天图片\'"')
+    expect(source).toContain(':alt="msg.fileName || t(\'chat.image\')"')
+    expect(source).toContain("t('chat.imagePreview'")
+    expect(source).toContain("msg.fileName || t('chat.file')")
+    expect(source).toContain("t('chat.failed')")
+    const locale = read('src/core/locale.ts')
+    for (const label of [
+      "'chat.image': '聊天图片'",
+      "'chat.image': 'Chat image'",
+      "'chat.failed': '发送失败，点击重试'",
+      "'chat.failed': 'Send failed. Click to retry.'",
+    ]) {
+      expect(locale).toContain(label)
+    }
   })
 
   test('action labels are not prefixed by decorative icon names', () => {

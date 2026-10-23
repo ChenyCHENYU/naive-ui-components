@@ -21,7 +21,8 @@
     >
       <div
         class="form-search-item-box"
-        v-for="(item, index) of visibleFields"
+        v-for="(item, index) of availableFields"
+        v-show="expanded || index < foldThreshold"
         :key="item.prop || index"
       >
         <NFormItem
@@ -224,7 +225,8 @@
     formParams,
     expanded,
     searching,
-    visibleFields,
+    availableFields,
+    foldThreshold,
     hasExpandButton,
     history,
     searchFn,
@@ -245,7 +247,7 @@
   const selectBindings = computed(
     () =>
       new Map<string, ReturnType<typeof createSearchSelectBinding>>(
-        visibleFields.value
+        availableFields.value
           .filter(item => item.type === 'select')
           .map(item => [
             item.prop,
@@ -270,7 +272,7 @@
   }
 
   const setFieldValue = (field: string, value: unknown): void => {
-    const item = visibleFields.value.find(item => item.prop === field)
+    const item = availableFields.value.find(item => item.prop === field)
     const values = formParams.value as Record<string, unknown>
     if (item)
       values[field] = normalizeSearchFieldValue(item, value, values[field])

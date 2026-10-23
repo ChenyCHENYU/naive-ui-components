@@ -31,7 +31,9 @@
       <div class="c-notification-center__panel">
         <!-- 头部标题 -->
         <div class="c-notification-center__header">
-          <span class="c-notification-center__title">消息中心</span>
+          <span class="c-notification-center__title">{{
+            t('notification.title')
+          }}</span>
           <div class="c-notification-center__header-extra">
             <!-- WebSocket 连接状态 -->
             <NTooltip
@@ -60,9 +62,14 @@
             size="tiny"
             :loading="core.loading.value"
             @click="handleRetry"
-            >重试</NButton
+            >{{ t('common.retry') }}</NButton
           >
         </div>
+
+        <slot
+          name="filters"
+          :controller="core"
+        />
 
         <!-- 列表 / 详情切换 -->
         <Transition
@@ -83,6 +90,7 @@
           <NotificationList
             v-else
             :messages="core.filteredMessages.value"
+            :category-options="props.categoryOptions"
             :active-category="core.activeCategory.value"
             :unread-by-category="core.unreadByCategory.value"
             :unread-count="core.unreadCount.value"
@@ -97,7 +105,22 @@
             @mark-all-read="handleMarkAllRead"
             @clear="handleClear"
             @load-more="handleLoadMore"
-          />
+          >
+            <template
+              v-if="$slots.item"
+              #item="context"
+              ><slot
+                name="item"
+                v-bind="context"
+            /></template>
+            <template
+              v-if="$slots['item-actions']"
+              #item-actions="context"
+              ><slot
+                name="item-actions"
+                v-bind="context"
+            /></template>
+          </NotificationList>
         </Transition>
         <div class="c-notification-center__footer">
           <NButton
@@ -105,7 +128,7 @@
             type="primary"
             size="small"
             @click="handleViewAll"
-            >查看全部消息</NButton
+            >{{ t('notification.viewAll') }}</NButton
           >
         </div>
       </div>
@@ -114,9 +137,11 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../config'
   import { computed, watch } from 'vue'
   import type {
     NotificationCenterProps,
+    NotificationCenterSlots,
     NotificationCenterExpose,
     NotificationMessage,
     NotificationCategory,
@@ -129,6 +154,7 @@
 
   defineOptions({ name: 'C_NotificationCenter' })
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<NotificationCenterProps>(), {
     autoStart: true,
     desktopNotification: false,
@@ -150,6 +176,8 @@
     viewAll: []
   }>()
 
+  defineSlots<NotificationCenterSlots>()
+
   // 外部控制器由应用拥有，避免重复请求、重复 WebSocket 和组件卸载销毁 Store。
   const core =
     props.controller ??
@@ -170,12 +198,12 @@
   /** WebSocket 状态文本 */
   const wsStatusText = computed(() => {
     const map: Record<string, string> = {
-      connected: '已连接',
-      connecting: '连接中...',
-      disconnected: '未连接',
-      reconnecting: '重连中...',
+      connected: t('notification.connected'),
+      connecting: t('notification.connecting'),
+      disconnected: t('notification.disconnected'),
+      reconnecting: t('notification.reconnecting'),
     }
-    return map[core.wsStatus.value] ?? '未知'
+    return map[core.wsStatus.value] ?? t('common.unknown')
   })
 
   /* ─── 监听未读数变化 ─────────────────────────── */

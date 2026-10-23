@@ -218,6 +218,7 @@ test('native form size passthrough retains priority and reacts together with fie
 
 test('search density aligns every field and button, preserves draft and explicit overrides', async () => {
   const wrapper = mount(C_FormSearch, {
+    attachTo: document.body,
     props: {
       formItemList: [
         { type: 'input', prop: 'name' },
@@ -230,8 +231,14 @@ test('search density aligns every field and button, preserves draft and explicit
   expect(wrapper.findComponent(NForm).props('size')).toBe('small')
   expect(wrapper.findComponent(NInput).props('size')).toBe('small')
   expect(wrapper.findComponent(NSelect).props('size')).toBe('large')
-  expect(wrapper.findComponent(NDatePicker).exists()).toBe(false)
+  const datePicker = wrapper.findComponent(NDatePicker)
+  const datePickerInstance = datePicker.vm.$.uid
+  const dateField = wrapper.findAll('.form-search-item-box')[2]
+  expect(dateField.isVisible()).toBe(false)
+  expect(datePicker.props('size')).toBe('small')
   await wrapper.get('[aria-label="展开搜索条件"]').trigger('click')
+  expect(wrapper.findComponent(NDatePicker).vm.$.uid).toBe(datePickerInstance)
+  expect(dateField.isVisible()).toBe(true)
   expect(wrapper.findComponent(NDatePicker).props('size')).toBe('small')
   expect(
     wrapper

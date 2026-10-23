@@ -16,7 +16,11 @@
         <button
           type="button"
           class="notification-badge__trigger"
-          :aria-label="`消息通知${count > 0 ? `（${count} 条未读）` : ''}`"
+          :aria-label="
+            count > 0
+              ? t('notification.unreadBadge', { count })
+              : t('notification.badge')
+          "
           @click="$emit('click')"
         >
           <C_Icon
@@ -40,12 +44,17 @@
           />
         </button>
       </template>
-      消息通知{{ count > 0 ? `（${count} 条未读）` : '' }}
+      {{
+        count > 0
+          ? t('notification.unreadBadge', { count })
+          : t('notification.badge')
+      }}
     </NTooltip>
   </div>
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../../config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import { DEFAULT_MAX_BADGE_COUNT } from '../constants'
@@ -59,6 +68,7 @@
     hasUrgent?: boolean
   }
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<Props>(), {
     count: 0,
     maxCount: DEFAULT_MAX_BADGE_COUNT,

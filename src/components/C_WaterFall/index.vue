@@ -92,6 +92,8 @@
       <slot
         name="footer"
         :status="scrollStatus"
+        :paused="loadMorePaused"
+        :load-more="resumeLoadMore"
       >
         <div
           v-if="props.loading"
@@ -106,6 +108,12 @@
         >
           没有更多了
         </div>
+        <NButton
+          v-else-if="loadMorePaused"
+          size="small"
+          @click="resumeLoadMore"
+          >继续加载</NButton
+        >
       </slot>
     </div>
   </div>
@@ -113,7 +121,7 @@
 
 <script setup lang="ts">
   import { ref, computed, onUnmounted, type Ref } from 'vue'
-  import { NSpin } from 'naive-ui'
+  import { NSpin, NButton } from 'naive-ui'
   import type {
     WaterFallItem,
     WaterFallLayoutItem,
@@ -263,7 +271,11 @@
   const loadingRef = computed(() => props.loading)
   const noMoreRef = computed(() => props.noMore)
 
-  const { status: scrollStatus } = useInfiniteScroll(
+  const {
+    status: scrollStatus,
+    paused: loadMorePaused,
+    resume: resumeLoadMore,
+  } = useInfiniteScroll(
     sentinelRef,
     infiniteEnabled,
     loadingRef,

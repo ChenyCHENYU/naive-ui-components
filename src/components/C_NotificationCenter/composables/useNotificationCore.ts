@@ -1,3 +1,4 @@
+import { useComponentLocale } from '../../../config'
 /*
  * @Author: ChenYu ycyplus@gmail.com
  * @Date: 2026-02-27
@@ -202,7 +203,8 @@ function snapshotFromResult(
   result: FetchNotificationsResult,
   previous: Snapshot,
   reset: boolean,
-  queryCategory: NotificationCategory | 'all'
+  queryCategory: NotificationCategory | 'all',
+  invalidResponse: string
 ): Snapshot {
   if (
     !Array.isArray(result?.list) ||
@@ -210,7 +212,7 @@ function snapshotFromResult(
     !validCount(result.total) ||
     !validCount(result.unreadCount)
   ) {
-    throw new Error('消息接口返回的数据或统计无效')
+    throw new Error(invalidResponse)
   }
   const unique = new Map<string, NotificationMessage>()
   const known = new Map(previous.known)
@@ -270,6 +272,7 @@ export function useNotificationCore(
   initialize: () => void
   dispose: () => void
 } {
+  const { t } = useComponentLocale()
   const mode = computed(
     () => props.dataMode ?? (props.fetchNotifications ? 'remote' : 'demo')
   )
@@ -319,7 +322,7 @@ export function useNotificationCore(
 
   function report(cause: unknown, operation: string) {
     error.value =
-      cause instanceof Error ? cause.message : '消息操作失败，请重试'
+      cause instanceof Error ? cause.message : t('notification.operationFailed')
     props.onError?.(cause, operation)
   }
   function clearError() {
@@ -446,7 +449,7 @@ export function useNotificationCore(
     category: NotificationCategory | 'all'
   ) {
     if (!props.fetchNotifications)
-      throw new Error('远程消息模式未配置 fetchNotifications')
+      throw new Error(t('notification.missingFetch'))
     return props.fetchNotifications({
       category: category === 'all' ? undefined : category,
       page: targetPage,
@@ -474,7 +477,13 @@ export function useNotificationCore(
       }
       const result = await requestPage(targetPage, category)
       if (!currentRequest(version, scope)) return
-      const next = snapshotFromResult(result, base.value, reset, category)
+      const next = snapshotFromResult(
+        result,
+        base.value,
+        reset,
+        category,
+        t('notification.invalidResponse')
+      )
       // 请求开始后的成功操作与推送不能被较旧的查询结果覆盖。
       base.value = pruneKnownRecords(changesSince(next, started))
       page.value = targetPage
@@ -537,7 +546,7 @@ export function useNotificationCore(
   ) {
     clearError()
     if (mode.value === 'remote' && !adapter) {
-      const cause = new Error('远程消息模式未配置 ' + name + ' 接口')
+      const cause = new Error(t('notification.missingAction', { name }))
       retryAction = () => execute(operation, adapter, name)
       report(cause, name)
       throw cause
@@ -547,7 +556,7 @@ export function useNotificationCore(
     try {
       if (mode.value === 'remote') await adapter!()
       if (disposed || scope !== scopeVersion) {
-        const cancelled = new Error('消息作用域已失效')
+        const cancelled = new Error(t('notification.expiredScope'))
         cancelled.name = 'AbortError'
         throw cancelled
       }

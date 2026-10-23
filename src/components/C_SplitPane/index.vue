@@ -47,7 +47,7 @@
       :aria-valuemax="isSecondCollapsed ? 100 : bounds.max"
       :aria-disabled="disabled || undefined"
       :aria-controls="firstPanelId"
-      :aria-label="ariaLabel"
+      :aria-label="ariaLabel ?? t('split.resize')"
       :tabindex="disabled ? -1 : 0"
       @pointerdown="handleMouseDown"
       @dblclick="handleDoubleClick"
@@ -65,10 +65,14 @@
           class="split-gutter__collapse-btn split-gutter__collapse-btn--first"
           type="button"
           :disabled="disabled"
-          :aria-label="isFirstCollapsed ? '展开首面板' : '折叠首面板'"
+          :aria-label="
+            isFirstCollapsed ? t('split.expandFirst') : t('split.collapseFirst')
+          "
           :aria-expanded="!isFirstCollapsed"
           :aria-controls="firstPanelId"
-          :title="isFirstCollapsed ? '展开首面板' : '折叠首面板'"
+          :title="
+            isFirstCollapsed ? t('split.expandFirst') : t('split.collapseFirst')
+          "
           @click.stop="toggle('first')"
           @pointerdown.stop
           @dblclick.stop
@@ -101,10 +105,18 @@
           class="split-gutter__collapse-btn split-gutter__collapse-btn--second"
           type="button"
           :disabled="disabled"
-          :aria-label="isSecondCollapsed ? '展开第二面板' : '折叠第二面板'"
+          :aria-label="
+            isSecondCollapsed
+              ? t('split.expandSecond')
+              : t('split.collapseSecond')
+          "
           :aria-expanded="!isSecondCollapsed"
           :aria-controls="secondPanelId"
-          :title="isSecondCollapsed ? '展开第二面板' : '折叠第二面板'"
+          :title="
+            isSecondCollapsed
+              ? t('split.expandSecond')
+              : t('split.collapseSecond')
+          "
           @click.stop="toggle('second')"
           @pointerdown.stop
           @dblclick.stop
@@ -141,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../config'
   import { ref, computed, toRef, useId } from 'vue'
   import { useSplitResize } from './composables/useSplitResize'
   import type {
@@ -152,9 +165,9 @@
 
   defineOptions({ name: 'C_SplitPane' })
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<SplitPaneProps>(), {
     direction: 'horizontal',
-    ariaLabel: '调整面板大小',
     defaultSize: 50,
     minSize: 0,
     minFirstSize: 0,

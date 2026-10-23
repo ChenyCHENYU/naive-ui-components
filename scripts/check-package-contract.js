@@ -24,8 +24,22 @@ requireCondition(
   'Use optional peer dependencies, not hidden installs'
 )
 requireCondition(
-  pkg.scripts?.['check:audit'] === 'bun audit',
+  pkg.scripts?.['check:audit'] ===
+    'node scripts/check-dependency-security.js' &&
+    pkg.scripts?.['check:audit:raw'] === 'bun audit --json',
   'Dependency audit gate is missing'
+)
+requireCondition(
+  pkg.patchedDependencies?.['braces@3.0.3'] === 'patches/braces@3.0.3.patch' &&
+    fs.existsSync(path.join(root, 'patches/braces@3.0.3.patch')),
+  'Reviewed braces mitigation must remain installed and independently verified'
+)
+requireCondition(
+  pkg.dependencies?.dompurify === '^3.4.17' &&
+    pkg.overrides?.['markdown-it'] === '14.3.3' &&
+    pkg.devDependencies?.vite === '8.2.4' &&
+    pkg.devDependencies?.vitest === '4.1.12',
+  'Reviewed security dependency baselines changed; re-run security validation'
 )
 requireCondition(pkg.overrides?.tmp === '0.2.7', 'Secure tmp override changed')
 requireCondition(
@@ -58,6 +72,10 @@ for (const peer of ['sortablejs', 'vue-router']) {
     pkg.peerDependenciesMeta?.[peer]?.optional === true,
     `${peer} must remain an optional peer`
   )
+  requireCondition(
+    Boolean(pkg.devDependencies?.[peer]),
+    `${peer} must be installed explicitly for source checks and build tests`
+  )
 }
 
 for (const staleDependency of ['@tato30/vue-pdf', '@vueuse/core']) {
@@ -80,6 +98,7 @@ requireCondition(
 )
 
 for (const entry of [
+  './config',
   './C_Form/base.css',
   './C_Form/full.css',
   './C_Table/base.css',

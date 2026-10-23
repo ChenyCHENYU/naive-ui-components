@@ -95,6 +95,11 @@
       :delete-key-code="readonly ? null : undefined"
       :elements-selectable="true"
       @node-click="onNodeClick"
+      @node-drag-stop="commitCanvasChange"
+      @nodes-change="handleCanvasChanges"
+      @edges-change="handleCanvasChanges"
+      @connect="connectNodes"
+      @edge-update="updateConnection"
       @pane-click="closeAddMenu"
     />
 
@@ -454,6 +459,10 @@
     currentNode,
     nodeTypes,
     workflowStats,
+    commitCanvasChange,
+    handleCanvasChanges,
+    connectNodes,
+    updateConnection,
     addNode,
     onNodeClick,
     closeAddMenu,

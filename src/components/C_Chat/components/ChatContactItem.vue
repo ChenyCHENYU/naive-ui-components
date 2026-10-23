@@ -52,14 +52,17 @@
   </button>
 </template>
 <script setup lang="ts">
+  import { useComponentLocale } from '../../../config'
   import type { ChatContact } from '../types'
+  const { t } = useComponentLocale()
   defineProps<{ contact: ChatContact; active: boolean }>()
   const emit = defineEmits<{ select: [id: string] }>()
   function formatContactTime(timestamp: string | number) {
     const date = new Date(timestamp)
     const diff = Date.now() - date.getTime()
-    if (diff < 60_000) return '刚刚'
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}分钟前`
+    if (diff < 60_000) return t('time.now')
+    if (diff < 3_600_000)
+      return t('time.minutes', { count: Math.floor(diff / 60_000) })
     const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     return diff < 86_400_000
       ? time

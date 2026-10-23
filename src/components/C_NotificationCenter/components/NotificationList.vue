@@ -11,7 +11,7 @@
     <!-- 分类 Tab -->
     <div class="notification-list__tabs">
       <button
-        v-for="tab in CATEGORY_TABS"
+        v-for="tab in categoryTabs"
         :key="tab.key"
         class="notification-list__tab"
         :class="{
@@ -49,7 +49,7 @@
             :size="14"
           />
         </template>
-        全部已读
+        {{ t('notification.allRead') }}
       </NButton>
       <NButton
         text
@@ -63,7 +63,7 @@
             :size="14"
           />
         </template>
-        清空
+        {{ t('notification.clear') }}
       </NButton>
     </div>
 
@@ -106,15 +106,33 @@
 
       <template v-else-if="messages.length > 0">
         <div class="notification-list__items">
-          <NotificationItem
-            v-for="msg in messages"
+          <template
+            v-for="(msg, index) in messages"
             :key="msg.id"
-            :message="msg"
-            :busy="busy || pendingIds.includes(msg.id)"
-            @click="$emit('itemClick', $event)"
-            @read="$emit('read', $event)"
-            @delete="$emit('delete', $event)"
-          />
+          >
+            <slot
+              name="item"
+              v-bind="slotContext(msg, index)"
+            >
+              <NotificationItem
+                :message="msg"
+                :busy="busy || pendingIds.includes(msg.id)"
+                @click="$emit('itemClick', $event)"
+                @read="$emit('read', $event)"
+                @delete="$emit('delete', $event)"
+              >
+                <template
+                  v-if="$slots['item-actions']"
+                  #actions
+                >
+                  <slot
+                    name="item-actions"
+                    v-bind="slotContext(msg, index)"
+                  />
+                </template>
+              </NotificationItem>
+            </slot>
+          </template>
         </div>
 
         <!-- 加载更多 -->
@@ -129,7 +147,9 @@
             v-if="loading"
             :size="14"
           />
-          <span>{{ loading ? '加载中...' : '加载更多' }}</span>
+          <span>{{
+            loading ? t('notification.loading') : t('notification.loadMore')
+          }}</span>
         </button>
       </template>
 
@@ -143,17 +163,22 @@
           :size="48"
           class="notification-list__empty-icon"
         />
-        <span class="notification-list__empty-text">暂无消息</span>
+        <span class="notification-list__empty-text">{{
+          t('notification.empty')
+        }}</span>
       </div>
     </NScrollbar>
   </div>
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../../config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type {
     NotificationMessage,
+    NotificationCategoryOption,
+    NotificationCenterSlots,
     NotificationCategory,
     NotificationUnreadByCategory,
   } from '../types'
@@ -163,6 +188,7 @@
   interface Props {
     /** 消息列表 */
     messages: NotificationMessage[]
+    categoryOptions?: readonly NotificationCategoryOption[]
     /** 当前分类 */
     activeCategory: NotificationCategory | 'all'
     /** 各分类未读数 */
@@ -179,13 +205,14 @@
     scrollHeight?: number
   }
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<Props>(), {
     scrollHeight: 420,
     busy: false,
     pendingIds: () => [],
   })
 
-  defineEmits<{
+  const emit = defineEmits<{
     switchCategory: [key: NotificationCategory | 'all']
     itemClick: [message: NotificationMessage]
     read: [id: string]
@@ -194,6 +221,25 @@
     clear: []
     loadMore: []
   }>()
+
+  defineSlots<Pick<NotificationCenterSlots, 'item' | 'item-actions'>>()
+  const slotContext = (message: NotificationMessage, index: number) => ({
+    message,
+    index,
+    busy: props.busy || props.pendingIds.includes(message.id),
+    select: () => emit('itemClick', message),
+    read: () => emit('read', message.id),
+    remove: () => emit('delete', message.id),
+  })
+
+  const categoryTabs = computed(() =>
+    (props.categoryOptions ?? CATEGORY_TABS).map(tab => ({
+      key: tab.key,
+      label: props.categoryOptions
+        ? (tab.label ?? t(`notification.${tab.key}`))
+        : t(`notification.${tab.key}`),
+    }))
+  )
 
   /** 当前分类下的未读数 */
   const currentUnread = computed(() => {

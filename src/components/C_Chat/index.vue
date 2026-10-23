@@ -18,14 +18,14 @@
           name="mdi:chat-outline"
           :size="20"
         />
-        会话
+        {{ t('chat.sessions') }}
       </div>
 
       <!-- 搜索框 -->
       <div class="c-chat__search">
         <NInput
           v-model:value="searchKeyword"
-          placeholder="搜索联系人"
+          :placeholder="t('chat.search')"
           clearable
           size="small"
         >
@@ -81,7 +81,7 @@
             v-if="currentContact?.online"
             class="c-chat__header-status"
           >
-            在线
+            {{ t('chat.online') }}
           </span>
         </slot>
       </div>
@@ -141,7 +141,7 @@
           <div
             v-if="!messageList.length && !mergedProps.loadingHistory"
             class="c-chat__empty"
-            >暂无消息，发送第一条吧</div
+            >{{ t('chat.empty') }}</div
           >
           <ChatMessageItem
             v-for="(msg, index) in messageList"
@@ -166,6 +166,7 @@
               quaternary
               circle
               size="small"
+              :aria-label="t('chat.emoji')"
               @click="emit('emoji-click')"
             >
               <template #icon>
@@ -179,6 +180,7 @@
               quaternary
               circle
               size="small"
+              :aria-label="t('chat.attach')"
               @click="emit('file-upload')"
             >
               <template #icon>
@@ -206,6 +208,7 @@
           type="primary"
           :disabled="!inputText.trim()"
           class="c-chat__send-btn"
+          :aria-label="t('chat.send')"
           @click="handleSend"
         >
           <template #icon>
@@ -228,13 +231,14 @@
         :size="48"
         class="c-chat__no-chat-icon"
       />
-      <span>选择一个会话开始聊天</span>
+      <span>{{ t('chat.choose') }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { useComponentLocale } from '../../config'
+  import { computed, ref, watch } from 'vue'
   import { VVirtualList, type VirtualListInst } from 'vueuc'
   import ChatMessageItem from './components/ChatMessageItem.vue'
   import ChatContactItem from './components/ChatContactItem.vue'
@@ -248,16 +252,15 @@
   } from './types'
 
   // ===== Props & Emits =====
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<ChatProps>(), {
     contacts: () => [],
     messages: () => [],
     currentContactId: '',
-    placeholder: DEFAULT_CHAT_PROPS.placeholder,
     showContacts: DEFAULT_CHAT_PROPS.showContacts,
     showTimestamp: DEFAULT_CHAT_PROPS.showTimestamp,
     showSendBtn: DEFAULT_CHAT_PROPS.showSendBtn,
     loadingHistory: DEFAULT_CHAT_PROPS.loadingHistory,
-    title: DEFAULT_CHAT_PROPS.title,
     selfAvatar: '',
     selfName: '',
     virtualScroll: true,
@@ -278,6 +281,8 @@
   const mergedProps = computed(() => ({
     ...DEFAULT_CHAT_PROPS,
     ...props,
+    placeholder: props.placeholder ?? t('chat.placeholder'),
+    title: props.title ?? t('chat.title'),
   }))
 
   // ===== 内部状态 =====
@@ -292,6 +297,36 @@
 
   const currentId = computed(
     () => props.currentContactId || contactList.value[0]?.id || ''
+  )
+
+  // 草稿属于会话；移除的联系人与空草稿及时释放，缓存最多保留最近 50 个会话。
+  const drafts = new Map<string, string>()
+  watch(
+    currentId,
+    (id, previous) => {
+      const text = inputText.value
+      const targetDraft = drafts.get(id) ?? ''
+      drafts.delete(id)
+      drafts.delete(previous)
+      if (
+        text &&
+        (props.contacts?.some(contact => contact.id === previous) ||
+          !props.showContacts)
+      )
+        drafts.set(previous, text)
+      while (drafts.size > 50) drafts.delete(drafts.keys().next().value!)
+      inputText.value = targetDraft
+    },
+    { flush: 'sync' }
+  )
+  watch(
+    () => props.contacts?.map(contact => contact.id),
+    ids => {
+      if (!props.showContacts) return
+      const present = new Set(ids)
+      if (!present.has(currentId.value)) inputText.value = ''
+      for (const id of drafts.keys()) if (!present.has(id)) drafts.delete(id)
+    }
   )
 
   const currentContact = computed(() =>

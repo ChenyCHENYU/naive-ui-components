@@ -12,7 +12,7 @@
     :class="[`c-skeleton--${animationType}`]"
     :style="{ '--c-skeleton-radius': borderRadius }"
     role="status"
-    aria-label="加载中"
+    :aria-label="t('skeleton.loading')"
   >
     <!-- text 预设 -->
     <template v-if="preset === 'text'">
@@ -290,6 +290,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../config'
   import { computed } from 'vue'
   import type {
     SkeletonProps,
@@ -302,6 +303,7 @@
 
   defineOptions({ name: 'C_Skeleton' })
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<SkeletonProps>(), {
     preset: 'text',
     loading: true,

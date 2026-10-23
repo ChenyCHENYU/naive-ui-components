@@ -27,7 +27,7 @@ export interface TransferProps<T extends TransferItem = TransferItem> {
   /** 右侧已选 key 列表 (v-model) */
   modelValue: readonly NoInfer<T['key']>[]
   /** 左右栏标题 */
-  titles?: [string, string]
+  titles?: readonly [string, string]
   /** 是否可搜索 */
   filterable?: boolean
   /** 搜索占位符 */

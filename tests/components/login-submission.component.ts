@@ -151,3 +151,27 @@ test.each(
   await flushPromises()
   expect(wrapper.emitted(event)).toBeUndefined()
 })
+
+test.each(['password', 'captcha'] as const)(
+  'default human verification applies only to password mode (%s)',
+  async mode => {
+    const { wrapper, form, event } = await prepare(mode)
+    await wrapper.setProps({
+      features: {
+        captchaVerify: true,
+        qrcodeLogin: false,
+        socialLogin: false,
+        rememberMe: false,
+      },
+    })
+    await wrapper.get('.c-login__submit-btn').trigger('click')
+    await flushPromises()
+    if (mode === 'captcha') {
+      expect(form.validate).toHaveBeenCalledOnce()
+      expect(wrapper.emitted(event)).toHaveLength(1)
+    } else {
+      expect(form.validate).not.toHaveBeenCalled()
+      expect(wrapper.emitted(event)).toBeUndefined()
+    }
+  }
+)

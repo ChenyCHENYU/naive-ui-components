@@ -1,6 +1,9 @@
 export { default as C_NotificationCenter } from './index.vue'
 export type {
   NotificationDataMode,
+  NotificationCategoryOption,
+  NotificationItemSlotContext,
+  NotificationCenterSlots,
   NotificationUnreadByCategory,
   FetchNotificationsResult,
   NotificationCenterController,

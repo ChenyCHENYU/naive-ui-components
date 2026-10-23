@@ -98,6 +98,8 @@ export function useSearchState<T extends object = SearchFormParams>(
       await formRef.value?.validate()
       return true
     } catch {
+      // 折叠仅影响显示；校验失败时展示完整条件，便于定位字段。
+      if (hasExpandButton.value) expanded.value = true
       return false
     }
   }
@@ -208,6 +210,8 @@ export function useSearchState<T extends object = SearchFormParams>(
     expanded,
     searching,
     visibleFields,
+    availableFields,
+    foldThreshold,
     hasExpandButton,
     history,
     searchFn,

@@ -58,15 +58,15 @@
 
 ```bash
 bun add @robot-admin/naive-ui-components
-bun add vue@^3.5.0 naive-ui@^2.35.0
+bun add vue@^3.5.3 naive-ui@^2.35.0
 ```
 
 也可使用项目现有的 npm 或 pnpm。仅在对应场景安装可选 peer：
 
-| 功能                                       | 额外安装             |
-| ------------------------------------------ | -------------------- |
-| 主入口导入 / `C_Breadcrumb` / `C_TagsView` | `vue-router@^4.6.4`  |
-| `C_Table` 行／列拖拽                       | `sortablejs@^1.15.7` |
+| 功能                                       | 额外安装                       |
+| ------------------------------------------ | ------------------------------ |
+| 主入口导入 / `C_Breadcrumb` / `C_TagsView` | `vue-router@^4.6.4` / `^5.3.1` |
+| `C_Table` 行／列拖拽                       | `sortablejs@^1.15.7`           |
 
 ### 用配置创建一个表单
 

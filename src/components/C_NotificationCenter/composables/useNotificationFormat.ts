@@ -1,3 +1,4 @@
+import { useComponentLocale } from '../../../config'
 /*
  * @Author: ChenYu ycyplus@gmail.com
  * @Date: 2026-02-27
@@ -7,59 +8,55 @@
  */
 
 /** 时间单位阈值 */
-const MINUTE = 60_000;
-const HOUR = 3_600_000;
-const DAY = 86_400_000;
-const WEEK = 7 * DAY;
-const MONTH = 30 * DAY;
-const YEAR = 365 * DAY;
+const MINUTE = 60_000
+const HOUR = 3_600_000
+const DAY = 86_400_000
+const WEEK = 7 * DAY
+const MONTH = 30 * DAY
+const YEAR = 365 * DAY
 
-/** 单例缓存 */
-let _instance: ReturnType<typeof createNotificationFormat> | null = null;
-
-/**
- * 通知时间格式化（单例）
- *
- * 将 ISO 时间戳格式化为人类友好的相对时间描述，
- * 如 "刚刚"、"5分钟前"、"昨天 14:30" 等。
- */
+/** 每次调用绑定当前应用的语言上下文，避免跨实例语言污染。 */
 export function useNotificationFormat() {
-  if (!_instance) _instance = createNotificationFormat();
-  return _instance;
+  return createNotificationFormat()
 }
 
 /**
  * 创建格式化工具实例
  */
 function createNotificationFormat() {
+  const { t } = useComponentLocale()
   /**
    * 格式化相对时间
    * @param timestamp ISO 8601 时间字符串
    */
   function formatRelativeTime(timestamp: string): string {
-    const date = new Date(timestamp);
-    const now = Date.now();
-    const diff = now - date.getTime();
+    const date = new Date(timestamp)
+    const now = Date.now()
+    const diff = now - date.getTime()
 
-    if (diff < 0) return "刚刚";
-    if (diff < MINUTE) return "刚刚";
-    if (diff < HOUR) return `${Math.floor(diff / MINUTE)}分钟前`;
-    if (diff < DAY) return `${Math.floor(diff / HOUR)}小时前`;
+    if (diff < 0) return t('time.now')
+    if (diff < MINUTE) return t('time.now')
+    if (diff < HOUR)
+      return t('time.minutes', { count: Math.floor(diff / MINUTE) })
+    if (diff < DAY) return t('time.hours', { count: Math.floor(diff / HOUR) })
 
     /* 判断是否是昨天 */
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today.getTime() - DAY);
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const yesterday = new Date(today.getTime() - DAY)
 
     if (date >= yesterday && date < today) {
-      return `昨天 ${padTime(date.getHours())}:${padTime(date.getMinutes())}`;
+      return t('time.yesterday', {
+        time: `${padTime(date.getHours())}:${padTime(date.getMinutes())}`,
+      })
     }
 
-    if (diff < WEEK) return `${Math.floor(diff / DAY)}天前`;
-    if (diff < MONTH) return `${Math.floor(diff / WEEK)}周前`;
-    if (diff < YEAR) return `${Math.floor(diff / MONTH)}个月前`;
+    if (diff < WEEK) return t('time.days', { count: Math.floor(diff / DAY) })
+    if (diff < MONTH) return t('time.weeks', { count: Math.floor(diff / WEEK) })
+    if (diff < YEAR)
+      return t('time.months', { count: Math.floor(diff / MONTH) })
 
-    return formatFullDate(date);
+    return formatFullDate(date)
   }
 
   /**
@@ -67,12 +64,12 @@ function createNotificationFormat() {
    * @param date Date 对象
    */
   function formatFullDate(date: Date): string {
-    const y = date.getFullYear();
-    const m = padTime(date.getMonth() + 1);
-    const d = padTime(date.getDate());
-    const h = padTime(date.getHours());
-    const min = padTime(date.getMinutes());
-    return `${y}-${m}-${d} ${h}:${min}`;
+    const y = date.getFullYear()
+    const m = padTime(date.getMonth() + 1)
+    const d = padTime(date.getDate())
+    const h = padTime(date.getHours())
+    const min = padTime(date.getMinutes())
+    return `${y}-${m}-${d} ${h}:${min}`
   }
 
   /**
@@ -80,11 +77,11 @@ function createNotificationFormat() {
    * @param n 数字
    */
   function padTime(n: number): string {
-    return n < 10 ? `0${n}` : String(n);
+    return n < 10 ? `0${n}` : String(n)
   }
 
   return {
     formatRelativeTime,
     formatFullDate,
-  };
+  }
 }

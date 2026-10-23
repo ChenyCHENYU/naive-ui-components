@@ -7,11 +7,13 @@
  */
 import { expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { h } from 'vue'
 import C_Form from '../../src/components/C_Form/index.vue'
 import type {
   FormRecord,
   SubmitEventPayload,
   FormSubmitContext,
+  FormActionSlotProps,
 } from '../../src/components/C_Form/types'
 
 const fields = [
@@ -99,3 +101,30 @@ test('卸载终止保存上下文，迟到保存不能发提交通知', async ()
   await flushPromises()
   expect(wrapper.emitted('submit')).toBeUndefined()
 })
+
+test.each(['action', 'action-extra'] as const)(
+  '%s receives the complete reactive model, including a business value field',
+  async slotName => {
+    const wrapper = mount(C_Form<FormRecord>, {
+      props: {
+        options: fields,
+        modelValue: { name: 'Ada', value: 'business value' },
+      },
+      slots: {
+        [slotName]: ({ model }: FormActionSlotProps<FormRecord>) =>
+          h(
+            'output',
+            { class: 'action-model' },
+            `${model.name}:${model.value}`
+          ),
+      },
+    })
+    expect(wrapper.get('.action-model').text()).toBe('Ada:business value')
+    await wrapper.get('input').setValue('Grace')
+    expect(wrapper.get('.action-model').text()).toBe('Grace:business value')
+    await wrapper.setProps({
+      modelValue: { name: 'External', value: 'updated' },
+    })
+    expect(wrapper.get('.action-model').text()).toBe('External:updated')
+  }
+)

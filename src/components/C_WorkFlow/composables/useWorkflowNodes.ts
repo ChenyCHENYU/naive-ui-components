@@ -15,6 +15,12 @@ import {
   type Component,
   type Ref,
 } from 'vue'
+import type {
+  Connection,
+  EdgeUpdateEvent,
+  NodeChange,
+  EdgeChange,
+} from '@vue-flow/core'
 import { useComponentFeedback } from '../../../config'
 import { cloneData, isDataEqual } from '../../../utils/data'
 import type {
@@ -119,6 +125,63 @@ export function useWorkflowNodes(
     const data = getCurrentWorkflowData()
     emit('update:modelValue', data)
     emit('change', data)
+  }
+
+  let pendingCanvasCommit = false
+  let modelRevision = 0
+  /** 仅在用户操作结束后发出快照；外部回填与 SDK 尺寸/选择变化不回写。 */
+  const commitCanvasChange = (): void => {
+    if (disposed || props.readonly || pendingCanvasCommit) return
+    pendingCanvasCommit = true
+    const revision = modelRevision
+    void nextTick(() => {
+      pendingCanvasCommit = false
+      if (disposed || props.readonly || revision !== modelRevision) return
+      emitChange()
+    })
+  }
+  const handleCanvasChanges = (changes: NodeChange[] | EdgeChange[]): void => {
+    if (changes.some(change => change.type === 'remove')) commitCanvasChange()
+  }
+  const canConnect = (
+    connection: Connection,
+    excludingEdgeId?: string
+  ): boolean =>
+    nodes.value.some(node => node.id === connection.source) &&
+    nodes.value.some(node => node.id === connection.target) &&
+    !edges.value.some(
+      edge =>
+        edge.id !== excludingEdgeId &&
+        edge.source === connection.source &&
+        edge.target === connection.target
+    )
+  const connectNodes = (connection: Connection): void => {
+    if (props.readonly || !canConnect(connection)) return
+    edges.value = [
+      ...edges.value,
+      {
+        id: generateEdgeId(connection.source, connection.target),
+        source: connection.source,
+        target: connection.target,
+        animated: true,
+        type: 'default',
+      },
+    ]
+    commitCanvasChange()
+  }
+  const updateConnection = ({ edge, connection }: EdgeUpdateEvent): void => {
+    if (
+      props.readonly ||
+      !edges.value.some(item => item.id === edge.id) ||
+      !canConnect(connection, edge.id)
+    )
+      return
+    edges.value = edges.value.map(item =>
+      item.id === edge.id
+        ? { ...item, source: connection.source, target: connection.target }
+        : item
+    )
+    commitCanvasChange()
   }
 
   /** 延迟适应画布视图 */
@@ -360,6 +423,7 @@ export function useWorkflowNodes(
         isDataEqual(newValue.config, workflowConfig.value)
       )
         return
+      modelRevision += 1
       nodes.value = cloneData(newValue.nodes ?? [])
       edges.value = cloneData(newValue.edges ?? [])
       workflowConfig.value = cloneData(newValue.config)
@@ -401,6 +465,10 @@ export function useWorkflowNodes(
     nodeTypes,
     workflowStats,
     /* 方法 */
+    commitCanvasChange,
+    handleCanvasChanges,
+    connectNodes,
+    updateConnection,
     addNode,
     onNodeClick,
     closeAddMenu,

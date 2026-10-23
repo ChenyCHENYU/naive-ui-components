@@ -21,7 +21,7 @@
             :size="16"
           />
         </template>
-        返回列表
+        {{ t('notification.back') }}
       </NButton>
     </div>
 
@@ -41,7 +41,7 @@
               :size="12"
             />
           </template>
-          {{ categoryTag.label }}
+          {{ t(`notification.${message.category}`) }}
         </NTag>
         <NTag
           v-if="message.priority === 'urgent' || message.priority === 'high'"
@@ -50,7 +50,7 @@
           :bordered="false"
           round
         >
-          {{ priorityTag.label }}
+          {{ t(`notification.${message.priority}`) }}
         </NTag>
         <span class="notification-detail__time">{{ formattedTime }}</span>
       </div>
@@ -96,7 +96,7 @@
         size="small"
         @click="handleAction"
       >
-        {{ message.actionText || '查看详情' }}
+        {{ message.actionText || t('notification.details') }}
         <template #icon>
           <C_Icon
             name="mdi:arrow-right"
@@ -109,6 +109,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../../config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type { NotificationMessage } from '../types'
@@ -124,6 +125,7 @@
     scrollHeight?: number
   }
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<Props>(), {
     scrollHeight: 320,
   })

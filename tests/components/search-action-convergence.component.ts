@@ -520,3 +520,45 @@ test('search boolean encoding keeps false, zero and conflicting string options d
   expect(select.props('value')).toEqual([options[0].value])
   expect(wrapper.emitted('reset')?.at(-1)?.[0]).toEqual({ flags: [false] })
 })
+
+test('folded search fields remain validated and failures reveal the field', async () => {
+  const onSearch = vi.fn()
+  const wrapper = mount(C_FormSearch, {
+    props: {
+      formItemList: [
+        { type: 'input', prop: 'name' },
+        {
+          type: 'input',
+          prop: 'required',
+          rules: [{ required: true, message: 'required' }],
+        },
+        {
+          type: 'input',
+          prop: 'hidden',
+          show: false,
+          rules: [{ required: true, message: 'hidden' }],
+        },
+      ],
+      modelValue: { name: 'Ada', required: '', hidden: '' },
+      config: { foldThreshold: 1, onSearch },
+    },
+  })
+  const container = wrapper.findAll('.form-search-item-box')[1]
+  const field = container.get('input')
+  expect(container.attributes('style')).toContain('display: none')
+  expect(await wrapper.vm.searchFn()).toBe(false)
+  await flushPromises()
+  expect(container.attributes('style') ?? '').not.toContain('display: none')
+  expect(onSearch).not.toHaveBeenCalled()
+  expect(wrapper.emitted('search')).toBeUndefined()
+  await field.setValue('valid')
+  wrapper.vm.changeFoldState()
+  await flushPromises()
+  expect(container.attributes('style')).toContain('display: none')
+  expect(await wrapper.vm.searchFn()).toBe(true)
+  expect(onSearch).toHaveBeenCalledExactlyOnceWith({
+    name: 'Ada',
+    required: 'valid',
+    hidden: '',
+  })
+})

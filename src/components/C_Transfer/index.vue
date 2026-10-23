@@ -37,7 +37,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
-          :input-props="{ 'aria-label': '搜索可选列表' }"
+          :input-props="{ 'aria-label': t('transfer.searchSource') }"
         >
           <template #prefix>
             <C_Icon name="mdi:magnify" />
@@ -67,7 +67,7 @@
       <button
         type="button"
         class="c-transfer__btn"
-        aria-label="移至已选列表"
+        :aria-label="t('transfer.toTarget')"
         :class="{ 'is-disabled': movableSourceKeys.length === 0 }"
         :disabled="movableSourceKeys.length === 0"
         @click="moveToTarget"
@@ -77,7 +77,7 @@
       <button
         type="button"
         class="c-transfer__btn"
-        aria-label="移回可选列表"
+        :aria-label="t('transfer.toSource')"
         :class="{ 'is-disabled': movableTargetKeys.length === 0 }"
         :disabled="movableTargetKeys.length === 0"
         @click="moveToSource"
@@ -117,7 +117,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
-          :input-props="{ 'aria-label': '搜索已选列表' }"
+          :input-props="{ 'aria-label': t('transfer.searchTarget') }"
         >
           <template #prefix>
             <C_Icon name="mdi:magnify" />
@@ -145,6 +145,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends TransferItem = TransferItem">
+  import { useComponentLocale } from '../../config'
   import { computed, shallowReactive, ref, watch } from 'vue'
   import { NCheckbox, NInput } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
@@ -157,13 +158,10 @@
     type TransferEmits,
   } from './types'
 
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<TransferProps<T>>(), {
-    titles: () => DEFAULT_TRANSFER_PROPS.titles as [string, string],
     filterable: DEFAULT_TRANSFER_PROPS.filterable,
-    filterPlaceholder: DEFAULT_TRANSFER_PROPS.filterPlaceholder,
     showSelectAll: DEFAULT_TRANSFER_PROPS.showSelectAll,
-    sourceEmptyText: DEFAULT_TRANSFER_PROPS.sourceEmptyText,
-    targetEmptyText: DEFAULT_TRANSFER_PROPS.targetEmptyText,
     size: DEFAULT_TRANSFER_PROPS.size,
     virtualScroll: DEFAULT_TRANSFER_PROPS.virtualScroll,
   })
@@ -171,7 +169,14 @@
   defineOptions({ name: 'C_Transfer' })
   const emit = defineEmits<TransferEmits<T>>()
 
-  const mergedProps = computed(() => ({ ...DEFAULT_TRANSFER_PROPS, ...props }))
+  const mergedProps = computed(() => ({
+    ...DEFAULT_TRANSFER_PROPS,
+    ...props,
+    titles: props.titles ?? [t('transfer.source'), t('transfer.target')],
+    filterPlaceholder: props.filterPlaceholder ?? t('common.search'),
+    sourceEmptyText: props.sourceEmptyText ?? t('transfer.empty'),
+    targetEmptyText: props.targetEmptyText ?? t('transfer.emptyTarget'),
+  }))
 
   // ==================== 数据列表 ====================
 

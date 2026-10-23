@@ -303,25 +303,17 @@
   import PdfViewer from './components/PdfViewer/index.vue'
   import WordViewer from './components/WordViewer/index.vue'
   import ExcelViewer from './components/ExcelViewer/index.vue'
+  import type { FilePreviewProps } from './types'
   import { useFilePreview } from './composables/useFilePreview'
   import { useFullscreen } from './composables/useFullscreen'
 
   defineOptions({ name: 'C_FilePreview' })
 
-  const props = withDefaults(
-    defineProps<{
-      file?: File
-      url?: string
-      fileName?: string
-      autoPreview?: boolean
-      inline?: boolean
-    }>(),
-    {
-      fileName: '未知文件',
-      autoPreview: false,
-      inline: false,
-    }
-  )
+  const props = withDefaults(defineProps<FilePreviewProps>(), {
+    fileName: '未知文件',
+    autoPreview: false,
+    inline: false,
+  })
 
   const {
     file,
@@ -329,6 +321,7 @@
     fileName: propFileName,
     autoPreview,
     inline,
+    previewLimits,
   } = toRefs(props)
 
   const emit = defineEmits<{
@@ -354,7 +347,7 @@
     loadFile,
     openPreview,
     downloadFile,
-  } = useFilePreview({ file, url, fileName: propFileName }, emit)
+  } = useFilePreview({ file, url, fileName: propFileName, previewLimits }, emit)
 
   const modalContainer = ref<HTMLElement>()
   const { isFullscreen, toggleFullscreen, exitFullscreen } =
@@ -366,7 +359,15 @@
   })
 
   watch(
-    [file, url, autoPreview, inline, propFileName],
+    [
+      file,
+      url,
+      autoPreview,
+      inline,
+      propFileName,
+      () => props.previewLimits?.maxBytes,
+      () => props.previewLimits?.maxCells,
+    ],
     (current, previous) => {
       if (typeof window === 'undefined' || !hasSource.value) return
       if (inline.value) {
@@ -374,7 +375,9 @@
         return
       }
       if (showModal.value) {
-        if ([0, 1, 4].some(index => current[index] !== previous?.[index])) {
+        if (
+          [0, 1, 4, 5, 6].some(index => current[index] !== previous?.[index])
+        ) {
           void loadFile()
         }
         return

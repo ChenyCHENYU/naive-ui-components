@@ -301,7 +301,7 @@
     validationReady
   )
 
-  const typedModel = computed(() => formModel.value as FormModel<T>)
+  const typedModel = computed(() => formModel as FormModel<T>)
   const typedGetModel = (): FormModel<T> => getModel() as FormModel<T>
   const actionSlotProps = computed<FormActionSlotProps<T>>(() => ({
     form: formRef.value,

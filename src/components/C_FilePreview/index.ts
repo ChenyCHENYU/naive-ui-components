@@ -1,4 +1,4 @@
-export { default as C_FilePreview } from "./index.vue";
+export { default as C_FilePreview } from './index.vue'
 export type {
   FilePreviewType,
   FileConfig,
@@ -9,9 +9,10 @@ export type {
   ExcelSheet,
   DocHeading,
   FilePreviewProps,
+  FilePreviewLimits,
   PdfLoadResult,
   WordLoadResult,
   ExcelLoadResult,
-} from "./types";
-export { useFilePreview } from "./composables/useFilePreview";
-export { useFullscreen } from "./composables/useFullscreen";
+} from './types'
+export { useFilePreview } from './composables/useFilePreview'
+export { useFullscreen } from './composables/useFullscreen'

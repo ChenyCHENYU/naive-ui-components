@@ -1,3 +1,4 @@
+import { useComponentLocale } from '../../../config'
 import {
   ref,
   computed,
@@ -44,6 +45,7 @@ export function useTreeOperations<T extends object = TreeNodeData>(
   emit: EmitFn<T>,
   slots: TreeSlots<T> = {}
 ) {
+  const { t } = useComponentLocale()
   const native = computed(() => props.treeProps ?? {})
   const preset = computed(() => presetConfigs[props.mode ?? 'custom'])
   const draggable = computed(
@@ -58,7 +60,19 @@ export function useTreeOperations<T extends object = TreeNodeData>(
       props.showLine ?? native.value.showLine ?? preset.value.showLine ?? true
   )
   const actions = computed<ActionConfig<T>[]>(
-    () => props.actions ?? preset.value.actions ?? []
+    () =>
+      props.actions ??
+      (preset.value.actions ?? []).map(action => ({
+        ...action,
+        text: t(
+          action.key === 'edit' || action.key === 'delete'
+            ? `common.${action.key}`
+            : `tree.${props.mode}.${action.key}`
+        ),
+        confirm: action.confirm
+          ? t(`tree.${props.mode}.deleteConfirm`)
+          : undefined,
+      }))
   )
   const mergedConfig = computed(() => ({
     ...preset.value,

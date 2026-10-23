@@ -39,7 +39,26 @@ describe('C_Menu subpath entry', () => {
     ).text()
 
     expect(component).toContain(':node-props="getNodeProps"')
-    expect(component).toContain("emit('intent', option.key)")
-    expect(types).toContain('intent: [key: string]')
+    const intentHandler = component.slice(
+      component.indexOf('const getNodeProps ='),
+      component.indexOf('const onExpandedKeysChange =')
+    )
+    expect(intentHandler).toContain(
+      "emit('intent', option.key as MenuSelectionKey<Options>)"
+    )
+    expect(intentHandler).toContain('!option.children?.length')
+    expect(intentHandler).toContain('onPointerenter: notifyIntent')
+    expect(intentHandler).toContain('onFocusin: notifyIntent')
+    expect(intentHandler.match(/emit\(/g)).toHaveLength(1)
+    expect(intentHandler).not.toMatch(/router\.(push|replace)|window\.location/)
+    expect(types).toContain('intent: [key: MenuSelectionKey<O>]')
+    expect(types).toContain('WidenMenuKey<MenuOptionKeys<O[number]>>')
+    expect(types).toContain(
+      "'update:modelValue': [key: MenuSelectionKey<O> | null]"
+    )
+    expect(types).toContain(
+      "'update:expandedKeys': [keys: MenuSelectionKey<O>[]]"
+    )
+    expect(types).toContain('export type MenuKey = string | number')
   })
 })

@@ -38,6 +38,7 @@ export type AlignItems =
 export interface DraggableProps<T extends object = DraggableItem> {
   modelValue?: T[]
   disabled?: boolean
+  /** 默认仅在当前列表排序；显式相同 group 才允许跨列表拖放。 */
   group?: string | GroupOptions
   sort?: boolean
   animation?: number

@@ -35,6 +35,7 @@ const scriptEntry = name => ({
 // 使用 subpath patterns —— 一条通配规则覆盖所有 C_* 组件
 pkg.exports = {
   '.': scriptEntry('index'),
+  './config': scriptEntry('config'),
   './style.css': './dist/style.css',
   './resolver': scriptEntry('resolver'),
   './C_*': scriptEntry('C_*'),

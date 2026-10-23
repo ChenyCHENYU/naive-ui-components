@@ -8,9 +8,11 @@ import mammoth from 'mammoth'
 import { sanitizeRichHtml } from '../../utils/html'
 import type {
   FilePreviewType,
+  FilePreviewLimits,
   FileConfig,
   ZoomConfig,
   ExcelRow,
+  ExcelCell,
   ExcelColumn,
   ExcelSheet,
   DocHeading,
@@ -125,18 +127,15 @@ export const getColumnLetter = (index: number): string => {
   return result
 }
 
-export const formatCellValue = (value: any): string => {
-  if (value === null || value === undefined || value === '') return ''
-  const strValue = String(value).trim()
-
-  if (!isNaN(Number(strValue)) && strValue !== '' && strValue.length < 15) {
-    const num = Number(strValue)
-    return Number.isInteger(num)
-      ? num.toLocaleString()
-      : num.toLocaleString(undefined, { maximumFractionDigits: 2 })
-  }
-  return strValue
+/** 已格式化单元格优先使用 displayValue；原始文本与数值均不隐式改写。 */
+export const formatCellValue = (value: unknown): string => {
+  if (value === null || value === undefined) return ''
+  return String(value)
 }
+
+/** 预览安全预算；超限明确告知下载阅读，不截断后假装完整展示。 */
+export const MAX_EXCEL_PREVIEW_CELLS = 100_000
+export const MAX_EXCEL_FILE_BYTES = 32 * 1024 * 1024
 
 // eslint-disable-next-line complexity -- 单元格分类规则保持扁平分支更便于审计顺序。
 export const getCellClass = (value: any): string => {
@@ -154,12 +153,69 @@ export const getCellClass = (value: any): string => {
   return strValue.length > 20 ? 'cell-text cell-long' : 'cell-text'
 }
 
+function resolvePreviewLimit(
+  value: number | undefined,
+  fallback: number,
+  name: string
+): number {
+  if (value === undefined) return fallback
+  if (!Number.isSafeInteger(value) || value <= 0)
+    throw new Error(`previewLimits.${name} 必须为有限正整数`)
+  return value
+}
+
+interface ExcelMergeInfo {
+  isMain: boolean
+  rowspan: number
+  colspan: number
+}
+function createExcelCell(
+  cell: XLSX.CellObject | undefined,
+  merge?: ExcelMergeInfo
+): ExcelCell {
+  const span = merge?.isMain ? merge : { rowspan: 1, colspan: 1 }
+  return {
+    value: cell?.v ?? '',
+    displayValue: cell ? (cell.w ?? XLSX.utils.format_cell(cell)) : '',
+    type: cell?.t,
+    merged: Boolean(merge),
+    hidden: Boolean(merge && !merge.isMain),
+    rowspan: span.rowspan,
+    colspan: span.colspan,
+  }
+}
+
+function isValidExcelMerge(merge: XLSX.Range, maxRow: number, maxCol: number) {
+  const { s, e } = merge
+  return (
+    [s.r, s.c, e.r, e.c].every(Number.isSafeInteger) &&
+    s.r >= 0 &&
+    s.c >= 0 &&
+    e.r <= maxRow &&
+    e.c <= maxCol &&
+    e.r >= s.r &&
+    e.c >= s.c
+  )
+}
+
 export const processExcelSheet = (
   worksheet: any,
-  merges: any[]
+  merges: any[],
+  maxCells = MAX_EXCEL_PREVIEW_CELLS
 ): { data: ExcelRow[]; columns: ExcelColumn[] } => {
   const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1')
   const { c: maxCol, r: maxRow } = range.e
+  const cellCount = (maxCol + 1) * (maxRow + 1)
+  if (
+    !Number.isSafeInteger(cellCount) ||
+    cellCount < 1 ||
+    cellCount >
+      resolvePreviewLimit(maxCells, MAX_EXCEL_PREVIEW_CELLS, 'maxCells')
+  ) {
+    throw new Error(
+      `工作表范围超过 ${maxCells.toLocaleString()} 个单元格的预览上限，请下载文件查看`
+    )
+  }
 
   const columns: ExcelColumn[] = Array.from({ length: maxCol + 1 }, (_, c) => {
     const cellAddress = XLSX.utils.encode_cell({ r: 0, c })
@@ -172,8 +228,18 @@ export const processExcelSheet = (
     }
   })
 
-  const mergeMap = new Map()
-  merges.forEach(({ s: { r: sRow, c: sCol }, e: { r: eRow, c: eCol } }) => {
+  const mergeMap = new Map<string, ExcelMergeInfo>()
+  let mergeCellVisits = 0
+  merges.forEach(merge => {
+    if (!isValidExcelMerge(merge, maxRow, maxCol)) return
+    const {
+      s: { r: sRow, c: sCol },
+      e: { r: eRow, c: eCol },
+    } = merge
+    mergeCellVisits += (eRow - sRow + 1) * (eCol - sCol + 1)
+    if (!Number.isSafeInteger(mergeCellVisits) || mergeCellVisits > cellCount) {
+      throw new Error('合并单元格累计范围超过预览上限，请下载文件查看')
+    }
     for (let r = sRow; r <= eRow; r++) {
       for (let c = sCol; c <= eCol; c++) {
         mergeMap.set(`${r}-${c}`, {
@@ -192,13 +258,7 @@ export const processExcelSheet = (
       const cell = worksheet[cellAddress]
       const mergeInfo = mergeMap.get(`${r}-${c}`)
 
-      row[`col_${c}`] = {
-        value: cell ? (cell.v ?? '') : '',
-        merged: !!mergeInfo,
-        hidden: mergeInfo && !mergeInfo.isMain,
-        rowspan: mergeInfo?.isMain ? mergeInfo.rowspan : 1,
-        colspan: mergeInfo?.isMain ? mergeInfo.colspan : 1,
-      }
+      row[`col_${c}`] = createExcelCell(cell, mergeInfo)
     }
     return row
   })
@@ -256,7 +316,24 @@ export async function loadWord(file: File): Promise<WordLoadResult> {
 /**
  *
  */
-export async function loadExcel(file: File): Promise<ExcelLoadResult> {
+export async function loadExcel(
+  file: File,
+  limits: FilePreviewLimits = {}
+): Promise<ExcelLoadResult> {
+  const maxBytes = resolvePreviewLimit(
+    limits.maxBytes,
+    MAX_EXCEL_FILE_BYTES,
+    'maxBytes'
+  )
+  const maxCells = resolvePreviewLimit(
+    limits.maxCells,
+    MAX_EXCEL_PREVIEW_CELLS,
+    'maxCells'
+  )
+  if (file.size > maxBytes)
+    throw new Error(
+      `Excel 文件超过 ${formatFileSize(maxBytes)} 的预览上限，请下载文件查看`
+    )
   const arrayBuffer = await file.arrayBuffer()
   const workbook = XLSX.read(arrayBuffer, {
     type: 'array',
@@ -272,9 +349,16 @@ export async function loadExcel(file: File): Promise<ExcelLoadResult> {
   const sheets: ExcelSheet[] = workbook.SheetNames.map(name => {
     const worksheet = workbook.Sheets[name]
     const merges = worksheet['!merges'] || []
-    const { data, columns } = processExcelSheet(worksheet, merges)
-    return { name, data, merges, columns }
+    return {
+      name,
+      data: [],
+      merges,
+      columns: [],
+      load: () => processExcelSheet(worksheet, merges, maxCells),
+    }
   })
 
+  // 先准备首张表，让错误进入统一预览反馈；其他工作表在切换时才展开。
+  Object.assign(sheets[0], sheets[0].load?.())
   return { sheets }
 }

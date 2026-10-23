@@ -9,6 +9,25 @@ import ts from 'typescript'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+// 联网矩阵使用独立安装；默认快速检查继续复用本地已验证依赖。
+const freshProfile = process.argv[2]
+const peerProfiles = {
+  minimum: {
+    vue: '3.5.3',
+    'naive-ui': '2.35.0',
+    'vue-router': '4.6.4',
+    sortablejs: '1.15.7',
+  },
+  latest: {
+    vue: 'latest',
+    'naive-ui': 'latest',
+    'vue-router': 'latest',
+    sortablejs: 'latest',
+  },
+}
+if (freshProfile && !Object.hasOwn(peerProfiles, freshProfile)) {
+  throw new Error('Consumer profile must be minimum or latest')
+}
 const temporary = fs.mkdtempSync(
   path.join(os.tmpdir(), 'robot-package-consumer-')
 )
@@ -19,6 +38,13 @@ const fixtures = path.join(root, 'tests/consumer-contracts')
 const optionalPeers = Object.keys(pkg.peerDependenciesMeta ?? {}).filter(
   name => pkg.peerDependenciesMeta[name].optional
 )
+
+// Match the documented consumer security policy; library dependencies stay untouched.
+const consumerOverrides = {
+  lodash: '4.18.1',
+  minimist: '1.2.8',
+  'markdown-it': '14.3.3',
+}
 
 function run(command, args, cwd = consumer, options = {}) {
   return execFileSync(command, args, {
@@ -141,6 +167,39 @@ function checkRuntime(entries, blockPeers = false) {
   runNode(['-e', cjs], blockPeers)
 }
 
+/** 用实际 peer 组合渲染常用组件，覆盖只有导入检查无法发现的运行时不兼容。 */
+function checkRenderedConsumer() {
+  runNode([
+    '--input-type=module',
+    '-e',
+    `
+    import assert from 'node:assert/strict';
+    import { createRequire } from 'node:module';
+    import { createSSRApp, h } from 'vue';
+    import { renderToString } from 'vue/server-renderer';
+    import { C_Form } from '${pkg.name}/C_Form';
+    import { C_Table } from '${pkg.name}/C_Table';
+    import { C_Menu } from '${pkg.name}/C_Menu';
+    import { COMPONENT_LOCALE_KEY } from '${pkg.name}/config';
+    const require = createRequire(import.meta.url);
+    const naiveRequire = createRequire(require.resolve('naive-ui'));
+    const { setup: setupCssrSsr } = naiveRequire('@css-render/vue3-ssr');
+    const app = createSSRApp({ render: () => h('main', [
+      h(C_Form, { modelValue: { name: 'Form Ada' }, options: [{ type: 'input', prop: 'name', label: 'Name' }] }, { action: ({ model }) => h('span', { 'data-consumer-form-model': 'true' }, model.name) }),
+      h(C_Table, { data: [{ id: 1, name: 'Table Ada' }], columns: [{ key: 'name', title: 'Name' }] }),
+      h(C_Menu, { options: [{ key: 0, label: 'Zero' }], modelValue: 0 })
+    ]) });
+    const { collect } = setupCssrSsr(app);
+    app.provide(COMPONENT_LOCALE_KEY, { locale: 'en-US' });
+    const html = await renderToString(app);
+    assert.ok(collect().length > 0, 'Naive UI SSR must collect component styles');
+    assert.ok(html.includes('<span data-consumer-form-model="true">Form Ada</span>'), 'Form action slot must receive its model');
+    assert.ok(html.includes('n-data-table') && html.includes('Table Ada'), 'Table must render its own record');
+    assert.ok(html.includes('n-menu') && html.includes('Zero'), 'Menu must render numeric-key options');
+  `,
+  ])
+}
+
 function checkOptionalPeerGuards() {
   const probe = path.join(modules, 'robot-optional-peer-probe')
   fs.mkdirSync(probe, { recursive: true })
@@ -224,35 +283,15 @@ function checkOptionalPeerGuards() {
   )
 }
 
+let passed = false
 try {
-  fs.mkdirSync(installedPackage, { recursive: true })
+  fs.mkdirSync(consumer, { recursive: true })
   fs.writeFileSync(
     path.join(consumer, 'package.json'),
     JSON.stringify({ private: true })
   )
-  const [packed] = JSON.parse(
-    run(
-      'npm',
-      [
-        'pack',
-        '--json',
-        '--ignore-scripts',
-        '--offline',
-        '--pack-destination',
-        temporary,
-        '--cache',
-        path.join(temporary, 'npm-cache'),
-      ],
-      root
-    )
-  )
-  run('tar', [
-    '-xzf',
-    path.join(temporary, packed.filename),
-    '-C',
-    installedPackage,
-    '--strip-components=1',
-  ])
+  const packed = path.join(temporary, 'components.tgz')
+  run('bun', ['pm', 'pack', '--ignore-scripts', '--filename', packed], root)
 
   // Reuse declared installed dependencies only. No registry resolution, install scripts,
   // repository tsconfig paths, or source files participate in this consumer project.
@@ -260,7 +299,45 @@ try {
     ...Object.keys(pkg.dependencies ?? {}),
     ...Object.keys(pkg.peerDependencies ?? {}),
   ])
-  for (const name of dependencies) linkDependency(name)
+  if (freshProfile) {
+    fs.writeFileSync(
+      path.join(consumer, 'package.json'),
+      JSON.stringify(
+        {
+          private: true,
+          dependencies: {
+            [pkg.name]: `file:${packed}`,
+            ...peerProfiles[freshProfile],
+          },
+          overrides: consumerOverrides,
+        },
+        null,
+        2
+      )
+    )
+    console.log(`Installing fresh ${freshProfile} consumer in ${consumer}`)
+    console.log(
+      'Consumer security overrides: lodash 4.18.1, minimist 1.2.8, markdown-it 14.3.3'
+    )
+    run(
+      'bun',
+      ['install', '--ignore-scripts', '--network-concurrency', '8'],
+      consumer,
+      {
+        timeout: 300_000,
+        stdio: 'inherit',
+      }
+    )
+    const installedRequire = createRequire(path.join(consumer, 'package.json'))
+    const versions = Object.keys(peerProfiles[freshProfile]).map(
+      name => `${name}@${installedRequire(`${name}/package.json`).version}`
+    )
+    console.log(`Fresh ${freshProfile} peers: ${versions.join(', ')}`)
+  } else {
+    fs.mkdirSync(installedPackage, { recursive: true })
+    run('tar', ['-xzf', packed, '-C', installedPackage, '--strip-components=1'])
+    for (const name of dependencies) linkDependency(name)
+  }
   for (const name of fs.readdirSync(fixtures)) {
     fs.copyFileSync(path.join(fixtures, name), path.join(consumer, name))
   }
@@ -269,9 +346,13 @@ try {
     ['', 'C_Form'],
     ['/resolver', 'RobotNaiveUiResolver'],
   ])
+  if (freshProfile) checkRenderedConsumer()
 
   for (const peer of optionalPeers) {
-    fs.rmSync(path.join(modules, ...peer.split('/')), { force: true })
+    fs.rmSync(path.join(modules, ...peer.split('/')), {
+      recursive: true,
+      force: true,
+    })
   }
   const consumerRequire = createRequire(path.join(consumer, 'runtime.cjs'))
   for (const peer of optionalPeers) {
@@ -287,6 +368,8 @@ try {
       ['/C_Form', 'C_Form'],
       ['/C_Table', 'C_Table'],
       ['/C_Menu', 'C_Menu'],
+      ['/config', 'COMPONENT_LOCALE_KEY'],
+      ['/config', 'COMPONENT_FEEDBACK_KEY'],
     ],
     true
   )
@@ -294,8 +377,16 @@ try {
     `Packed consumer contracts passed: ESM/CJS, Node16/NodeNext, and component subpaths without ${optionalPeers.join('/')}.`
   )
   console.log(
-    'Dependency versions reuse the local installation; fresh registry installation is not exercised. skipLibCheck validates consumer usage without fully checking third-party declaration internals.'
+    freshProfile
+      ? `Fresh ${freshProfile} registry installation passed. Consumer types use skipLibCheck; third-party declaration internals are outside this contract.`
+      : 'Dependency versions reuse the local installation; fresh registry installation is not exercised. skipLibCheck validates consumer usage without fully checking third-party declaration internals.'
   )
+  passed = true
+} catch (error) {
+  console.error(
+    `Consumer verification failed; diagnostic files retained at ${temporary}`
+  )
+  throw error
 } finally {
-  fs.rmSync(temporary, { recursive: true, force: true })
+  if (passed) fs.rmSync(temporary, { recursive: true, force: true })
 }

@@ -58,15 +58,15 @@ Add the library and required peer dependencies to an existing Vue 3 application:
 
 ```bash
 bun add @robot-admin/naive-ui-components
-bun add vue@^3.5.0 naive-ui@^2.35.0
+bun add vue@^3.5.3 naive-ui@^2.35.0
 ```
 
 You can also use your project's npm or pnpm setup. Install optional peers only for the features that need them:
 
-| Feature                                      | Additional dependency |
-| -------------------------------------------- | --------------------- |
-| Root imports / `C_Breadcrumb` / `C_TagsView` | `vue-router@^4.6.4`   |
-| `C_Table` row/column dragging                | `sortablejs@^1.15.7`  |
+| Feature                                      | Additional dependency          |
+| -------------------------------------------- | ------------------------------ |
+| Root imports / `C_Breadcrumb` / `C_TagsView` | `vue-router@^4.6.4` / `^5.3.1` |
+| `C_Table` row/column dragging                | `sortablejs@^1.15.7`           |
 
 ### Build a form from configuration
 

@@ -64,6 +64,25 @@ app.mount('#app')
 
 > 子路径导入提供完整的 TypeScript 类型支持（`.d.ts`），IDE 可自动补全 props / emits / slots。组件相关工具函数（如 `createMenuOptions`）也从对应组件子路径导出，避免为了单个工具加载组件库根入口。
 
+### 按需配置语言与反馈
+
+独立 `/config` 入口只导出注入键和协议类型，不加载组件、路由或 Naive UI 适配器。与根入口使用相同的注入键，可以直接配置按需使用的组件：
+
+```ts
+import {
+  COMPONENT_LOCALE_KEY,
+  COMPONENT_FEEDBACK_KEY,
+} from '@robot-admin/naive-ui-components/config'
+
+app.provide(COMPONENT_LOCALE_KEY, { locale: 'en-US' })
+app.provide(COMPONENT_FEEDBACK_KEY, {
+  success: message.success,
+  error: text => message.error(text),
+})
+```
+
+默认中文，内置支持 `zh-CN` / `en-US`，自定义 `messages` 或 `t` 沿用现有协议。需要动态切换时提供响应式对象或 `locale` getter。Tree、Transfer、SplitPane、Chat、NotificationCenter、Theme、Language、Skeleton、Timeline 的内置文案与已有 Form/Table/Search/Breadcrumb 一起使用该上下文；业务标题、菜单名称和显式传入的文案由宿主管理。
+
 ### Composables 单独使用
 
 ```typescript
@@ -771,3 +790,40 @@ CRUD 控制器只需满足结构契约；`@robot-admin/request-core` 0.6.3 起�
 组件只发出 `select(path)`，不执行路由跳转或权限请求。传入 `menus`（包括空数组）后，目录仅使用这份数据；隐藏项、无标题占位和不可直接跳转的动态参数叶页不进入快捷导航。隐藏详情页仍保留当前路径，显式 `meta.breadcrumb: false` 可隐藏对应层级。未传 `menus` 时继续使用路由子项；原生路由表并非权限边界，业务项目应传入与侧栏同源的授权菜单。
 
 已有 `items` 手动路径继续优先，标签沿用传入值并接受只读嵌套数据，`disabled` 对目录整支生效。完整路径在窄容器中自动收拢，保留当前页；目录支持方向键、Home/End、Enter/Space 和 Escape。颜色跟随 Naive 主题，浮层中的通用文案使用既有组件国际化服务。组件不保存菜单快照、不读取应用 Store，也不改写传入数据。
+
+## 状态一致性与资源边界（0.21）
+
+- 表单 `action` / `action-extra` 插槽直接提供当前业务模型，字段名 `value` 没有特殊含义。
+- 搜索折叠仅隐藏字段，字段保持挂载及校验；失败自动展开。`show: false` 才移除该字段的渲染与校验注册。大型自定义控件会在折叠状态初始化，应按业务配置实际需要的字段。
+- 表格全部展开在换数据或卸载后失效；子表禁选、父级数量上限、strict 联动与选择事件保持同一约束。
+- Menu 的路由模式事件仍为字符串路径；原生 `options` 支持字符串和数字 key，`0` 有效，`1` 与 `'1'` 不合并。
+- Chat 按会话保留草稿，发送后清空当前草稿；移除联系人清理旧草稿，最多缓存最近 50 个非空会话。
+- ER 的节点拖动与 Workflow 的拖动、连接、删除会同步外部快照；父级回填不再次触发用户变更事件。
+- Login 的人机验证门禁适用于密码模式；短信模式使用自己的字段规则及验证码提交事件。
+
+### 上传、文档和长列表
+
+`C_Upload.concurrency` 统一限制普通上传与分片上传请求。取消、移除和卸载会停止后续哈希读取并释放排队任务；已经开始的单次 Blob 读取完成后不再处理结果。业务自行提供的校验、合并回调仍由业务负责其网络生命周期。
+
+Excel 保留原始值、单元格类型和工作簿格式，不把文本编号转换为数值，也不自行舍入小数。工作表数据在首次打开时展开，默认文件预算 32 MiB、每表 100000 格；超限明确提示下载原文件，不静默截断。可使用一个配置调整预算：
+
+```vue
+<C_FilePreview
+  :file="file"
+  :preview-limits="{ maxBytes: 64 * 1024 * 1024, maxCells: 200000 }"
+/>
+```
+
+预算必须是有限安全正整数；这是预览资源限制，不是压缩文件解压后内存的绝对保证。
+
+WaterFall 会在哨兵持续可见时继续补页，每轮最多自动请求 5 页，避免空响应循环。达到上限后可点击“继续加载”；自定义 `footer` 插槽获得 `paused` 和 `loadMore`。使用侧继续维护 `loading` 和 `noMore`。
+
+Draggable 默认只在自身排序。需要跨列表拖动时，在相关实例上显式设置相同 `group`；此前依赖隐式 `default` 分组的页面应补上该属性。
+
+### 视频协议与通知预览
+
+视频默认支持 MP4/HLS。DASH/FLV 需要通过 `sourceAdapters` 提供按需加载、兼容 xgplayer 接口的播放器构造器；缺少适配器会进入错误状态并发出 `error`，不再尝试当作普通 MP4 播放。协议 SDK 的依赖与授权由使用该协议的项目管理。
+
+`C_NotificationCenter.categoryOptions` 只定制已有 `all/system/business/alarm` 分类的标签和顺序，不扩展消息领域协议。`filters` 插槽提供 `{ controller }`，`item` / `item-actions` 提供 `{ message, index, busy, select, read, remove }`，可组合独立筛选和业务操作。异步操作应沿用提供的回调以保留 busy/错误处理。
+
+审批命令、租户、权限和后端协议由宿主管理。Robot_Admin 的企业消息使用领域 Store 与自己的通知铃铛；本包提供可复用的通知展示与交互，二者的能力边界不同。

@@ -56,12 +56,14 @@
           v-else-if="msg.type === 'image'"
           type="button"
           class="c-chat__msg-image-button"
-          :aria-label="`预览${msg.username || '聊天'}的图片`"
+          :aria-label="
+            t('chat.imagePreview', { name: msg.username || t('chat.title') })
+          "
           @click="emit('image-preview', msg.content)"
         >
           <img
             :src="msg.content"
-            :alt="msg.fileName || '聊天图片'"
+            :alt="msg.fileName || t('chat.image')"
             class="c-chat__msg-image"
           />
         </button>
@@ -78,7 +80,9 @@
             :size="28"
           />
           <div class="c-chat__file-info">
-            <span class="c-chat__file-name">{{ msg.fileName || '文件' }}</span>
+            <span class="c-chat__file-name">{{
+              msg.fileName || t('chat.file')
+            }}</span>
             <span
               v-if="msg.fileSize"
               class="c-chat__file-size"
@@ -103,21 +107,23 @@
           class="c-chat__msg-status is-failed"
           @click="emit('resend', msg)"
         >
-          发送失败，点击重试
+          {{ t('chat.failed') }}
         </button>
         <span
           v-else-if="msg.sender === 'self' && msg.status === 'sending'"
           class="c-chat__msg-status is-sending"
-          >发送中...</span
+          >{{ t('chat.sending') }}</span
         >
       </div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
+  import { useComponentLocale } from '../../../config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type { ChatMessage } from '../types'
+  const { t } = useComponentLocale()
   const props = defineProps<{
     msg: ChatMessage
     previous?: ChatMessage
@@ -141,8 +147,8 @@
     msg.sender === 'self' ? props.selfAvatar || msg.avatar : msg.avatar
   const getUsername = (msg: ChatMessage) =>
     msg.sender === 'self'
-      ? props.selfName || msg.username || 'Me'
-      : msg.username || '未知'
+      ? props.selfName || msg.username || t('chat.self')
+      : msg.username || t('common.unknown')
   function formatTime(timestamp: string | number) {
     const date = new Date(timestamp)
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`

@@ -21,17 +21,23 @@
               :tab="sheet.name"
             />
           </NTabs>
-          <span v-else class="text-sm text-gray-600">
+          <span
+            v-else
+            class="text-sm text-gray-600"
+          >
             工作表: {{ activeSheet }}
           </span>
         </div>
 
         <div class="flex gap-2 items-center">
-          <NButton size="small" @click="showExcelFormat = !showExcelFormat">
+          <NButton
+            size="small"
+            @click="showExcelFormat = !showExcelFormat"
+          >
             <template #icon>
               <C_Icon name="ic:outline-format-paint" />
             </template>
-            {{ showExcelFormat ? "紧凑视图" : "完整格式" }}
+            {{ showExcelFormat ? '紧凑视图' : '完整格式' }}
           </NButton>
         </div>
       </div>
@@ -39,8 +45,14 @@
 
     <div class="excel-viewer">
       <!-- 信息面板 -->
-      <div v-if="currentData.length > 0" class="excel-info">
-        <NText depth="3" class="text-sm">
+      <div
+        v-if="currentData.length > 0"
+        class="excel-info"
+      >
+        <NText
+          depth="3"
+          class="text-sm"
+        >
           当前工作表: {{ activeSheet }} | 总行数: {{ currentData.length }} |
           总列数: {{ currentColumns.length }} | 当前页:
           {{ currentExcelPage }}/{{ totalExcelPages }}
@@ -53,7 +65,10 @@
           class="excel-table-wrapper"
           :class="{ 'simple-mode': !showExcelFormat }"
         >
-          <table v-if="currentData.length > 0" class="excel-table">
+          <table
+            v-if="currentData.length > 0"
+            class="excel-table"
+          >
             <thead>
               <tr>
                 <th class="row-number">行号</th>
@@ -93,18 +108,30 @@
                   ]"
                   :rowspan="row[col.key]?.rowspan || 1"
                   :colspan="row[col.key]?.colspan || 1"
-                  :title="row[col.key]?.value"
+                  :title="
+                    row[col.key]?.displayValue ??
+                    formatCellValue(row[col.key]?.value)
+                  "
                 >
-                  {{ formatCellValue(row[col.key]?.value) }}
+                  {{
+                    row[col.key]?.displayValue ??
+                    formatCellValue(row[col.key]?.value)
+                  }}
                 </td>
               </tr>
             </tbody>
           </table>
 
-          <div v-else class="excel-empty">
-            <NEmpty description="该工作表没有数据或解析失败">
+          <div
+            v-else
+            class="excel-empty"
+          >
+            <NEmpty :description="sheetError || '该工作表没有数据或解析失败'">
               <template #extra>
-                <NButton size="small" @click="$emit('reload')">
+                <NButton
+                  size="small"
+                  @click="$emit('reload')"
+                >
                   重新解析
                 </NButton>
               </template>
@@ -113,7 +140,10 @@
         </div>
 
         <!-- 分页 -->
-        <div v-if="totalExcelPages > 1" class="excel-pagination">
+        <div
+          v-if="totalExcelPages > 1"
+          class="excel-pagination"
+        >
           <NPagination
             v-model:page="currentExcelPage"
             :page-count="totalExcelPages"
@@ -129,80 +159,91 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
-import { NButton, NTabs, NTabPane, NText, NEmpty, NPagination } from "naive-ui";
-import {
-  getColumnLetter,
-  formatCellValue,
-  getCellClass,
-  PAGE_SIZE_OPTIONS,
-} from "../../data";
-import type { ExcelSheet, ExcelRow, ExcelColumn } from "../../types";
+  import { ref, computed, watch } from 'vue'
+  import {
+    NButton,
+    NTabs,
+    NTabPane,
+    NText,
+    NEmpty,
+    NPagination,
+  } from 'naive-ui'
+  import {
+    getColumnLetter,
+    formatCellValue,
+    getCellClass,
+    PAGE_SIZE_OPTIONS,
+  } from '../../data'
+  import type { ExcelSheet, ExcelRow, ExcelColumn } from '../../types'
 
-const props = defineProps<{
-  sheets: ExcelSheet[];
-}>();
+  const props = defineProps<{
+    sheets: ExcelSheet[]
+  }>()
 
-defineEmits<{
-  reload: [];
-}>();
+  defineEmits<{
+    reload: []
+  }>()
 
-/* ==================== 内部状态 ==================== */
-const activeSheet = ref("");
-const showExcelFormat = ref(false);
-const currentExcelPage = ref(1);
-const pageSize = ref(50);
+  /* ==================== 内部状态 ==================== */
+  const activeSheet = ref('')
+  const sheetError = ref('')
+  const showExcelFormat = ref(false)
+  const currentExcelPage = ref(1)
+  const pageSize = ref(50)
 
-/* ==================== 当前工作表数据 ==================== */
-const currentData = ref<ExcelRow[]>([]);
-const currentColumns = ref<ExcelColumn[]>([]);
+  /* ==================== 当前工作表数据 ==================== */
+  const currentData = ref<ExcelRow[]>([])
+  const currentColumns = ref<ExcelColumn[]>([])
 
-/* ==================== 计算属性 ==================== */
-const totalExcelPages = computed(() =>
-  Math.ceil(currentData.value.length / pageSize.value),
-);
+  /* ==================== 计算属性 ==================== */
+  const totalExcelPages = computed(() =>
+    Math.ceil(currentData.value.length / pageSize.value)
+  )
 
-const paginatedData = computed(() => {
-  const start = (currentExcelPage.value - 1) * pageSize.value;
-  return currentData.value.slice(start, start + pageSize.value);
-});
+  const paginatedData = computed(() => {
+    const start = (currentExcelPage.value - 1) * pageSize.value
+    return currentData.value.slice(start, start + pageSize.value)
+  })
 
-/* ==================== 方法 ==================== */
-const handlePageSizeChange = (newPageSize: number) => {
-  pageSize.value = newPageSize;
-  currentExcelPage.value = 1;
-};
-
-const syncSheetData = (sheetName: string) => {
-  const sheet = props.sheets.find((s) => s.name === sheetName);
-  if (sheet) {
-    currentData.value = sheet.data;
-    currentColumns.value = sheet.columns;
-    currentExcelPage.value = 1;
+  /* ==================== 方法 ==================== */
+  const handlePageSizeChange = (newPageSize: number) => {
+    pageSize.value = newPageSize
+    currentExcelPage.value = 1
   }
-};
 
-/* ==================== 监听器 ==================== */
-watch(activeSheet, (newSheet) => {
-  syncSheetData(newSheet);
-});
-
-/* sheets 变化时初始化 */
-watch(
-  () => props.sheets,
-  (newSheets) => {
-    if (newSheets.length > 0) {
-      const [firstSheet] = newSheets;
-      activeSheet.value = firstSheet.name;
-      currentData.value = firstSheet.data;
-      currentColumns.value = firstSheet.columns;
-      currentExcelPage.value = 1;
+  const syncSheetData = (sheetName: string) => {
+    sheetError.value = ''
+    currentData.value = []
+    currentColumns.value = []
+    currentExcelPage.value = 1
+    const sheet = props.sheets.find(s => s.name === sheetName)
+    if (!sheet) return
+    try {
+      const result = sheet.data.length > 0 ? sheet : (sheet.load?.() ?? sheet)
+      currentData.value = result.data
+      currentColumns.value = result.columns
+    } catch (error) {
+      sheetError.value =
+        error instanceof Error ? error.message : '工作表解析失败'
     }
-  },
-  { immediate: true },
-);
+  }
+
+  /* ==================== 监听器 ==================== */
+  watch(activeSheet, newSheet => {
+    syncSheetData(newSheet)
+  })
+
+  /* sheets 变化时初始化 */
+  watch(
+    () => props.sheets,
+    newSheets => {
+      activeSheet.value = newSheets[0]?.name ?? ''
+      syncSheetData(activeSheet.value)
+    },
+    { immediate: true }
+  )
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

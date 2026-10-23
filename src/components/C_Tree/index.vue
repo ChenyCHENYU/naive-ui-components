@@ -16,8 +16,8 @@
           v-if="searchable"
           v-model:value="currentSearchPattern"
           :size="density.size"
-          :placeholder="searchPlaceholder"
-          :input-props="{ 'aria-label': '搜索树节点' }"
+          :placeholder="searchPlaceholder ?? t('common.search')"
+          :input-props="{ 'aria-label': t('tree.search') }"
           clearable
           class="search-input"
         >
@@ -41,7 +41,7 @@
                 name="mdi:plus"
                 :size="16"
             /></template>
-            {{ addText }}
+            {{ addText ?? t('common.add') }}
           </NButton>
           <NButton
             :size="density.size"
@@ -54,7 +54,7 @@
                 name="mdi:file-tree"
                 :size="16"
             /></template>
-            {{ isAllExpanded ? '收起全部' : '展开全部' }}
+            {{ isAllExpanded ? t('tree.collapseAll') : t('tree.expandAll') }}
           </NButton>
           <NButton
             v-if="refreshable"
@@ -66,7 +66,7 @@
                 name="mdi:refresh"
                 :size="16"
             /></template>
-            刷新
+            {{ t('common.refresh') }}
           </NButton>
         </slot>
       </div>
@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = TreeNodeData">
+  import { useComponentLocale } from '../../config'
   import { computed } from 'vue'
   import { NInput, NButton, NTree, useThemeVars } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
@@ -95,6 +96,7 @@
   import type { TreeProps, TreeEmits, TreeSlots, TreeNodeData } from './types'
 
   defineOptions({ name: 'C_Tree' })
+  const { t } = useComponentLocale()
   const props = withDefaults(defineProps<TreeProps<T>>(), {
     mode: 'custom',
     density: 'default',
@@ -102,10 +104,8 @@
     showLine: undefined,
     defaultExpandAll: undefined,
     searchable: true,
-    searchPlaceholder: '搜索...',
     showToolbar: true,
     addable: true,
-    addText: '新增',
     refreshable: true,
   })
   const emit = defineEmits<TreeEmits<T>>()

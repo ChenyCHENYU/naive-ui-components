@@ -55,7 +55,7 @@
           :bordered="false"
           round
         >
-          {{ priorityConfig.label }}
+          {{ t(`notification.${message.priority}`) }}
         </NTag>
       </div>
       <div class="notification-item__summary">
@@ -77,52 +77,55 @@
       class="notification-item__actions"
       @click.stop
     >
-      <NTooltip
-        v-if="message.status === 'unread'"
-        trigger="hover"
-        placement="top"
-      >
-        <template #trigger>
-          <button
-            class="notification-item__action"
-            type="button"
-            :disabled="busy"
-            aria-label="标记已读"
-            @click="$emit('read', message.id)"
-          >
-            <C_Icon
-              name="mdi:check"
-              :size="16"
-            />
-          </button>
-        </template>
-        标记已读
-      </NTooltip>
-      <NTooltip
-        trigger="hover"
-        placement="top"
-      >
-        <template #trigger>
-          <button
-            class="notification-item__action"
-            type="button"
-            :disabled="busy"
-            aria-label="删除消息"
-            @click="$emit('delete', message.id)"
-          >
-            <C_Icon
-              name="mdi:delete-outline"
-              :size="16"
-            />
-          </button>
-        </template>
-        删除
-      </NTooltip>
+      <slot name="actions">
+        <NTooltip
+          v-if="message.status === 'unread'"
+          trigger="hover"
+          placement="top"
+        >
+          <template #trigger>
+            <button
+              class="notification-item__action"
+              type="button"
+              :disabled="busy"
+              :aria-label="t('notification.markRead')"
+              @click="$emit('read', message.id)"
+            >
+              <C_Icon
+                name="mdi:check"
+                :size="16"
+              />
+            </button>
+          </template>
+          {{ t('notification.markRead') }}
+        </NTooltip>
+        <NTooltip
+          trigger="hover"
+          placement="top"
+        >
+          <template #trigger>
+            <button
+              class="notification-item__action"
+              type="button"
+              :disabled="busy"
+              :aria-label="t('notification.delete')"
+              @click="$emit('delete', message.id)"
+            >
+              <C_Icon
+                name="mdi:delete-outline"
+                :size="16"
+              />
+            </button>
+          </template>
+          {{ t('common.delete') }}
+        </NTooltip>
+      </slot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../../config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type { NotificationMessage } from '../types'
@@ -135,6 +138,7 @@
     busy?: boolean
   }
 
+  const { t } = useComponentLocale()
   const props = defineProps<Props>()
 
   defineEmits<{

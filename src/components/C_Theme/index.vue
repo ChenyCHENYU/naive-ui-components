@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentLocale } from '../../config'
   import { computed } from 'vue'
   import { NTooltip, NButton } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
@@ -34,6 +35,7 @@
 
   defineOptions({ name: 'C_Theme' })
 
+  const { t } = useComponentLocale()
   const props = withDefaults(
     defineProps<{
       modelValue?: ThemeMode
@@ -59,11 +61,11 @@
   const themeTooltip = computed(() => {
     switch (props.modelValue) {
       case 'light':
-        return '当前: 浅色模式 (点击切换)'
+        return t('theme.light')
       case 'dark':
-        return '当前: 深色模式 (点击切换)'
+        return t('theme.dark')
       default:
-        return '当前: 跟随系统 (点击切换)'
+        return t('theme.system')
     }
   })
 

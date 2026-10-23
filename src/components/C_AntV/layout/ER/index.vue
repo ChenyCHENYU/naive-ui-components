@@ -494,6 +494,7 @@
       newGraph.on('node:dblclick', ({ node }) => {
         if (!props.readonly) editTable(node.getData() as ERTable)
       })
+      newGraph.on('node:moved', emitDataChange)
       newGraph.on('edge:connected', emitDataChange)
       newGraph.on('edge:removed', ({ edge }) => {
         if (selectedEdge === edge) selectedEdge = null

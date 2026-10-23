@@ -25,7 +25,7 @@ The core is currently an internal boundary, not a separately published package. 
 - ESM resolves `.d.ts`; CJS resolves `.d.cts`. Each declaration condition matches its JavaScript format.
 - All public reachable declarations are checked for `naive-ui/es/*` and `naive-ui/lib/*` internal imports, in both formats.
 
-The consumer contract check unpacks a real tarball into a temporary directory and attaches the repository's resolved dependencies. It covers Node16/NodeNext ESM/CJS types and subpath runtime imports without optional peers. It does not reinstall online, so it does not replace minimum/latest dependency matrices or application acceptance.
+The default consumer contract check unpacks a real tarball into a temporary directory and attaches the repository's resolved dependencies. It covers Node16/NodeNext ESM/CJS types and subpath runtime imports without optional peers. The `minimum` and `latest` profiles instead install fresh dependencies from the registry and also render representative components. CI runs both profiles; application acceptance remains a separate check.
 
 ## Highlight instances
 
@@ -81,3 +81,5 @@ Running both UI libraries in one application is outside this iteration. That wou
 Verify behavior through published consumers, public types, multiple applications, dynamic registration, unmount and host-state restoration. Source-level dependency guards complement runtime verification.
 
 `bun run verify` is the local quality gate. `bun run check:audit` remains a separate check and CI gate. Record actual advisory results; do not hide them by disabling checks or forcing unverified major versions.
+
+Fresh consumer compatibility is checked with `bun run check:consumer-contracts minimum` and `latest`. Each profile installs the real tarball in an isolated temporary directory, checks ESM/CJS types and renders representative components. CI runs both profiles. `/config` exports shared injection keys and protocol types without loading the presentation layer.
