@@ -23,14 +23,9 @@
       mode="default"
       class="c-editor__toolbar"
     />
-    <Editor
-      :key="editorKey"
-      v-model="editorHtml"
-      :default-config="editorConfig"
-      mode="default"
+    <div
+      ref="editorContainer"
       :style="editorStyle"
-      @on-created="handleCreated"
-      @on-change="handleChange"
     />
   </div>
 </template>
@@ -41,10 +36,12 @@
     computed,
     defineAsyncComponent,
     watch,
+    onMounted,
     onBeforeUnmount,
     readonly as readonlyRef,
     shallowRef,
     type Component,
+    type CSSProperties,
   } from 'vue'
   import { sanitizeRichHtml } from '../../utils/html'
 
@@ -86,16 +83,20 @@
   })
 
   const emit = defineEmits<Emits>()
+  let disposed = false
+  let creationVersion = 0
+  const destroyedEditors = new WeakSet<EditorInstance>()
+  const creatingEditors = new WeakSet<EditorInstance>()
 
   const isFocused = ref(false)
   const editorInstance = shallowRef<EditorInstance | null>(null)
   const isInitialized = ref<boolean>(false)
   const editorHtml = ref(props.modelValue)
-  const editorKey = ref(0)
+  const editorContainer = ref<HTMLElement>()
 
   const isDark = computed(() => props.theme === 'dark')
   const isDisabled = computed(() => props.disabled || props.readonly)
-  const editorStyle = computed(() => ({
+  const editorStyle = computed<CSSProperties>(() => ({
     height: `${Math.max(80, props.height - 42)}px`,
     overflowY: 'hidden',
   }))
@@ -108,24 +109,31 @@
   }))
 
   const reportError = (error: unknown): void => {
-    emit('error', error instanceof Error ? error : new Error(String(error)))
+    if (!disposed)
+      emit('error', error instanceof Error ? error : new Error(String(error)))
   }
 
-  const createEditorRuntime = (name: 'Editor' | 'Toolbar'): Component => {
+  const createToolbarRuntime = (): Component => {
     if (typeof window === 'undefined') return (() => null) as Component
     return defineAsyncComponent({
       loader: () =>
-        import('@wangeditor-next/editor-for-vue').then(module => module[name]),
+        import('@wangeditor-next/editor-for-vue').then(
+          module => module.Toolbar
+        ),
       onError(error, _retry, fail) {
         reportError(error)
         fail()
       },
     }) as Component
   }
-  const Editor = createEditorRuntime('Editor')
-  const Toolbar = createEditorRuntime('Toolbar')
+  const Toolbar = createToolbarRuntime()
 
   const handleCreated = (editor: EditorInstance): void => {
+    if (disposed) {
+      disposeInstance(editor)
+      return
+    }
+    if (editorInstance.value !== editor) disposeInstance(editorInstance.value)
     editorInstance.value = editor
     isInitialized.value = true
     if (isDisabled.value) editor.disable()
@@ -133,6 +141,8 @@
   }
 
   const handleChange = (editor: EditorInstance): void => {
+    if (disposed || editor !== editorInstance.value || editor.isDestroyed)
+      return
     const html = editor.getHtml()
     editorHtml.value = html
     emit('update:modelValue', html)
@@ -140,16 +150,61 @@
   }
 
   const initializeEditor = (): void => {
-    if (isInitialized.value) return
+    if (disposed || isInitialized.value) return
+    const version = ++creationVersion
     editorHtml.value = props.modelValue
-    editorKey.value += 1
+    void import('@wangeditor-next/editor')
+      .then(({ createEditor }) => {
+        if (disposed || version !== creationVersion || !editorContainer.value)
+          return
+        // Own the synchronous return value; the Vue adapter only reports CREATED
+        // in a later microtask, which can be dropped after the child unmounts.
+        const editor = createEditor({
+          selector: editorContainer.value,
+          mode: 'default',
+          html: editorHtml.value,
+          config: {
+            ...editorConfig.value,
+            onChange: handleChange,
+            onCreated: readyEditor => {
+              creatingEditors.delete(readyEditor)
+              if (disposed || version !== creationVersion) {
+                if (editorInstance.value === readyEditor)
+                  editorInstance.value = null
+                disposeInstance(readyEditor)
+              } else handleCreated(readyEditor)
+            },
+          },
+        })
+        creatingEditors.add(editor)
+        editorInstance.value = editor
+        if (disposed || version !== creationVersion) {
+          editorInstance.value = null
+          disposeInstance(editor)
+        }
+      })
+      .catch(error => {
+        if (version === creationVersion) reportError(error)
+      })
   }
 
   const destroyEditor = (): void => {
+    creationVersion++
     const editor = editorInstance.value
     editorInstance.value = null
     isInitialized.value = false
-    if (!editor || editor.isDestroyed) return
+    disposeInstance(editor)
+  }
+
+  function disposeInstance(editor: EditorInstance | null): void {
+    if (!editor || editor.isDestroyed || destroyedEditors.has(editor)) return
+    if (creatingEditors.delete(editor)) {
+      // Core initializes its text area in already queued microtasks. Let those
+      // finish before destroy removes the SDK's internal DOM-to-editor maps.
+      queueMicrotask(() => disposeInstance(editor))
+      return
+    }
+    destroyedEditors.add(editor)
     try {
       editor.destroy()
     } catch (error) {
@@ -206,7 +261,9 @@
     isFocused.value = false
   }
 
+  onMounted(initializeEditor)
   onBeforeUnmount(() => {
+    disposed = true
     destroyEditor()
   })
 

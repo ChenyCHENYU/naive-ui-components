@@ -150,14 +150,126 @@ export function cloneData<T>(value: T): T {
   return cloneFallback(rawValue, new WeakMap())
 }
 
+interface ComparisonContext {
+  pairs: WeakMap<object, WeakSet<object>>
+  additions: [object, object][]
+}
+
+const isObjectValue = (value: unknown): value is object =>
+  value !== null && typeof value === 'object'
+
+/** An unordered candidate may fail after visiting shared children; discard only its pairs. */
+function tryCollectionCandidate(
+  context: ComparisonContext,
+  compare: () => boolean
+): boolean {
+  const start = context.additions.length
+  if (compare()) return true
+  while (context.additions.length > start) {
+    const [left, right] = context.additions.pop()!
+    context.pairs.get(left)?.delete(right)
+  }
+  return false
+}
+
+function equalMapValue(
+  key: unknown,
+  value: unknown,
+  right: Map<unknown, unknown>,
+  context: ComparisonContext
+): boolean {
+  return right.has(key) && deepEqualInternal(value, right.get(key), context)
+}
+
+/** Primitive keys retain native O(N) lookup; object keys match together with their values. */
+function equalMaps(
+  left: Map<unknown, unknown>,
+  right: Map<unknown, unknown>,
+  context: ComparisonContext
+): boolean {
+  if (left.size !== right.size) return false
+  const matched = new Set<object>()
+  let candidates: [object, unknown][] | undefined
+  for (const [key, value] of left) {
+    if (!isObjectValue(key)) {
+      if (!equalMapValue(key, value, right, context)) return false
+      continue
+    }
+    if (
+      !matched.has(key) &&
+      tryCollectionCandidate(context, () =>
+        equalMapValue(key, value, right, context)
+      )
+    ) {
+      matched.add(key)
+      continue
+    }
+    candidates ??= [...right].filter((entry): entry is [object, unknown] =>
+      isObjectValue(entry[0])
+    )
+    const match = candidates.find(
+      ([otherKey, otherValue]) =>
+        otherKey !== key &&
+        !matched.has(otherKey) &&
+        tryCollectionCandidate(
+          context,
+          () =>
+            deepEqualInternal(key, otherKey, context) &&
+            deepEqualInternal(value, otherValue, context)
+        )
+    )
+    if (!match) return false
+    matched.add(match[0])
+  }
+  return true
+}
+
+/** Set object members are unordered structural values, including cloned cyclic objects. */
+function equalSets(
+  left: Set<unknown>,
+  right: Set<unknown>,
+  context: ComparisonContext
+): boolean {
+  if (left.size !== right.size) return false
+  const matched = new Set<object>()
+  let candidates: object[] | undefined
+  for (const value of left) {
+    if (!isObjectValue(value)) {
+      if (!right.has(value)) return false
+      continue
+    }
+    if (!matched.has(value) && right.has(value)) {
+      matched.add(value)
+      continue
+    }
+    candidates ??= [...right].filter(isObjectValue)
+    const match = candidates.find(
+      other =>
+        !matched.has(other) &&
+        tryCollectionCandidate(context, () =>
+          deepEqualInternal(value, other, context)
+        )
+    )
+    if (!match) return false
+    matched.add(match)
+  }
+  return true
+}
+
 // eslint-disable-next-line complexity -- Equality is a single dispatcher for supported structured data types.
 function equalObjects(
   left: object,
   right: object,
-  compared: WeakMap<object, object>
+  context: ComparisonContext
 ): boolean {
-  if (compared.get(left) === right) return true
-  compared.set(left, right)
+  let rights = context.pairs.get(left)
+  if (rights?.has(right)) return true
+  if (!rights) {
+    rights = new WeakSet()
+    context.pairs.set(left, rights)
+  }
+  rights.add(right)
+  context.additions.push([left, right])
 
   if (left instanceof Date || right instanceof Date) {
     return (
@@ -182,24 +294,19 @@ function equalObjects(
       Array.isArray(right) &&
       left.length === right.length &&
       left.every((item, index) =>
-        deepEqualInternal(item, right[index], compared)
+        deepEqualInternal(item, right[index], context)
       )
     )
   }
 
   if (left instanceof Map || right instanceof Map) {
     if (!(left instanceof Map) || !(right instanceof Map)) return false
-    if (left.size !== right.size) return false
-    return [...left.entries()].every(([key, value]) => {
-      if (!right.has(key)) return false
-      return deepEqualInternal(value, right.get(key), compared)
-    })
+    return equalMaps(left, right, context)
   }
 
   if (left instanceof Set || right instanceof Set) {
     if (!(left instanceof Set) || !(right instanceof Set)) return false
-    if (left.size !== right.size) return false
-    return [...left].every(value => right.has(value))
+    return equalSets(left, right, context)
   }
 
   const leftKeys = Object.keys(left)
@@ -212,7 +319,7 @@ function equalObjects(
       deepEqualInternal(
         (left as DataObject)[key],
         (right as DataObject)[key],
-        compared
+        context
       )
   )
 }
@@ -220,7 +327,7 @@ function equalObjects(
 function deepEqualInternal(
   left: unknown,
   right: unknown,
-  compared: WeakMap<object, object>
+  context: ComparisonContext
 ): boolean {
   const rawLeft = unwrap(left)
   const rawRight = unwrap(right)
@@ -233,12 +340,15 @@ function deepEqualInternal(
   ) {
     return false
   }
-  return equalObjects(rawLeft, rawRight, compared)
+  return equalObjects(rawLeft, rawRight, context)
 }
 
 /** Cycle-safe equality for dirty checking and derived state. */
 export function isDataEqual(left: unknown, right: unknown): boolean {
-  return deepEqualInternal(left, right, new WeakMap())
+  return deepEqualInternal(left, right, {
+    pairs: new WeakMap(),
+    additions: [],
+  })
 }
 
 /** Replace a reactive record while removing keys absent from the source. */

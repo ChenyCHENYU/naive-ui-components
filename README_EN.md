@@ -167,6 +167,8 @@ Root imports aggregate navigation components and require `vue-router` at runtime
 | [Usage guide](./docs/guides/usage.en.md)                       | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading   |
 | [Density and workbenches](./docs/guides/table-density.md)      | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese) |
 | [Lists and async tasks](./docs/guides/runtime-performance.md)  | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese) |
+| [Waterfall lists](./docs/guides/waterfall.md)                  | Automatic windows, nested scrolling, measured cards and keyboard navigation (Chinese)     |
+| [Compatible API migration](./docs/guides/api-migration.md)     | Standard models, application renderers and read-only migration checks (Chinese)           |
 | [Production coverage review](./docs/wl-ui-produce-coverage.md) | wl-ui-produce capability mapping and adapter boundaries (Chinese)                         |
 | [Development and build](./docs/engineering.en.md)              | Source structure, six-stage build, adding components, checks and releases                 |
 | [Brand assets](./docs/assets/README.md)                        | Robot family logo, editable SVG sources and high-resolution PNGs                          |

@@ -200,6 +200,44 @@ function checkRenderedConsumer() {
   ])
 }
 
+/** 在没有独立 xlsx 包的真实消费者中，经公开接口解析 XLSX，覆盖两个发布格式。 */
+function checkBundledSpreadsheet() {
+  runNode([
+    '--input-type=module',
+    '-e',
+    `
+    import assert from 'node:assert/strict';
+    import fs from 'node:fs';
+    import { createRequire } from 'node:module';
+    import { createSSRApp, h, ref } from 'vue';
+    import { renderToString } from 'vue/server-renderer';
+    const require = createRequire(import.meta.url);
+    assert.throws(() => require.resolve('xlsx'), { code: 'MODULE_NOT_FOUND' });
+    for (const format of ['esm', 'cjs']) {
+      const { useFilePreview } = format === 'esm'
+        ? await import('${pkg.name}/C_FilePreview')
+        : require('${pkg.name}/C_FilePreview');
+      const app = createSSRApp({ async setup() {
+        const preview = useFilePreview({
+          file: ref(new File([fs.readFileSync('spreadsheet.xlsx')], 'consumer.xlsx')),
+          url: ref(), fileName: ref('consumer.xlsx')
+        }, () => {});
+        assert.equal(await preview.loadFile(), true, preview.error.value);
+        const sheet = preview.excelSheets.value[0];
+        assert.equal(sheet.name, 'Consumer');
+        assert.equal(sheet.data[1].col_0.value, '001234567890123456789');
+        assert.equal(sheet.data[1].col_1.displayValue, '1,234.50');
+        return () => h('span', sheet.name);
+      } });
+      assert.ok((await renderToString(app)).includes('Consumer'));
+    }
+  `,
+  ])
+  console.log(
+    'Bundled SheetJS: ESM/CJS public XLSX parsing passed without an installed xlsx package.'
+  )
+}
+
 function checkOptionalPeerGuards() {
   const probe = path.join(modules, 'robot-optional-peer-probe')
   fs.mkdirSync(probe, { recursive: true })
@@ -342,6 +380,7 @@ try {
     fs.copyFileSync(path.join(fixtures, name), path.join(consumer, name))
   }
   checkTypes(['consumer.mts', 'consumer.cts'])
+  checkBundledSpreadsheet()
   checkRuntime([
     ['', 'C_Form'],
     ['/resolver', 'RobotNaiveUiResolver'],

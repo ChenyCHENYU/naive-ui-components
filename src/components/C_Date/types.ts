@@ -48,10 +48,15 @@ export interface DateEmits<
   M extends DatePickerMode | undefined = DatePickerMode,
 > {
   'update:modelValue': [value: DateModelValue<M>]
+  /** @deprecated Use update:modelValue with mode="date". */
   'update:singleDate': [value: DateValue]
+  /** @deprecated Use update:modelValue with mode="datetime". */
   'update:singleDateTime': [value: DateValue]
+  /** @deprecated Use update:modelValue with mode="daterange". */
   'update:dateRange': [value: DateRangeValue]
+  /** @deprecated Use update:modelValue with mode="datetimerange". */
   'update:dateTimeRange': [value: DateRangeValue]
+  /** @deprecated Use update:modelValue with mode="smart-range". */
   'update:smartRange': [value: DateRangeValue]
   change: [value: DateModelValue<M>]
 }

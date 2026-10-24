@@ -35,12 +35,13 @@
       </template>
 
       <div
-        v-for="(lay, index) in layoutItems"
+        v-for="{ layout: lay, index } in visibleItems"
         :key="lay.item.id"
         :ref="el => observeItem(el, lay.item.id)"
         class="waterfall__item"
         role="button"
         tabindex="0"
+        :data-waterfall-index="index"
         :aria-label="lay.item.title || `瀑布流项目 ${index + 1}`"
         :style="{
           position: 'absolute',
@@ -50,8 +51,9 @@
           transition: `all ${props.animationDuration ?? DEFAULT_ANIMATION_DURATION}ms ease`,
         }"
         @click="emit('item-click', lay.item, index)"
-        @keydown.enter="emit('item-click', lay.item, index)"
-        @keydown.space.prevent="emit('item-click', lay.item, index)"
+        @keydown="handleItemKeydown($event, lay, index)"
+        @focusin="pinItem(lay.item.id)"
+        @focusout="releaseItem"
       >
         <slot
           name="item"
@@ -120,7 +122,15 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onUnmounted, type Ref } from 'vue'
+  import {
+    ref,
+    computed,
+    nextTick,
+    onActivated,
+    onDeactivated,
+    onUnmounted,
+    type Ref,
+  } from 'vue'
   import { NSpin, NButton } from 'naive-ui'
   import type {
     WaterFallItem,
@@ -138,6 +148,7 @@
   import { useResponsiveColumns } from './composables/useResponsiveColumns'
   import { useWaterFallLayout } from './composables/useWaterFallLayout'
   import { useInfiniteScroll } from './composables/useInfiniteScroll'
+  import { useWaterFallWindow } from './composables/useWaterFallWindow'
 
   defineOptions({ name: 'C_WaterFall' })
 
@@ -145,6 +156,7 @@
     columns: undefined,
     gap: DEFAULT_GAP,
     lazy: true,
+    virtualScroll: true,
     infinite: false,
     skeleton: true,
     skeletonCount: DEFAULT_SKELETON_COUNT,
@@ -186,21 +198,36 @@
 
   const observedItems = new Map<Element, string | number>()
   const elementsById = new Map<string | number, HTMLElement>()
-  const layoutById = computed(
-    () => new Map(layoutItems.value.map(layout => [layout.item.id, layout]))
+  const {
+    visibleItems,
+    index: windowIndex,
+    virtual,
+    pinItem,
+    releaseItem,
+    scrollToTop,
+  } = useWaterFallWindow(
+    containerRef,
+    layoutItems,
+    computed(() => props.virtualScroll)
   )
+  let observingItems = true
   const itemObserver =
     typeof ResizeObserver === 'undefined'
       ? null
       : new ResizeObserver(entries => {
+          if (!observingItems) return
           for (const entry of entries) {
             const id = observedItems.get(entry.target)
             const layout =
-              id === undefined ? undefined : layoutById.value.get(id)
+              id === undefined
+                ? undefined
+                : windowIndex.value.byId.get(id)?.layout
             if (layout)
               cacheItemExtraHeight(
                 layout.item.id,
-                entry.target.getBoundingClientRect().height - layout.height
+                entry.target.getBoundingClientRect().height - layout.height,
+                layout.width,
+                layout.item.src
               )
           }
         })
@@ -215,9 +242,18 @@
     if (!(element instanceof HTMLElement)) return
     elementsById.set(id, element)
     observedItems.set(element, id)
-    itemObserver?.observe(element)
+    if (observingItems) itemObserver?.observe(element)
   }
+  onDeactivated(() => {
+    observingItems = false
+    itemObserver?.disconnect()
+  })
+  onActivated(() => {
+    observingItems = true
+    elementsById.forEach(element => itemObserver?.observe(element))
+  })
   onUnmounted(() => {
+    observingItems = false
     itemObserver?.disconnect()
     observedItems.clear()
     elementsById.clear()
@@ -298,8 +334,89 @@
     emit('image-error', lay.item)
   }
 
-  function scrollToTop() {
-    containerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function isVisibleControl(child: HTMLElement, item: HTMLElement) {
+    if (child.tabIndex < 0 || child.matches(':disabled, input[type="hidden"]'))
+      return false
+    for (
+      let current: HTMLElement | null = child;
+      current && current !== item.parentElement;
+      current = current.parentElement
+    ) {
+      if (current.hidden || current.hasAttribute('inert')) return false
+      const { display, visibility } = getComputedStyle(current)
+      if (
+        display === 'none' ||
+        visibility === 'hidden' ||
+        visibility === 'collapse'
+      )
+        return false
+    }
+    return true
+  }
+
+  function focusableChildren(element: HTMLElement) {
+    return Array.from(
+      element.querySelectorAll<HTMLElement>(
+        'a[href],button,input,select,textarea,[tabindex],[contenteditable="true"]'
+      )
+    ).filter(child => isVisibleControl(child, element))
+  }
+
+  function focusItem(index: number, lastChild = false) {
+    const entry = windowIndex.value.entries[index]
+    if (!entry) return
+    pinItem(entry.layout.item.id)
+    void nextTick(() => {
+      const element = elementsById.get(entry.layout.item.id)
+      if (!element || !observingItems) return
+      const children = lastChild ? focusableChildren(element) : []
+      const target = children[children.length - 1] ?? element
+      target.focus({ preventScroll: true })
+      target.scrollIntoView?.({ block: 'nearest' })
+    })
+  }
+
+  function handleTab(event: KeyboardEvent, index: number) {
+    if (!virtual.value) return
+    const element = event.currentTarget as HTMLElement
+    const children = focusableChildren(element)
+    if (
+      event.shiftKey
+        ? event.target !== element
+        : children.length > 0 && event.target !== children[children.length - 1]
+    )
+      return
+    const target = index + (event.shiftKey ? -1 : 1)
+    if (!windowIndex.value.entries[target]) return
+    event.preventDefault()
+    focusItem(target, event.shiftKey)
+  }
+
+  function handleItemKeydown(
+    event: KeyboardEvent,
+    layout: WaterFallLayoutItem,
+    index: number
+  ) {
+    if (event.key === 'Tab') return handleTab(event, index)
+    if (event.target !== event.currentTarget) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      emit('item-click', layout.item, index)
+      return
+    }
+    const destinations: Record<string, number> = {
+      ArrowRight: index + 1,
+      ArrowDown: index + 1,
+      ArrowLeft: index - 1,
+      ArrowUp: index - 1,
+      Home: 0,
+      End: props.items.length - 1,
+    }
+    const destination = destinations[event.key]
+    if (destination === undefined || !windowIndex.value.entries[destination])
+      return
+    event.preventDefault()
+    focusItem(destination)
   }
 
   defineExpose<WaterFallExpose>({

@@ -22,6 +22,7 @@ The core is currently an internal boundary, not a separately published package. 
 - Full installation registers the public `C_*` names, avoiding collisions between inferred `index.vue` names or a host application's `index` component.
 - The root entry aggregates all components, including navigation, and preserves full installation. Runtime root imports require the optional `vue-router` peer, even for a non-routing named export. Applications without a router should use component subpaths.
 - `sortablejs` is needed only for the corresponding drag features. Selective JS loading does not mean ordinary runtime dependencies are selectively installed.
+- SheetJS 0.20.3 is built from the unchanged official archive, verified against its SHA-512, installed build inputs and license. Its runtime ships in separate chunks, removing the consumer's CDN installation requirement. FilePreview loads it with the component; table XLSX export loads it on demand. Base form/table entry budgets remain enforced. See [third-party notices](../THIRD_PARTY_NOTICES.md).
 - ESM resolves `.d.ts`; CJS resolves `.d.cts`. Each declaration condition matches its JavaScript format.
 - All public reachable declarations are checked for `naive-ui/es/*` and `naive-ui/lib/*` internal imports, in both formats.
 

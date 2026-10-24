@@ -167,6 +167,8 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 | [使用指南](./docs/guides/usage.md)                       | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
 | [密度与多表工作台](./docs/guides/table-density.md)       | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
 | [大列表与异步任务](./docs/guides/runtime-performance.md) | 自动窗口化、聊天滚动、搜索索引、字幕与图片任务                   |
+| [瀑布流长列表](./docs/guides/waterfall.md)               | 自动窗口化、嵌套滚动、变高卡片与键盘导航                         |
+| [兼容 API 迁移](./docs/guides/api-migration.md)          | 标准模型、应用渲染器与只读迁移检查                               |
 | [真实场景覆盖](./docs/wl-ui-produce-coverage.md)         | wl-ui-produce 对照、可组合能力与需要适配的边界                   |
 | [开发与构建](./docs/engineering.md)                      | 工程结构、六阶段构建、组件扩展、校验与发布流程                   |
 | [品牌资源](./docs/assets/README.md)                      | Robot 系列 Logo、可编辑 SVG 与高清 PNG 封面                      |

@@ -4,6 +4,9 @@ import {
   computed,
   watch,
   getCurrentScope,
+  getCurrentInstance,
+  onActivated,
+  onDeactivated,
   onScopeDispose,
   type Ref,
 } from 'vue'
@@ -26,7 +29,10 @@ export function useWaterFallLayout(
 ) {
   const layoutItems = ref<WaterFallLayoutItem[]>([])
   const containerHeight = ref(0)
-  const itemExtraHeights = new Map<string | number, number>()
+  const itemExtraHeights = new Map<
+    string | number,
+    { height: number; basisWidth?: number; src?: string }
+  >()
   const imageHeightCache = new Map<
     string | number,
     { height: number; basisWidth?: number; src?: string }
@@ -36,6 +42,7 @@ export function useWaterFallLayout(
   )
   let pendingFrame: number | undefined
   let disposed = false
+  let paused = false
   const cancelScheduledLayout = () => {
     if (pendingFrame !== undefined) cancelAnimationFrame(pendingFrame)
     pendingFrame = undefined
@@ -48,7 +55,7 @@ export function useWaterFallLayout(
       itemExtraHeights.clear()
     })
   const scheduleLayout = () => {
-    if (disposed) return
+    if (disposed || paused) return
     if (
       !options.batchImageLoads ||
       typeof requestAnimationFrame === 'undefined'
@@ -102,8 +109,7 @@ export function useWaterFallLayout(
     basisWidth?: number,
     src?: string
   ) {
-    if (disposed || (src !== undefined && sourcesById.value.get(id) !== src))
-      return
+    if (!canMeasure(id, src)) return
     if (!isValidMeasurement(realHeight, basisWidth)) return
     const previous = imageHeightCache.get(id)
     if (
@@ -116,6 +122,15 @@ export function useWaterFallLayout(
     scheduleLayout()
   }
 
+  function canMeasure(id: string | number, src?: string) {
+    return (
+      !disposed &&
+      !paused &&
+      sourcesById.value.has(id) &&
+      (src === undefined || sourcesById.value.get(id) === src)
+    )
+  }
+
   function isValidMeasurement(height: number, width?: number) {
     return (
       Number.isFinite(height) &&
@@ -125,11 +140,21 @@ export function useWaterFallLayout(
   }
 
   /** Include captions, borders and custom slot content in column placement. */
-  function cacheItemExtraHeight(id: string | number, extraHeight: number) {
-    if (disposed || !sourcesById.value.has(id) || !Number.isFinite(extraHeight))
+  function cacheItemExtraHeight(
+    id: string | number,
+    extraHeight: number,
+    basisWidth?: number,
+    src?: string
+  ) {
+    if (!canMeasure(id, src) || !Number.isFinite(extraHeight)) return
+    const previous = itemExtraHeights.get(id)
+    if (
+      Math.abs((previous?.height ?? 0) - extraHeight) < 0.5 &&
+      previous?.basisWidth === basisWidth &&
+      previous?.src === src
+    )
       return
-    if (Math.abs((itemExtraHeights.get(id) ?? 0) - extraHeight) < 0.5) return
-    itemExtraHeights.set(id, extraHeight)
+    itemExtraHeights.set(id, { height: extraHeight, basisWidth, src })
     scheduleLayout()
   }
 
@@ -141,9 +166,22 @@ export function useWaterFallLayout(
     }
   }
 
+  function resolveExtraHeight(item: WaterFallItem, width: number) {
+    const extra = itemExtraHeights.get(item.id)
+    if (
+      !extra ||
+      (extra.basisWidth !== undefined && extra.basisWidth !== width) ||
+      (extra.src !== undefined && extra.src !== item.src)
+    )
+      return 0
+    return extra.height
+  }
+
   function calculate() {
     cancelScheduledLayout()
-    if (disposed) return
+    if (disposed || paused) return
+    const presentIds = new Set(sourcesById.value.keys())
+    pruneMeasurements(presentIds)
     const cols = Math.min(24, Math.max(1, Math.floor(columns.value)))
     const width = containerWidth.value
     const g = Math.max(0, gap.value ?? DEFAULT_GAP)
@@ -165,14 +203,14 @@ export function useWaterFallLayout(
 
     const result: WaterFallLayoutItem[] = []
 
-    const presentIds = new Set<string | number>()
     for (const item of items.value) {
-      presentIds.add(item.id)
       const shortest = columnState.reduce((min, col) =>
         col.height < min.height ? col : min
       )
 
       const itemHeight = resolveItemHeight(item, colWidth)
+      const extraHeight = resolveExtraHeight(item, colWidth)
+      const totalHeight = Math.max(1, itemHeight + extraHeight)
 
       const x = shortest.index * (colWidth + g)
       const y = shortest.height
@@ -184,23 +222,43 @@ export function useWaterFallLayout(
         y,
         width: colWidth,
         height: itemHeight,
+        totalHeight,
       })
 
-      shortest.height =
-        y + itemHeight + (itemExtraHeights.get(item.id) ?? 0) + g
+      shortest.height = y + totalHeight + g
     }
-
-    pruneMeasurements(presentIds)
 
     layoutItems.value = result
     containerHeight.value = Math.max(...columnState.map(c => c.height)) - g
   }
 
   watch(
-    [items, () => items.value.length, columns, containerWidth, gap],
+    [
+      () =>
+        items.value.map(item => [
+          item,
+          item.id,
+          item.src,
+          item.width,
+          item.height,
+        ]),
+      columns,
+      containerWidth,
+      gap,
+    ],
     calculate,
     { immediate: true }
   )
+  if (getCurrentInstance()) {
+    onDeactivated(() => {
+      paused = true
+      cancelScheduledLayout()
+    })
+    onActivated(() => {
+      paused = false
+      calculate()
+    })
+  }
 
   return {
     layoutItems: readonly(layoutItems),

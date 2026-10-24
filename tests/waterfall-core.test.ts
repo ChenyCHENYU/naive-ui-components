@@ -42,4 +42,24 @@ describe('C_WaterFall image layout', () => {
     expect(layout.layoutItems.value).toHaveLength(2)
     expect(layout.containerHeight.value).toBe(200)
   })
+  test('same-length source changes and removed IDs at zero width discard stale measurements', async () => {
+    const items = ref([{ id: 'one', src: '/one.png', width: 1, height: 1 }])
+    const width = ref(100)
+    const layout = useWaterFallLayout(items, ref(1), width, ref(0))
+    layout.cacheImageHeight('one', 200, 100, '/one.png')
+    layout.cacheItemExtraHeight('one', 40, 100, '/one.png')
+    expect(layout.containerHeight.value).toBe(240)
+    items.value[0].src = '/new.png'
+    await nextTick()
+    expect(layout.containerHeight.value).toBe(100)
+    layout.cacheImageHeight('one', 300, 100, '/new.png')
+    layout.cacheItemExtraHeight('one', 50, 100, '/new.png')
+    width.value = 0
+    items.value = [{ id: 'two', src: '/two.png', width: 1, height: 1 }]
+    await nextTick()
+    items.value = [{ id: 'one', src: '/new.png', width: 1, height: 1 }]
+    width.value = 100
+    await nextTick()
+    expect(layout.containerHeight.value).toBe(100)
+  })
 })

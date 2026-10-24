@@ -123,12 +123,12 @@ export default defineConfig({
     cssPostPlugin(),
   ],
   dts: { vue: true },
-  // v0.20+ 自动外部化所有 node_modules 依赖（含 CSS 深层导入），
-  // 无需手动维护 external 列表，新增依赖也自动生效
-  skipNodeModulesBundle: true,
+  // 默认外部化 package.json 的依赖，只内联明确指定的 SheetJS。
+  // 官方 SheetJS 无稳定 npm 分发；内置经过校验的原版运行时代码，消费端不再访问 CDN。
+  noExternal: ['xlsx'],
   // CSS 内联图标是 URI，直接保留；无需进入 Node 依赖解析。
   external: [/^data:/],
-  // All runtime packages stay external; disable the false-positive transitive warning.
+  // 第三方声明的循环类型依赖由声明打包器处理；运行时按入口与体积门禁检查。
   inlineOnly: false,
   minify: true,
   // Published builds stay compact by default; opt in when debugging the library itself.

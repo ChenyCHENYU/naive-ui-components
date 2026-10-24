@@ -38,6 +38,19 @@ for (const [relativePath, { min, max }] of Object.entries(budgets)) {
 }
 
 const files = walk(distDir)
+// SheetJS 从外部 CDN 依赖改为随包分发；单列原版运行时，主库预算保持不变。
+const sheetJsFiles = files.filter(filename =>
+  /^xlsx\d*\.(?:js|cjs)$/.test(path.basename(filename))
+)
+const sheetJsSize = sheetJsFiles.reduce(
+  (sum, filename) => sum + fs.statSync(filename).size,
+  0
+)
+if (sheetJsFiles.length !== 2 || sheetJsSize > 1024 * 1024) {
+  failures.push(
+    `SheetJS chunks: expected ESM/CJS within 1 MiB, found ${sheetJsFiles.length} files / ${sheetJsSize} bytes`
+  )
+}
 const totalSize = files.reduce(
   (sum, filename) => sum + fs.statSync(filename).size,
   0
@@ -46,9 +59,9 @@ const totalSize = files.reduce(
 // 独立入口仍受单独的首屏 gzip 预算约束，不能用总预算掩盖懒加载回退。
 // 两个发布 CSS 入口恢复约 109 KiB 主题样式，另留序列化保护代码的有限空间。
 const totalLimit = 4 * 1024 * 1024 + 224 * 1024
-if (totalSize > totalLimit) {
+if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
-    `dist total: ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${(totalLimit / 1024 / 1024).toFixed(2)} MB`
+    `dist excluding reviewed SheetJS: ${((totalSize - sheetJsSize) / 1024 / 1024).toFixed(2)} MB > ${(totalLimit / 1024 / 1024).toFixed(2)} MB`
   )
 }
 

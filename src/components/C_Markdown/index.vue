@@ -65,6 +65,7 @@
       }
     ): void
     focus(): void
+    getEditorView(): { destroy(): void } | undefined
   }
 
   const MdEditor = MdEditorRuntime as unknown as Component
@@ -144,6 +145,7 @@
   const currentInstance = getCurrentInstance()
 
   const editorRef = ref<MarkdownEditorExpose>()
+  let disposed = false
   const cachedHtml = ref('')
   const latestText = ref(props.modelValue)
   const instanceUid = currentInstance?.uid ?? 0
@@ -211,6 +213,7 @@
   )
 
   const handleInput = (value: string) => {
+    if (disposed) return
     if (value.length > props.maxLength) {
       emit('max-length-exceeded', value.length, props.maxLength)
       return
@@ -223,6 +226,7 @@
   }
 
   const handleHtmlChanged = (html: string) => {
+    if (disposed) return
     const safeHtml = sanitizeRichHtml(html)
     cachedHtml.value = safeHtml
     emit('change', latestText.value, safeHtml)
@@ -232,7 +236,12 @@
   }
 
   const handleSave = async (text: string, html: Promise<string>) => {
-    emit('save', text, sanitizeRichHtml(await html))
+    try {
+      const content = await html
+      if (!disposed) emit('save', text, sanitizeRichHtml(content))
+    } catch (error) {
+      if (!disposed) throw error
+    }
   }
 
   const handleUploadImage = (
@@ -241,6 +250,7 @@
       urls: Array<{ url: string; alt: string; title: string }>
     ) => void
   ) => {
+    if (disposed) return
     const filteredFiles = files.filter(file =>
       matchesAccept(file, props.uploadImageConfig?.accept)
     )
@@ -251,6 +261,7 @@
     const transfer = new DataTransfer()
     acceptedFiles.forEach(file => transfer.items.add(file))
     const insertImage: InsertImageFunction = config => {
+      if (disposed) return
       insertImages([
         {
           url: config.url,
@@ -263,7 +274,7 @@
   }
 
   const handleCopiedText = (text: string): string => {
-    emit('copy-code-success', text)
+    if (!disposed) emit('copy-code-success', text)
     return text
   }
 
@@ -280,18 +291,25 @@
   )
 
   const autoSave = (text: string) => {
+    if (disposed) return
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(
       () => {
         autoSaveTimer = null
-        emit('auto-save', text)
+        if (!disposed) emit('auto-save', text)
       },
       Math.max(0, props.autoSaveInterval)
     )
   }
 
   onBeforeUnmount(() => {
+    if (disposed) return
+    disposed = true
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+    // md-editor-v3 exposes the view but does not dispose it on unmount.
+    // Destroy this instance through its public API before the child ref is cleared.
+    editorRef.value?.getEditorView()?.destroy()
   })
 
   const focus = () => {
@@ -313,7 +331,7 @@
 
   onMounted(() => {
     editorRef.value?.on('fullscreen', isFullscreen => {
-      emit('fullscreen-change', isFullscreen)
+      if (!disposed) emit('fullscreen-change', isFullscreen)
     })
     if (props.defaultFullscreen) editorRef.value?.toggleFullscreen(true)
   })

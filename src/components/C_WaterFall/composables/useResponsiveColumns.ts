@@ -1,4 +1,13 @@
-import { ref, readonly, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
+import {
+  ref,
+  readonly,
+  watch,
+  onMounted,
+  onActivated,
+  onDeactivated,
+  onBeforeUnmount,
+  type Ref,
+} from 'vue'
 import type { WaterFallBreakpoint } from '../types'
 import { DEFAULT_BREAKPOINTS } from '../constants'
 
@@ -26,34 +35,43 @@ export function useResponsiveColumns(
   }
 
   let resizeObserver: ResizeObserver | null = null
+  let active = false
+
+  function measure() {
+    const el = containerRef.value
+    if (!active || !el) return
+    const { width } = el.getBoundingClientRect()
+    containerWidth.value = width
+    columns.value = resolveColumns(width)
+  }
 
   function startObserving() {
+    stopObserving()
     const el = containerRef.value
     if (!el) return
-    resizeObserver = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const { width } = entry.contentRect
-        containerWidth.value = width
-        columns.value = resolveColumns(width)
-      }
-    })
-    resizeObserver.observe(el)
-    const rect = el.getBoundingClientRect()
-    containerWidth.value = rect.width
-    columns.value = resolveColumns(rect.width)
+    active = true
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(measure)
+      resizeObserver.observe(el)
+    }
+    window.addEventListener('resize', measure, { passive: true })
+    measure()
   }
 
   function stopObserving() {
     resizeObserver?.disconnect()
     resizeObserver = null
+    window.removeEventListener('resize', measure)
+    active = false
   }
 
   onMounted(startObserving)
+  onActivated(startObserving)
+  onDeactivated(stopObserving)
   onBeforeUnmount(stopObserving)
 
   watch(containerRef, () => {
-    stopObserving()
-    startObserving()
+    if (active) startObserving()
   })
 
   watch([() => fixedColumns?.value, () => breakpoints?.value], () => {

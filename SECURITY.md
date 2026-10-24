@@ -25,6 +25,16 @@ The release pipeline audits direct and transitive dependencies and verifies depe
 
 Run `bun install --frozen-lockfile` and `bun run verify` before publishing. Review changes to `bun.lock`, remote tarball URLs, package exports, and `sideEffects` as release-sensitive files.
 
+### Bundled SheetJS runtime
+
+Starting with 0.22.0, SheetJS Community Edition 0.20.3 is built from the unchanged official archive in `vendor/`. `bun run check:vendor` checks the reviewed SHA-512, actual build inputs and the license shipped with the package. See [third-party notices](./THIRD_PARTY_NOTICES.md) and [source maintenance](https://github.com/ChenyCHENYU/naive-ui-components/blob/main/vendor/README.md).
+
+Consumers no longer install a separate SheetJS dependency for this library. Consequently, an application package-manager audit cannot inventory this bundled runtime as a standalone package, and application-level `xlsx` overrides do not replace it. Maintainers must monitor SheetJS advisories and release an updated component package when changing the bundled version. Archive integrity and passing spreadsheet regressions verify source identity and behavior; they do not establish that bundled code has no vulnerabilities.
+
+### 2026-10-24 development dependency update
+
+The final audit detected newly updated advisories for Happy DOM and fast-uri. The development environment now pins `happy-dom 21.0.4`, the patched version for [GHSA-834v-8h66-3h79](https://github.com/advisories/GHSA-834v-8h66-3h79), and overrides `fast-uri` to the compatible `3.1.9` patch for [scheme decoding](https://github.com/advisories/GHSA-w74x-v6f9-j3xg), [relative paths](https://github.com/advisories/GHSA-xhq7-xmqj-769h), [host canonicalization](https://github.com/advisories/GHSA-wjr9-j795-jxcr), and [suffix references](https://github.com/advisories/GHSA-333x-w4r6-6crp). These updates do not expand the advisory exception below. Audit output is time-sensitive; rerun the gate against the actual lockfile.
+
 ### Development toolchain: one verified local mitigation
 
 As of 2026-10-23, the upstream [braces depth advisory GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) affects `braces <=3.0.3` and has no published fixed version. In this repository it is a development dependency through micromatch and build/release tools. It is absent from the production dependency graph.

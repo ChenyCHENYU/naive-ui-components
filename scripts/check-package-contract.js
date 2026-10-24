@@ -38,7 +38,9 @@ requireCondition(
   pkg.dependencies?.dompurify === '^3.4.17' &&
     pkg.overrides?.['markdown-it'] === '14.3.3' &&
     pkg.devDependencies?.vite === '8.2.4' &&
-    pkg.devDependencies?.vitest === '4.1.12',
+    pkg.devDependencies?.vitest === '4.1.12' &&
+    pkg.devDependencies?.['happy-dom'] === '21.0.4' &&
+    pkg.overrides?.['fast-uri'] === '3.1.9',
   'Reviewed security dependency baselines changed; re-run security validation'
 )
 requireCondition(pkg.overrides?.tmp === '0.2.7', 'Secure tmp override changed')

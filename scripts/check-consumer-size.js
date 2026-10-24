@@ -35,7 +35,7 @@ const cases = [
     component: 'C_FormSearch',
     css: 'C_FormSearch.css',
     props:
-      "{ formParams: { name: '' }, formItemList: [{ type: 'input', prop: 'name', label: 'Name' }] }",
+      "{ modelValue: { name: '' }, formItemList: [{ type: 'input', prop: 'name', label: 'Name' }] }",
     budget: 165 * 1024,
   },
   {
@@ -50,7 +50,7 @@ const cases = [
 // Inspect actual emitted static imports. Dynamic chunks are deliberately excluded
 // from the initial graph, but still built so invalid lazy imports fail this check.
 const forbiddenInitial =
-  /(?:node_modules\/(?:@wangeditor[^/]*|@wangeditor-next|xlsx|html2canvas|print-js|mammoth)\/|\/C_Editor\d*\.(?:js|vue)$)/
+  /(?:node_modules\/(?:@wangeditor[^/]*|@wangeditor-next|xlsx|html2canvas|print-js|mammoth)\/|\/(?:C_Editor\d*\.(?:js|vue)|xlsx\d*\.(?:js|cjs))$)/
 const deferredNaiveFields =
   /\/naive-ui\/(?:es|lib)\/(?:date-picker|time-picker|slider|rate|cascader|color-picker|upload)\//
 const failures = []

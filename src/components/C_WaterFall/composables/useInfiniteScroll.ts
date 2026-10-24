@@ -4,6 +4,8 @@ import {
   watch,
   nextTick,
   onMounted,
+  onActivated,
+  onDeactivated,
   onBeforeUnmount,
   type Ref,
 } from 'vue'
@@ -28,11 +30,13 @@ export function useInfiniteScroll(
   let visible = false
   let visibleRequests = 0
   let disposed = false
+  let deactivated = false
   let observerVersion = 0
 
   function requestMore() {
     if (
       disposed ||
+      deactivated ||
       !visible ||
       !enabled.value ||
       loading.value ||
@@ -50,8 +54,14 @@ export function useInfiniteScroll(
 
   function startObserving() {
     const el = sentinelRef.value
-    if (!el || !enabled.value || typeof IntersectionObserver === 'undefined')
+    if (
+      deactivated ||
+      !el ||
+      !enabled.value ||
+      typeof IntersectionObserver === 'undefined'
+    )
       return
+    observer?.disconnect()
     const version = ++observerVersion
     observer = new IntersectionObserver(
       entries => {
@@ -89,6 +99,15 @@ export function useInfiniteScroll(
     }
   })
   onMounted(startObserving)
+  onActivated(() => {
+    deactivated = false
+    stopObserving()
+    startObserving()
+  })
+  onDeactivated(() => {
+    deactivated = true
+    stopObserving()
+  })
   onBeforeUnmount(() => {
     disposed = true
     stopObserving()
