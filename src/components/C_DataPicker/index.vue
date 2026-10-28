@@ -68,7 +68,7 @@
           :size="density.size"
           :loading="list.loading.value"
           type="primary"
-          >{{ t('common.search') }}</NButton
+          >{{ t('picker.search') }}</NButton
         >
       </form>
       <div

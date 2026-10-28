@@ -72,6 +72,7 @@ describe('C_DataPicker远程选择会话', () => {
       expect(
         wrapper.getComponent(NInput).get('input').attributes('aria-label')
       ).toBe('搜索候选数据')
+      expect(button(wrapper, '搜索').attributes('type')).toBe('submit')
     } finally {
       wrapper.unmount()
     }
