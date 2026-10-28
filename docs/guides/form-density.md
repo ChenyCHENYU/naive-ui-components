@@ -18,14 +18,16 @@ const density = ref<ComponentDensity>('compact')
 | 密度          | 字段与操作按钮 | 布局间距 | 卡片留白 | 表单反馈预留高度 |
 | ------------- | -------------- | -------- | -------- | ---------------- |
 | `default`     | `medium`       | 16px     | 24px     | 24px             |
-| `compact`     | `small`        | 8px      | 12px     | 12px             |
+| `compact`     | `small`        | 8px      | 12px     | 4px              |
 | `comfortable` | `large`        | 20px     | 28px     | 28px             |
 
 反馈预留高度是最小值，校验错误可自然撑开。密度支持响应式切换，切换不会清空表单值、搜索草稿、折叠条件或分组展开状态；不同实例可以使用不同密度。
 
 ## 保留明确覆盖
 
-已有项目未配置 `density` 时保留原来的间距和默认 `medium` 尺寸。显式配置的控件尺寸、字段尺寸和布局间距继续优先，不需要迁移旧用法。
+已有项目未配置 `density` 时保留原来的字段、布局间距和默认 `medium` 尺寸；无校验职责的操作区不再保留空反馈行。显式配置的控件尺寸、字段尺寸和布局间距继续优先，不需要迁移旧用法。
+
+响应式网格会根据容器宽度约束横向间距，避免 24 栅格的累计间距撑破窄弹窗；宽屏仍使用配置值，纵向间距独立，偏移继续交给 Naive UI 处理。`grid.responsive: false` 可保留固定的间距行为。
 
 已有 `C_Form` 原生 `size` 透传继续按原有末尾覆盖顺序生效，并同步字段与操作按钮；新接入推荐统一使用 `config`。
 
@@ -56,4 +58,16 @@ const largeFields = { density: 'compact', size: 'large' } as const
 
 卡片、网格等布局仍按需加载。密度预设仅为纯数据，不引入额外 UI 依赖。
 
-`C_FormModal` 的 `config.density` 同步控制表单与页脚按钮，也继承应用级表单密度；未配置密度时保留弹窗原有 `small` 字段默认值。表格编辑弹窗也会继承表格密度。
+`C_FormModal` 默认使用 `compact`，也继承应用级表单密度；紧凑弹窗的字段为 `small`，页脚按钮为 `tiny`，与紧凑操作栏一致。显式 `config.size` 仍同时控制字段和按钮；显式 `default` / `comfortable` 密度使用对应尺寸。表格编辑弹窗也会继承表格密度。
+
+## 按需设置应用默认值
+
+在应用启动时提供一次即可，局部的 `config.density` 优先，搜索只继承密度，不继承表单布局、回调或尺寸。
+
+```ts
+import { FORM_GLOBAL_CONFIG_KEY } from '@robot-admin/naive-ui-components/config'
+
+app.provide(FORM_GLOBAL_CONFIG_KEY, { density: 'compact' })
+```
+
+紧凑搜索的字段默认宽度为 208px，窄屏自动占满可用宽度；显式字段 `attrs.style.width` 仍可覆盖。紧凑数字字段默认隐藏增减按钮，保留键盘 ↑ / ↓、步长、精度及上下限；需要按钮的字段配置 `attrs: { showButton: true }`。控件继续使用 Naive UI 的数值处理与主题，输入为文本，不叠加浏览器原生数字箭头；`attrs.inputProps` 可覆盖可访问名称和数值语义。

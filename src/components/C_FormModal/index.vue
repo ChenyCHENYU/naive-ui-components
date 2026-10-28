@@ -47,7 +47,6 @@
     type FormInstance,
     type FormRecord,
     mergeFormConfig,
-    resolveFormConfig,
     useFormGlobalConfig,
   } from '../C_Form'
   import { resolveComponentDensity } from '../../core/density'
@@ -70,7 +69,7 @@
   const formRef = ref<FormInstance<T> | null>(null)
   const globalFormConfig = useFormGlobalConfig()
   const density = computed(
-    () => props.config?.density ?? globalFormConfig.density
+    () => props.config?.density ?? globalFormConfig.density ?? 'compact'
   )
 
   const modalVisible = computed({
@@ -91,9 +90,8 @@
     },
   })
   const resolvedFormConfig = computed<FormConfig<T>>(() => ({
-    // 历史弹窗默认 small；显式密度交给 C_Form 统一推导，避免 small 吞掉密度。
-    ...(density.value === undefined ? { size: 'small' as const } : {}),
     ...props.config,
+    density: density.value,
     mode: props.editor.mode.value,
     initialValues: props.editor.model.value ?? undefined,
     showActions: false,
@@ -111,20 +109,18 @@
   }
 
   const footerConfig = computed<ActionBarConfig>(() => {
-    const config: ActionBarConfig = { align: 'right' }
-    if (density.value !== undefined || props.config?.size !== undefined) {
-      config.size = resolveFormConfig(
-        mergeFormConfig(
-          resolvedFormConfig.value as FormConfig,
-          globalFormConfig
-        )
-      ).size
+    const config = mergeFormConfig(
+      resolvedFormConfig.value as FormConfig,
+      globalFormConfig
+    )
+    const tokens = resolveComponentDensity(density.value)
+    return {
+      align: 'right',
+      // 紧凑页脚采用 22px；业务明确指定的字段尺寸仍同步到页脚。
+      size: config.size ?? (density.value === 'compact' ? 'tiny' : tokens.size),
+      gap: tokens.gap,
+      compact: density.value === 'compact',
     }
-    if (density.value !== undefined) {
-      config.gap = resolveComponentDensity(density.value).gap
-      config.compact = density.value === 'compact'
-    }
-    return config
   })
 
   const modalActions = computed(() =>

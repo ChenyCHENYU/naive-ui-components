@@ -91,6 +91,7 @@
     <NFormItem
       v-if="showActions"
       class="c-form-actions"
+      :show-feedback="false"
     >
       <slot
         name="action"

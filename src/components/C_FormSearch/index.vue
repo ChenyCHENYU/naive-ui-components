@@ -8,7 +8,7 @@
 <template>
   <NCard
     class="form-search-card custom-card"
-    :class="config?.density && `form-search-card--${config.density}`"
+    :class="density && `form-search-card--${density}`"
     :style="densityStyle"
     :bordered="bordered"
   >
@@ -106,7 +106,7 @@
       <div class="form-search-item-box form-search-actions">
         <div class="form-item-input">
           <div class="button-label-placeholder"></div>
-          <NSpace :size="config?.density ? densityTokens.gap : 8">
+          <NSpace :size="density ? densityTokens.gap : 8">
             <NTooltip trigger="hover">
               <template #trigger>
                 <NButton
@@ -173,6 +173,7 @@
 <script setup lang="ts" generic="T extends object = SearchFormParams">
   import { computed, watch, type CSSProperties, type Ref } from 'vue'
   import { resolveComponentDensity } from '../../core/density'
+  import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
   import {
     NCard,
     NForm,
@@ -206,17 +207,22 @@
   })
 
   const emits = defineEmits<FormSearchEmits<T>>()
-  const densityTokens = computed(() =>
-    resolveComponentDensity(props.config?.density)
+  const globalFormConfig = useFormGlobalConfig()
+  // 搜索只继承密度，不继承业务表单的布局、尺寸、禁用或提交回调。
+  const density = computed(
+    () => props.config?.density ?? globalFormConfig.density
   )
+  const densityTokens = computed(() => resolveComponentDensity(density.value))
   const resolvedSize = computed(() => props.size ?? densityTokens.value.size)
   const densityStyle = computed<CSSProperties | undefined>(() => {
-    if (props.config?.density === undefined) return undefined
+    if (density.value === undefined) return undefined
     const { gap, rowGap, padding } = densityTokens.value
     return {
       '--c-search-gap': `${gap}px`,
       '--c-search-row-gap': `${rowGap}px`,
       '--c-search-padding': `${padding}px`,
+      '--c-search-field-width':
+        density.value === 'compact' ? '208px' : undefined,
     }
   })
 

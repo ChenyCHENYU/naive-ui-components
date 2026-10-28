@@ -17,7 +17,7 @@
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 260px;
+        width: var(--c-search-field-width, 260px);
         max-width: 100%;
       }
 
@@ -157,7 +157,7 @@
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 240px;
+        width: var(--c-search-field-width, 240px);
       }
     }
   }
@@ -171,7 +171,7 @@
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 220px;
+        width: var(--c-search-field-width, 220px);
       }
     }
   }
@@ -185,7 +185,7 @@
       :deep(.n-input),
       :deep(.n-select),
       :deep(.n-date-picker) {
-        width: 200px;
+        width: var(--c-search-field-width, 200px);
       }
     }
   }

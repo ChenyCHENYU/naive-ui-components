@@ -3,6 +3,7 @@ import {
   mergeFormConfig,
   resolveFormConfig,
 } from '../src/components/C_Form/composables/useFormConfig'
+import { resolveComponentDensity } from '../src/core/density'
 
 describe('form density compatibility', () => {
   test('density resolves matching control sizes and retains the legacy default', () => {
@@ -22,5 +23,11 @@ describe('form density compatibility', () => {
     )
     expect(resolveFormConfig(merged).size).toBe('medium')
     expect(merged.grid).toEqual({ xGap: 4, yGap: 6 })
+  })
+
+  test('compact reserves four pixels for feedback without changing other densities', () => {
+    expect(resolveComponentDensity('compact').formItemGap).toBe(4)
+    expect(resolveComponentDensity('default').formItemGap).toBe(24)
+    expect(resolveComponentDensity('comfortable').formItemGap).toBe(28)
   })
 })

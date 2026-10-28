@@ -23,6 +23,7 @@ import type { FormItemInst } from 'naive-ui'
 import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { getDataPath, setDataPath } from '../../../utils/data'
+import { resolveNumberInputProps } from '../numberInput'
 
 /* =================== 组件映射类型 =================== */
 
@@ -122,7 +123,8 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
   return {
     input: props => h(C.NInput, { ...props }),
     textarea: props => h(C.NInput, { ...props, type: 'textarea' }),
-    inputNumber: props => h(C.NInputNumber, { ...props }),
+    inputNumber: (props, item, config) =>
+      h(C.NInputNumber, resolveNumberInputProps(props, item, config.density)),
     switch: props => h(C.NSwitch, { ...props }),
     slider: props => h(C.NSlider, { ...props }),
     rate: props => h(C.NRate, { ...props }),

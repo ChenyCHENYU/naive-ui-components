@@ -409,6 +409,7 @@ try {
       ['/C_Menu', 'C_Menu'],
       ['/config', 'COMPONENT_LOCALE_KEY'],
       ['/config', 'COMPONENT_FEEDBACK_KEY'],
+      ['/config', 'FORM_GLOBAL_CONFIG_KEY'],
     ],
     true
   )

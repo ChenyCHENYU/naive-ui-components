@@ -25,8 +25,12 @@ import type {
   FormRecord,
   FormSubmitContext,
 } from '../types'
-import { getCurrentInstance, inject, type InjectionKey } from 'vue'
-import type { ComponentFeedback, ComponentLocale } from '../../../config'
+import { getCurrentInstance, inject } from 'vue'
+import { FORM_GLOBAL_CONFIG_KEY } from '../../../context'
+import type {
+  ComponentFeedback,
+  ComponentLocale,
+} from '../../../core/contracts'
 import {
   resolveComponentDensity,
   type ComponentDensity,
@@ -129,9 +133,7 @@ export interface FormConfig<
 }
 
 /** Application-level C_Form defaults injection key. */
-export const FORM_GLOBAL_CONFIG_KEY: InjectionKey<FormConfig> = Symbol(
-  'c-form-global-config'
-)
+export { FORM_GLOBAL_CONFIG_KEY } from '../../../context'
 
 /** Read application-level C_Form defaults without requiring a provider. */
 export function useFormGlobalConfig(): FormConfig {

@@ -7,7 +7,10 @@
 -->
 
 <template>
-  <div class="c-grid-layout">
+  <div
+    ref="rootRef"
+    class="c-grid-layout"
+  >
     <!-- 配置面板 -->
     <NCard
       v-if="showConfigPanel"
@@ -80,10 +83,11 @@
 </template>
 
 <script setup lang="ts">
-  import { reactive, computed, watch, type VNode } from 'vue'
+  import { ref, reactive, computed, watch, type VNode } from 'vue'
   import { NInputNumber, NSwitch } from 'naive-ui'
   import type { GridLayoutConfig, FormOption } from '../../types'
   import C_Icon from '../../../C_Icon/index.vue'
+  import { useGridWidth } from './useGridWidth'
 
   /* ================= 类型定义 ================= */
 
@@ -130,10 +134,21 @@
       : (gridConfig.value.responsive ?? true),
   }))
 
+  const rootRef = ref<HTMLElement | null>(null)
+  const width = useGridWidth(rootRef, () => effectiveConfig.value.responsive)
+
+  /* 间距不能耗尽所有轨道；数值上限也交给 Naive 原生处理 offset。 */
+  const xGap = computed(() => {
+    const gap = gridConfig.value.xGap ?? effectiveConfig.value.gutter
+    return effectiveConfig.value.responsive && width.value > 0
+      ? Math.min(gap, width.value / Math.max(1, effectiveConfig.value.cols))
+      : gap
+  })
+
   /* 网格属性 */
   const gridProps = computed(() => ({
     cols: effectiveConfig.value.cols,
-    xGap: gridConfig.value.xGap ?? effectiveConfig.value.gutter,
+    xGap: xGap.value,
     yGap:
       gridConfig.value.yGap ??
       gridConfig.value.yGutter ??

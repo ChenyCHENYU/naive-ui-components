@@ -25,7 +25,8 @@ const DENSITIES: Record<ComponentDensity, ResolvedComponentDensity> = {
     gap: 8,
     rowGap: 8,
     padding: 12,
-    formItemGap: 12,
+    // 反馈与布局行距相加；这里只保留小间隔，校验文本按内容自然撑高。
+    formItemGap: 4,
   },
   comfortable: {
     density: 'comfortable',
