@@ -61,6 +61,21 @@ function createSource(): DataPickerSource<Row> {
 }
 
 describe('C_DataPicker远程选择会话', () => {
+  test('搜索名称传递到原生输入框，可由读屏和键盘自动化定位', async () => {
+    const wrapper = mount(C_DataPicker<Row>, {
+      props: { source: createSource(), columns },
+      attachTo: document.body,
+    })
+    try {
+      await wrapper.get('.c-data-picker__open').trigger('click')
+      await flushPromises()
+      expect(
+        wrapper.getComponent(NInput).get('input').attributes('aria-label')
+      ).toBe('搜索候选数据')
+    } finally {
+      wrapper.unmount()
+    }
+  })
   test('KeepAlive切离关闭Teleport弹窗并取消请求，返回后不恢复未确认草稿', async () => {
     const shown = ref(true)
     const pending = deferred<{ rows: Row[]; total: number }>()

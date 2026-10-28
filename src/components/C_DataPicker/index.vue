@@ -60,7 +60,7 @@
           v-model:value="searchDraft"
           :size="density.size"
           :placeholder="t('picker.searchPlaceholder')"
-          :aria-label="t('picker.searchLabel')"
+          :input-props="{ 'aria-label': t('picker.searchLabel') }"
           clearable
         />
         <NButton
