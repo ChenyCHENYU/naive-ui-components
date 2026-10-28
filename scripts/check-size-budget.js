@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readPublishedStyle } from './build/published-style.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const distDir = path.join(root, 'dist')
@@ -29,7 +30,8 @@ for (const [relativePath, { min, max }] of Object.entries(budgets)) {
     failures.push(`${relativePath}: missing`)
     continue
   }
-  const size = fs.statSync(filename).size
+  // 单组件约束完整可用 CSS 闭包；总包预算下方仍按原口径计入每份物理文件。
+  const size = Buffer.byteLength(readPublishedStyle(distDir, relativePath))
   if (size < min || size > max) {
     failures.push(
       `${relativePath}: ${(size / 1024).toFixed(1)} KB outside ${(min / 1024).toFixed(1)}-${(max / 1024).toFixed(1)} KB`

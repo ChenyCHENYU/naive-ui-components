@@ -389,6 +389,9 @@ test('search density aligns every field and button, preserves draft and explicit
   expect(wrapper.findComponent(NForm).props('size')).toBe('small')
   expect(wrapper.findComponent(NInput).props('size')).toBe('small')
   expect(wrapper.findComponent(NSelect).props('size')).toBe('large')
+  await vi.waitFor(() =>
+    expect(wrapper.findComponent(NDatePicker).exists()).toBe(true)
+  )
   const datePicker = wrapper.findComponent(NDatePicker)
   const datePickerInstance = datePicker.vm.$.uid
   const dateField = wrapper.findAll('.form-search-item-box')[2]

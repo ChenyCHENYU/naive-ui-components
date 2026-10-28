@@ -849,7 +849,19 @@
         cfg.scope && cfg.scope !== 'source'
           ? reactiveColumns.value
           : effectiveColumns.value
-      await exportTableData(rows, columns, {
+      const exportColumns = columns.map(column =>
+        column.dictionary !== undefined && !column.formatter
+          ? {
+              ...column,
+              formatter: {
+                type: 'enum' as const,
+                fn: (value: unknown) =>
+                  columnState.getDictionaryLabel(column, value),
+              },
+            }
+          : column
+      )
+      await exportTableData(rows, exportColumns, {
         ...cfg,
         formatterConfig: resolved.value.formatterConfig,
       })

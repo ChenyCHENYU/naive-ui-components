@@ -18,6 +18,8 @@ function buildEntryMap(): Record<string, string> {
   const entries: Record<string, string> = {
     index: 'src/index.ts',
     config: 'src/context.ts',
+    data: 'src/data.ts',
+    workflows: 'src/workflows.ts',
     resolver: 'src/resolver.ts',
   }
   for (const dir of fs.readdirSync(componentsDir)) {

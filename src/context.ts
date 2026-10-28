@@ -1,6 +1,26 @@
 import type { InjectionKey } from 'vue'
 import type { FormConfig } from './components/C_Form/composables/useFormConfig'
 import type { ComponentFeedback, ComponentLocale } from './core/contracts'
+import type { DictionaryProvider } from './core/dictionary'
+
+export type {
+  DictionaryValue,
+  DictionaryOption,
+  DictionarySource,
+  DictionaryProvider,
+  DictionaryBinding,
+  DictionaryParseResult,
+} from './core/dictionary'
+export {
+  createDictionaryLabelResolver,
+  getDictionaryLabel,
+  parseDictionaryValue,
+} from './core/dictionary'
+
+/** 应用作用域字典源；与表单/搜索/表格共享，不引入数据缓存或固定后端。 */
+export const DICTIONARY_PROVIDER_KEY: InjectionKey<DictionaryProvider> = Symbol(
+  'robot-dictionary-provider'
+)
 
 // 按需安装只需共享注入协议，不加载组件或 Naive UI 反馈适配器。
 export type {

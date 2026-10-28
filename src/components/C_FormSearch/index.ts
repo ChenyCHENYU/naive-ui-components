@@ -11,6 +11,7 @@ import type {
   FormSearchProps,
   FormSearchEmits,
   FormSearchExpose,
+  SearchFieldContext,
 } from './types'
 
 type Listeners<T extends object> = {
@@ -31,7 +32,7 @@ type SearchComponent = <T extends object = SearchFormParams>(
     props: FormSearchProps<T> & Listeners<T>
     emit: EmitFn<FormSearchEmits<T>>
     attrs: Record<string, unknown>
-    slots: Record<string, never>
+    slots: Record<string, (context: SearchFieldContext<T>) => VNode[]>
     expose: (exposed: FormSearchExpose<T>) => void
   }
 }
@@ -47,7 +48,11 @@ export type {
   FormSearchEmits,
   FormSearchProps,
   FormSearchExpose,
+  SearchFieldContext,
+  SearchQueryEncoding,
+  SearchNumberRangeValue,
 } from './types'
+export { serializeSearch, type SerializeSearchOptions } from './serializeSearch'
 export { useSearchHistory } from './composables/useSearchHistory'
 export { useSearchState } from './composables/useSearchState'
 

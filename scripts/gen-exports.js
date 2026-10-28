@@ -36,6 +36,8 @@ const scriptEntry = name => ({
 pkg.exports = {
   '.': scriptEntry('index'),
   './config': scriptEntry('config'),
+  './data': scriptEntry('data'),
+  './workflows': scriptEntry('workflows'),
   './style.css': './dist/style.css',
   './resolver': scriptEntry('resolver'),
   './C_*': scriptEntry('C_*'),

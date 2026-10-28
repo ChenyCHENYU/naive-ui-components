@@ -15,6 +15,7 @@ import type {
 } from 'vue'
 import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui'
 import type { FormValidationRule } from './utils/formValidation'
+import type { DictionaryBinding } from '../../core/dictionary'
 
 export type MaybePromise<T> = T | Promise<T>
 
@@ -285,6 +286,8 @@ export interface ItemLayoutConfig {
  */
 export interface GridLayoutConfig {
   cols?: number
+  /** 可选的字段最小宽度（包含 label）；responsive=false 时不自动扩展。 */
+  minItemWidth?: number
   gutter?: number
   yGutter?: number
   xGap?: number
@@ -424,12 +427,21 @@ interface FormOptionBase<T extends object> {
   rules?: readonly FormValidationRule[]
   attrs?: Record<string, unknown>
   children?: OptionItem[]
+  /** 应用字典名称或直接选项源；asyncOptions、显式 children 优先。 */
+  dictionary?: DictionaryBinding
   show?: boolean
   layout?: ItemLayoutConfig
   help?: string
   required?: boolean
   dependsOn?: FieldPath<T> | FieldPath<T>[]
   showWhen?: (formModel: FormModel<T>) => boolean
+  /** 自定义/虚拟控件准备并返回真实焦点目标；由表单校验状态后执行 focus。 */
+  focusTarget?: (context: {
+    field: FieldPath<T>
+    element: HTMLElement | null
+    model: FormModel<T>
+    signal: AbortSignal
+  }) => MaybePromise<HTMLElement | null>
 
   /* ===== v0.8.0 新增 ===== */
 
@@ -501,6 +513,8 @@ export interface UploadEventPayload {
  */
 export interface FormInstance<T extends object = FormRecord> {
   validate(): Promise<void>
+  /** 展开字段所在区域并聚焦可用控件；隐藏、只读、禁用或切换被阻止时返回 false。 */
+  revealField(field: string): Promise<boolean>
   validateField(field: FieldPath<T> | FieldPath<T>[]): Promise<void>
   validateStep(step: number | string): Promise<boolean>
   validateTab(tabKey: string): Promise<boolean>

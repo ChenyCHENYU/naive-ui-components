@@ -2,7 +2,7 @@
 
 # 组件目录
 
-> 💡 所有组件均提供 **在线交互演示**，访问 [组件文档](https://www.tzagileteam.com/robot/components/preface) 可直接在页面中体验真实效果（通过 iframe 嵌入 Robot Admin 生产环境）。
+组件用法见在线文档与本仓库指南，组合场景可在 Robot Admin 演示中体验。
 
 ## 基础组件
 
@@ -120,3 +120,15 @@ bun add vue naive-ui
 ```
 
 按功能安装可选 peer：使用 `C_Breadcrumb`/`C_TagsView` 时安装 `vue-router`；启用 C_Table 行/列拖拽时安装 `sortablejs`。子路径导入不会要求无关的可选 peer。公式编辑器使用组件库内置的受限表达式解析器，不执行动态 JavaScript。
+
+## 业务工作台组件
+
+| 组件             | 说明                             |
+| ---------------- | -------------------------------- |
+| `C_Density`      | 子树密度默认值，无额外 DOM       |
+| `C_SectionNav`   | 分区导航、错误计数与键盘焦点     |
+| `C_ErrorSummary` | 可导航错误摘要，分页限制 DOM     |
+| `C_DataPicker`   | 分页实体选择、跨页草稿与批量回显 |
+| `C_BatchResult`  | 分项结果、筛选分页与显式重试     |
+
+[数据与工作流指南](./guides/data-workflows.md)：共享字典、数值转换、主从资源、跨区域校验及重复表单。

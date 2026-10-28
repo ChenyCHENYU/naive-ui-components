@@ -92,6 +92,9 @@ test('native clear events keep text and multiple selections in their declared mo
   const [roles, enabled] = wrapper.findAllComponents(NSelect)
   roles.vm.$emit('update:value', null, null)
   enabled.vm.$emit('update:value', null, null)
+  await vi.waitFor(() =>
+    expect(wrapper.findComponent(NDatePicker).exists()).toBe(true)
+  )
   wrapper.getComponent(NDatePicker).vm.$emit('update:value', null, null)
   await flushPromises()
   expect(wrapper.vm.formParams).toEqual({

@@ -24,6 +24,7 @@ import {
 } from '../utils/formModel'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { useFormDirty } from './useFormDirty'
+import { useDictionaryOptions } from '../../../composables/useDictionary'
 import {
   deleteDataPath,
   getDataPath,
@@ -147,6 +148,21 @@ export function useFormState(
       // 提示适配器失败不能打断加载/提交的清理，也不能制造未处理异常。
     }
   }
+
+  const dictionaryOptions = useDictionaryOptions(
+    () =>
+      new Map(
+        options.value
+          .filter(
+            item =>
+              item.dictionary !== undefined &&
+              item.children === undefined &&
+              !item.asyncOptions
+          )
+          .map(item => [item.prop, item.dictionary])
+      ),
+    { onError: (error, field) => reportError(error, 'async-options', field) }
+  )
 
   /** 提示插件异常不能把已经完成的业务提交改判为失败。 */
   function notify(type: 'success' | 'info', message: string): void {
@@ -407,15 +423,23 @@ export function useFormState(
     const targets = options.value.filter(
       item => item.asyncOptions && (!field || item.prop === field)
     )
-    if (field && targets.length === 0) {
+    const dictionaries = options.value.filter(
+      item =>
+        item.dictionary !== undefined &&
+        item.children === undefined &&
+        !item.asyncOptions &&
+        (!field || item.prop === field)
+    )
+    if (field && targets.length === 0 && dictionaries.length === 0) {
       throw new Error(`[C_Form] 未找到异步选项字段: ${field}`)
     }
-    await Promise.all(
-      targets.map(item => {
+    await Promise.all([
+      ...targets.map(item => {
         scheduledOptionLoads.delete(item.prop)
         return loadAsyncOptions(item, 'manual')
-      })
-    )
+      }),
+      ...dictionaries.map(item => dictionaryOptions.reload(item.prop)),
+    ])
   }
 
   function applyValueWhen(): string[] {
@@ -762,6 +786,14 @@ export function useFormState(
     initialize,
     handleFieldChange,
     setFormItemRef,
+    /** 复用 Naive 表单项的实例引用；不把 DOM 查找扩散到 document。 */
+    getFormItemElement: (field: string): HTMLElement | null => {
+      const element = (
+        formItemRefs.get(field) as
+          (FormItemInst & { $el?: HTMLElement }) | undefined
+      )?.$el
+      return element?.nodeType === 1 ? element : null
+    },
     validate,
     validateField,
     validateStep,
@@ -786,6 +818,8 @@ export function useFormState(
     asyncOptionsCache,
     asyncLoadingMap,
     asyncErrorMap,
+    getDictionaryOptions: dictionaryOptions.getOptions,
+    isDictionaryLoading: dictionaryOptions.isLoading,
     reloadOptions,
   }
 }

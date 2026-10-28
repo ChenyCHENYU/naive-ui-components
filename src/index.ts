@@ -1,6 +1,10 @@
 import type { App, Component } from 'vue'
 export { resolveComponentDensity } from './core/density'
 export type { ComponentDensity, ResolvedComponentDensity } from './core/density'
+export * from './data'
+export * from './workflows'
+export { DICTIONARY_PROVIDER_KEY } from './context'
+import { DICTIONARY_PROVIDER_KEY, type DictionaryProvider } from './context'
 import {
   COMPONENT_FEEDBACK_KEY,
   COMPONENT_LOCALE_KEY,
@@ -77,6 +81,11 @@ import { C_Tabs } from './components/C_Tabs'
 import { C_Transfer } from './components/C_Transfer'
 import { C_Skeleton } from './components/C_Skeleton'
 import { C_OrgChart } from './components/C_OrgChart'
+import { C_ErrorSummary } from './components/C_ErrorSummary'
+import { C_Density } from './components/C_Density'
+import { C_SectionNav } from './components/C_SectionNav'
+import { C_DataPicker } from './components/C_DataPicker'
+import { C_BatchResult } from './components/C_BatchResult'
 
 // ====== 插件 ======
 import {
@@ -94,6 +103,8 @@ export interface ComponentLibOptions {
   /** An explicitly shared registry is opt-in; default installation owns its own registry. */
   formRenderers?: FormRendererRegistry
   table?: TableGlobalConfig
+  /** 复用应用数据源；组件库不另建全局缓存或注册业务接口。 */
+  dictionaries?: DictionaryProvider
 }
 
 // ====== 组件列表（全量注册使用） ======
@@ -153,6 +164,11 @@ const components: Record<string, Component> = {
   C_Transfer,
   C_Skeleton,
   C_OrgChart,
+  C_ErrorSummary,
+  C_Density,
+  C_SectionNav,
+  C_DataPicker,
+  C_BatchResult,
 }
 
 // ====== Barrel Re-exports：所有组件 + composables + types + constants ======
@@ -211,6 +227,11 @@ export * from './components/C_Tabs'
 export * from './components/C_Transfer'
 export * from './components/C_Skeleton'
 export * from './components/C_OrgChart'
+export * from './components/C_ErrorSummary'
+export * from './components/C_Density'
+export * from './components/C_SectionNav'
+export * from './components/C_DataPicker'
+export * from './components/C_BatchResult'
 
 // ====== 工具函数（不属于任何组件的公共工具） ======
 export { setItem, getItem, removeItem, removeAllItem } from './utils/storage'
@@ -248,6 +269,8 @@ const install = (app: App, options: ComponentLibOptions = {}) => {
     options.formRenderers ?? createFormRendererRegistry()
   )
   if (options.table) app.provide(TABLE_GLOBAL_CONFIG_KEY, options.table)
+  if (options.dictionaries)
+    app.provide(DICTIONARY_PROVIDER_KEY, options.dictionaries)
 }
 
 export default {

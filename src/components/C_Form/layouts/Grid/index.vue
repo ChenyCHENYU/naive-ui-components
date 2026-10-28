@@ -136,6 +136,15 @@
 
   const rootRef = ref<HTMLElement | null>(null)
   const width = useGridWidth(rootRef, () => effectiveConfig.value.responsive)
+  const minimumWidth = computed(() => {
+    const value = gridConfig.value.minItemWidth
+    return effectiveConfig.value.responsive &&
+      typeof value === 'number' &&
+      Number.isFinite(value) &&
+      value > 0
+      ? value
+      : 0
+  })
 
   /* 间距不能耗尽所有轨道；数值上限也交给 Naive 原生处理 offset。 */
   const xGap = computed(() => {
@@ -217,7 +226,29 @@
    */
   const getDefaultSpan = (): number => {
     const { cols } = effectiveConfig.value
+    if (minimumWidth.value && width.value > 0) {
+      const itemsPerRow = Math.max(
+        1,
+        Math.min(
+          cols,
+          Math.floor(
+            (width.value + xGap.value) / (minimumWidth.value + xGap.value)
+          )
+        )
+      )
+      return Math.ceil(cols / itemsPerRow)
+    }
     return cols <= 12 ? cols : cols <= 24 ? 12 : 8
+  }
+
+  /** 仅使用公开 CSS grid 轨道/间距预算，不接管 Naive 的 offset 和换行。 */
+  const expandSpan = (span: number): number => {
+    if (!minimumWidth.value || width.value <= 0) return span
+    const { cols } = effectiveConfig.value
+    const minimumSpan = Math.ceil(
+      (cols * (minimumWidth.value + xGap.value)) / (width.value + xGap.value)
+    )
+    return Math.min(cols, Math.max(span, minimumSpan))
   }
 
   /**
@@ -233,7 +264,7 @@
         typeof span === 'number' &&
         span > 0 &&
         span <= effectiveConfig.value.cols
-          ? span
+          ? expandSpan(span)
           : getDefaultSpan(),
       offset:
         typeof offset === 'number' &&

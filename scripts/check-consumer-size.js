@@ -37,6 +37,7 @@ const cases = [
     props:
       "{ modelValue: { name: '' }, formItemList: [{ type: 'input', prop: 'name', label: 'Name' }] }",
     budget: 165 * 1024,
+    lazyFields: true,
   },
   {
     name: 'C_ActionBar',

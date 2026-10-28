@@ -1,0 +1,48 @@
+.c-section-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 12px;
+    border: 0;
+    border-inline-start: 2px solid transparent;
+    border-radius: var(--c-section-radius);
+    background: transparent;
+    color: var(--c-section-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover,
+    &.is-active {
+      background: var(--c-section-active);
+    }
+    &.is-active {
+      color: var(--c-section-primary);
+      border-inline-start-color: currentcolor;
+    }
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--c-section-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__label {
+    flex: 1;
+    overflow-wrap: anywhere;
+  }
+  &__count {
+    color: var(--c-section-error);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+}

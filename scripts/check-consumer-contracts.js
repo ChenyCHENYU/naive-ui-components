@@ -67,7 +67,9 @@ function runNode(args, blockPeers = false) {
       ? {
           env: {
             ...process.env,
-            ROBOT_CONSUMER_BLOCKED_PEERS: JSON.stringify(optionalPeers),
+            ROBOT_CONSUMER_BLOCKED_PEERS: JSON.stringify(
+              Array.isArray(blockPeers) ? blockPeers : optionalPeers
+            ),
           },
         }
       : {}
@@ -380,6 +382,23 @@ try {
     fs.copyFileSync(path.join(fixtures, name), path.join(consumer, name))
   }
   checkTypes(['consumer.mts', 'consumer.cts'])
+  checkTypes(['workspace.mts', 'workspace.cts'])
+  const blockedDataPeers = ['vue', 'naive-ui', ...optionalPeers]
+  runNode(
+    [
+      '--input-type=module',
+      '-e',
+      `import {createNumberCodec} from '${pkg.name}/data'; if(createNumberCodec({storage:'decimal-string',fractionDigits:2}).format('1.005') !== '1.01') throw new Error('pure data entry failed');`,
+    ],
+    blockedDataPeers
+  )
+  runNode(
+    [
+      '-e',
+      `const {createNumberCodec}=require('${pkg.name}/data'); if(createNumberCodec().parse(0) !== 0) throw new Error('pure CJS data entry failed');`,
+    ],
+    blockedDataPeers
+  )
   checkBundledSpreadsheet()
   checkRuntime([
     ['', 'C_Form'],

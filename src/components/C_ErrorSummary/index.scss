@@ -1,0 +1,31 @@
+.c-error-summary {
+  &__pages {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+  }
+  &__list {
+    margin: 4px 0 8px;
+    padding-inline-start: 20px;
+  }
+
+  &__target {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    padding: 2px 0;
+    overflow-wrap: anywhere;
+
+    &:hover {
+      text-decoration: underline;
+    }
+    &:focus-visible {
+      outline: 2px solid currentcolor;
+      outline-offset: 2px;
+    }
+  }
+}

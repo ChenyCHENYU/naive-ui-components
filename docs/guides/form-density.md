@@ -71,3 +71,42 @@ app.provide(FORM_GLOBAL_CONFIG_KEY, { density: 'compact' })
 ```
 
 紧凑搜索的字段默认宽度为 208px，窄屏自动占满可用宽度；显式字段 `attrs.style.width` 仍可覆盖。紧凑数字字段默认隐藏增减按钮，保留键盘 ↑ / ↓、步长、精度及上下限；需要按钮的字段配置 `attrs: { showButton: true }`。控件继续使用 Naive UI 的数值处理与主题，输入为文本，不叠加浏览器原生数字箭头；`attrs.inputProps` 可覆盖可访问名称和数值语义。
+
+## 按容器安排字段
+
+网格可显式设置 `config.grid.minItemWidth`，预算包含标签和控件整体，不是仅输入框宽度。根据当前分栏或弹窗容器的真实宽度调整默认跨度；已有显式 `span` 在宽度足够时保留，只有容纳不了该预算时才扩展，最多占满整行。`cols`、`offset`、`suffix` 与 Naive UI 换行规则不变。
+
+```ts
+const config = {
+  density: 'compact',
+  layout: 'grid',
+  grid: { cols: 24, minItemWidth: 300, xGap: 16, yGap: 8 },
+} as const
+```
+
+未设置该项时保持原有跨度行为；`responsive: false` 禁用自动扩展。容器比最小预算还窄时使用整行，不通过固定 `min-width` 撑破页面。宽度由局部 `ResizeObserver` 提供，停用、重新激活及销毁时管理自身订阅，无全局 resize 监听。
+
+## 定位校验字段
+
+实例方法 `await formRef.revealField(field)` 会先进入字段所在标签页、步骤或展开对应卡片分组，再滚动并聚焦真实可用控件；仅成功获得焦点才返回 `true`。找不到字段、字段隐藏/禁用/只读、布局尚未加载、切换前业务回调或已有校验阻止导航时返回 `false`。它不清除错误、不修改校验规则，也不会替业务切换编辑模式。
+
+```ts
+const focused = await formRef.value?.revealField('customer.name')
+```
+
+定位只使用当前表单实例的字段引用。卸载、KeepAlive 停用、布局改变或新定位请求会取消旧请求，迟到结果不会抢回焦点。自定义或虚拟控件可在字段上配置 `focusTarget`，异步准备后返回真实元素；由表单重新检查访问约束并执行 focus，适配器不要自行聚焦，也不要返回占位元素。
+
+```ts
+const fields = [
+  {
+    type: 'custom-customer',
+    prop: 'customerId',
+    focusTarget: async ({ signal }) => {
+      await customerEditor.ensureMounted(signal)
+      return signal.aborted ? null : customerEditor.inputElement
+    },
+  },
+]
+```
+
+`focusTarget` 上下文还提供 `field`、字段表单项的 `element`（可能为空）和当前 `model`。即使异步适配器忽略取消，库也会拒绝旧元素；没有可聚焦目标时诚实返回 `false`，由使用侧保留错误摘要或提示导航限制。

@@ -19,6 +19,13 @@ import type { ResolvedConfig } from './useTableConfig'
 import { applyFormatter } from './useTableGlobalConfig'
 import { EDIT_COMPONENTS } from '../data'
 import C_Icon from '../../C_Icon/index.vue'
+import { useDictionaryOptions } from '../../../composables/useDictionary'
+import {
+  decodeDictionaryControlValue,
+  encodeDictionaryControlValue,
+  toDictionaryControlOptions,
+  type DictionaryOption,
+} from '../../../core/dictionary'
 
 /* ================= 内部辅助类型 ================= */
 
@@ -62,6 +69,47 @@ interface TableManagerRef {
 
 /* ================= 渲染工具函数 ================= */
 
+interface EditComponentContext {
+  size?: 'small' | 'medium' | 'large'
+  busy?: boolean
+  dictionaryOptions?: readonly DictionaryOption[]
+}
+
+function resolveEditProps(
+  column: TableColumn,
+  value: unknown,
+  onUpdate: (value: unknown) => void,
+  context: EditComponentContext
+) {
+  const col = column as ColumnWithKey
+  const props = {
+    value,
+    'onUpdate:value': onUpdate,
+    placeholder: `请输入${col.title ?? ''}`,
+    style: { width: '100%' },
+    ...(context.size ? { size: context.size } : {}),
+    ...column.editProps,
+    ...(context.busy ? { disabled: true } : {}),
+  }
+  if (
+    !context.dictionaryOptions ||
+    column.editProps?.options !== undefined ||
+    (column.editType && column.editType !== 'select')
+  )
+    return props
+  const update = props['onUpdate:value']
+  props.value = encodeDictionaryControlValue(value)
+  props['onUpdate:value'] = val => update(decodeDictionaryControlValue(val))
+  return {
+    ...props,
+    options: toDictionaryControlOptions(context.dictionaryOptions),
+    fallbackOption: (native: unknown) => ({
+      value: native,
+      label: String(decodeDictionaryControlValue(native) ?? ''),
+    }),
+  }
+}
+
 /**
  * 渲染编辑组件（行编辑/单元格编辑通用）
  */
@@ -71,25 +119,19 @@ export function renderEditComponent(
   onUpdate: (val: unknown) => void,
   rowData: DataRecord = {},
   rowIndex = 0,
-  size?: 'small' | 'medium' | 'large',
+  size?: EditComponentContext['size'] | EditComponentContext,
   busy = false
 ): VNodeChild {
   if (column.editRender)
     return column.editRender(value, rowData, rowIndex, { onUpdate })
 
-  const col = column as ColumnWithKey
-  const componentProps = {
-    value,
-    'onUpdate:value': onUpdate,
-    placeholder: `请输入${col.title ?? ''}`,
-    style: { width: '100%' },
-    ...(size ? { size } : {}),
-    ...column.editProps,
-    ...(busy ? { disabled: true } : {}),
-  }
+  const context = typeof size === 'object' ? size : { size, busy }
+  const componentProps = resolveEditProps(column, value, onUpdate, context)
 
   const Component =
-    EDIT_COMPONENTS[column.editType || 'input'] || EDIT_COMPONENTS.input
+    EDIT_COMPONENTS[
+      column.editType || (context.dictionaryOptions ? 'select' : 'input')
+    ] || EDIT_COMPONENTS.input
   return h(Component, componentProps)
 }
 
@@ -133,6 +175,7 @@ export function renderEditingCell(
     rowIndex: number
     size?: 'small' | 'medium' | 'large'
     busy?: boolean
+    dictionaryOptions?: readonly DictionaryOption[]
   } = {
     rowData: {},
     rowIndex: 0,
@@ -174,8 +217,7 @@ export function renderEditingCell(
         onUpdate,
         context.rowData,
         context.rowIndex,
-        context.size,
-        context.busy
+        context
       ),
     ]),
     h('div', { class: 'cell-editing-actions' }, [
@@ -260,6 +302,7 @@ export interface UseTableColumnsReturn {
   showSettingsPanel: Ref<boolean>
   computedColumns: ComputedRef<DataTableColumn[]>
   computedScrollX: ComputedRef<number | string | undefined>
+  getDictionaryLabel: (column: TableColumn, value: unknown) => string
   handleColumnChange: (columns: TableColumn[]) => void
 }
 
@@ -323,6 +366,38 @@ export function useTableColumns(
     { deep: true, immediate: true }
   )
 
+  const dictionaryOptions = useDictionaryOptions(
+    () =>
+      new Map(
+        reactiveColumns.value
+          .filter(column => column.dictionary !== undefined)
+          .map(column => [String(column.key), column.dictionary])
+      ),
+    {
+      onError: error =>
+        config.value.feedback?.error?.(
+          error instanceof Error ? error.message : String(error),
+          error
+        ),
+    }
+  )
+
+  const columnDictionaryOptions = (column: TableColumn) =>
+    column.dictionary === undefined
+      ? undefined
+      : dictionaryOptions.getOptions(String(column.key))
+
+  const displayColumn = (column: TableColumn): TableColumn =>
+    column.dictionary !== undefined && !column.formatter
+      ? {
+          ...column,
+          formatter: {
+            type: 'enum',
+            fn: value => dictionaryOptions.getLabel(String(column.key), value),
+          },
+        }
+      : column
+
   /* ================= 单元格渲染 ================= */
 
   /** 单元格编辑模式渲染 */
@@ -356,6 +431,7 @@ export function useTableColumns(
           rowIndex,
           busy: tableManager.editStates.cellEdit.isSaving?.value,
           size: config.value.density ? config.value.controlSize : undefined,
+          dictionaryOptions: columnDictionaryOptions(column),
         }
       )
     }
@@ -408,8 +484,11 @@ export function useTableColumns(
           ),
         editingRow ?? rowData,
         rowIndex,
-        config.value.density ? config.value.controlSize : undefined,
-        tableManager.editStates.rowEdit.isSaving?.value
+        {
+          size: config.value.density ? config.value.controlSize : undefined,
+          busy: tableManager.editStates.rowEdit.isSaving?.value,
+          dictionaryOptions: columnDictionaryOptions(column),
+        }
       )
     }
 
@@ -457,6 +536,7 @@ export function useTableColumns(
   /** 普通数据列 */
   const mapRegularColumn = (column: TableColumn): DataTableColumn => {
     const col = column as ColumnWithKey
+    const effectiveColumn = displayColumn(column)
     const naturalWidth =
       !col.fixed &&
       col.width === undefined &&
@@ -470,7 +550,7 @@ export function useTableColumns(
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
       render: (rowData: DataRecord, rowIndex: number) =>
-        renderCell(column, rowData, rowIndex),
+        renderCell(effectiveColumn, rowData, rowIndex),
     }
 
     if (column.fixed) base.fixed = column.fixed
@@ -565,7 +645,7 @@ export function useTableColumns(
 
     // 使用最终可见列：包含实际选择/展开/序号/操作列，不再额外猜测 200px。
     return computedColumns.value.reduce((sum, col) => {
-      const width = col.width
+      const { width } = col
       const pixels =
         typeof width === 'number'
           ? width
@@ -600,6 +680,8 @@ export function useTableColumns(
     showSettingsPanel,
     computedColumns,
     computedScrollX,
+    getDictionaryLabel: (column, value) =>
+      dictionaryOptions.getLabel(String(column.key), value),
     handleColumnChange,
   }
 }

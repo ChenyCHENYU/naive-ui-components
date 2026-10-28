@@ -1,7 +1,29 @@
 import { describe, expect, test } from 'bun:test'
+import { readdirSync } from 'node:fs'
 import { RobotNaiveUiResolver, componentNames } from '../src/resolver'
 
 describe('RobotNaiveUiResolver', () => {
+  test('covers every public component directory with an on-demand style entry', () => {
+    const directories = readdirSync(
+      new URL('../src/components/', import.meta.url),
+      {
+        withFileTypes: true,
+      }
+    )
+      .filter(entry => entry.isDirectory() && entry.name.startsWith('C_'))
+      .map(entry => entry.name)
+      .sort()
+    expect([...componentNames].sort()).toEqual(directories)
+    const resolver = RobotNaiveUiResolver({ importStyle: 'base' })
+    for (const name of directories) {
+      expect(resolver.resolve(name)?.from).toBe(
+        `@robot-admin/naive-ui-components/${name}`
+      )
+      expect(resolver.resolve(name)?.sideEffects).toBe(
+        `@robot-admin/naive-ui-components/${name}/${name === 'C_Form' || name === 'C_Table' ? 'base.css' : 'style.css'}`
+      )
+    }
+  })
   test('uses component subpaths by default', () => {
     expect(RobotNaiveUiResolver().resolve('C_Form')).toEqual({
       name: 'C_Form',

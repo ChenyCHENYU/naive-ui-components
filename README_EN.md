@@ -4,7 +4,7 @@
 
 <div align="center">
   <p><strong>Turn recurring business interactions into composable components.</strong></p>
-  <p>Vue 3 · Naive UI · TypeScript · 55 business components</p>
+  <p>Vue 3 · Naive UI · TypeScript · 60 business components</p>
   <p>
     <a href="https://www.npmjs.com/package/@robot-admin/naive-ui-components"><img src="https://img.shields.io/npm/v/@robot-admin/naive-ui-components?style=flat-square&amp;color=249D70&amp;labelColor=183C2E" alt="npm version"></a>
     <a href="./package.json"><img src="https://img.shields.io/badge/Vue-3.5+-249D70?style=flat-square&amp;logo=vue.js&amp;logoColor=white&amp;labelColor=183C2E" alt="Vue 3.5+"></a>
@@ -30,12 +30,14 @@
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Configuration           | Typed configuration for fields, columns, actions and dialogs; 8 form layouts                                                                                 |
 | Connected types         | Field paths, columns, events and instance methods, with helpers such as `defineFormOptions`, `useCForm` and `useTableQuery`                                  |
-| Selective loading       | 55 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
+| Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.22.1**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.23.0**; see the [changelog](./CHANGELOG.md) for release details.
 
 Forms and search share `config.density: 'compact'`, reducing field spacing and empty validation space while allowing errors to expand naturally. Form modals default to compact density with 22px footer buttons, and search can inherit application density. Compact numeric fields hide step buttons by default while retaining keyboard interaction, precision and limits; individual fields can enable buttons. See [form density](./docs/guides/form-density.en.md) for on-demand defaults and explicit overrides.
+
+Business workspaces can share dictionary providers, container-aware search, regional density, remote pickers, error navigation and batch results. Pure value utilities live at `/data`; opt-in composables live at `/workflows`. See the [data and workspace guide](./docs/guides/data-workflows.md), [search workflows](./docs/guides/search-workflows.md), [data picker](./docs/guides/data-picker.md) and [batch results](./docs/guides/batch-results.md).
 
 ## Capability map
 
@@ -50,7 +52,7 @@ Forms and search share `config.density: 'compact'`, reducing field spacing and e
 | Workspace             | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | Menus, view switching, tab navigation and global search                              |
 | Common interactions   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | Login UI, human verification, onboarding and navigation feedback                     |
 
-Browse [all 55 components and dependencies](./docs/components.en.md), or explore scenarios in [Robot Admin](https://robotadmin.cn). Cron previews calculate times only; formulas run locally. Production human verification requires server validation. See the [usage guide](./docs/guides/usage.en.md).
+Browse [all 60 components and dependencies](./docs/components.en.md), or explore scenarios in [Robot Admin](https://robotadmin.cn). Cron previews calculate times only; formulas run locally. Production human verification requires server validation. See the [usage guide](./docs/guides/usage.en.md).
 
 ## Quick start
 
@@ -165,7 +167,7 @@ Root imports aggregate navigation components and require `vue-router` at runtime
 | Document                                                       | Contents                                                                                  |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [Architecture and isolation](./docs/architecture.en.md)        | Dependency boundaries, instance ownership and the independent Element Plus roadmap        |
-| [Component catalog](./docs/components.en.md)                   | All 55 components, dependencies and behavior boundaries                                   |
+| [Component catalog](./docs/components.en.md)                   | All 60 components, dependencies and behavior boundaries                                   |
 | [Usage guide](./docs/guides/usage.en.md)                       | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading   |
 | [Density and workbenches](./docs/guides/table-density.md)      | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese) |
 | [Lists and async tasks](./docs/guides/runtime-performance.md)  | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese) |

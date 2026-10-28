@@ -282,48 +282,56 @@
     }
   }
 
-  // eslint-disable-next-line complexity -- Guards document each tab-transition invariant.
-  const switchToTab = async (targetTab: string): Promise<boolean> => {
-    if (disposed || switching.value) return false
-    if (!targetTab || targetTab === currentTab.value) {
-      return true
-    }
+  const availableTab = (key: string) =>
+    tabsWithItems.value.find(
+      tab => tab.config.key === key && !tab.config.disabled
+    )
+  const currentTransition = (
+    source: string,
+    isCurrent: () => boolean
+  ): boolean => !disposed && currentTab.value === source && isCurrent()
+  const canCommitTab = (
+    source: string,
+    target: string,
+    isCurrent: () => boolean
+  ): boolean => currentTransition(source, isCurrent) && !!availableTab(target)
 
-    const target = tabsWithItems.value.find(tab => tab.config.key === targetTab)
-    if (!target || target.config.disabled) {
+  const canLeaveTab = async (
+    source: string,
+    target: string,
+    isCurrent: () => boolean
+  ): Promise<boolean> => {
+    if (
+      tabsConfig.value.validateBeforeSwitch &&
+      source &&
+      !(await validateCurrentTab())
+    )
       return false
+    if (!currentTransition(source, isCurrent)) return false
+    if (source) {
+      const allowed = await props.beforeTabChange?.(source, target)
+      if (allowed === false || !currentTransition(source, isCurrent))
+        return false
+      emit('tab-before-change', source, target)
     }
-    const sourceTab = currentTab.value
+    return true
+  }
 
+  const switchToTab = async (
+    targetTab: string,
+    isCurrent = () => true
+  ): Promise<boolean> => {
+    const source = currentTab.value
+    if (switching.value || !currentTransition(source, isCurrent)) return false
+    if (!targetTab || targetTab === currentTab.value) return true
+    if (!availableTab(targetTab)) return false
     try {
       switching.value = true
-      /* 验证当前标签（如果需要） */
-      if (tabsConfig.value.validateBeforeSwitch && currentTab.value) {
-        const isValid = await validateCurrentTab()
-        if (!isValid) {
-          return false
-        }
-      }
-      if (disposed || currentTab.value !== sourceTab) return false
-
-      /* 触发标签切换前事件 */
-      if (currentTab.value) {
-        const canChange = await props.beforeTabChange?.(
-          currentTab.value,
-          targetTab
-        )
-        if (canChange === false) return false
-        if (disposed || currentTab.value !== sourceTab) return false
-        emit('tab-before-change', currentTab.value, targetTab)
-      }
-
       if (
-        !tabsWithItems.value.some(
-          tab => tab.config.key === targetTab && !tab.config.disabled
-        )
+        !(await canLeaveTab(source, targetTab, isCurrent)) ||
+        !canCommitTab(source, targetTab, isCurrent)
       )
         return false
-
       currentTab.value = targetTab
       const tabIndex = tabsWithItems.value.findIndex(
         tab => tab.config.key === targetTab
@@ -406,7 +414,20 @@
   )
 
   /* ================= 对外暴露 ================= */
+  const revealField = async (
+    field: string,
+    isCurrent = () => true
+  ): Promise<boolean> => {
+    if (!hasTabs.value) return isCurrent()
+    const option = props.options.find(item => item.prop === field)
+    const key = option?.layout?.tab || tabsConfig.value.tabs[0]?.key
+    const target = tabsWithItems.value.find(tab => tab.config.key === key)
+    if (!target || target.config.disabled) return false
+    return switchToTab(target.config.key, isCurrent)
+  }
+
   defineExpose({
+    revealField,
     switchToTab,
     validateCurrentTab,
     currentTab: readonly(currentTab),

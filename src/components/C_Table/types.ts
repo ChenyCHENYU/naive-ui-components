@@ -15,6 +15,7 @@ import type { TableConfig, CrudBinding } from './composables/useTableConfig'
 import type { UseCrossPageSelectionReturn } from './composables/useCrossPageSelection'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
+import type { DictionaryBinding } from '../../core/dictionary'
 
 /* 宽松的 Ref-like 类型，支持跨 Vue 实例的 Ref 传递 */
 type RefLike<T> = { value: T } | T
@@ -237,6 +238,8 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   render?: (rowData: T, rowIndex: number) => VNodeChild
   /** 声明式格式化器（优先级低于 render） */
   formatter?: ColumnFormatter
+  /** 字典显示低于 render/formatter；编辑时显式 editProps.options 优先。 */
+  dictionary?: DictionaryBinding
   fixed?: 'left' | 'right'
   resizable?: boolean
   minWidth?: number

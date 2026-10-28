@@ -1,15 +1,14 @@
 import { getItem, setItem } from '../../../utils/storage'
 import { computed, toValue, type MaybeRefOrGetter, type Ref } from 'vue'
 import type { SearchFormItem, SearchFormParams } from '../types'
+import { isSearchFieldLocked } from '../fieldValue'
 
 export interface SearchHistoryOptions {
   storageKey?: string
   maxItems?: number
 }
 
-/**
- *
- */
+/** 按控件保存有限条文本历史；固定与只读条件不能由历史选择绕过防写边界。 */
 export function useSearchHistory<T extends object = SearchFormParams>(
   fields: Ref<SearchFormItem<T>[]>,
   formParams: Ref<T>,
@@ -55,6 +54,8 @@ export function useSearchHistory<T extends object = SearchFormParams>(
   }
 
   const handleFocus = (prop: string) => {
+    const field = findField(prop)
+    if (!field || isSearchFieldLocked(field)) return
     restoreFromStorage()
     setAllFieldsFocus(prop)
   }
@@ -62,7 +63,8 @@ export function useSearchHistory<T extends object = SearchFormParams>(
   const closeAllPanels = () => setAllFieldsFocus()
 
   const selectHistoryItem = (value: string, prop: string) => {
-    if (findField(prop)?.type !== 'input') return
+    const field = findField(prop)
+    if (field?.type !== 'input' || isSearchFieldLocked(field)) return
     ;(formParams.value as Record<string, unknown>)[prop] = value
     closeAllPanels()
   }

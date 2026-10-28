@@ -11,6 +11,8 @@ import { createSSRApp, h, inject } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 import { assertDeclarationBoundary } from './build/declaration-boundary.js'
+import { readPublishedStyle } from './build/published-style.js'
+import { checkSharedStyleConsumer } from './check-shared-styles.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(
@@ -87,9 +89,15 @@ const reachableDeclarations = assertDeclarationBoundary(distDir, [
   ...componentNames,
 ])
 
-for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
-  const filename = path.join(distDir, styleEntry)
-  const css = fs.readFileSync(filename, 'utf8')
+for (const styleEntry of [
+  'C_Form.css',
+  'C_Table.css',
+  'C_FormModal.css',
+  'C_DataPicker.css',
+  'C_BatchResult.css',
+  'style.css',
+]) {
+  const css = readPublishedStyle(distDir, styleEntry)
   if (css.includes(':deep(') || /\.n-steps--vertical\)\s*(?:\{|\.)/.test(css)) {
     console.error(
       `❌ Published stylesheet ${styleEntry} contains an invalid scoped selector`
@@ -99,6 +107,22 @@ for (const styleEntry of ['C_Form.css', 'C_Table.css', 'style.css']) {
 }
 
 const componentStyleContracts = {
+  'C_DataPicker.css': [
+    '.c-data-picker[',
+    '.c-table-wrapper[',
+    '.c-form-actions[',
+    '.c-icon[',
+  ],
+  'C_BatchResult.css': [
+    '.c-batch-result[',
+    '.c-table-wrapper[',
+    '.c-form-actions[',
+  ],
+  'C_FormModal.css': [
+    '.c-form-modal[',
+    '.c-form-actions[',
+    '.w-e-text-container',
+  ],
   'C_Cron.css': [
     '.c-cron[',
     '.cron-field-editor[',
@@ -130,7 +154,7 @@ const componentStyleContracts = {
   ],
 }
 for (const [styleEntry, selectors] of Object.entries(componentStyleContracts)) {
-  const css = fs.readFileSync(path.join(distDir, styleEntry), 'utf8')
+  const css = readPublishedStyle(distDir, styleEntry)
   const missingSelectors = selectors.filter(selector => !css.includes(selector))
   if (missingSelectors.length > 0) {
     console.error(
@@ -332,6 +356,10 @@ if (
   process.exit(1)
 }
 
+const styleConsumer = await checkSharedStyleConsumer(root)
+console.log(
+  `✅ Published CSS dependency consumer: ${styleConsumer.components} entries, ${styleConsumer.relativeAssets} local assets.`
+)
 console.log(
   `✅ ${componentNames.length} component JS / CJS entries and ${reachableDeclarations} reachable declarations are valid.`
 )

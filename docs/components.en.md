@@ -2,7 +2,7 @@
 
 # Component catalog
 
-> 💡 All components provide **interactive live demos**. Visit the [Component Docs](https://www.tzagileteam.com/robot/components/preface) to try them out in real-time (rendered via iframe from Robot Admin production).
+Use the online docs and repository guides for component contracts, and Robot Admin demos for combined workflows.
 
 ## Basic Components
 
@@ -120,3 +120,15 @@ bun add vue naive-ui
 ```
 
 Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`, and `sortablejs` for C_Table row/column dragging. Subpath imports do not require unrelated optional peers. The formula editor uses a bounded built-in parser and does not execute dynamic JavaScript.
+
+## Business workspace components
+
+| Component        | Purpose                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `C_Density`      | Regional density defaults without wrapper DOM             |
+| `C_SectionNav`   | Section navigation, error badges and keyboard focus       |
+| `C_ErrorSummary` | Navigable validation issues with bounded DOM              |
+| `C_DataPicker`   | Paged entity selection, cross-page draft and batch labels |
+| `C_BatchResult`  | Per-item results, filtering, paging and explicit retry    |
+
+The [data/workflow guide](./guides/data-workflows.md) covers shared dictionaries, numeric codecs, dependent resources, validation scopes and repeatable forms.

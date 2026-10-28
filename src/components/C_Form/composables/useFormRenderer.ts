@@ -24,6 +24,12 @@ import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { getDataPath, setDataPath } from '../../../utils/data'
 import { resolveNumberInputProps } from '../numberInput'
+import {
+  decodeDictionaryControlValue,
+  encodeDictionaryControlValue,
+  toDictionaryControlOptions,
+  type DictionaryOption,
+} from '../../../core/dictionary'
 
 /* =================== 组件映射类型 =================== */
 
@@ -97,6 +103,8 @@ export interface UseFormRendererOptions {
   instanceSlots?: Readonly<Slots>
   asyncOptionsCache: Ref<Record<string, OptionItem[]>>
   asyncLoadingMap: Ref<Record<string, boolean>>
+  getDictionaryOptions?: (field: string) => readonly DictionaryOption[]
+  isDictionaryLoading?: (field: string) => boolean
   renderers?: ComputedRef<Record<string, FormRenderer> | undefined>
   /** Overrides application injection. An isolated registry never reads legacy globals. */
   registry?: FormRendererRegistry
@@ -380,7 +388,11 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     ) {
       return asyncOptionsCache.value[item.prop] ?? []
     }
-    return staticChildren
+    if (item.children !== undefined || item.asyncOptions) return staticChildren
+    return (
+      opts.getDictionaryOptions?.(item.prop).map(option => ({ ...option })) ??
+      []
+    )
   }
 
   function resolveEffectiveItem(item: FormOption): FormOption {
@@ -392,13 +404,49 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     item: FormOption,
     props: RendererProps
   ): RendererProps {
-    if (item.type === 'select' && asyncLoadingMap.value[item.prop]) {
+    if (
+      item.type === 'select' &&
+      (asyncLoadingMap.value[item.prop] ||
+        opts.isDictionaryLoading?.(item.prop))
+    ) {
       props.loading = true
     }
     return props
   }
 
   /* ===== 表单项控件渲染 ===== */
+
+  function usesDictionaryControl(
+    item: FormOption,
+    renderer: FormRenderer
+  ): boolean {
+    return (
+      item.dictionary !== undefined &&
+      item.children === undefined &&
+      !item.asyncOptions &&
+      OPTION_TYPES.has(item.type) &&
+      renderer === builtInRenderers[item.type]
+    )
+  }
+
+  function applyDictionaryControl(
+    baseProps: RendererProps,
+    item: FormOption
+  ): void {
+    const update = baseProps['onUpdate:value']
+    baseProps.value = encodeDictionaryControlValue(baseProps.value)
+    baseProps['onUpdate:value'] = value => {
+      const decoded = decodeDictionaryControlValue(value)
+      if (Array.isArray(update)) update.forEach(handler => handler(decoded))
+      else update?.(decoded)
+    }
+    item.children = toDictionaryControlOptions(item.children ?? [])
+    baseProps.options = item.children
+    baseProps.fallbackOption = (value: unknown) => ({
+      value,
+      label: String(decodeDictionaryControlValue(value) ?? ''),
+    })
+  }
 
   const renderFormItem = (item: FormOption): VNode | null => {
     try {
@@ -420,6 +468,10 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
           getBaseProps(effectiveItem)
         ) as RendererProps
       )
+
+      // 字典的布尔编码必须在原生控件边界转换，模型与提交值保持原始类型。
+      if (usesDictionaryControl(item, renderer))
+        applyDictionaryControl(baseProps, effectiveItem)
 
       return renderer(baseProps, effectiveItem, config.value, {
         slots: instanceSlots,

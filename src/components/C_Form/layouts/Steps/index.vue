@@ -307,9 +307,16 @@
   /* eslint-disable complexity -- Guards document each step-transition invariant. */
   const switchToStep = async (
     targetStep: number,
-    needValidation = false
+    needValidation = false,
+    isCurrent = () => true
   ): Promise<boolean> => {
-    if (disposed || loading.value || props.submitting || props.disabled)
+    if (
+      disposed ||
+      loading.value ||
+      props.submitting ||
+      props.disabled ||
+      !isCurrent()
+    )
       return false
     if (targetStep < 0 || targetStep >= stepsWithItems.value.length) {
       return false
@@ -332,14 +339,14 @@
           return false
         }
       }
-      if (isStaleTransition(currentKey, targetKey)) return false
+      if (isStaleTransition(currentKey, targetKey) || !isCurrent()) return false
 
       const canChange = await props.beforeStepChange?.(
         currentStep.value,
         targetStep
       )
       if (canChange === false) return false
-      if (isStaleTransition(currentKey, targetKey)) return false
+      if (isStaleTransition(currentKey, targetKey) || !isCurrent()) return false
       emit('step-before-change', currentStep.value, targetStep)
 
       currentStep.value = stepsWithItems.value.findIndex(
@@ -425,7 +432,27 @@
   })
 
   /* ================= 对外暴露 ================= */
+  const revealField = async (
+    field: string,
+    isCurrent = () => true
+  ): Promise<boolean> => {
+    if (!hasSteps.value) return isCurrent()
+    const optionIndex = props.formItems.findIndex(
+      item => item.props?.path === field
+    )
+    if (optionIndex < 0) return false
+    const key =
+      props.options[optionIndex]?.layout?.step ||
+      stepsConfig.value.steps[0]?.key
+    const index = stepsWithItems.value.findIndex(
+      step => step.config.key === key
+    )
+    if (index < 0 || stepsWithItems.value[index].config.disabled) return false
+    return switchToStep(index, index > currentStep.value, isCurrent)
+  }
+
   defineExpose({
+    revealField,
     nextStep: handleNextStep,
     previousStep: handlePreviousStep,
     goToStep,

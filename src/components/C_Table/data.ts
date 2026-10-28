@@ -10,7 +10,6 @@ import {
   NSwitch,
   NSelect,
   type InputProps,
-  type SelectProps,
   type DatePickerProps,
 } from 'naive-ui'
 import type { ComponentType, FormOption } from '../C_Form/types'
@@ -34,8 +33,7 @@ export const EDIT_COMPONENTS: Record<EditType, Component> = {
   mobile: NInput,
   date: (props: DatePickerProps) =>
     h(NDatePicker, { ...props, type: 'date', format: 'yyyy-MM-dd' }),
-  select: (props: SelectProps) =>
-    h(NSelect, { ...props, options: props.options || [] }),
+  select: NSelect,
   textarea: (props: InputProps) =>
     h(NInput, { ...props, type: 'textarea', rows: 3 }),
 }
@@ -63,7 +61,16 @@ export const generateFormOptions = (
     return {
       prop: String(column.key),
       label: column.title || String(column.key),
-      type: EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input',
+      type:
+        EDIT_TO_FORM_TYPE[
+          column.editType ??
+            (column.dictionary !== undefined ? 'select' : 'input')
+        ] ?? 'input',
+      dictionary: column.dictionary,
+      ...(column.dictionary !== undefined &&
+      Array.isArray(column.editProps?.options)
+        ? { children: column.editProps.options.map(option => ({ ...option })) }
+        : {}),
       placeholder: column.editProps?.placeholder ?? `请输入${column.title}`,
       rules: resolveTableColumnRules(column, getSource),
       attrs,

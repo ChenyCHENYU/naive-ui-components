@@ -1,0 +1,28 @@
+.c-batch-result {
+  min-width: 0;
+  &__header {
+    display: flex;
+    gap: 8px 16px;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  &__header span {
+    font-size: 12px;
+    opacity: 0.72;
+  }
+  &__toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  &__toolbar :deep(.n-select) {
+    width: min(180px, 50%);
+  }
+  :deep(.n-pagination) {
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+}

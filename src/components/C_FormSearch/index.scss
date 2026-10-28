@@ -1,7 +1,47 @@
 .form-search-card {
+  min-width: 0;
   :deep(:is(.n-card-content, .n-card__content)) {
     padding: var(--c-search-padding, 20px);
   }
+}
+
+.form-search-layout {
+  min-width: 0;
+}
+
+.form-search-input-control {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.form-search .form-search-number-range {
+  display: flex;
+  gap: 8px;
+  width: var(--c-search-field-width, 260px);
+  max-width: 100%;
+  min-width: 0;
+
+  :deep(.n-input-number) {
+    flex: 1;
+    min-width: 0;
+    width: 0;
+  }
+  :deep(.n-input) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.form-search .form-search-hidden-count {
+  color: var(--n-label-text-color, var(--n-text-color));
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.form-search-actions :deep(.n-form-item-blank) {
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .form-search {
@@ -16,6 +56,7 @@
 
       :deep(.n-input),
       :deep(.n-select),
+      :deep(.n-input-number),
       :deep(.n-date-picker) {
         width: var(--c-search-field-width, 260px);
         max-width: 100%;
@@ -156,6 +197,7 @@
     .form-search-item-box .form-item-input {
       :deep(.n-input),
       :deep(.n-select),
+      :deep(.n-input-number),
       :deep(.n-date-picker) {
         width: var(--c-search-field-width, 240px);
       }
@@ -170,6 +212,7 @@
     .form-search-item-box .form-item-input {
       :deep(.n-input),
       :deep(.n-select),
+      :deep(.n-input-number),
       :deep(.n-date-picker) {
         width: var(--c-search-field-width, 220px);
       }
@@ -184,6 +227,7 @@
     .form-search-item-box .form-item-input {
       :deep(.n-input),
       :deep(.n-select),
+      :deep(.n-input-number),
       :deep(.n-date-picker) {
         width: var(--c-search-field-width, 200px);
       }
@@ -205,6 +249,7 @@
       .form-item-input {
         :deep(.n-input),
         :deep(.n-select),
+        :deep(.n-input-number),
         :deep(.n-date-picker) {
           width: 100%;
         }
@@ -214,5 +259,37 @@
         }
       }
     }
+  }
+}
+
+/* grid 由容器宽度决定列数；所有控件占轨道宽度，字段 span 在逻辑层钳制。 */
+.form-search.form-search--grid {
+  display: grid;
+  align-items: end;
+
+  .form-search-item-box {
+    min-width: 0;
+    width: auto;
+
+    .form-item-input {
+      min-width: 0;
+      :deep(.n-input),
+      :deep(.n-select),
+      :deep(.n-input-number),
+      :deep(.n-date-picker),
+      .form-search-input-control,
+      .form-search-number-range {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+  }
+
+  .form-search-number-range :deep(.n-input-number) {
+    width: 0;
+  }
+  .form-search-actions {
+    grid-column: -2 / -1;
+    justify-self: end;
   }
 }

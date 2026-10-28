@@ -25,6 +25,7 @@
     <!-- 布局组件渲染 -->
     <component
       :is="layoutComponent"
+      ref="layoutRef"
       :key="resolved.layout"
       :form-items="formItems"
       :layout-config="mergedLayoutConfig"
@@ -140,6 +141,7 @@
   import {
     computed,
     ref,
+    shallowRef,
     getCurrentInstance,
     useAttrs,
     type ComputedRef,
@@ -168,6 +170,10 @@
     useFormGlobalConfig,
   } from './composables/useFormConfig'
   import { useFormState } from './composables/useFormState'
+  import {
+    useRevealField,
+    type FormRevealLayout,
+  } from './composables/useRevealField'
   import {
     useFormRenderer,
     type FormRenderer,
@@ -289,8 +295,11 @@
     asyncOptionsCache,
     asyncLoadingMap,
     asyncErrorMap,
+    getDictionaryOptions,
+    isDictionaryLoading,
     reloadOptions,
     setFormItemRef,
+    getFormItemElement,
     isSubmitting,
     submit,
   } = useFormState(
@@ -325,7 +334,7 @@
     Object.keys(currentInstance?.slots ?? {}).filter(
       name => !['action', 'action-extra', 'step-actions'].includes(name)
     )
-  const { formItems } = useFormRenderer({
+  const { formItems, getBaseProps } = useFormRenderer({
     formModel,
     visibleOptions,
     config: resolved,
@@ -335,9 +344,23 @@
     asyncOptionsCache,
     asyncLoadingMap,
     renderers: computed(() => props.renderers),
+    getDictionaryOptions,
+    isDictionaryLoading,
     setFormItemRef,
     onError: (error, field) =>
       resolved.value.onError?.(error, { source: 'render', field }),
+  })
+
+  const layoutRef = shallowRef<FormRevealLayout | null>(null)
+  const revealField = useRevealField({
+    layout: layoutRef,
+    layoutType: () => resolved.value.layout,
+    fields: () => visibleOptions.value,
+    model: formModel,
+    getElement: getFormItemElement,
+    access: getBaseProps,
+    onError: (error, field) =>
+      resolved.value.onError?.(error, { source: 'callback', field }),
   })
 
   /* ================= 计算属性 ================= */
@@ -505,6 +528,7 @@
 
   defineExpose({
     validate,
+    revealField,
     validateField,
     validateStep,
     validateTab,

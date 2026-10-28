@@ -447,6 +447,20 @@
         group.collapsed ?? group.defaultExpanded === false
     })
   })
+
+  /** 错误定位只展开目标组，不改业务字段、验证状态或其余折叠偏好。 */
+  const revealField = (field: string, isCurrent = () => true): boolean => {
+    if (!isCurrent()) return false
+    if (!hasGroups.value) return true
+    const option = props.options.find(item => item.prop === field)
+    const key = option?.layout?.group || groups.value[0]?.key
+    if (!key || !groupsWithItems.value.some(group => group.config.key === key))
+      return false
+    collapsedGroups.value[key] = false
+    return true
+  }
+
+  defineExpose({ revealField })
 </script>
 
 <style scoped lang="scss">

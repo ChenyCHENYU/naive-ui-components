@@ -54,3 +54,42 @@ app.provide(FORM_GLOBAL_CONFIG_KEY, { density: 'compact' })
 ```
 
 Compact search fields default to 208px and fill the available width on narrow screens; explicit field `attrs.style.width` takes precedence. Compact numeric fields hide step buttons by default while preserving keyboard Up / Down, step, precision and limits. Set `attrs: { showButton: true }` when buttons are useful. Naive UI still owns number handling and themes; the text input avoids browser-native number spinners. Field `attrs.inputProps` can override accessible names and numeric semantics.
+
+## Arrange fields by container width
+
+Opt into `config.grid.minItemWidth` to budget the entire field, including its label. Default spans adapt to the actual split pane or dialog width. Explicit spans stay intact while they fit, and expand only when necessary, up to a full row. Existing `cols`, `offset`, `suffix`, and Naive UI wrapping remain in charge.
+
+```ts
+const config = {
+  density: 'compact',
+  layout: 'grid',
+  grid: { cols: 24, minItemWidth: 300, xGap: 16, yGap: 8 },
+} as const
+```
+
+Omitting the option preserves existing spans. `responsive: false` disables automatic expansion. A container narrower than the budget uses a full row without forcing an overflowing CSS minimum width. One local `ResizeObserver` follows activation, deactivation, and disposal; no global resize listener is added.
+
+## Reveal an invalid field
+
+`await formRef.revealField(field)` enters the field's tab or step, or expands its card group, then scrolls to and focuses an available control. It returns `true` only after actual focus succeeds. Missing, hidden, disabled, or readonly fields, unloaded layouts, and navigation blocked by existing validation or business guards return `false`. It never clears errors, changes validation rules, or enables an editing mode.
+
+```ts
+const focused = await formRef.value?.revealField('customer.name')
+```
+
+Lookup stays within this form's item references. Unmounting, KeepAlive deactivation, a layout change, or a newer reveal request cancels older work, so late results cannot steal focus. A custom or virtual control may supply `focusTarget` on its field. Prepare the control and return its actual element; let the form recheck access and apply focus rather than focusing inside the adapter.
+
+```ts
+const fields = [
+  {
+    type: 'custom-customer',
+    prop: 'customerId',
+    focusTarget: async ({ signal }) => {
+      await customerEditor.ensureMounted(signal)
+      return signal.aborted ? null : customerEditor.inputElement
+    },
+  },
+]
+```
+
+The context also provides `field`, the form item's `element` (possibly null), and the current `model`. An adapter that ignores cancellation still cannot apply an obsolete focus result. Return null when no real target exists; callers can keep the error summary visible or explain a navigation restriction.

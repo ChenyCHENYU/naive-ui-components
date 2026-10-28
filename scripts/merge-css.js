@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url'
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 import { assertComponentStyleBoundary } from './build/style-boundary.js'
 import { readVendorStyles } from './build/vendor-style-boundary.js'
+import { createComponentStyleEntry } from './build/published-style.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -93,6 +94,9 @@ const fullStyleDependencies = {
   C_FormulaEditor: ['C_Icon'],
   C_Captcha: ['C_Icon'],
   C_Form: ['C_Editor'],
+  C_FormModal: ['C_Form'],
+  C_DataPicker: ['C_Table'],
+  C_BatchResult: ['C_Table'],
   C_Guide: ['C_Icon'],
   C_Language: ['C_Icon'],
   C_Login: ['C_Icon', 'C_Captcha', 'C_QRCode'],
@@ -170,9 +174,12 @@ const globalScss = fs.existsSync(globalScssFile)
 
 // 3. 为所有公共组件生成稳定 CSS 入口；无样式组件生成空入口，保证 resolver 可用。
 for (const componentName of componentNames) {
-  const content = [globalScss, ...resolveComponentStyles(componentName)]
-    .filter(Boolean)
-    .join('\n')
+  const content = createComponentStyleEntry(
+    componentName,
+    globalScss,
+    visited =>
+      resolveComponentStyles(componentName, fullStyleDependencies, visited)
+  )
   fs.writeFileSync(
     path.join(distDir, `${componentName}.css`),
     content || `/* ${componentName} has no component-specific styles. */\n`
