@@ -64,6 +64,19 @@ const dispatchPointer = (
 }
 
 describe('C_SplitPane real container and public contracts', () => {
+  test('指针聚焦分割线不触发祖先滚动，仍保留键盘焦点', async () => {
+    const wrapper = mount(C_SplitPane, { attachTo: document.body })
+    try {
+      const separator = wrapper.get('[role=separator]').element as HTMLElement
+      const focus = vi.spyOn(separator, 'focus')
+      dispatchPointer(separator, 'pointerdown', 300)
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+      expect(document.activeElement).toBe(separator)
+      dispatchPointer(document, 'pointerup', 300)
+    } finally {
+      wrapper.unmount()
+    }
+  })
   test('uses remaining space, reactive pixel limits and proportional degradation for narrow containers', async () => {
     const wrapper = mount(C_SplitPane, {
       props: { defaultSize: 20, minFirstSize: 300, minSecondSize: 200 },

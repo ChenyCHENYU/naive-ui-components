@@ -81,7 +81,8 @@ export function startSplitPointer(
   let active = true
   event.preventDefault()
   event.stopPropagation()
-  ;(event.currentTarget as HTMLElement | null)?.focus()
+  // 指针已在可见手柄上；转移键盘焦点时不得把祖先滚动区拉向整条分割线。
+  ;(event.currentTarget as HTMLElement | null)?.focus({ preventScroll: true })
 
   const move = (next: SplitInputEvent) => {
     if (!samePointer(next, pointerId)) return
