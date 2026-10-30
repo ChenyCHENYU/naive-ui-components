@@ -182,3 +182,39 @@ test('resizable columns cannot shrink below their header text and controls', asy
   expect(column.minWidth).toBeGreaterThan(120)
   expect(column.width).toBe(240)
 })
+
+test('all headers have a complete text floor, including explicit narrow widths and long titles', async () => {
+  const wrapper = mount(C_Table<DataRecord>, {
+    props: {
+      config,
+      data: [{ id: 1 }],
+      columns: [
+        {
+          key: 'id',
+          title: '计划目标重量（吨）',
+          width: 40,
+          minWidth: 20,
+          maxWidth: 60,
+          ellipsis: { tooltip: true },
+          sorter: 'default',
+          filter: 'default',
+          filterOptions: [],
+        },
+        { key: 'long', title: '完整超长标题'.repeat(30), maxWidth: 60 },
+        { key: 'percent', title: '百分比宽度标题', width: '20%' },
+      ],
+    },
+  })
+  await flushPromises()
+  const columns = wrapper.getComponent(NDataTable).props('columns')!
+  expect(columns[0].minWidth).toBeGreaterThan(160)
+  expect(columns[0].width).toBe(columns[0].minWidth)
+  expect(columns[0].maxWidth).toBe(columns[0].minWidth)
+  expect(columns[0].ellipsis).toEqual({ tooltip: true })
+  expect(columns[1].width).toBeGreaterThan(1500)
+  expect(columns[2].width).toBe('20%')
+  expect(columns[2].minWidth).toBeGreaterThan(100)
+  expect(wrapper.getComponent(NDataTable).props('scrollX')).toBeGreaterThan(
+    1700
+  )
+})

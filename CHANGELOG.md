@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.24.1
+
+### Patch Changes
+
+- C_Table 默认完整展示所有列头，解除单元格 ellipsis 对表头的连带省略。完整标题及排序筛选控件作为初始宽度、列设置及拖拽缩列的统一下限，内容测宽上限只约束数据单元格，保留原生滚动和主题。
+
 ## 0.24.0
 
 ### Minor Changes

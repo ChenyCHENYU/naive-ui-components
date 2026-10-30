@@ -12,6 +12,8 @@ export default defineConfig({
   resolve: { dedupe: ['vue'] },
   test: {
     environment: 'happy-dom',
+    // 限制并发挂载，避免密集交互回归被其他测试进程抢占而触发默认超时。
+    maxWorkers: 2,
     // Router 的响应式依赖与 SFC 共用同一 Vue，覆盖跨包路由更新。
     server: { deps: { inline: ['vue-router'] } },
     include: ['tests/components/**/*.component.ts'],

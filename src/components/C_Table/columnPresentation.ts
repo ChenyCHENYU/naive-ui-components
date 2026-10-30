@@ -51,7 +51,7 @@ export function createColumnMeasurer() {
         typeof document === 'undefined'
           ? null
           : document.createElement('canvas').getContext('2d')
-    const text = value.slice(0, 128)
+    const text = value
     if (context) {
       context.font = font
       return context.measureText(text).width

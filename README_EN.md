@@ -33,7 +33,7 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.24.0**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.24.1**; see the [changelog](./CHANGELOG.md) for release details.
 
 Forms and search share `config.density: 'compact'`, reducing field spacing and empty validation space while allowing errors to expand naturally. Form modals default to compact density with 22px footer buttons, and search can inherit application density. Compact numeric fields hide step buttons by default while retaining keyboard interaction, precision and limits; individual fields can enable buttons. See [form density](./docs/guides/form-density.en.md) for on-demand defaults and explicit overrides.
 
@@ -221,3 +221,5 @@ See [development and build](./docs/engineering.en.md) for individual checks and 
 Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted, dictionary and status labels. Automatic widths default to 80–360px; use `minWidth/maxWidth` to adjust. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
 
 Use `{ key: 'status', status: true }` for themed status tags, or `status: { S1B: { label: 'Review', color: 'danger' }, S1C: 'success' }`. Semantic colors and CSS colors are supported. Unknown codes stay neutral, zero/false stay valid, and explicit render functions win. Display changes never rewrite data or export policy. Measurement does not invoke render functions; give graphical/custom columns explicit widths. Data and dictionary updates remeasure a bounded sample; all caches remain component-local.
+
+Headers display their full text by default, independently of cell ellipsis. Initial layout, explicit or restored narrow widths, and interactive resizing share a minimum that includes the entire title and its sort/filter controls. The 360px measurement cap applies only to cell content; longer headers use internal horizontal scrolling. Custom header content should declare an appropriate minWidth.

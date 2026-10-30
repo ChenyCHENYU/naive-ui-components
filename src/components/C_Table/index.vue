@@ -599,11 +599,14 @@
   const columnState = useTableColumns({
     rawColumns: effectiveColumns,
     data: normalizedData,
-    getFont: () => {
+    getFont: (header = false) => {
       const root = tableWrapperRef.value
-      return root
-        ? getComputedStyle(root).font || '13px sans-serif'
-        : '13px sans-serif'
+      const target = header
+        ? (root?.querySelector('.n-data-table-th') ?? root)
+        : root
+      return target
+        ? getComputedStyle(target).font || '600 13px sans-serif'
+        : '600 13px sans-serif'
     },
     config: resolved,
     get columnWidth() {

@@ -576,3 +576,11 @@
     color: var(--n-text-color-2, #666);
   }
 }
+
+// Naive 的 ellipsis 同时作用于表头和数据；这里只解除标题省略，数据继续保留原策略。
+.c-table-wrapper :deep(.n-data-table-th__ellipsis),
+.c-table-wrapper :deep(.n-data-table-th__title .n-ellipsis) {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+}
