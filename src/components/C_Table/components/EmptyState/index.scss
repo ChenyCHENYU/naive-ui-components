@@ -1,0 +1,17 @@
+/* 矢量使用 SVG 展示属性，样式仅管理排版，避免增加表格公共样式负担。 */
+.c-table-empty {
+  min-width: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+  &__title {
+    color: var(--c-table-empty-fg);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 22px;
+  }
+  &__hint {
+    color: var(--c-table-empty-hint);
+    font-size: 12px;
+    line-height: 20px;
+  }
+}

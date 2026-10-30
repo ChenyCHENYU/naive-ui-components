@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.23.2
+
+### Patch Changes
+
+- C_Table 内置与 MachTable 一致的淡蓝表格插画空态，适配亮暗主题、文案覆盖及 empty 插槽，加载和错误状态不误报无数据。
+
 ## 0.23.1
 
 ### Patch Changes
