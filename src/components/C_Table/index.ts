@@ -118,3 +118,5 @@ export type {
   TableQueryResult,
   UseTableQueryOptions,
 } from './composables/useTableQuery'
+
+export type { ColumnStatus } from './columnPresentation'

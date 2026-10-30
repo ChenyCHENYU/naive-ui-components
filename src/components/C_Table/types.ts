@@ -1,3 +1,4 @@
+import type { ColumnStatus } from './columnPresentation'
 /*
  * @Description: 表格类型系统
  * @Migration: naive-ui-components 组件库迁移版本
@@ -238,6 +239,10 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   render?: (rowData: T, rowIndex: number) => VNodeChild
   /** 声明式格式化器（优先级低于 render） */
   formatter?: ColumnFormatter
+  /** true 使用默认状态色；映射值为颜色，或 { label, color }。render 优先。 */
+  status?: ColumnStatus
+  /** 未声明 width 时默认按内容测宽；false 使用 display.columnWidth。 */
+  autoWidth?: boolean
   /** 字典显示低于 render/formatter；编辑时显式 editProps.options 优先。 */
   dictionary?: DictionaryBinding
   fixed?: 'left' | 'right'

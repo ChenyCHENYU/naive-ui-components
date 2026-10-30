@@ -33,7 +33,7 @@
 | 按需消费 | 60 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.23.3**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.24.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 表单与搜索共用 `config.density: 'compact'`：收紧字段、布局和空校验区，实际错误仍自然展开。表单弹窗默认紧凑，页脚按钮 22px；搜索可继承应用密度。紧凑数字输入默认隐藏步进按钮，保留键盘、精度和上下限，也可逐字段开启。按需设置默认值与显式覆盖见[表单密度](./docs/guides/form-density.md)。
 
@@ -215,3 +215,30 @@ bun run check:audit  # 单独运行依赖安全审计，CI 在 verify 前执行
 ## 许可证
 
 [MIT License](./LICENSE) · Made by [CHENY](https://github.com/ChenyCHENYU)
+
+## 内容列宽与状态颜色（0.24）
+
+`C_Table` 未声明 `width` 的业务列默认按表头和显示文字测宽，均匀抽样最多 100 条已加载数据，默认 80–360px。`minWidth/maxWidth` 可调整边界；显式列宽、原生百分比宽度、列设置后的宽度和 `display.columnWidth` 优先。`autoWidth: false` 恢复原统一默认 180px。横向虚拟化同样使用数值测宽，不依赖浏览器扫描所有行；长内容默认省略并提供 tooltip。
+
+```ts
+const columns = [
+  { type: 'index' },
+  { key: 'customer', title: '客户', maxWidth: 280 },
+  { key: 'status', title: '状态', dictionary: 'order-status', status: true },
+  {
+    key: 'planStatus',
+    title: '计划状态',
+    status: {
+      S1B: { label: '待复核', color: 'danger' },
+      S1C: { label: '已完成', color: 'success' },
+      special: { label: '特殊处理', color: '#8b5cf6' },
+    },
+  },
+]
+```
+
+状态列复用 Naive UI 标签和主题。支持 `success/warning/danger/info/neutral`，也支持 Naive 的 `error/default/primary` 和 CSS 颜色。未知代码保持中性；`0/false` 是有效值，空值保留空态。显式 render 优先；formatter/字典文字会用于默认颜色判断和测宽。状态配置只改变展示，不会改写数据、排序、筛选或导出。
+
+测宽不额外挂载或执行 render；图标、进度条和复杂自定义内容请显式指定 width。数据与字典更新会触发新的有界测量，配置和缓存只属于当前组件实例。此版本将未声明宽度的业务列由自然布局改为有界内容宽度；既有显式布局及原生 table-layout 覆盖仍保留。
+
+可拖动列的最小宽度会计入列头文字和排序/筛选控件；与显式 minWidth 取较大值，避免缩窄时压盖标题。超长标题的默认保护上限为 360px，复杂自定义标题请配置 minWidth。

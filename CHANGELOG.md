@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.24.0
+
+### Minor Changes
+
+- C_Table 未指定宽度的列改为有界内容测宽，保留显式列宽、列设置、原生尺寸和横向虚拟化。增加 status 精简配置，复用主题标签，支持默认语义色、字典显示、自定义文字与颜色，不修改原值及输出契约。
+
 ## 0.23.3
 
 ### Patch Changes

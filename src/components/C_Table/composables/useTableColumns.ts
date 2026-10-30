@@ -13,7 +13,11 @@ import {
   type VNodeChild,
   type ComputedRef,
 } from 'vue'
-import type { DataTableRowKey, DataTableColumn } from 'naive-ui'
+import { NTag, type DataTableRowKey, type DataTableColumn } from 'naive-ui'
+import {
+  createColumnMeasurer,
+  resolveColumnStatus,
+} from '../columnPresentation'
 import type { TableColumn, DataRecord, ColumnWithKey } from '../types'
 import type { ResolvedConfig } from './useTableConfig'
 import { applyFormatter } from './useTableGlobalConfig'
@@ -148,17 +152,46 @@ export function renderDisplayCell(
   if (column.render)
     return column.render(rowData, rowIndex) ?? String(value ?? '')
 
-  // 列级 formatter
-  if ((column as any).formatter) {
-    return applyFormatter(
-      value,
-      rowData,
-      (column as any).formatter,
-      formatterConfig
-    )
-  }
-
-  return String(value ?? '')
+  const label = column.formatter
+    ? applyFormatter(value, rowData, column.formatter, formatterConfig)
+    : String(value ?? '')
+  if (!column.status || value == null || value === '') return label
+  const status = resolveColumnStatus(value, label, column.status)
+  const color =
+    status.color === 'danger'
+      ? 'error'
+      : status.color === 'neutral'
+        ? 'default'
+        : status.color
+  const semantic = [
+    'default',
+    'success',
+    'warning',
+    'error',
+    'info',
+    'primary',
+  ].includes(color)
+  return h(
+    NTag,
+    {
+      size: 'small',
+      round: true,
+      bordered: false,
+      type: semantic
+        ? (color as
+            'default' | 'success' | 'warning' | 'error' | 'info' | 'primary')
+        : 'default',
+      ...(semantic
+        ? {}
+        : {
+            color: {
+              textColor: color,
+              color: `color-mix(in srgb, ${color} 12%, transparent)`,
+            },
+          }),
+    },
+    () => status.label
+  )
 }
 
 /**
@@ -275,6 +308,9 @@ export interface UseTableColumnsOptions {
   rawColumns: ComputedRef<TableColumn[]>
   /** 统一配置 */
   config: ComputedRef<ResolvedConfig>
+  /** 只对已加载数据做有界抽样；外部独立使用此 hook 时可省略。 */
+  data?: ComputedRef<readonly DataRecord[]>
+  getFont?: () => string
   /** 默认列宽 */
   columnWidth: number
   /** 区分使用侧显式统一列宽与内部默认值，不把默认值强加给弹性业务列。 */
@@ -507,11 +543,55 @@ export function useTableColumns(
 
   /* ================= 列映射 ================= */
 
+  const measure = createColumnMeasurer()
+  const headerWidth = (column: TableColumn) =>
+    Math.ceil(
+      measure(
+        column.title ?? String(column.key ?? ''),
+        options.getFont?.() ?? '13px sans-serif'
+      ) +
+        (column.sorter ? 20 : 0) +
+        (column.filter ? 28 : 0) +
+        28
+    )
+  const contentWidth = (column: TableColumn): number => {
+    const font = options.getFont?.() ?? '13px sans-serif'
+    const display = displayColumn(column)
+    let width = headerWidth(column) - 28
+    const rows = options.data?.value ?? []
+    const count = Math.min(rows.length, 100)
+    for (let i = 0; i < count; i++) {
+      const row =
+        rows[
+          count === 1 ? 0 : Math.floor((i * (rows.length - 1)) / (count - 1))
+        ]
+      const value = row[String(column.key)]
+      let label = display.formatter
+        ? applyFormatter(
+            value,
+            row,
+            display.formatter,
+            config.value.formatterConfig
+          )
+        : String(value ?? '')
+      if (column.status)
+        label = resolveColumnStatus(value, label, column.status).label
+      width = Math.max(width, measure(label, font) + (column.status ? 16 : 0))
+    }
+    const min = column.minWidth ?? 80
+    return Math.max(
+      min,
+      Math.min(Math.max(min, column.maxWidth ?? 360), Math.ceil(width + 28))
+    )
+  }
+
   const getColWidth = (col: TableColumn): number | string => {
     if (col.width !== undefined) return col.width
     if (col.type === 'selection' || col.type === 'expand') return 40
     if (col.type === 'index') return 50
-    return options.columnWidth ?? 180
+    return options.columnWidthExplicit || col.autoWidth === false
+      ? (options.columnWidth ?? 180)
+      : contentWidth(col)
   }
 
   /** 序号列 */
@@ -537,16 +617,16 @@ export function useTableColumns(
   const mapRegularColumn = (column: TableColumn): DataTableColumn => {
     const col = column as ColumnWithKey
     const effectiveColumn = displayColumn(column)
-    const naturalWidth =
-      !col.fixed &&
+    const automatic =
       col.width === undefined &&
-      col.maxWidth === undefined &&
-      options.columnWidthExplicit === false
+      !options.columnWidthExplicit &&
+      col.autoWidth !== false
     const base: Record<string, unknown> = {
       ...col,
-      width: naturalWidth ? undefined : getColWidth(column),
-      minWidth:
-        col.minWidth ?? (naturalWidth ? options.columnWidth : undefined),
+      width: getColWidth(column),
+      minWidth: col.minWidth ?? (automatic ? 80 : undefined),
+      maxWidth: col.maxWidth,
+      ellipsis: col.ellipsis ?? (automatic ? { tooltip: true } : undefined),
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
       render: (rowData: DataRecord, rowIndex: number) =>
@@ -557,8 +637,11 @@ export function useTableColumns(
 
     if (column.resizable && typeof base.width === 'number') {
       base.resizable = true
-      base.minWidth = column.minWidth ?? 80
-      base.maxWidth = column.maxWidth ?? 500
+      base.minWidth = Math.max(
+        column.minWidth ?? 80,
+        Math.min(360, headerWidth(column))
+      )
+      base.maxWidth = Math.max(base.minWidth as number, column.maxWidth ?? 500)
     }
 
     return base as unknown as DataTableColumn
@@ -626,22 +709,14 @@ export function useTableColumns(
     if (options.scrollX !== undefined) return options.scrollX
 
     const hasFixed = computedColumns.value.some(col => col.fixed)
-    const hasAuxiliary = computedColumns.value.some(
-      col =>
-        col.type === 'selection' ||
-        col.type === 'expand' ||
-        col.key === '_index'
-    )
-    const hasNatural = computedColumns.value.some(
+    const hasAutomatic = reactiveColumns.value.some(
       col =>
         !col.type &&
-        !col.fixed &&
-        col.key !== '_index' &&
-        col.key !== '_actions' &&
-        col.width === undefined
+        col.width === undefined &&
+        !options.columnWidthExplicit &&
+        col.autoWidth !== false
     )
-    // fixed 布局需要实际最小滚动宽度，窄容器中也不能压扁业务列 minWidth。
-    if (!hasFixed && !(hasAuxiliary && hasNatural)) return undefined
+    if (!hasFixed && !hasAutomatic) return undefined
 
     // 使用最终可见列：包含实际选择/展开/序号/操作列，不再额外猜测 200px。
     return computedColumns.value.reduce((sum, col) => {

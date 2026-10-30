@@ -17,7 +17,7 @@ const finalColumns = (wrapper: VueWrapper) =>
     unknown
   >[]
 
-test('default auxiliary widths stay compact while an undeclared business width remains naturally flexible', async () => {
+test('default auxiliary widths stay compact while an undeclared business width is measured from content', async () => {
   const wrapper = mount(C_Table<DataRecord>, {
     props: {
       data,
@@ -32,11 +32,11 @@ test('default auxiliary widths stay compact while an undeclared business width r
   })
   await flushPromises()
   const columns = finalColumns(wrapper)
-  expect(columns.map(column => column.width)).toEqual([40, 40, 50, undefined])
-  expect(columns[3].minWidth).toBe(180)
+  expect(columns.map(column => column.width)).toEqual([40, 40, 50, 80])
+  expect(columns[3].minWidth).toBe(80)
   expect(wrapper.getComponent(NDataTable).props('tableLayout')).toBe('fixed')
-  // 窄容器也保留自然业务列的 180px 首选下限，避免 fixed 布局压扁内容。
-  expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(310)
+  // 横向滚动预算使用真实辅助列与内容测量结果。
+  expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(210)
 })
 
 test('native horizontal virtualization retains numeric defaults and reacts when disabled', async () => {
@@ -50,11 +50,11 @@ test('native horizontal virtualization retains numeric defaults and reacts when 
   })
   await flushPromises()
   expect(wrapper.getComponent(NDataTable).props('virtualScrollX')).toBe(true)
-  expect(finalColumns(wrapper).map(col => col.width)).toEqual([50, 180])
+  expect(finalColumns(wrapper).map(col => col.width)).toEqual([50, 80])
   await wrapper.setProps({ virtualScrollX: false })
   expect(wrapper.getComponent(NDataTable).props('virtualScrollX')).toBe(false)
-  expect(finalColumns(wrapper).map(col => col.width)).toEqual([50, undefined])
-  expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(230)
+  expect(finalColumns(wrapper).map(col => col.width)).toEqual([50, 80])
+  expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(130)
 })
 
 test.each([
@@ -125,8 +125,8 @@ test('explicit widths, maximums and fixed column bounds retain their native meta
     className: 'custom-business',
     cellProps,
   })
-  expect(mapped[2]).toMatchObject({ width: 180, minWidth: 130, maxWidth: 220 })
-  expect(mapped[3]).toMatchObject({ width: 180, minWidth: 140, fixed: 'left' })
+  expect(mapped[2]).toMatchObject({ width: 130, minWidth: 130, maxWidth: 220 })
+  expect(mapped[3]).toMatchObject({ width: 140, minWidth: 140, fixed: 'left' })
   expect(mapped[4]).toMatchObject({ width: '25%', maxWidth: 400 })
   expect(mapped[5]).toMatchObject({ width: 'auto', maxWidth: 300 })
   expect(columns[2].width).toBeUndefined()
@@ -145,7 +145,7 @@ test.each(['table-layout', 'tableLayout'])(
       },
     })
     await flushPromises()
-    expect(finalColumns(wrapper)[1].width).toBeUndefined()
+    expect(finalColumns(wrapper)[1].width).toBe(80)
     expect(wrapper.getComponent(NDataTable).props('tableLayout')).toBe('auto')
   }
 )
@@ -164,9 +164,7 @@ test('fixed table scrolling counts the preferred minimum of a naturally flexible
   })
   await flushPromises()
   expect(finalColumns(wrapper).map(column => column.width)).toEqual([
-    50,
-    undefined,
-    90,
+    50, 260, 90,
   ])
   expect(finalColumns(wrapper)[1].minWidth).toBe(260)
   expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(400)
@@ -192,7 +190,7 @@ test('reactive width policy changes retain rendering metadata and never mutate t
     props: { data, columns, config: baseConfig },
   })
   await flushPromises()
-  expect(finalColumns(wrapper)[1].width).toBeUndefined()
+  expect(finalColumns(wrapper)[1].width).toBe(96)
   expect(wrapper.getComponent(NDataTable).props('tableLayout')).toBe('fixed')
   await wrapper.setProps({
     config: { ...baseConfig, display: { columnWidth: 180 } },
@@ -202,7 +200,7 @@ test('reactive width policy changes retain rendering metadata and never mutate t
   await wrapper.setProps({ config: baseConfig })
   const restored = finalColumns(wrapper)
   expect(restored[1]).toMatchObject({
-    width: undefined,
+    width: 96,
     minWidth: 96,
     align: 'left',
     titleAlign: 'right',

@@ -91,3 +91,30 @@ const columns: TableColumn<Order>[] = [
 `config.rowDrag: true` 按稳定 `rowKey` 重排当前页的顶层行。树表的子行、详情展开内容及合计行不参与拖拽；移动父行时其子树数据整体保留，不改变父子关系。过滤、排序与分页后的行位置会映射回原始数据，其余页和隐藏行保持不变。使用侧继续接收 `update:data` 和 `row-move`，无须自行计算 DOM 下标。
 
 纵向 `config.virtualScroll` 或横向 `virtualScrollX` 开启时，行拖拽自动停用，避免局部窗口错误重排完整数据；退出虚拟模式后恢复。拖拽期间数据被替换或身份变化，会丢弃该次排序。行键必须唯一、稳定，数字与字符串按各自类型区分。空数据后加载、错误视图恢复等表体重新出现的场景会自动连接拖拽实例。
+
+## 内容列宽与状态颜色（0.24）
+
+`C_Table` 未声明 `width` 的业务列默认按表头和显示文字测宽，均匀抽样最多 100 条已加载数据，默认 80–360px。`minWidth/maxWidth` 可调整边界；显式列宽、原生百分比宽度、列设置后的宽度和 `display.columnWidth` 优先。`autoWidth: false` 恢复原统一默认 180px。横向虚拟化同样使用数值测宽，不依赖浏览器扫描所有行；长内容默认省略并提供 tooltip。
+
+```ts
+const columns = [
+  { type: 'index' },
+  { key: 'customer', title: '客户', maxWidth: 280 },
+  { key: 'status', title: '状态', dictionary: 'order-status', status: true },
+  {
+    key: 'planStatus',
+    title: '计划状态',
+    status: {
+      S1B: { label: '待复核', color: 'danger' },
+      S1C: { label: '已完成', color: 'success' },
+      special: { label: '特殊处理', color: '#8b5cf6' },
+    },
+  },
+]
+```
+
+状态列复用 Naive UI 标签和主题。支持 `success/warning/danger/info/neutral`，也支持 Naive 的 `error/default/primary` 和 CSS 颜色。未知代码保持中性；`0/false` 是有效值，空值保留空态。显式 render 优先；formatter/字典文字会用于默认颜色判断和测宽。状态配置只改变展示，不会改写数据、排序、筛选或导出。
+
+测宽不额外挂载或执行 render；图标、进度条和复杂自定义内容请显式指定 width。数据与字典更新会触发新的有界测量，配置和缓存只属于当前组件实例。此版本将未声明宽度的业务列由自然布局改为有界内容宽度；既有显式布局及原生 table-layout 覆盖仍保留。
+
+可拖动列的最小宽度会计入列头文字和排序/筛选控件；与显式 minWidth 取较大值，避免缩窄时压盖标题。超长标题的默认保护上限为 360px，复杂自定义标题请配置 minWidth。

@@ -598,15 +598,19 @@
 
   const columnState = useTableColumns({
     rawColumns: effectiveColumns,
+    data: normalizedData,
+    getFont: () => {
+      const root = tableWrapperRef.value
+      return root
+        ? getComputedStyle(root).font || '13px sans-serif'
+        : '13px sans-serif'
+    },
     config: resolved,
     get columnWidth() {
       return resolved.value.columnWidth
     },
     get columnWidthExplicit() {
-      return (
-        props.virtualScrollX === true ||
-        effectiveConfig.value.display?.columnWidth !== undefined
-      )
+      return effectiveConfig.value.display?.columnWidth !== undefined
     },
     get scrollX() {
       return resolved.value.scrollX
@@ -940,25 +944,10 @@
     singleLine: resolved.value.singleLine,
     size: resolved.value.size,
     maxHeight: resolved.value.maxHeight,
-    // 自然弹性业务列吸收余量，避免展开/序号等辅助列被平均撑大。
-    // 显式原生 table-layout 仍通过 $attrs 优先覆盖。
+    // 自动测宽使用固定布局和实际 scrollX，长内容只在单元格内省略。
+    // 原生 table-layout 仍允许通过 $attrs 显式覆盖。
     tableLayout:
-      computedColumns.value.some(
-        col =>
-          col.type === 'selection' ||
-          col.type === 'expand' ||
-          col.key === '_index'
-      ) &&
-      computedColumns.value.some(
-        col =>
-          !col.type &&
-          !col.fixed &&
-          col.key !== '_index' &&
-          col.key !== '_actions' &&
-          col.width === undefined
-      )
-        ? ('fixed' as const)
-        : undefined,
+      computedScrollX.value !== undefined ? ('fixed' as const) : undefined,
   }))
 
   /* ================= 编辑弹窗 ================= */

@@ -183,7 +183,7 @@ describe('table column layout contracts', () => {
     expect(nativeRenderExpand).not.toHaveBeenCalled()
   })
 
-  test('keeps explicitly narrow ordinary columns and declared action-column sizing', async () => {
+  test('protects resizable header text while retaining declared action-column sizing', async () => {
     const cellProps = () => ({ title: 'Custom actions' })
     const wrapper = mount(C_Table<DataRecord>, {
       props: {
@@ -213,7 +213,7 @@ describe('table column layout contracts', () => {
     })
     await flushPromises()
     const columns = finalColumns(wrapper)
-    expect(columns[0]).toMatchObject({ width: 28, minWidth: 0, maxWidth: 56 })
+    expect(columns[0]).toMatchObject({ width: 28, minWidth: 42, maxWidth: 56 })
     const actions = columns.find(column => column.key === '_actions')!
     expect(actions).toMatchObject({
       width: 96,
