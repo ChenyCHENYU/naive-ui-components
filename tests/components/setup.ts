@@ -9,8 +9,10 @@ import { beforeEach, afterEach } from 'vitest'
 import { enableAutoUnmount } from '@vue/test-utils'
 import { addCollection } from '@iconify/vue'
 import mdi from '@iconify-json/mdi/icons.json'
+import carbon from '@iconify-json/carbon/icons.json'
 // 使用真实离线 SVG 集合，组件挂载不依赖 Iconify 外网。
 addCollection(mdi)
+addCollection(carbon)
 enableAutoUnmount(afterEach)
 beforeEach(() => {
   localStorage.clear()
