@@ -33,7 +33,7 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.23.2**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.23.3**; see the [changelog](./CHANGELOG.md) for release details.
 
 Forms and search share `config.density: 'compact'`, reducing field spacing and empty validation space while allowing errors to expand naturally. Form modals default to compact density with 22px footer buttons, and search can inherit application density. Compact numeric fields hide step buttons by default while retaining keyboard interaction, precision and limits; individual fields can enable buttons. See [form density](./docs/guides/form-density.en.md) for on-demand defaults and explicit overrides.
 
@@ -41,7 +41,7 @@ Business workspaces can share dictionary providers, container-aware search, regi
 
 ## Capability map
 
-`C_Table` includes a soft-blue table/search illustration that follows the Naive light/dark provider. Override it with `#empty`, or change `table.empty` / `table.emptyHint` through `config.locale.messages`. The existing global `emptyText` controls the title. Loading and error states remain separate.
+`C_Table` retains the native Naive UI empty state, including provider theme, locale and `componentOptions.DataTable.renderEmpty`. Use `#empty` to replace the content of one table.
 
 | Scenario              | Representative components                                        | Capabilities                                                                         |
 | --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |

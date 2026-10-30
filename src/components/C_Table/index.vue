@@ -189,14 +189,11 @@
       <template #loading>
         <slot name="loading"><C_Loading :label="t('table.loading')" /></slot>
       </template>
-      <template #empty>
-        <slot name="empty">
-          <TableEmptyState
-            v-if="!normalizedLoading"
-            :title="globalConfig.emptyText ?? t('table.empty')"
-            :description="t('table.emptyHint')"
-          />
-        </slot>
+      <template
+        v-if="$slots.empty"
+        #empty
+      >
+        <slot name="empty" />
       </template>
     </NDataTable>
 
@@ -337,7 +334,6 @@
   import { exportTableData } from './composables/useTableExport'
   import { generateFormOptions } from './data'
   import ColumnSettings from './components/ColumnSettings/index.vue'
-  import TableEmptyState from './components/EmptyState/index.vue'
   import C_Icon from '../C_Icon/index.vue'
   import C_ActionBar from '../C_ActionBar/index.vue'
   import { useActionTask } from '../../composables/useActionTask'

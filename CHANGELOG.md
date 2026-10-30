@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.23.3
+
+### Patch Changes
+
+- C_Table 默认保留 Naive UI 原生空态，继承 Provider 的主题、语言和 renderEmpty，自定义 empty 插槽按需转发，与 MachTable 插画空态保持区分。
+
 ## 0.23.2
 
 ### Patch Changes
