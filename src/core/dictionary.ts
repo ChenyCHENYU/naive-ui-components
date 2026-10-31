@@ -12,8 +12,20 @@ export interface DictionaryOption {
 
 export interface DictionarySource {
   getOptions(): readonly DictionaryOption[]
-  load?(context: { signal: AbortSignal }): Promise<readonly DictionaryOption[]>
+  load?(context: {
+    signal: AbortSignal
+    force?: boolean
+  }): Promise<readonly DictionaryOption[]>
+  /** 可选的共享加载状态；订阅同时通知数据和状态更新。 */
+  getState?(): DictionaryState
   subscribe?(listener: () => void): () => void
+}
+
+export interface DictionaryState {
+  status: 'idle' | 'loading' | 'ready' | 'empty' | 'error'
+  error?: unknown
+  /** 可选的不可变数据快照；仅状态变化时应复用同一数组，不可原地修改。 */
+  options?: readonly DictionaryOption[]
 }
 
 export interface DictionaryProvider {
@@ -33,8 +45,10 @@ export function createDictionaryLabelResolver(
   const labels = new Map<DictionaryValue, string>()
   for (const option of options)
     if (!labels.has(option.value)) labels.set(option.value, option.label)
-  return (value: unknown): string =>
+  const resolve = (value: unknown): string =>
     labels.get(value as DictionaryValue) ?? String(value ?? '')
+  return (value: unknown): string =>
+    Array.isArray(value) ? value.map(resolve).join('、') : resolve(value)
 }
 
 /** 原值比较保留 boolean、数值和带前导零的字符串编码，不回写展示标签。 */
@@ -42,6 +56,7 @@ export function getDictionaryLabel(
   value: unknown,
   options: readonly DictionaryOption[]
 ): string {
+  if (Array.isArray(value)) return createDictionaryLabelResolver(options)(value)
   return (
     options.find(option => Object.is(option.value, value))?.label ??
     String(value ?? '')

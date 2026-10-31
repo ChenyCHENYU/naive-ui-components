@@ -109,15 +109,31 @@
               :disabled="fieldDisabled(item) || fieldReadonly(item)"
               :status="selectStatus(item)"
             >
-              <template
-                v-if="dictionary.getError(item.prop)"
-                #empty
-              >
+              <template #empty>
                 <div
+                  v-if="dictionary.getError(item.prop) !== undefined"
                   role="alert"
                   class="form-search-option-error"
                 >
                   选项加载失败
+                  <NButton
+                    text
+                    size="small"
+                    @click="dictionary.reload(item.prop)"
+                    >重试</NButton
+                  >
+                </div>
+              </template>
+              <template #action>
+                <div
+                  v-if="
+                    dictionary.getError(item.prop) !== undefined &&
+                    selectBindings.get(item.prop)?.options?.length
+                  "
+                  role="alert"
+                  class="form-search-option-error"
+                >
+                  选项加载失败，保留已有选项
                   <NButton
                     text
                     size="small"
@@ -479,7 +495,7 @@
   const selectStatus = (
     item: SearchFormItem<T>
   ): 'error' | 'warning' | undefined => {
-    if (dictionary.getError(item.prop)) return 'error'
+    if (dictionary.getError(item.prop) !== undefined) return 'error'
     const status = item.attrs?.status
     return status === 'error' || status === 'warning' ? status : undefined
   }

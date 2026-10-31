@@ -553,6 +553,8 @@ export interface FormInstance<T extends object = FormRecord> {
   asyncLoadingMap: Record<string, boolean>
   /** 字段异步选项加载错误 */
   asyncErrorMap: Record<string, unknown>
+  /** 当前字段字典加载错误；不修改模型，不等同于业务校验错误。 */
+  getDictionaryError(field: FieldPath<T>): unknown
   /** 重新加载全部或指定字段的异步选项 */
   reloadOptions(field?: FieldPath<T>): Promise<void>
   /** 是否正在提交 */

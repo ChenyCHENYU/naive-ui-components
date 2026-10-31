@@ -327,6 +327,8 @@ export interface UseTableColumnsReturn {
   computedColumns: ComputedRef<DataTableColumn[]>
   computedScrollX: ComputedRef<number | string | undefined>
   getDictionaryLabel: (column: TableColumn, value: unknown) => string
+  dictionaryStatus: ComputedRef<{ failed: number; loading: number }>
+  retryDictionaries: () => Promise<void>
   handleColumnChange: (columns: TableColumn[]) => void
 }
 
@@ -410,6 +412,28 @@ export function useTableColumns(
     column.dictionary === undefined
       ? undefined
       : dictionaryOptions.getOptions(String(column.key))
+
+  /** 同一源用于多列时只计一项；整表提示不随单元格数增长。 */
+  const dictionaryStatus = computed(() => {
+    const failed = new Set<unknown>()
+    const loading = new Set<unknown>()
+    for (const column of reactiveColumns.value) {
+      if (column.dictionary === undefined) continue
+      const key = String(column.key)
+      const identity = dictionaryOptions.getSource(key) ?? column.dictionary
+      if (dictionaryOptions.getError(key) !== undefined) failed.add(identity)
+      if (dictionaryOptions.isLoading(key)) loading.add(identity)
+    }
+    return { failed: failed.size, loading: loading.size }
+  })
+  const retryDictionaries = async (): Promise<void> => {
+    const failed = reactiveColumns.value.filter(
+      column => dictionaryOptions.getError(String(column.key)) !== undefined
+    )
+    await Promise.all(
+      failed.map(column => dictionaryOptions.reload(String(column.key)))
+    )
+  }
 
   const displayColumn = (column: TableColumn): TableColumn =>
     column.dictionary !== undefined && !column.formatter
@@ -772,6 +796,8 @@ export function useTableColumns(
     showSettingsPanel,
     computedColumns,
     computedScrollX,
+    dictionaryStatus,
+    retryDictionaries,
     getDictionaryLabel: (column, value) =>
       dictionaryOptions.getLabel(String(column.key), value),
     handleColumnChange,

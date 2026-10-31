@@ -21,6 +21,15 @@ import {
 
 const EMPTY_OPTIONS: readonly DictionaryOption[] = Object.freeze([])
 
+/** 只有状态和数据入口指向同一份不可变快照时，才允许复用派生数据。 */
+function getImmutableSnapshot(
+  source: DictionarySource,
+  options: readonly DictionaryOption[]
+): readonly DictionaryOption[] | undefined {
+  const candidate = source.getState?.()?.options
+  return candidate === options ? candidate : undefined
+}
+
 function isDictionaryValue(value: unknown): value is DictionaryValue {
   return (
     typeof value === 'string' ||
@@ -55,6 +64,7 @@ interface DictionaryView {
   controller?: AbortController
   unsubscribe?: () => void
   revision: number
+  immutableSnapshot?: readonly DictionaryOption[]
 }
 
 interface DictionaryEntry {
@@ -97,6 +107,8 @@ export function useDictionaryOptions(
     view.controller === controller
   const report = (key: string, error: unknown, view?: DictionaryView) => {
     if (disposed || (view && !owns(key, view))) return
+    error ??= '[dictionary] 字典加载失败'
+    if (errors.has(key) && Object.is(errors.get(key), error)) return
     errors.set(key, error)
     if (!disposed && (!view || owns(key, view)))
       notifyObserver(() => config.onError?.(error, key))
@@ -112,20 +124,66 @@ export function useDictionaryOptions(
     view: DictionaryView,
     options: readonly DictionaryOption[]
   ) => {
+    if (!owns(key, view)) return false
+    const immutable = getImmutableSnapshot(view.source, options)
+    // 状态型源显式承诺快照不可变时，加载/失败通知只同步状态，不复制数据或重建索引。
+    if (immutable && view.immutableSnapshot === immutable)
+      return owns(key, view)
     const current = snapshot(options)
     if (!owns(key, view)) return false
     snapshots.set(key, current)
     if (!owns(key, view)) return false
     labelResolvers.set(key, createDictionaryLabelResolver(current))
+    if (owns(key, view)) view.immutableSnapshot = immutable
     return owns(key, view)
+  }
+
+  /** 状态型源同时发布 loading/error，数据读取不能把源错误误判为恢复。 */
+  function readState(
+    key: string,
+    view: DictionaryView,
+    clearLegacy = false
+  ): void {
+    if (!owns(key, view)) return
+    const state = view.source.getState?.()
+    if (!owns(key, view)) return
+    if (!state) {
+      if (clearLegacy) errors.delete(key)
+      return
+    }
+    loading.set(key, state.status === 'loading')
+    if (!owns(key, view)) return
+    if (state.status === 'error')
+      report(key, state.error ?? '[dictionary] 字典加载失败', view)
+    else errors.delete(key)
   }
 
   function read(key: string, view: DictionaryView): void {
     if (!owns(key, view)) return
     try {
-      if (publish(key, view, view.source.getOptions())) errors.delete(key)
+      if (publish(key, view, view.source.getOptions()))
+        readState(key, view, true)
     } catch (error) {
       report(key, error, view)
+    }
+  }
+
+  /** 仅当前请求可结束自身加载状态；共享源仍可能为其他消费者加载。 */
+  function finishLoad(
+    key: string,
+    view: DictionaryView,
+    controller: AbortController
+  ): void {
+    if (owns(key, view) && view.controller === controller) {
+      view.controller = undefined
+      loading.set(key, false)
+      // 同步观察者可能已启动替代请求，其加载状态由新请求管理。
+      if (view.controller) return
+      try {
+        readState(key, view)
+      } catch (error) {
+        report(key, error, view)
+      }
     }
   }
 
@@ -133,7 +191,8 @@ export function useDictionaryOptions(
   async function loadRemote(
     key: string,
     view: DictionaryView,
-    loader: NonNullable<DictionarySource['load']>
+    loader: NonNullable<DictionarySource['load']>,
+    force: boolean
   ): Promise<void> {
     const controller = new AbortController()
     view.controller = controller
@@ -145,6 +204,7 @@ export function useDictionaryOptions(
     try {
       const result = await loader.call(view.source, {
         signal: controller.signal,
+        ...(force ? { force: true } : {}),
       })
       if (!isCurrent(key, view, controller)) return
       // 订阅在请求期间发布了更新时，以源的当前快照为准，迟到结果不能覆盖它。
@@ -153,17 +213,19 @@ export function useDictionaryOptions(
         view,
         revision === view.revision ? result : view.source.getOptions()
       )
+      readState(key, view)
     } catch (error) {
       if (isCurrent(key, view, controller)) report(key, error, view)
     } finally {
-      if (owns(key, view) && view.controller === controller) {
-        view.controller = undefined
-        loading.set(key, false)
-      }
+      finishLoad(key, view, controller)
     }
   }
 
-  async function load(key: string, view: DictionaryView): Promise<void> {
+  async function load(
+    key: string,
+    view: DictionaryView,
+    force = false
+  ): Promise<void> {
     if (!owns(key, view)) return
     const previous = view.controller
     view.controller = undefined
@@ -171,7 +233,7 @@ export function useDictionaryOptions(
     // abort 回调可能同步重载或销毁；新控制器属于后发请求。
     if (!owns(key, view) || view.controller) return
     const loader = view.source.load
-    if (loader) await loadRemote(key, view, loader)
+    if (loader) await loadRemote(key, view, loader, force)
     else read(key, view)
   }
 
@@ -278,6 +340,8 @@ export function useDictionaryOptions(
       labelResolvers.get(key)?.(value) ?? String(value ?? ''),
     isLoading: (key: string): boolean => loading.get(key) ?? false,
     getError: (key: string): unknown => errors.get(key),
+    getSource: (key: string): DictionarySource | undefined =>
+      views.get(key)?.source,
     async reload(key?: string): Promise<void> {
       const targets =
         key === undefined
@@ -285,7 +349,7 @@ export function useDictionaryOptions(
           : views.has(key)
             ? [[key, views.get(key)!] as const]
             : []
-      await Promise.all(targets.map(([field, view]) => load(field, view)))
+      await Promise.all(targets.map(([field, view]) => load(field, view, true)))
     },
   }
 }

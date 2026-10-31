@@ -17,6 +17,7 @@ export {
 export type {
   DictionaryBinding,
   DictionarySource,
+  DictionaryState,
   DictionaryProvider,
   DictionaryOption,
   DictionaryValue,

@@ -24,6 +24,7 @@ import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { getDataPath, setDataPath } from '../../../utils/data'
 import { resolveNumberInputProps } from '../numberInput'
+import { useComponentLocale } from '../../../composables/useComponentLocale'
 import {
   decodeDictionaryControlValue,
   encodeDictionaryControlValue,
@@ -105,6 +106,8 @@ export interface UseFormRendererOptions {
   asyncLoadingMap: Ref<Record<string, boolean>>
   getDictionaryOptions?: (field: string) => readonly DictionaryOption[]
   isDictionaryLoading?: (field: string) => boolean
+  getOptionsError?: (field: string) => unknown
+  reloadOptions?: (field: string) => Promise<void>
   renderers?: ComputedRef<Record<string, FormRenderer> | undefined>
   /** Overrides application injection. An isolated registry never reads legacy globals. */
   registry?: FormRendererRegistry
@@ -324,6 +327,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
   } = opts
 
   const C = componentMap
+  const { t } = useComponentLocale(() => config.value.locale)
   const builtInRenderers = buildRenderers(C)
   const injectedRegistry = getCurrentInstance()
     ? inject(FORM_RENDERER_REGISTRY_KEY, undefined)
@@ -448,6 +452,43 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     })
   }
 
+  /** 局部加载提示放在控件下方，不覆盖 NFormItem 的校验反馈插槽。 */
+  function renderOptionsError(item: FormOption): VNode | null {
+    if (opts.getOptionsError?.(item.prop) === undefined) return null
+    return h('div', { role: 'alert', class: 'c-form-option-error' }, [
+      t('dictionary.optionsFailed'),
+      h(
+        C.NButton,
+        {
+          text: true,
+          size: 'small',
+          loading:
+            asyncLoadingMap.value[item.prop] ||
+            opts.isDictionaryLoading?.(item.prop),
+          onClick: () => opts.reloadOptions?.(item.prop),
+        },
+        { default: () => t('common.retry') }
+      ),
+    ])
+  }
+
+  /** 异步字段保持稳定容器，状态切换不重建输入控件或丢失焦点。 */
+  function renderOptionsState(
+    item: FormOption,
+    control: VNode | null
+  ): VNode | null {
+    if (!OPTION_TYPES.has(item.type)) return control
+    if (
+      !item.asyncOptions &&
+      (item.dictionary === undefined || item.children !== undefined)
+    )
+      return control
+    return h('div', { class: 'c-form-option-state' }, [
+      control,
+      renderOptionsError(item),
+    ])
+  }
+
   const renderFormItem = (item: FormOption): VNode | null => {
     try {
       /* 对带选项的控件，合并异步/静态选项 */
@@ -473,10 +514,11 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
       if (usesDictionaryControl(item, renderer))
         applyDictionaryControl(baseProps, effectiveItem)
 
-      return renderer(baseProps, effectiveItem, config.value, {
+      const control = renderer(baseProps, effectiveItem, config.value, {
         slots: instanceSlots,
         components: C,
       })
+      return renderOptionsState(item, control)
     } catch (error) {
       onError?.(error, item.prop)
       return null

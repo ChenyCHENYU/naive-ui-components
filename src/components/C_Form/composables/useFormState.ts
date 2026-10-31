@@ -161,7 +161,11 @@ export function useFormState(
           )
           .map(item => [item.prop, item.dictionary])
       ),
-    { onError: (error, field) => reportError(error, 'async-options', field) }
+    // 字典失败由字段就地呈现；诊断可显式接管，避免密集表单逐字段弹提示。
+    {
+      onError: (error, field) =>
+        config.value.onError?.(error, { source: 'async-options', field }),
+    }
   )
 
   /** 提示插件异常不能把已经完成的业务提交改判为失败。 */
@@ -820,6 +824,7 @@ export function useFormState(
     asyncErrorMap,
     getDictionaryOptions: dictionaryOptions.getOptions,
     isDictionaryLoading: dictionaryOptions.isLoading,
+    getDictionaryError: dictionaryOptions.getError,
     reloadOptions,
   }
 }

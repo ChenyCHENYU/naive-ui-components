@@ -297,6 +297,7 @@
     asyncErrorMap,
     getDictionaryOptions,
     isDictionaryLoading,
+    getDictionaryError,
     reloadOptions,
     setFormItemRef,
     getFormItemElement,
@@ -346,6 +347,9 @@
     renderers: computed(() => props.renderers),
     getDictionaryOptions,
     isDictionaryLoading,
+    getOptionsError: field =>
+      asyncErrorMap.value[field] ?? getDictionaryError(field),
+    reloadOptions,
     setFormItemRef,
     onError: (error, field) =>
       resolved.value.onError?.(error, { source: 'render', field }),
@@ -553,6 +557,7 @@
     markAsClean,
     asyncLoadingMap,
     asyncErrorMap,
+    getDictionaryError,
     reloadOptions,
     isSubmitting,
     submit,

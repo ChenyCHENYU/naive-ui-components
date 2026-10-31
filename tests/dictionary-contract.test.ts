@@ -57,6 +57,15 @@ describe('字典纯值契约', () => {
     })
   })
 
+  test('数组逐项翻译，空数组为空且编码内逗号不被隐式拆分', () => {
+    const label = createDictionaryLabelResolver(options)
+    expect(label([0, false, '001', 'NEW'])).toBe('零、否、首项、NEW')
+    expect(getDictionaryLabel([false, 'false'], options)).toBe('否、字符串否')
+    expect(label([])).toBe('')
+    expect(getDictionaryLabel([], options)).toBe('')
+    expect(label('001,0')).toBe('001,0')
+  })
+
   test('派生索引按快照创建，不因外部选项对象变更而暗改', () => {
     const source = [{ value: 0, label: '旧' }]
     const label = createDictionaryLabelResolver(source)

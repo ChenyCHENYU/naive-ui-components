@@ -1,4 +1,16 @@
 .c-form {
+  :deep(.c-form-option-state) {
+    width: 100%;
+    min-width: 0;
+  }
+  :deep(.c-form-option-error) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
+    color: var(--error-color, #d03050);
+    font-size: 12px;
+  }
   .c-form-actions {
     margin-top: var(--c-form-row-gap, 20px);
   }
