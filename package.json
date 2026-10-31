@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.24.4",
+  "version": "0.24.5",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "packageManager": "bun@1.4.2",
   "engines": {

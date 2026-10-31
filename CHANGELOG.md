@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.24.5
+
+### Patch Changes
+
+- 修复表单弹窗首行贴标题的问题，使用原生 Card 分区样式统一紧凑留白、内容滚动与固定页脚，约束宽高并避免样式穿透内嵌业务卡片。移除失效的 scoped 弹窗样式，不增加字段监听或渲染测量。
+
 ## 0.24.4
 
 ### Patch Changes

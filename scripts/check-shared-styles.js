@@ -66,7 +66,7 @@ export async function checkSharedStyleConsumer(directory = packageRoot) {
       '.c-data-picker[',
       '.c-batch-result[',
       '.c-table-wrapper[',
-      '.c-form-modal[',
+      '.c-action-bar[',
       '.c-form-actions[',
       '.w-e-text-container',
       '.leaflet-container',

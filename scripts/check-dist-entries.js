@@ -119,7 +119,8 @@ const componentStyleContracts = {
     '.c-form-actions[',
   ],
   'C_FormModal.css': [
-    '.c-form-modal[',
+    // 弹窗壳使用原生 Card 分区样式；仍需完整发布操作栏和表单样式。
+    '.c-action-bar[',
     '.c-form-actions[',
     '.w-e-text-container',
   ],

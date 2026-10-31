@@ -43,6 +43,8 @@ Density presets are plain data and preserve lazy loading of layouts and fields.
 
 `C_FormModal` defaults to `compact` and inherits application form density. Compact modals use `small` fields and `tiny` footer buttons, matching compact action bars. Explicit `config.size` still controls both fields and buttons; explicit `default` / `comfortable` density uses its corresponding size. Table editor modals inherit table density as well.
 
+Compact modals leave 10px between the header and first field and 12px on either side. Bottom spacing does not constrain real validation feedback. Viewport limits keep the header and footer visible while long content scrolls. Native Card section styles affect only the modal shell, preserving nested cards and slots without adding per-field measurements or watchers.
+
 ## Application defaults with on-demand imports
 
 Provide defaults once during application startup. Local `config.density` takes precedence; search inherits only density, not form layout, callbacks or size.

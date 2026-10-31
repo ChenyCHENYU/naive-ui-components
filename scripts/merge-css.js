@@ -94,7 +94,7 @@ const fullStyleDependencies = {
   C_FormulaEditor: ['C_Icon'],
   C_Captcha: ['C_Icon'],
   C_Form: ['C_Editor'],
-  C_FormModal: ['C_Form'],
+  C_FormModal: ['C_Form', 'C_ActionBar'],
   C_DataPicker: ['C_Table'],
   C_BatchResult: ['C_Table'],
   C_Guide: ['C_Icon'],

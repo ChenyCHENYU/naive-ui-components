@@ -108,7 +108,7 @@ describe('published CSS sharing contract', () => {
         'C_Table.base.css':
           '.c-form-actions[data-v-form]{gap:8px}.c-table-wrapper[data-v-table]{display:grid}',
         'C_FormModal.css':
-          '@import "./C_Form.css";.c-form-modal[data-v-modal]{padding:12px}',
+          '@import "./C_Form.css";.c-action-bar[data-v-action]{display:flex}',
         'C_DataPicker.css':
           '@import "./C_Table.base.css";.c-data-picker[data-v-picker]{width:100%}',
         'C_BatchResult.css':
