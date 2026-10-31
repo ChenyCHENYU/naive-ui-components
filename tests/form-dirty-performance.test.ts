@@ -2,6 +2,37 @@ import { expect, test } from 'bun:test'
 import { computed, markRaw, reactive, ref, shallowReactive } from 'vue'
 import { useFormDirty } from '../src/components/C_Form/composables/useFormDirty'
 
+test.each(['rows', 'detail.rows'])(
+  'sparse array changes invalidate cached dirty state for %s',
+  field => {
+    const rows: { value: string }[] = []
+    rows.length = 2
+    rows[1] = { value: 'last' }
+    const model = reactive({ rows, detail: { rows } })
+    const dirty = useFormDirty(model, [field])
+    const fieldDirty = computed(() => dirty.isFieldDirty(field))
+    dirty.markAsClean()
+    expect(dirty.isDirty.value).toBe(false)
+    expect(fieldDirty.value).toBe(false)
+    model.rows[0] = { value: 'filled' }
+    expect(dirty.isDirty.value).toBe(true)
+    expect(fieldDirty.value).toBe(true)
+    expect(dirty.getChangedFields()).toEqual([field])
+    delete model.rows[0]
+    expect(dirty.isDirty.value).toBe(false)
+    expect(fieldDirty.value).toBe(false)
+    expect(dirty.getChangedFields()).toEqual([])
+    model.rows.push({ value: 'appended' })
+    expect(dirty.isDirty.value).toBe(true)
+    dirty.markAsClean()
+    expect(dirty.isDirty.value).toBe(false)
+    delete model.rows[2]
+    expect(dirty.isDirty.value).toBe(true)
+    model.rows[2] = { value: 'appended' }
+    expect(dirty.isDirty.value).toBe(false)
+  }
+)
+
 test('boolean dirty checks stop at the first changed field while full reports still inspect every field', () => {
   let detailReads = 0
   const detail = Object.defineProperty({}, 'value', {

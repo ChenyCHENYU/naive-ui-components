@@ -46,6 +46,12 @@ function trackNestedValue(value: unknown, seen = new Set<object>()): boolean {
   seen.add(value)
   // Date、标记为 raw 的值和第三方实例没有深层失效信号，不能缓存比较结果。
   let observable = isReactive(value)
+  if (Array.isArray(value)) {
+    // 数组迭代订阅也覆盖空位填充；Object.values 会遗漏这类失效信号。
+    for (const entry of value)
+      observable = trackNestedValue(entry, seen) && observable
+    return observable
+  }
   if (value instanceof Map) {
     value.forEach((entry, key) => {
       observable = trackNestedValue(key, seen) && observable

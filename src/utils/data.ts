@@ -316,12 +316,9 @@ function equalObjects(
       left.length !== right.length
     )
       return false
+    // 数组保持值语义：空位与显式 undefined 等价，长度与有效值仍严格比较。
     for (let index = 0; index < left.length; index++) {
-      const own = Object.prototype.hasOwnProperty.call(left, index)
-      if (own !== Object.prototype.hasOwnProperty.call(right, index))
-        return false
-      if (own && !deepEqualInternal(left[index], right[index], context))
-        return false
+      if (!deepEqualInternal(left[index], right[index], context)) return false
     }
     return true
   }

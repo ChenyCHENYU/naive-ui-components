@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { computed, reactive } from 'vue'
+import { useFormDirty } from '../src/components/C_Form/composables/useFormDirty'
 import {
   cloneData,
   deleteDataPath,
@@ -11,6 +12,21 @@ import {
 } from '../src/utils/data'
 
 describe('data snapshot and path ownership', () => {
+  test('array holes retain the existing undefined value semantics in either direction', () => {
+    const sparse: unknown[] = []
+    sparse.length = 2
+    expect(isDataEqual(sparse, [undefined, undefined])).toBe(true)
+    expect(isDataEqual([undefined, undefined], sparse)).toBe(true)
+    expect(isDataEqual(sparse, [])).toBe(false)
+    const model = reactive({ rows: sparse })
+    const dirty = useFormDirty(model)
+    dirty.markAsClean()
+    expect(dirty.isDirty.value).toBe(false)
+    model.rows[0] = undefined
+    expect(dirty.isDirty.value).toBe(false)
+    expect(dirty.isFieldDirty('rows')).toBe(false)
+  })
+
   test.each([{}, { profile: {} }])(
     'path reads and presence track initially missing reactive branches',
     initial => {
