@@ -25,6 +25,10 @@
     padding: 14px 16px 8px;
   }
 
+  :deep(.n-form-item) {
+    margin-bottom: 2px;
+  }
+
   :deep(.n-card__action) {
     display: flex;
     justify-content: flex-end;
@@ -35,10 +39,6 @@
       var(--n-border-color)
     );
     border-top: 1px solid var(--n-border-color);
-  }
-
-  :deep(.n-form-item) {
-    margin-bottom: 2px;
   }
 }
 
@@ -51,5 +51,22 @@
     :deep(.n-card__action) {
       padding-inline: 12px;
     }
+  }
+}
+
+// 仅紧凑模式收紧弹窗壳；错误反馈由 NFormItem 自然撑高，不设置固定高度。
+.c-form-modal--compact {
+  :deep(.n-form-item) {
+    margin-bottom: 0;
+  }
+  :deep(.n-card-header) {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+  :deep(:is(.n-card-content, .n-card__content)) {
+    padding: 10px 12px 8px;
+  }
+  :deep(.n-card__action) {
+    padding: 8px 12px;
   }
 }

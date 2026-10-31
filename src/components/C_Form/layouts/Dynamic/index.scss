@@ -16,8 +16,6 @@
 
 .dynamic-item-wrapper {
   position: relative;
-  transition: all 0.3s ease;
-  animation: fadeInUp 0.3s ease-out;
 }
 
 .dynamic-item-wrapper.is-dynamic-field {
@@ -40,17 +38,6 @@
   color: var(--n-text-color-2);
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .dynamic-controls,
@@ -68,14 +55,6 @@
 
   .max-fields-config {
     margin-top: 8px;
-  }
-}
-
-/* 辅助功能 */
-@media (prefers-reduced-motion: reduce) {
-  .dynamic-item-wrapper {
-    animation: none !important;
-    transition: none !important;
   }
 }
 

@@ -25,8 +25,8 @@ describe('form density compatibility', () => {
     expect(merged.grid).toEqual({ xGap: 4, yGap: 6 })
   })
 
-  test('compact reserves four pixels for feedback without changing other densities', () => {
-    expect(resolveComponentDensity('compact').formItemGap).toBe(4)
+  test('compact reserves two pixels for feedback without changing other densities', () => {
+    expect(resolveComponentDensity('compact').formItemGap).toBe(2)
     expect(resolveComponentDensity('default').formItemGap).toBe(24)
     expect(resolveComponentDensity('comfortable').formItemGap).toBe(28)
   })

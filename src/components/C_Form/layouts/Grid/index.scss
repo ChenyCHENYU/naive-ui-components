@@ -1,7 +1,6 @@
 /* Grid 布局样式 */
 
 /* 变量定义 */
-$transition: all 0.2s ease;
 $border-radius: 8px;
 $spacing-sm: 0.5rem;
 $spacing-md: 1rem;
@@ -43,17 +42,6 @@ $spacing-md: 1rem;
   /* 网格容器 */
   .grid-container {
     width: 100%;
-
-    .grid-item {
-      /* 进场动画 */
-      animation: fadeInUp 0.3s ease-out both;
-
-      @for $i from 1 through 20 {
-        &:nth-child(#{$i}) {
-          animation-delay: #{$i * 0.05}s;
-        }
-      }
-    }
   }
 
   /* 统计信息 */
@@ -61,19 +49,6 @@ $spacing-md: 1rem;
     margin-top: $spacing-md;
     font-size: 0.875rem;
     opacity: 0.8;
-  }
-}
-
-/* 动画定义 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -110,13 +85,6 @@ $spacing-md: 1rem;
     }
 
     .grid-container {
-      :deep(.n-grid) {
-        gap: $spacing-sm !important;
-      }
-
-      .grid-item .item-wrapper {
-        padding: 0.125rem;
-      }
     }
 
     .grid-stats {

@@ -3,11 +3,13 @@
     v-model:show="modalVisible"
     preset="card"
     :title="modalTitle"
-    :style="{ width: modalWidth }"
+    :style="{ width: modalWidth, maxHeight: 'calc(100dvh - 32px)' }"
+    content-style="min-height: 0; overflow: auto"
     :mask-closable="maskClosable"
     :close-on-esc="closeOnEsc"
     :closable="closable"
     class="c-form-modal"
+    :class="`c-form-modal--${density}`"
   >
     <C_Form
       v-if="modalVisible && editor.model.value"
@@ -93,7 +95,7 @@
     ...props.config,
     density: density.value,
     mode: props.editor.mode.value,
-    initialValues: props.editor.model.value ?? undefined,
+    // v-model 已提供初始快照；重复订阅整个 model 会让每次输入都重建配置及所有字段。
     showActions: false,
     onSubmit: async (payload, context) => {
       await props.config?.onSubmit?.(payload, context)

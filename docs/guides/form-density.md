@@ -15,11 +15,11 @@ import type { ComponentDensity } from '@robot-admin/naive-ui-components/C_Form'
 const density = ref<ComponentDensity>('compact')
 ```
 
-| 密度          | 字段与操作按钮 | 布局间距 | 卡片留白 | 表单反馈预留高度 |
-| ------------- | -------------- | -------- | -------- | ---------------- |
-| `default`     | `medium`       | 16px     | 24px     | 24px             |
-| `compact`     | `small`        | 8px      | 12px     | 4px              |
-| `comfortable` | `large`        | 20px     | 28px     | 28px             |
+| 密度          | 字段与操作按钮 | 布局间距        | 卡片留白 | 表单反馈预留高度 |
+| ------------- | -------------- | --------------- | -------- | ---------------- |
+| `default`     | `medium`       | 16px            | 24px     | 24px             |
+| `compact`     | `small`        | 横 8px / 纵 4px | 12px     | 2px              |
+| `comfortable` | `large`        | 20px            | 28px     | 28px             |
 
 反馈预留高度是最小值，校验错误可自然撑开。密度支持响应式切换，切换不会清空表单值、搜索草稿、折叠条件或分组展开状态；不同实例可以使用不同密度。
 
@@ -110,3 +110,9 @@ const fields = [
 ```
 
 `focusTarget` 上下文还提供 `field`、字段表单项的 `element`（可能为空）和当前 `model`。即使异步适配器忽略取消，库也会拒绝旧元素；没有可聚焦目标时诚实返回 `false`，由使用侧保留错误摘要或提示导航限制。
+
+## 密集录入与性能
+
+紧凑表单与搜索默认纵向行距 4px，空反馈预留 2px；校验文案使用自然高度，多行错误不裁切、不盖住下一行。C_FormModal 的紧凑壳同步收紧，内容过高时在弹窗内部滚动，页脚保留可操作空间。显式的 grid.yGap / gutter 仍优先。
+
+Grid 和 Dynamic 字段不再执行逐字段入场或布局尺寸动画，Inline 不再对尺寸设置 transition: all。保留控件自身的焦点、悬停及校验反馈。配置与字段定义稳定时，表单控件按自身响应式依赖更新；400 字段回归检查单字段输入不会重绘其余 399 个控件。v-model 仍按既有契约输出独立的完整模型快照，成本随模型大小增长；大量字段建议按业务使用现有 Tabs/Steps 分区，明细数据继续交给虚拟表格。

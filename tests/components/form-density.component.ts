@@ -137,7 +137,7 @@ test('form controls, upload trigger and actions follow density while field sizes
       .every(button => button.props('size') === 'small')
   ).toBe(true)
   expect(wrapper.attributes('style')).toContain('--c-form-padding: 12px')
-  expect(wrapper.attributes('style')).toContain('--c-form-item-gap: 4px')
+  expect(wrapper.attributes('style')).toContain('--c-form-item-gap: 2px')
   expect(
     wrapper
       .get('.c-form-actions')

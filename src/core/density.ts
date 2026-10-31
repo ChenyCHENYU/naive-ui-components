@@ -23,10 +23,10 @@ const DENSITIES: Record<ComponentDensity, ResolvedComponentDensity> = {
     density: 'compact',
     size: 'small',
     gap: 8,
-    rowGap: 8,
+    rowGap: 4,
     padding: 12,
     // 反馈与布局行距相加；这里只保留小间隔，校验文本按内容自然撑高。
-    formItemGap: 4,
+    formItemGap: 2,
   },
   comfortable: {
     density: 'comfortable',

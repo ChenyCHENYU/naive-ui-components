@@ -1,5 +1,13 @@
 # @robot-admin/naive-ui-components
 
+## 0.24.2
+
+### Patch Changes
+
+- C_FormModal 移除与受控模型重复的 initialValues 订阅，避免单字段输入重建整份配置；400 字段普通表单与弹窗均验证局部控件更新。
+
+- 紧凑表单与搜索改为 4px 纵向间距、2px 空反馈预留，错误仍自然撑高。收紧紧凑表单弹窗壳并建立内部滚动高度链；移除 Grid/Dynamic 逐字段入场及 Inline/Card 布局尺寸动画，保留原生控件反馈。增加 400 字段局部更新回归，不引入额外观察器或逐字段动画节点。
+
 ## 0.24.1
 
 ### Patch Changes
