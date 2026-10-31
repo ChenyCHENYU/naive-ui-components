@@ -33,13 +33,17 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.24.5**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.24.6**; see the [changelog](./CHANGELOG.md) for release details.
 
 The 0.24.3–0.24.4 review covers async validation and edit sessions, dictionaries, column dragging, media and graph instances, data snapshots and dependency boundaries. Reproduced issues are fixed; dead state and unreachable retry branches are removed. See the [stability review](./docs/stability-review-20261031.md) for scope, performance constraints and verification evidence.
 
 Forms and search share `config.density: 'compact'`, reducing field spacing and empty validation space while allowing errors to expand naturally. Form modals default to compact density with 22px footer buttons, and search can inherit application density. Compact numeric fields hide step buttons by default while retaining keyboard interaction, precision and limits; individual fields can enable buttons. See [form density](./docs/guides/form-density.en.md) for on-demand defaults and explicit overrides.
 
 0.24.5 restores spacing between form modal titles and the first field using native card section styles. Long forms scroll inside the content area while the footer stays visible; modal styles do not override nested business cards.
+
+0.24.6 fixes full-width `C_Table` editor dialogs ignoring `edit.modalWidth`. Table editors and `C_FormModal` share native section styles and viewport bounds. Dialogs honor configured widths on desktop, use one form column when space is limited, and scroll tall content without relying on application utility CSS.
+
+Ordinary select columns retain `editProps.options` in modal fields without requiring dictionary bindings. Labels are displayed while editing and saving preserve the original value types.
 
 Business workspaces can share dictionary providers, container-aware search, regional density, remote pickers, error navigation and batch results. Pure value utilities live at `/data`; opt-in composables live at `/workflows`. See the [data and workspace guide](./docs/guides/data-workflows.md), [search workflows](./docs/guides/search-workflows.md), [data picker](./docs/guides/data-picker.md) and [batch results](./docs/guides/batch-results.md).
 

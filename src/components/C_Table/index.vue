@@ -209,11 +209,16 @@
       v-if="resolved.editMode === 'modal' || resolved.editMode === 'both'"
       v-model:show="modalVisible"
       :title="resolved.modalTitle"
-      :width="resolved.modalWidth"
+      :aria-label="resolved.modalTitle"
+      :style="modalStyles.shell"
+      :header-style="modalStyles.header"
+      :content-style="modalStyles.content"
+      :footer-style="modalStyles.footer"
+      footer-class="c-table-edit-modal__footer"
       preset="card"
       :mask-closable="false"
       :close-on-esc="false"
-      class="w60%"
+      class="c-table-edit-modal"
       :closable="false"
     >
       <C_Form
@@ -227,12 +232,13 @@
           density: resolved.density,
           grid: {
             cols: 2,
+            minItemWidth: 240,
             ...(resolved.density ? {} : { xGap: 16, yGap: 16 }),
           },
           showActions: false,
         }"
       />
-      <template #action>
+      <template #footer>
         <NSpace justify="end">
           <NButton
             :size="resolved.density ? resolved.controlSize : 'medium'"
@@ -337,6 +343,7 @@
   import C_Icon from '../C_Icon/index.vue'
   import C_ActionBar from '../C_ActionBar/index.vue'
   import { useActionTask } from '../../composables/useActionTask'
+  import { resolveFormModalStyles } from '../shared/formModal'
   import { cloneData, isDataEqual } from '../../utils/data'
   import { useComponentFeedback, useComponentLocale } from '../../config'
   import { C_Loading } from '../C_Loading'
@@ -437,6 +444,9 @@
   /* ================= 配置解析 ================= */
 
   const resolved = computed(() => resolveConfig(effectiveConfig.value))
+  const modalStyles = computed(() =>
+    resolveFormModalStyles(resolved.value.modalWidth, resolved.value.density)
+  )
   const feedback = useComponentFeedback(() => resolved.value.feedback)
   const { t } = useComponentLocale(() => resolved.value.locale)
   const editModeChecker = computed(() => createEditModeChecker(resolved.value))

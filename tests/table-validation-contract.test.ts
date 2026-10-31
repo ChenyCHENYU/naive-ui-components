@@ -158,3 +158,24 @@ test('warning-level rules do not block saves, transforms and messages preserve n
     )
   ).toBe('trimmed')
 })
+
+test('ordinary select columns retain options for modal forms without a dictionary binding', () => {
+  const options = [
+    { label: '未分配', value: 0 },
+    { label: '已分配', value: 1, disabled: true },
+  ]
+  const [field] = generateFormOptions([
+    {
+      key: 'status',
+      title: '状态',
+      editType: 'select',
+      editProps: { options },
+    },
+  ])
+  expect(field.type).toBe('select')
+  expect(field.children).toEqual(options)
+  expect(field.children).not.toBe(options)
+  expect(field.children?.[0]).not.toBe(options[0])
+  field.children![0].label = '局部标签'
+  expect(options[0].label).toBe('未分配')
+})

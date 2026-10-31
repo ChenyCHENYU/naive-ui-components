@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = FormRecord">
-  import { computed, ref, type CSSProperties } from 'vue'
+  import { computed, ref } from 'vue'
   import { NModal } from 'naive-ui'
   import C_ActionBar from '../C_ActionBar/index.vue'
   import { defineActions } from '../C_ActionBar/presets'
@@ -56,6 +56,7 @@
     useFormGlobalConfig,
   } from '../C_Form'
   import { resolveComponentDensity } from '../../core/density'
+  import { resolveFormModalStyles } from '../shared/formModal'
   import type { ActionBarConfig } from '../C_ActionBar/types'
   import type { FormModalEmits, FormModalProps } from './types'
 
@@ -86,42 +87,9 @@
   })
   const modalTitle = computed(() => props.editor.title.value)
   const busy = computed(() => props.editor.loading.value)
-  const modalWidth = computed(() =>
-    typeof props.width === 'number' ? `${props.width}px` : props.width
+  const modalStyles = computed(() =>
+    resolveFormModalStyles(props.width, density.value)
   )
-  // Modal 经 Teleport 渲染后不保证继承 SFC 的作用域属性。
-  // 使用 Card 原生分区样式，仅调整外壳，避免覆盖表单插槽内的业务卡片。
-  const modalStyles = computed(() => {
-    const compact = density.value === 'compact'
-    const gutter = compact ? '12px' : 'clamp(12px, 2.5vw, 16px)'
-    return {
-      shell: {
-        width: modalWidth.value,
-        maxWidth: 'calc(100vw - 24px)',
-        maxHeight: 'calc(100dvh - 32px)',
-        overflow: 'hidden',
-        borderRadius: '10px',
-      },
-      header: {
-        minHeight: compact ? '40px' : '46px',
-        padding: `${compact ? 8 : 12}px ${gutter}`,
-        fontSize: '15px',
-        borderBottom: '1px solid var(--n-border-color)',
-        flexShrink: 0,
-      },
-      content: {
-        padding: `${compact ? 10 : 14}px ${gutter} 8px`,
-        minHeight: 0,
-        overflow: 'auto',
-      },
-      footer: {
-        padding: `${compact ? 8 : 10}px ${gutter}`,
-        background: 'var(--n-action-color)',
-        borderTop: '1px solid var(--n-border-color)',
-        flexShrink: 0,
-      },
-    } satisfies Record<string, CSSProperties>
-  })
   const formModel = computed<T>({
     get: () => props.editor.model.value ?? ({} as T),
     set: value => {

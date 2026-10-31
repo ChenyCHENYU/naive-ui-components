@@ -342,6 +342,7 @@ export interface TableEditProps<T extends object = DataRecord> {
   onCancel?: (rowData: T, rowIndex: number) => void
   showRowActions?: boolean
   modalTitle?: string
+  /** 编辑弹窗宽度（px），默认 600；窄屏自动限制在视口内。 */
   modalWidth?: number
   columnWidth?: number
 }

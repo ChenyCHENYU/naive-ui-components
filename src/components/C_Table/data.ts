@@ -67,8 +67,7 @@ export const generateFormOptions = (
             (column.dictionary !== undefined ? 'select' : 'input')
         ] ?? 'input',
       dictionary: column.dictionary,
-      ...(column.dictionary !== undefined &&
-      Array.isArray(column.editProps?.options)
+      ...(Array.isArray(column.editProps?.options)
         ? { children: column.editProps.options.map(option => ({ ...option })) }
         : {}),
       placeholder: column.editProps?.placeholder ?? `请输入${column.title}`,

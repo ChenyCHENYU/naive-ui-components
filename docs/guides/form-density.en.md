@@ -45,6 +45,8 @@ Density presets are plain data and preserve lazy loading of layouts and fields.
 
 Compact modals leave 10px between the header and first field and 12px on either side. Bottom spacing does not constrain real validation feedback. Viewport limits keep the header and footer visible while long content scrolls. Native Card section styles affect only the modal shell, preserving nested cards and slots without adding per-field measurements or watchers.
 
+`C_Table` editor dialogs share these section styles and viewport limits. `edit.modalWidth` is in pixels and defaults to 600. A configured width of 700 remains 700px on desktop and is capped at the viewport width minus 24px on narrow screens. Fields collapse from two columns to one as needed. Invalid numeric widths fall back to the default; saving, cancellation and validation retain their existing edit-session behavior.
+
 ## Application defaults with on-demand imports
 
 Provide defaults once during application startup. Local `config.density` takes precedence; search inherits only density, not form layout, callbacks or size.
