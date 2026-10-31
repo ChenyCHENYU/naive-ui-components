@@ -1,5 +1,9 @@
 /* C_VideoPlayer 组件样式 */
 
+.c-video-player-anchor {
+  width: 100%;
+}
+
 .c-video-player {
   position: relative;
   width: 100%;
@@ -41,6 +45,13 @@
     transition:
       width 0.3s ease,
       height 0.3s ease;
+
+    // 小窗有独立视口，覆盖 SDK 流式占位以免视频把固定窗口撑高。
+    .c-video-player__container {
+      width: 100% !important;
+      height: 100% !important;
+      padding-top: 0 !important;
+    }
   }
 
   &__mini-close {

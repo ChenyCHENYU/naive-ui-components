@@ -149,7 +149,7 @@ export function useUploadCore(props: UploadProps) {
   /** 移除文件 */
   function removeFile(uid: string) {
     cancelHash(uid)
-    operationVersions.set(uid, Symbol(uid))
+    operationVersions.delete(uid)
     chunkUploader.abortUpload(uid)
     uploadQueue.abort(uid)
     pausedSet.delete(uid)

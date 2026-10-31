@@ -75,9 +75,7 @@ export function useGraphBase(
   containerRef: Ref<HTMLElement | undefined>,
   isDarkRef?: Ref<boolean> | ComputedRef<boolean>
 ) {
-  const MAX_RETRY = 10
-  let retryCount = 0
-  let retryTimer: ReturnType<typeof setTimeout> | undefined
+  let initVersion = 0
   let zoomToFitTimer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
 
@@ -99,19 +97,6 @@ export function useGraphBase(
       }
 
       const { width, height } = getContainerSize(containerRef.value)
-
-      // 容器尺寸为0，延迟重试（最多 10 次）
-      if (width === 0 || height === 0) {
-        retryCount++
-        if (retryCount < MAX_RETRY) {
-          clearTimeout(retryTimer)
-          retryTimer = setTimeout(() => {
-            if (!disposed) void initGraph(options)
-          }, 100)
-        }
-        return
-      }
-      retryCount = 0
 
       const isDark = isDarkRef?.value ?? false
       const defaultOptions = getDefaultOptions(isDark)
@@ -136,10 +121,10 @@ export function useGraphBase(
    * 初始化图表实例
    */
   const initGraph = async (options: any = {}) => {
-    clearTimeout(retryTimer)
-    retryTimer = undefined
+    const version = ++initVersion
     await nextTick()
-    initializeGraph(options)
+    // 等待 DOM 期间可能被销毁或被更新的初始化请求取代。
+    if (version === initVersion) initializeGraph(options)
   }
 
   /**
@@ -174,9 +159,8 @@ export function useGraphBase(
    * 销毁当前图表实例
    */
   function destroyGraph() {
-    clearTimeout(retryTimer)
+    initVersion++
     clearTimeout(zoomToFitTimer)
-    retryTimer = undefined
     zoomToFitTimer = undefined
     if (graph.value) {
       const currentGraph = graph.value

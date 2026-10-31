@@ -12,7 +12,7 @@ const instances = vi.hoisted(() => ({
 vi.mock('@antv/x6', () => ({
   Graph: class {
     #disposed = false
-    constructor() {
+    constructor(public options: Record<string, unknown>) {
       instances.graphs.push(this)
     }
     centerContent() {
@@ -89,6 +89,51 @@ test('AntV retains the raw graph and safely invokes class methods through its co
   expect(() => controller.centerContent()).not.toThrow()
   wrapper.unmount()
   expect(graph.disposed).toBe(true)
+})
+
+test('explicit graph disposal invalidates initialization waiting for the next DOM tick', async () => {
+  let controller!: ReturnType<typeof useGraphBase>
+  const wrapper = mount(
+    defineComponent({
+      setup() {
+        const container = ref<HTMLElement>()
+        controller = useGraphBase(container)
+        return { container }
+      },
+      template: '<div ref="container" />',
+    })
+  )
+  const pending = controller.initGraph()
+  controller.destroyGraph()
+  await pending
+  expect(instances.graphs).toHaveLength(0)
+  expect(controller.graph.value).toBeNull()
+  await controller.initGraph()
+  expect(instances.graphs).toHaveLength(1)
+  wrapper.unmount()
+  expect(instances.graphs[0].disposed).toBe(true)
+})
+
+test('concurrent graph initialization constructs only the latest requested options', async () => {
+  let controller!: ReturnType<typeof useGraphBase>
+  const wrapper = mount(
+    defineComponent({
+      setup() {
+        const container = ref<HTMLElement>()
+        controller = useGraphBase(container)
+        return { container }
+      },
+      template: '<div ref="container" />',
+    })
+  )
+  await Promise.all([
+    controller.initGraph({ width: 401 }),
+    controller.initGraph({ width: 602 }),
+  ])
+  expect(instances.graphs).toHaveLength(1)
+  expect(instances.graphs[0].options.width).toBe(602)
+  wrapper.unmount()
+  expect(instances.graphs[0].disposed).toBe(true)
 })
 
 test('Gantt retains raw instances and cancels delayed startup after an early configuration update', async () => {

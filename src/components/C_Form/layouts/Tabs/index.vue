@@ -135,7 +135,6 @@
 <script setup lang="ts">
   import {
     ref,
-    reactive,
     computed,
     watch,
     nextTick,
@@ -190,7 +189,7 @@
   const currentTab = ref<string>('')
   const switching = ref(false)
   let disposed = false
-  const tabValidationStatus = reactive<Record<string, boolean>>({})
+  let validationVersion = 0
 
   /* ================= 默认配置 ================= */
   const getDefaultTabsConfig = (): Required<TabsLayoutConfig> => ({
@@ -267,17 +266,19 @@
   }
 
   const validateCurrentTab = async (): Promise<boolean> => {
-    if (!currentTab.value) return true
+    const source = currentTab.value
+    const version = ++validationVersion
+    if (disposed) return false
+    if (!source) return true
+    const current = () =>
+      !disposed && version === validationVersion && currentTab.value === source
 
     try {
-      const valid = props.validateTab
-        ? await props.validateTab(currentTab.value)
-        : true
-      emit('tab-validate', currentTab.value)
-      tabValidationStatus[currentTab.value] = valid
+      const valid = props.validateTab ? await props.validateTab(source) : true
+      if (!current()) return false
+      emit('tab-validate', source)
       return valid
     } catch {
-      tabValidationStatus[currentTab.value] = false
       return false
     }
   }
@@ -391,6 +392,9 @@
   onScopeDispose(() => {
     disposed = true
   })
+
+  // 离开后再返回同名标签，旧校验也不能冒充本次结果。
+  watch(currentTab, () => validationVersion++, { flush: 'sync' })
 
   /* 只监听标签结构变化（key / 数量），不监听表单项内容变化 */
   const tabStructureKey = computed(() =>

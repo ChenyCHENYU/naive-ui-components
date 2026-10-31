@@ -11,7 +11,7 @@ const requireCondition = (condition, message) => {
 }
 
 requireCondition(
-  pkg.packageManager === 'bun@1.3.14',
+  pkg.packageManager === 'bun@1.4.2',
   'packageManager must stay pinned'
 )
 requireCondition(
@@ -45,6 +45,11 @@ requireCondition(
 )
 requireCondition(pkg.overrides?.tmp === '0.2.7', 'Secure tmp override changed')
 requireCondition(
+  pkg.overrides?.['glob@13.0.6'] === '14.0.2' &&
+    pkg.overrides?.['minimatch@10.2.6'] === '11.0.1',
+  'Reviewed modern glob/minimatch fixes changed; keep legacy glob APIs isolated'
+)
+requireCondition(
   Boolean(pkg.dependencies?.['@types/leaflet']),
   '@types/leaflet must remain a dependency because C_Map publishes Leaflet types'
 )
@@ -57,9 +62,13 @@ const ciWorkflow = fs.readFileSync(
   path.join(root, '.github', 'workflows', 'ci.yml'),
   'utf8'
 )
+const ciBunVersions = [...ciWorkflow.matchAll(/bun-version:\s*(\S+)/g)].map(
+  match => match[1]
+)
 requireCondition(
   ciWorkflow.includes('node-version-file: .node-version') &&
-    ciWorkflow.includes('bun-version: 1.3.14') &&
+    ciBunVersions.length > 0 &&
+    ciBunVersions.every(version => version === '1.4.2') &&
     ciWorkflow.includes('bun install --frozen-lockfile') &&
     ciWorkflow.includes('bun run check:audit'),
   'CI must use pinned Node/Bun, a frozen lockfile, and dependency auditing'
@@ -150,6 +159,10 @@ requireCondition(
 )
 
 const lockfile = fs.readFileSync(path.join(root, 'bun.lock'), 'utf8')
+requireCondition(
+  /"lockfileVersion":\s*3\s*,/.test(lockfile),
+  'Lockfile format changed; verify frozen installation with the pinned CI Bun'
+)
 requireCondition(
   lockfile.includes(`"name": "${pkg.name}"`),
   'Lockfile workspace name must match package.json'

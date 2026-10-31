@@ -1,6 +1,7 @@
 import { hasInjectionContext, inject, type App } from 'vue'
 import type { HLJSApi, LanguageFn } from 'highlight.js'
 import hljs from 'highlight.js/lib/core'
+import { notifyObserver } from '../core/observer'
 
 // 默认支持的语言包（常用语言预加载）
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -162,8 +163,10 @@ async function loadLanguage(
 
   const loader = OPTIONAL_LANGUAGES[normalizedLanguage]
   if (!loader) {
-    options.logger?.warn(
-      `[HighlightPlugin] Language '${language}' not supported`
+    notifyObserver(() =>
+      options.logger?.warn(
+        `[HighlightPlugin] Language '${language}' not supported`
+      )
     )
     return false
   }
@@ -173,20 +176,26 @@ async function loadLanguage(
       const languageModule = await loader()
       registerLanguage(state, normalizedLanguage, languageModule.default)
       if (options.debug) {
-        options.logger?.info(
-          `[HighlightPlugin] Language '${normalizedLanguage}' loaded successfully`
+        notifyObserver(() =>
+          options.logger?.info(
+            `[HighlightPlugin] Language '${normalizedLanguage}' loaded successfully`
+          )
         )
       }
       return true
     } catch (error) {
-      options.logger?.error(
-        `[HighlightPlugin] Failed to load language '${normalizedLanguage}'`,
-        error
+      notifyObserver(() =>
+        options.logger?.error(
+          `[HighlightPlugin] Failed to load language '${normalizedLanguage}'`,
+          error
+        )
       )
-      options.onError?.(error, {
-        source: 'language-loader',
-        language: normalizedLanguage,
-      })
+      notifyObserver(() =>
+        options.onError?.(error, {
+          source: 'language-loader',
+          language: normalizedLanguage,
+        })
+      )
       return false
     } finally {
       state.pendingLanguageLoads.delete(normalizedLanguage)
@@ -372,8 +381,10 @@ export function setupHighlight(
   if (!previous) app.onUnmount(() => releaseAppHighlight(app))
 
   if (pluginOptions.debug) {
-    pluginOptions.logger?.info(
-      '[HighlightPlugin] highlight.js plugin installed'
+    notifyObserver(() =>
+      pluginOptions.logger?.info(
+        '[HighlightPlugin] highlight.js plugin installed'
+      )
     )
   }
   return highlightAPI

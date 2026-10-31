@@ -95,9 +95,11 @@ export function useDictionaryOptions(
     owns(key, view) &&
     !controller.signal.aborted &&
     view.controller === controller
-  const report = (key: string, error: unknown) => {
+  const report = (key: string, error: unknown, view?: DictionaryView) => {
+    if (disposed || (view && !owns(key, view))) return
     errors.set(key, error)
-    notifyObserver(() => config.onError?.(error, key))
+    if (!disposed && (!view || owns(key, view)))
+      notifyObserver(() => config.onError?.(error, key))
   }
   const snapshot = (options: readonly DictionaryOption[]) => {
     if (!Array.isArray(options))
@@ -105,49 +107,90 @@ export function useDictionaryOptions(
     const seen = new Set<DictionaryValue>()
     return options.map(option => copyOption(option, seen))
   }
-  const publish = (key: string, options: readonly DictionaryOption[]) => {
+  const publish = (
+    key: string,
+    view: DictionaryView,
+    options: readonly DictionaryOption[]
+  ) => {
     const current = snapshot(options)
+    if (!owns(key, view)) return false
     snapshots.set(key, current)
+    if (!owns(key, view)) return false
     labelResolvers.set(key, createDictionaryLabelResolver(current))
+    return owns(key, view)
   }
 
   function read(key: string, view: DictionaryView): void {
     if (!owns(key, view)) return
     try {
-      publish(key, view.source.getOptions())
-      errors.delete(key)
+      if (publish(key, view, view.source.getOptions())) errors.delete(key)
     } catch (error) {
-      report(key, error)
+      report(key, error, view)
     }
   }
 
-  async function load(key: string, view: DictionaryView): Promise<void> {
-    view.controller?.abort()
-    if (!view.source.load) {
-      read(key, view)
-      return
-    }
+  /** 单次远端请求只管理自身控制器和结果；切换/取消由 load 统一协调。 */
+  async function loadRemote(
+    key: string,
+    view: DictionaryView,
+    loader: NonNullable<DictionarySource['load']>
+  ): Promise<void> {
     const controller = new AbortController()
     view.controller = controller
     const { revision } = view
     loading.set(key, true)
+    if (!isCurrent(key, view, controller)) return
     errors.delete(key)
+    if (!isCurrent(key, view, controller)) return
     try {
-      const result = await view.source.load({ signal: controller.signal })
+      const result = await loader.call(view.source, {
+        signal: controller.signal,
+      })
       if (!isCurrent(key, view, controller)) return
       // 订阅在请求期间发布了更新时，以源的当前快照为准，迟到结果不能覆盖它。
       publish(
         key,
+        view,
         revision === view.revision ? result : view.source.getOptions()
       )
     } catch (error) {
-      if (isCurrent(key, view, controller)) report(key, error)
+      if (isCurrent(key, view, controller)) report(key, error, view)
     } finally {
       if (owns(key, view) && view.controller === controller) {
-        loading.set(key, false)
         view.controller = undefined
+        loading.set(key, false)
       }
     }
+  }
+
+  async function load(key: string, view: DictionaryView): Promise<void> {
+    if (!owns(key, view)) return
+    const previous = view.controller
+    view.controller = undefined
+    previous?.abort()
+    // abort 回调可能同步重载或销毁；新控制器属于后发请求。
+    if (!owns(key, view) || view.controller) return
+    const loader = view.source.load
+    if (loader) await loadRemote(key, view, loader)
+    else read(key, view)
+  }
+
+  /** 初始化快照和订阅；同步销毁后仍归还迟到返回的清理函数。 */
+  function connectView(key: string, view: DictionaryView): void {
+    read(key, view)
+    if (!owns(key, view)) return
+    try {
+      const unsubscribe = view.source.subscribe?.(() => {
+        if (!owns(key, view)) return
+        view.revision++
+        read(key, view)
+      })
+      if (owns(key, view)) view.unsubscribe = unsubscribe
+      else notifyObserver(() => unsubscribe?.())
+    } catch (error) {
+      report(key, error, view)
+    }
+    if (view.source.load) void load(key, view)
   }
 
   function reconcileBinding({
@@ -156,10 +199,12 @@ export function useDictionaryOptions(
     source,
     error,
   }: DictionaryEntry): void {
+    if (disposed) return
     const current = views.get(key)
     if (current && current.source === source && current.binding === binding)
       return
     remove(key)
+    if (disposed) return
     if (!source) {
       if (binding !== undefined)
         report(
@@ -170,17 +215,7 @@ export function useDictionaryOptions(
     }
     const view: DictionaryView = { binding: binding!, source, revision: 0 }
     views.set(key, view)
-    read(key, view)
-    try {
-      view.unsubscribe = source.subscribe?.(() => {
-        if (!owns(key, view)) return
-        view.revision++
-        read(key, view)
-      })
-    } catch (subscribeError) {
-      report(key, subscribeError)
-    }
-    if (source.load) void load(key, view)
+    connectView(key, view)
   }
 
   function remove(key: string): void {
@@ -198,7 +233,10 @@ export function useDictionaryOptions(
     labelResolvers.delete(key)
   }
 
-  const stop = watch(
+  let stop = () => {}
+  // 必须先登记销毁：源的初次读取/订阅/加载也可能同步销毁当前作用域。
+  if (getCurrentScope()) onScopeDispose(dispose)
+  stop = watch(
     () =>
       [...toValue(bindings)].map(([key, binding]) => {
         try {
@@ -223,13 +261,14 @@ export function useDictionaryOptions(
     { immediate: true }
   )
 
-  const dispose = () => {
+  if (disposed) stop()
+
+  function dispose() {
     if (disposed) return
     disposed = true
     stop()
     for (const key of new Set([...views.keys(), ...errors.keys()])) remove(key)
   }
-  if (getCurrentScope()) onScopeDispose(dispose)
 
   return {
     dispose,

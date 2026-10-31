@@ -4,7 +4,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref } from 'vue'
+import { getCurrentScope, onScopeDispose, ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, TableColumn } from '../types'
 import { cloneData } from '../../../utils/data'
@@ -53,6 +53,8 @@ export function useCellEdit(options: CellEditOptions) {
     editingData.value = {}
     cellValidationError.value = null
   }
+  // 公开 hook 可独立使用，不能只依赖 tableManager 结束异步编辑会话。
+  if (getCurrentScope()) onScopeDispose(invalidate)
 
   /**
    * 检查指定单元格是否正在编辑状态
@@ -82,6 +84,7 @@ export function useCellEdit(options: CellEditOptions) {
     const rowData = findRowData(rowKey)
     if (!rowData || !columnKey || isSaving.value) return false
 
+    revision++
     editingCell.value = { rowKey, columnKey }
     editingData.value = {
       [createCellKey(rowKey, columnKey)]: cloneData(rowData[columnKey]),
@@ -165,6 +168,7 @@ export function useCellEdit(options: CellEditOptions) {
   const cancelEditCell = () => {
     const { rowKey, columnKey } = editingCell.value
     if (isSaving.value) return
+    revision++
     if (rowKey !== null && columnKey !== null)
       delete editingData.value[createCellKey(rowKey, columnKey)]
     editingCell.value = { rowKey: null, columnKey: null }
@@ -187,6 +191,7 @@ export function useCellEdit(options: CellEditOptions) {
     value: unknown
   ) => {
     if (!isEditingCell(rowKey, columnKey) || isSaving.value) return
+    revision++
     editingData.value[createCellKey(rowKey, columnKey)] = cloneData(value)
   }
 

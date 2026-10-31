@@ -22,7 +22,7 @@ jobs:
           node-version-file: .node-version
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run check:consumer-contracts ${{ matrix.peers }}
@@ -36,7 +36,7 @@ jobs:
           node-version-file: .node-version
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run check:audit
       - run: bun run verify
@@ -50,7 +50,7 @@ jobs:
           node-version-file: .node-version
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun add --dev --exact typescript@5.8.3 --ignore-scripts
       - run: bun run build

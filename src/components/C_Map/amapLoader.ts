@@ -112,9 +112,11 @@ export function loadAMapApi(
   if (loader) return loader
 
   loaderIdentity = identity
-  if (normalizedSecurityConfig) {
-    host._AMapSecurityConfig = { ...normalizedSecurityConfig }
-  }
+  const previousSecurityConfig = host._AMapSecurityConfig
+  const ownedSecurityConfig = normalizedSecurityConfig
+    ? { ...normalizedSecurityConfig }
+    : undefined
+  if (ownedSecurityConfig) host._AMapSecurityConfig = ownedSecurityConfig
 
   loader = new Promise((resolve, reject) => {
     const existingScript =
@@ -136,6 +138,15 @@ export function loadAMapApi(
       script.remove()
       loader = null
       loaderIdentity = null
+      // 失败的加载不能把凭据留给下一次重试，也不能覆盖宿主后来接管的配置。
+      if (
+        ownedSecurityConfig &&
+        host._AMapSecurityConfig === ownedSecurityConfig
+      ) {
+        if (previousSecurityConfig === undefined)
+          delete host._AMapSecurityConfig
+        else host._AMapSecurityConfig = previousSecurityConfig
+      }
       reject(error)
     }
     const handleLoad = () => {

@@ -33,7 +33,9 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.24.2**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.24.3**; see the [changelog](./CHANGELOG.md) for release details.
+
+The 0.24.3 review covers async validation and edit sessions, dictionaries, column dragging, media and graph instances, data snapshots and dependency boundaries. Reproduced issues are fixed; dead state and unreachable retry branches are removed. See the [stability review](./docs/stability-review-20261031.md) for scope, performance constraints and verification evidence.
 
 Forms and search share `config.density: 'compact'`, reducing field spacing and empty validation space while allowing errors to expand naturally. Form modals default to compact density with 22px footer buttons, and search can inherit application density. Compact numeric fields hide step buttons by default while retaining keyboard interaction, precision and limits; individual fields can enable buttons. See [form density](./docs/guides/form-density.en.md) for on-demand defaults and explicit overrides.
 
@@ -185,7 +187,7 @@ The [2026-10-18 scan record](./docs/security-scan-2026-10-18.md) documents two o
 
 ## Local development
 
-Maintaining this repository requires **Node.js ≥20.19.0** and **Bun ≥1.3.14**. The package manager is pinned to `bun@1.3.14`; CI uses `.node-version` and the frozen lockfile.
+Maintaining this repository requires **Node.js ≥20.19.0** and the pinned **Bun 1.4.2**. CI uses `.node-version`, the frozen lockfile and checks actual dependency overrides. The minimum Bun version for consumers remains 1.3.14.
 
 ```bash
 git clone https://github.com/ChenyCHENYU/naive-ui-components.git

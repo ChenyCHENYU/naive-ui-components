@@ -43,7 +43,7 @@ dist/
 
 ## Development
 
-The environment baseline is Node.js 20.19.0+ and Bun 1.3.14. `.node-version`, `packageManager`, `engines`, and the frozen lockfile keep local and CI installs aligned.
+The maintenance environment uses Node.js 20.19.0+ and pinned Bun 1.4.2. `.node-version`, `packageManager` and the frozen lockfile align local and CI installs. The minimum Bun version for consumers remains 1.3.14; maintenance checks verify that conditional overrides affect actual resolutions.
 
 ```bash
 bun install --frozen-lockfile # Install exactly from the lockfile

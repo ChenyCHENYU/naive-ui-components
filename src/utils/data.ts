@@ -4,6 +4,20 @@ export type DataObject = Record<string, unknown>
 
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor'])
 
+function hasOwnDataKey(target: object, key: string): boolean {
+  // Vue 的 has trap 会追踪缺失键和新增 literal dotted key；不读取继承 getter。
+  Reflect.has(target, key)
+  return Object.prototype.hasOwnProperty.call(target, key)
+}
+
+function getOwnDataValue(target: unknown, key: string): unknown {
+  return target !== null &&
+    typeof target === 'object' &&
+    hasOwnDataKey(target, key)
+    ? (target as DataObject)[key]
+    : undefined
+}
+
 /** Parse dot/bracket notation and reject prototype-polluting path segments. */
 export function parseDataPath(path: string): string[] {
   const segments = path
@@ -20,13 +34,13 @@ export function parseDataPath(path: string): string[] {
 
 /** Check a nested path while preserving legacy literal dotted keys. */
 export function hasDataPath(target: DataObject, path: string): boolean {
-  if (Object.prototype.hasOwnProperty.call(target, path)) return true
+  if (hasOwnDataKey(target, path)) return true
   let current: unknown = target
   for (const segment of parseDataPath(path)) {
     if (
       current === null ||
       typeof current !== 'object' ||
-      !Object.prototype.hasOwnProperty.call(current, segment)
+      !hasOwnDataKey(current, segment)
     ) {
       return false
     }
@@ -37,11 +51,8 @@ export function hasDataPath(target: DataObject, path: string): boolean {
 
 /** Read a nested path while preserving legacy literal dotted keys. */
 export function getDataPath(target: DataObject, path: string): unknown {
-  if (Object.prototype.hasOwnProperty.call(target, path)) return target[path]
-  return parseDataPath(path).reduce<unknown>((current, segment) => {
-    if (current === null || typeof current !== 'object') return undefined
-    return (current as DataObject)[segment]
-  }, target)
+  if (hasOwnDataKey(target, path)) return target[path]
+  return parseDataPath(path).reduce<unknown>(getOwnDataValue, target)
 }
 
 /** Safely write a nested path, creating arrays and objects as needed. */
@@ -61,7 +72,8 @@ export function setDataPath(
       current[segment] = value
       return
     }
-    const existing = current[segment]
+    // 只沿当前模型拥有的分支写入，不能借用原型上的共享对象。
+    const existing = getOwnDataValue(current, segment)
     if (existing === null || typeof existing !== 'object') {
       current[segment] = /^\d+$/.test(segments[index + 1]) ? [] : {}
     }
@@ -78,10 +90,7 @@ export function deleteDataPath(target: DataObject, path: string): void {
   const segments = parseDataPath(path)
   const last = segments.pop()
   if (!last) return
-  const parent = segments.reduce<unknown>((current, segment) => {
-    if (current === null || typeof current !== 'object') return undefined
-    return (current as DataObject)[segment]
-  }, target)
+  const parent = segments.reduce<unknown>(getOwnDataValue, target)
   if (parent && typeof parent === 'object') delete (parent as DataObject)[last]
 }
 
@@ -101,8 +110,11 @@ function cloneFallback<T>(value: T, seen: WeakMap<object, unknown>): T {
 
   if (Array.isArray(rawValue)) {
     const result: unknown[] = []
+    result.length = rawValue.length
     seen.set(rawValue, result)
-    rawValue.forEach(item => result.push(cloneFallback(item, seen)))
+    rawValue.forEach((item, index) => {
+      result[index] = cloneFallback(item, seen)
+    })
     return result as T
   }
 
@@ -129,7 +141,16 @@ function cloneFallback<T>(value: T, seen: WeakMap<object, unknown>): T {
   seen.set(rawValue, result)
   Reflect.ownKeys(rawValue).forEach(key => {
     if (typeof key === 'string') {
-      result[key] = cloneFallback((rawValue as DataObject)[key], seen)
+      const cloned = cloneFallback((rawValue as DataObject)[key], seen)
+      if (key === '__proto__') {
+        // 原始数据键不能调用 Object.prototype 的原型 setter。
+        Object.defineProperty(result, key, {
+          value: cloned,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        })
+      } else result[key] = cloned
     }
   })
   return result as T
@@ -289,14 +310,20 @@ function equalObjects(
   }
 
   if (Array.isArray(left) || Array.isArray(right)) {
-    return (
-      Array.isArray(left) &&
-      Array.isArray(right) &&
-      left.length === right.length &&
-      left.every((item, index) =>
-        deepEqualInternal(item, right[index], context)
-      )
+    if (
+      !Array.isArray(left) ||
+      !Array.isArray(right) ||
+      left.length !== right.length
     )
+      return false
+    for (let index = 0; index < left.length; index++) {
+      const own = Object.prototype.hasOwnProperty.call(left, index)
+      if (own !== Object.prototype.hasOwnProperty.call(right, index))
+        return false
+      if (own && !deepEqualInternal(left[index], right[index], context))
+        return false
+    }
+    return true
   }
 
   if (left instanceof Map || right instanceof Map) {

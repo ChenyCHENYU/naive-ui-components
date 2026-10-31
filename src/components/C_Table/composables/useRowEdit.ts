@@ -4,7 +4,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { ref } from 'vue'
+import { getCurrentScope, onScopeDispose, ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, TableColumn } from '../types'
 import { cloneData } from '../../../utils/data'
@@ -54,6 +54,8 @@ export function useRowEdit(options: RowEditOptions) {
     editingData.value = {}
     validationErrors.value = []
   }
+  // 独立导出的编辑 hook 自己结束作用域中的会话，阻止迟到校验继续保存。
+  if (getCurrentScope()) onScopeDispose(invalidate)
 
   /**
    * 检查指定行是否正在编辑状态
@@ -80,6 +82,7 @@ export function useRowEdit(options: RowEditOptions) {
     const rowData = findRowData(rowKey)
     if (!rowData || isSaving.value) return false
 
+    revision++
     editingRowKey.value = rowKey
     editingData.value = { [String(rowKey)]: cloneData(rowData) }
     validationErrors.value = []
@@ -95,6 +98,7 @@ export function useRowEdit(options: RowEditOptions) {
     const currentData = options.data()
     if (!currentData || !Array.isArray(currentData)) return
 
+    revision++
     const rowIndex = currentData.findIndex(
       row => options.rowKey(row) === editingRowKey.value
     )
@@ -196,6 +200,7 @@ export function useRowEdit(options: RowEditOptions) {
   ) => {
     const rowData = getEditingRowData(rowKey)
     if (!rowData || isSaving.value) return
+    revision++
     rowData[field] = cloneData(value)
   }
 

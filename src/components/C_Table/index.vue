@@ -888,19 +888,28 @@
   /* ================= 列拖拽排序 ================= */
 
   const tableWrapperRef = ref<HTMLElement>()
+  const columnDragIndex = computed(
+    () =>
+      new Map(
+        reactiveColumns.value
+          .filter(item => !item.type && item.key !== '_actions')
+          .map(item => [item.key, item])
+      )
+  )
   let sortableInstance: Sortable | null = null
   let columnDragVersion = 0
+  let cancelColumnGesture: (() => void) | undefined
 
   const destroyColumnDrag = () => {
     columnDragVersion += 1
+    cancelColumnGesture?.()
+    cancelColumnGesture = undefined
     sortableInstance?.destroy()
     sortableInstance = null
   }
 
   const initColumnDrag = async () => {
-    const version = ++columnDragVersion
-    sortableInstance?.destroy()
-    sortableInstance = null
+    const version = columnDragVersion
     if (!resolved.value.enableColumnDrag || !tableWrapperRef.value) return
     try {
       const { default: Sortable } = await import('sortablejs')
@@ -909,22 +918,88 @@
         '.n-data-table-thead tr'
       )
       if (!headerRow) return
+      const rawColumn = (column: (typeof computedColumns.value)[number]) =>
+        column && !column.type
+          ? columnDragIndex.value.get(column.key)
+          : undefined
+      const headerIndex = (element: HTMLElement) =>
+        [...headerRow.children].indexOf(element.closest('[data-col-key]')!)
+      const canMoveHeaders = (
+        from: number,
+        to: number,
+        columns = computedColumns.value
+      ) =>
+        from >= 0 &&
+        to >= 0 &&
+        columns
+          .slice(Math.min(from, to), Math.max(from, to) + 1)
+          .every(column => Boolean(rawColumn(column)))
+      const restoreHeaderElement = (
+        item: HTMLElement,
+        nextSibling: ChildNode | null
+      ) => {
+        if (item.parentNode !== headerRow) return
+        if (nextSibling && nextSibling.parentNode !== headerRow) return
+        headerRow.insertBefore(item, nextSibling)
+      }
+      let dragSnapshot:
+        | {
+            columns: TableColumn[]
+            rendered: typeof computedColumns.value
+            fromIndex: number
+            nextSibling: ChildNode | null
+          }
+        | undefined
       sortableInstance = new Sortable(headerRow as HTMLElement, {
         animation: resolved.value.columnDragAnimationDuration,
         handle: resolved.value.columnDragHandleClass
           ? `.${resolved.value.columnDragHandleClass}`
           : undefined,
-        filter: '.c-table-actions-column',
+        // 辅助列留在原位；动态行会额外插入单选列，不能拿 DOM 下标索引原始列。
+        filter: (_event, target) =>
+          !rawColumn(computedColumns.value[headerIndex(target)]),
         preventOnFilter: true,
         ghostClass: 'column-drag-ghost',
+        onMove: evt =>
+          canMoveHeaders(
+            dragSnapshot?.fromIndex ?? headerIndex(evt.dragged),
+            headerIndex(evt.related),
+            dragSnapshot?.rendered
+          ),
+        onStart: evt => {
+          dragSnapshot = {
+            columns: [...reactiveColumns.value],
+            rendered: computedColumns.value,
+            fromIndex: headerIndex(evt.item),
+            nextSibling: evt.item.nextSibling,
+          }
+          cancelColumnGesture = () => {
+            if (dragSnapshot)
+              restoreHeaderElement(evt.item, dragSnapshot.nextSibling)
+            dragSnapshot = undefined
+          }
+        },
         onEnd: (evt: SortableEvent) => {
-          if (evt.oldIndex == null || evt.newIndex == null) return
+          const snapshot = dragSnapshot
+          if (!snapshot) return
+          const toHeaderIndex = headerIndex(evt.item)
+          // Vue 仍持有拖动前的 VNode 顺序，先还原 Sortable 修改的 DOM 再提交列状态。
+          cancelColumnGesture?.()
+          cancelColumnGesture = undefined
           const cols = [...reactiveColumns.value]
-          const visibleColumns = cols.filter(
-            column => column.visible !== false && column.key !== '_actions'
+          if (
+            snapshot.rendered !== computedColumns.value ||
+            cols.length !== snapshot.columns.length ||
+            cols.some((column, index) => column !== snapshot.columns[index]) ||
+            !canMoveHeaders(
+              snapshot.fromIndex,
+              toHeaderIndex,
+              snapshot.rendered
+            )
           )
-          const moved = visibleColumns[evt.oldIndex]
-          const target = visibleColumns[evt.newIndex]
+            return
+          const moved = rawColumn(snapshot.rendered[snapshot.fromIndex])
+          const target = rawColumn(snapshot.rendered[toHeaderIndex])
           if (!moved || !target || moved === target) return
           const fromIndex = cols.indexOf(moved)
           const toIndex = cols.indexOf(target)
@@ -1153,24 +1228,34 @@
   onMounted(() => {
     const crudRef = props.crud?.tableRef
     if (crudRef) crudRef.value = publicApi
-    void initColumnDrag()
     if (tableWrapperRef.value) {
       void rowDragState.initRowDrag(tableWrapperRef.value)
     }
   })
 
   watch(
-    [
-      () => resolved.value.enableColumnDrag,
-      () => resolved.value.columnDragHandleClass,
-      () => normalizedLoading.value,
-      () => computedColumns.value.length,
-    ],
+    () =>
+      resolved.value.enableColumnDrag
+        ? JSON.stringify([
+            computedColumns.value.map(column => [
+              'key' in column ? column.key : undefined,
+              column.type,
+            ]),
+            resolved.value.columnDragHandleClass,
+            resolved.value.columnDragAnimationDuration,
+            normalizedLoading.value,
+            resolved.value.error?.show,
+          ])
+        : undefined,
     async () => {
+      // 在 Vue 更新新列顺序前结束旧手势，避免外部响应与 Sortable 同时改表头。
+      destroyColumnDrag()
+      const version = columnDragVersion
       await nextTick()
+      if (version !== columnDragVersion) return
       await initColumnDrag()
     },
-    { immediate: true, flush: 'post' }
+    { immediate: true, flush: 'sync' }
   )
 
   watch(

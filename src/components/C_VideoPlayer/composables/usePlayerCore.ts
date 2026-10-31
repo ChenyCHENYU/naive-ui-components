@@ -66,7 +66,8 @@ export function usePlayerCore(props: VideoPlayerProps) {
       width: props.width ?? '100%',
       height: props.height ?? '100%',
       fluid: props.fluid !== false,
-      fitVideoSize: 'fixWidth' as const,
+      // 固定尺寸不能在视频元数据到达后再被按宽度适配覆盖。
+      fitVideoSize: props.fluid !== false ? 'fixWidth' : 'fixed',
       poster: props.poster ?? '',
       playsinline: true,
       videoAttributes: { crossOrigin: 'anonymous' },

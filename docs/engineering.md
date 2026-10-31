@@ -44,7 +44,7 @@ dist/
 
 ## 开发
 
-环境基线为 Node.js 20.19.0+ 与 Bun 1.3.14；仓库通过 `.node-version`、`packageManager`、`engines` 和冻结锁文件保持本地/CI 一致。
+维护环境为 Node.js 20.19.0+ 与固定的 Bun 1.4.2；仓库通过 `.node-version`、`packageManager` 和冻结锁文件保持本地/CI 一致。消费者 Bun 最低版本仍为 1.3.14；维护环境使用能真实应用条件 overrides 的版本，并校验实际解析结果。
 
 ```bash
 bun install --frozen-lockfile # 严格按锁文件安装依赖

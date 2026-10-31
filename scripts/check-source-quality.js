@@ -52,8 +52,8 @@ for (const filename of files) {
 const consoleCallCount = count(/console\.(?:log|warn|error|debug)\s*\(/g)
 const failures = []
 
-if (unsafeAnyCount > 117) {
-  failures.push(`unsafe any baseline increased: ${unsafeAnyCount} > 117`)
+if (unsafeAnyCount > 106) {
+  failures.push(`unsafe any baseline increased: ${unsafeAnyCount} > 106`)
 }
 if (consoleCallCount > 15) {
   failures.push(

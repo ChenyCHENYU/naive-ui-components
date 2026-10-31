@@ -271,22 +271,10 @@ export function renderEditableCell(
   onStartEdit: () => void,
   formatterConfig?: import('./useTableGlobalConfig').FormatterConfig
 ): VNodeChild {
-  let displayValue: string | VNodeChild
-  if (column.render) {
-    displayValue = column.render(rowData, rowIndex) ?? String(value ?? '')
-  } else if ((column as any).formatter) {
-    displayValue = applyFormatter(
-      value,
-      rowData,
-      (column as any).formatter,
-      formatterConfig
-    )
-  } else {
-    displayValue = String(value ?? '')
-  }
-
   return h('div', { class: 'cell-edit-wrapper' }, [
-    h('span', { class: 'cell-value' }, displayValue),
+    h('span', { class: 'cell-value' }, [
+      renderDisplayCell(column, rowData, rowIndex, value, formatterConfig),
+    ]),
     h(C_Icon, {
       name: 'mdi:square-edit-outline',
       title: '编辑',

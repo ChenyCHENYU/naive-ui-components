@@ -8,91 +8,101 @@
 
 <template>
   <div
-    ref="wrapperRef"
-    class="c-video-player"
-    :class="{
-      'is-mini': miniPlayer.isMiniMode.value,
-      'is-fullscreen': isFullscreen,
-    }"
-    tabindex="0"
+    ref="anchorRef"
+    class="c-video-player-anchor"
+    :style="
+      miniPlayer.isMiniMode.value
+        ? { height: `${miniPlayer.placeholderHeight.value}px` }
+        : undefined
+    "
   >
-    <!-- 播放器容器 -->
     <div
-      ref="containerRef"
-      class="c-video-player__container"
-    />
-
-    <!-- 动态水印 -->
-    <WatermarkOverlay
-      :visible="antiCheatState.showWatermark.value"
-      :text="antiCheatState.watermarkText.value"
-    />
-
-    <!-- 字幕渲染层 -->
-    <SubtitleOverlay
-      :text="subtitle.currentText.value"
-      :tracks="subtitle.subtitleList.value"
-      :active-language="subtitle.activeLanguage.value"
-      @switch="subtitle.switchSubtitle"
-      @close="subtitle.closeSubtitle"
-    />
-
-    <!-- 测验弹窗 -->
-    <QuizOverlay
-      v-if="props.quizzes?.length"
-      v-model:answer="quiz.selectedAnswer.value"
-      :quiz="quiz.activeQuiz.value"
-      :show-result="quiz.showResult.value"
-      :is-correct="quiz.lastAnswerCorrect.value"
-      @submit="handleQuizSubmit"
-      @retry="quiz.retryQuiz()"
-      @close="handleQuizClose"
-    />
-
-    <!-- 扩展控制栏（xgplayer 自带控制栏外的扩展） -->
-    <ControlBar :visible="showExtendedControls">
-      <template #left>
-        <!-- 章节标记 -->
-        <ChapterMarkers
-          v-if="props.chapters?.length"
-          :chapters="chaptersRef"
-          :current-chapter="chapters.currentChapter.value"
-          :current-index="chapters.currentChapterIndex.value"
-          @go-to="chapters.goToChapter"
-        />
-      </template>
-
-      <template #right>
-        <!-- 书签面板 -->
-        <BookmarkPanel
-          :bookmarks="bookmarksState.bookmarks.value"
-          @add="handleAddBookmark"
-          @remove="bookmarksState.removeBookmark"
-          @go-to="bookmarksState.goToBookmark"
-        />
-      </template>
-    </ControlBar>
-
-    <!-- 小窗关闭按钮 -->
-    <button
-      v-if="miniPlayer.isMiniMode.value"
-      type="button"
-      class="c-video-player__mini-close"
-      aria-label="关闭小窗播放"
-      @click="miniPlayer.closeMiniPlayer()"
+      ref="wrapperRef"
+      class="c-video-player"
+      :class="{
+        'is-mini': miniPlayer.isMiniMode.value,
+        'is-fullscreen': isFullscreen,
+      }"
+      tabindex="0"
     >
-      ✕
-    </button>
+      <!-- 播放器容器 -->
+      <div
+        ref="containerRef"
+        class="c-video-player__container"
+      />
 
-    <!-- 小窗点击回原位 -->
-    <button
-      v-if="miniPlayer.isMiniMode.value"
-      type="button"
-      class="c-video-player__mini-back"
-      @click="miniPlayer.scrollToPlayer()"
-    >
-      回到原位
-    </button>
+      <!-- 动态水印 -->
+      <WatermarkOverlay
+        :visible="antiCheatState.showWatermark.value"
+        :text="antiCheatState.watermarkText.value"
+      />
+
+      <!-- 字幕渲染层 -->
+      <SubtitleOverlay
+        :text="subtitle.currentText.value"
+        :tracks="subtitle.subtitleList.value"
+        :active-language="subtitle.activeLanguage.value"
+        @switch="subtitle.switchSubtitle"
+        @close="subtitle.closeSubtitle"
+      />
+
+      <!-- 测验弹窗 -->
+      <QuizOverlay
+        v-if="props.quizzes?.length"
+        v-model:answer="quiz.selectedAnswer.value"
+        :quiz="quiz.activeQuiz.value"
+        :show-result="quiz.showResult.value"
+        :is-correct="quiz.lastAnswerCorrect.value"
+        @submit="handleQuizSubmit"
+        @retry="quiz.retryQuiz()"
+        @close="handleQuizClose"
+      />
+
+      <!-- 扩展控制栏（xgplayer 自带控制栏外的扩展） -->
+      <ControlBar :visible="showExtendedControls">
+        <template #left>
+          <!-- 章节标记 -->
+          <ChapterMarkers
+            v-if="props.chapters?.length"
+            :chapters="chaptersRef"
+            :current-chapter="chapters.currentChapter.value"
+            :current-index="chapters.currentChapterIndex.value"
+            @go-to="chapters.goToChapter"
+          />
+        </template>
+
+        <template #right>
+          <!-- 书签面板 -->
+          <BookmarkPanel
+            :bookmarks="bookmarksState.bookmarks.value"
+            @add="handleAddBookmark"
+            @remove="bookmarksState.removeBookmark"
+            @go-to="bookmarksState.goToBookmark"
+          />
+        </template>
+      </ControlBar>
+
+      <!-- 小窗关闭按钮 -->
+      <button
+        v-if="miniPlayer.isMiniMode.value"
+        type="button"
+        class="c-video-player__mini-close"
+        aria-label="关闭小窗播放"
+        @click="miniPlayer.closeMiniPlayer()"
+      >
+        ✕
+      </button>
+
+      <!-- 小窗点击回原位 -->
+      <button
+        v-if="miniPlayer.isMiniMode.value"
+        type="button"
+        class="c-video-player__mini-back"
+        @click="miniPlayer.scrollToPlayer()"
+      >
+        回到原位
+      </button>
+    </div>
   </div>
 </template>
 
@@ -169,6 +179,7 @@
   } = core
 
   const wrapperRef = ref<HTMLElement | null>(null)
+  const anchorRef = ref<HTMLElement | null>(null)
 
   /* ======================== 播放控制 ======================== */
 
@@ -236,7 +247,7 @@
   /* ======================== 小窗播放 ======================== */
 
   const miniEnabled = computed(() => props.miniPlayer ?? false)
-  const miniPlayer = useMiniPlayer(wrapperRef, miniEnabled)
+  const miniPlayer = useMiniPlayer(anchorRef, miniEnabled)
 
   /* ======================== 快捷键 ======================== */
 

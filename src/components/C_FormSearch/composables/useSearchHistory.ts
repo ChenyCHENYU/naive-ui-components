@@ -16,6 +16,12 @@ export function useSearchHistory<T extends object = SearchFormParams>(
 ) {
   const currentOptions = () => toValue(options)
   const enabled = computed(() => !!currentOptions().storageKey)
+  const maximumItems = () => {
+    const value = currentOptions().maxItems
+    return value !== undefined && Number.isFinite(value)
+      ? Math.max(1, Math.trunc(value))
+      : 5
+  }
 
   const findField = (prop: string) =>
     fields.value.find(item => item.prop === prop)
@@ -34,16 +40,26 @@ export function useSearchHistory<T extends object = SearchFormParams>(
   const restoreFromStorage = () => {
     const { storageKey } = currentOptions()
     if (!storageKey) return
-    const stored = getItem<SearchFormItem[] | Record<string, string[]>>(
-      storageKey
-    )
-    if (!stored) return
+    const stored = getItem<unknown>(storageKey)
+    if (!stored || typeof stored !== 'object') return
     const entries = Array.isArray(stored)
-      ? stored.map(item => [item.prop, item.hisList] as const)
+      ? stored.flatMap(item =>
+          item && typeof item === 'object' && typeof item.prop === 'string'
+            ? [[item.prop, item.hisList] as const]
+            : []
+        )
       : Object.entries(stored)
     entries.forEach(([prop, values]) => {
       const field = findField(prop)
-      if (field && Array.isArray(values)) field.hisList = [...values]
+      if (!field || !Array.isArray(values)) return
+      // 持久化历史可能来自旧版本或宿主写入，只恢复有限条有效文本。
+      const history: string[] = []
+      const limit = maximumItems()
+      for (const value of values) {
+        if (typeof value === 'string') history.push(value)
+        if (history.length === limit) break
+      }
+      field.hisList = history
     })
   }
 
@@ -89,7 +105,7 @@ export function useSearchHistory<T extends object = SearchFormParams>(
     const idx = hisList.indexOf(newValue)
     if (idx > -1) hisList.splice(idx, 1)
     hisList.unshift(newValue)
-    const maxItems = Math.max(1, currentOptions().maxItems ?? 5)
+    const maxItems = maximumItems()
     if (hisList.length > maxItems) hisList.length = maxItems
     return hisList
   }

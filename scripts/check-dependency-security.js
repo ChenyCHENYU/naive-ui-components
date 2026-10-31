@@ -5,6 +5,10 @@ import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  legacyMinimatchReview,
+  verifyLegacyMinimatch,
+} from './legacy-minimatch-review.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const bracesMitigation = Object.freeze({
@@ -150,7 +154,7 @@ export const verifyBracesMitigation = (directory = root) => {
   return checks + 1
 }
 
-export const evaluateAuditResult = (result, verifyMitigation) => {
+export const evaluateAuditResult = (result, verifyMitigation, verifyLegacy) => {
   if (result.error || result.signal || ![0, 1].includes(result.status)) {
     throw new Error('Dependency audit did not complete successfully')
   }
@@ -184,45 +188,61 @@ export const evaluateAuditResult = (result, verifyMitigation) => {
       behaviorChecks: verifyMitigation(),
     }
   }
-  assert.equal(
-    entries.length,
-    1,
-    'Unreviewed dependency advisory: inspect bun run check:audit:raw'
-  )
-  const [name, alerts] = entries[0]
-  assert.ok(
-    name === 'braces' && Array.isArray(alerts) && alerts.length === 1,
-    'Unreviewed dependency advisory: only one exact braces advisory may be mitigated'
-  )
-  const alert = alerts[0]
-  assert.ok(
-    alert &&
-      alert.id === 1240992 &&
+  const locallyMitigated = []
+  const notAffected = []
+  for (const [name, alerts] of entries) {
+    assert.ok(
+      Array.isArray(alerts) && alerts.length === 1,
+      'Unreviewed dependency advisory: unexpected advisory count'
+    )
+    const alert = alerts[0]
+    if (
+      name === 'braces' &&
+      alert?.id === 1240992 &&
       alert.url === bracesMitigation.url &&
       alert.severity === 'high' &&
-      alert.vulnerable_versions === '<=3.0.3',
-    'Unreviewed dependency advisory: the braces advisory identity or scope changed'
-  )
+      alert.vulnerable_versions === '<=3.0.3'
+    ) {
+      locallyMitigated.push(bracesMitigation.advisory)
+    } else if (
+      name === 'minimatch' &&
+      alert?.id === 1244012 &&
+      alert.url === legacyMinimatchReview.url &&
+      alert.severity === 'moderate' &&
+      alert.vulnerable_versions === '<11.0.1' &&
+      typeof verifyLegacy === 'function'
+    ) {
+      notAffected.push(legacyMinimatchReview.advisory)
+    } else
+      assert.fail('Unreviewed dependency advisory: identity or scope changed')
+  }
   assert.equal(
     result.status,
     1,
     'Audit exit code does not match its reported findings'
   )
   return {
-    rawFindings: 1,
-    locallyMitigated: [bracesMitigation.advisory],
-    behaviorChecks: verifyMitigation(),
+    rawFindings: entries.length,
+    locallyMitigated,
+    ...(notAffected.length ? { notAffected } : {}),
+    behaviorChecks:
+      verifyMitigation() + (notAffected.length ? verifyLegacy() : 0),
   }
 }
 
 export const checkDependencySecurity = (directory = root) => {
+  const legacyChecks = verifyLegacyMinimatch(directory)
   const audit = spawnSync('bun', ['audit', '--json'], {
     cwd: directory,
     encoding: 'utf8',
     timeout: 60_000,
     maxBuffer: 8 * 1024 * 1024,
   })
-  return evaluateAuditResult(audit, () => verifyBracesMitigation(directory))
+  return evaluateAuditResult(
+    audit,
+    () => verifyBracesMitigation(directory),
+    () => legacyChecks
+  )
 }
 
 if (
@@ -234,7 +254,7 @@ if (
     console.log(JSON.stringify(result, null, 2))
     if (result.rawFindings) {
       console.log(
-        'One upstream advisory remains; its development-toolchain depth issue is locally mitigated and verified. This is not a zero-finding raw audit.'
+        'Raw findings are retained above: locallyMitigated means a verified patch; notAffected means an exact reviewed legacy path lacks the affected code. This is not a zero-finding raw audit.'
       )
     }
   } catch (error) {

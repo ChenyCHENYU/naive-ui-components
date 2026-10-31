@@ -193,6 +193,7 @@
   const currentStep = ref<number>(0)
   const loading = ref<boolean>(false)
   let disposed = false
+  let validationVersion = 0
   const stepValidationStatus = reactive<Record<number, boolean>>({})
 
   /* ================= 计算属性 ================= */
@@ -278,21 +279,22 @@
 
   const validateCurrentStep = async (): Promise<boolean> => {
     const stepKey = stepsWithItems.value[currentStep.value]?.config.key
+    const version = ++validationVersion
     if (!stepKey || disposed) return false
+    const current = () =>
+      !disposed &&
+      version === validationVersion &&
+      stepsWithItems.value[currentStep.value]?.config.key === stepKey
     try {
       const valid = props.validateStep
         ? await props.validateStep(currentStep.value, stepKey)
         : true
-      if (
-        disposed ||
-        stepsWithItems.value[currentStep.value]?.config.key !== stepKey
-      )
-        return false
+      if (!current()) return false
       emit('step-validate', currentStep.value)
       stepValidationStatus[currentStep.value] = valid
       return valid
     } catch {
-      stepValidationStatus[currentStep.value] = false
+      if (current()) stepValidationStatus[currentStep.value] = false
       return false
     }
   }
@@ -430,6 +432,13 @@
   onScopeDispose(() => {
     disposed = true
   })
+
+  // 使用步骤 key 识别校验归属；索引会随空组过滤和重排变化。
+  watch(
+    () => stepsWithItems.value[currentStep.value]?.config.key,
+    () => validationVersion++,
+    { flush: 'sync' }
+  )
 
   /* ================= 对外暴露 ================= */
   const revealField = async (
