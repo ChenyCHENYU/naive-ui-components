@@ -9,17 +9,3 @@ export type {
   BatchOperationResult,
   PatchScalar,
 } from './core/batchPatch'
-export {
-  createDictionaryLabelResolver,
-  getDictionaryLabel,
-  parseDictionaryValue,
-} from './core/dictionary'
-export type {
-  DictionaryBinding,
-  DictionarySource,
-  DictionaryState,
-  DictionaryProvider,
-  DictionaryOption,
-  DictionaryValue,
-  DictionaryParseResult,
-} from './core/dictionary'

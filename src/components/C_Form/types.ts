@@ -1,3 +1,5 @@
+import type { OptionsState } from '../../core/options'
+export type { OptionsState } from '../../core/options'
 /*
  * @Author: ChenYu ycyplus@gmail.com
  * @Date: 2025-06-01
@@ -15,7 +17,6 @@ import type {
 } from 'vue'
 import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui'
 import type { FormValidationRule } from './utils/formValidation'
-import type { DictionaryBinding } from '../../core/dictionary'
 
 export type MaybePromise<T> = T | Promise<T>
 
@@ -426,9 +427,9 @@ interface FormOptionBase<T extends object> {
   placeholder?: string
   rules?: readonly FormValidationRule[]
   attrs?: Record<string, unknown>
+  /** 外部受控选项状态；仅呈现，不触发或订阅外部数据源。 */
+  optionsState?: OptionsState
   children?: OptionItem[]
-  /** 应用字典名称或直接选项源；asyncOptions、显式 children 优先。 */
-  dictionary?: DictionaryBinding
   show?: boolean
   layout?: ItemLayoutConfig
   help?: string
@@ -553,8 +554,8 @@ export interface FormInstance<T extends object = FormRecord> {
   asyncLoadingMap: Record<string, boolean>
   /** 字段异步选项加载错误 */
   asyncErrorMap: Record<string, unknown>
-  /** 当前字段字典加载错误；不修改模型，不等同于业务校验错误。 */
-  getDictionaryError(field: FieldPath<T>): unknown
+  /** 当前选项加载错误；不修改模型，不等同于业务校验错误。 */
+  getOptionsError(field: FieldPath<T>): unknown
   /** 重新加载全部或指定字段的异步选项 */
   reloadOptions(field?: FieldPath<T>): Promise<void>
   /** 是否正在提交 */

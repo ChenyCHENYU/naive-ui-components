@@ -35,7 +35,15 @@
       query: { keys: ['lower', 'upper'] },
     },
     { type: 'month', prop: 'month', label: '月份', valueMode: 'formatted' },
-    { type: 'select', prop: 'enabled', label: '状态', dictionary: 'enabled' },
+    {
+      type: 'select',
+      prop: 'enabled',
+      label: '状态',
+      list: [
+        { value: false, label: '停用' },
+        { value: true, label: '启用' },
+      ],
+    },
     {
       type: 'custom',
       prop: 'customer',

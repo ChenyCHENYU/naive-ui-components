@@ -61,12 +61,7 @@ export const generateFormOptions = (
     return {
       prop: String(column.key),
       label: column.title || String(column.key),
-      type:
-        EDIT_TO_FORM_TYPE[
-          column.editType ??
-            (column.dictionary !== undefined ? 'select' : 'input')
-        ] ?? 'input',
-      dictionary: column.dictionary,
+      type: EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input',
       ...(Array.isArray(column.editProps?.options)
         ? { children: column.editProps.options.map(option => ({ ...option })) }
         : {}),

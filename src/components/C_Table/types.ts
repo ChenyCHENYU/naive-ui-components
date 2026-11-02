@@ -16,7 +16,6 @@ import type { TableConfig, CrudBinding } from './composables/useTableConfig'
 import type { UseCrossPageSelectionReturn } from './composables/useCrossPageSelection'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
-import type { DictionaryBinding } from '../../core/dictionary'
 
 /* 宽松的 Ref-like 类型，支持跨 Vue 实例的 Ref 传递 */
 type RefLike<T> = { value: T } | T
@@ -191,7 +190,9 @@ export interface BaseConfig<T extends object = DataRecord> {
 }
 
 /* ================= 数据映射类型 ================= */
-export type SelectOption = BaseOption
+export type SelectOption = Omit<BaseOption, 'value'> & {
+  value: string | number | boolean
+}
 
 /* ================= 编辑相关类型 ================= */
 export interface EditProps {
@@ -203,6 +204,7 @@ export interface EditProps {
   rows?: number
   placeholder?: string
   options?: SelectOption[]
+  fallbackOption?: import('naive-ui').SelectProps['fallbackOption']
   rules?: FormItemRule[]
   format?: string
   valueFormat?: string
@@ -243,8 +245,6 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   status?: ColumnStatus
   /** 未声明 width 时默认按内容测宽；false 使用 display.columnWidth。 */
   autoWidth?: boolean
-  /** 字典显示低于 render/formatter；编辑时显式 editProps.options 优先。 */
-  dictionary?: DictionaryBinding
   fixed?: 'left' | 'right'
   resizable?: boolean
   minWidth?: number

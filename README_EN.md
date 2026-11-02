@@ -33,7 +33,7 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.26.0**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.27.0**; see the [changelog](./CHANGELOG.md) for release details.
 
 The 0.24.3–0.24.4 review covers async validation and edit sessions, dictionaries, column dragging, media and graph instances, data snapshots and dependency boundaries. Reproduced issues are fixed; dead state and unreachable retry branches are removed. See the [stability review](./docs/stability-review-20261031.md) for scope, performance constraints and verification evidence.
 
@@ -41,15 +41,13 @@ Forms and search share `config.density: 'compact'`, reducing field spacing and e
 
 0.24.5 restores spacing between form modal titles and the first field using native card section styles. Long forms scroll inside the content area while the footer stays visible; modal styles do not override nested business cards.
 
-0.25.0 adds shared dictionary state, local retry feedback in forms and searches, and one status summary per table. Array values translate item by item while preserving model types, historical labels and validation messages. Structurally compatible sources from `@robot-admin/dictionary` need no additional UI adapter.
-
 0.24.6 fixes full-width `C_Table` editor dialogs ignoring `edit.modalWidth`. Table editors and `C_FormModal` share native section styles and viewport bounds. Dialogs honor configured widths on desktop, use one form column when space is limited, and scroll tall content without relying on application utility CSS.
 
-Ordinary select columns retain `editProps.options` in modal fields without requiring dictionary bindings. Labels are displayed while editing and saving preserve the original value types.
+Ordinary select columns retain `editProps.options` in modal fields through the ordinary option contract. Labels are displayed while editing and saving preserve the original value types.
 
-Business workspaces can share dictionary providers, container-aware search, regional density, remote pickers, error navigation and batch results. Pure value utilities live at `/data`; opt-in composables live at `/workflows`. See the [data and workspace guide](./docs/guides/data-workflows.md), [search workflows](./docs/guides/search-workflows.md), [data picker](./docs/guides/data-picker.md) and [batch results](./docs/guides/batch-results.md).
+Business workspaces support container-aware search, regional density, remote pickers, error navigation and batch results. Pure value utilities live at `/data`; opt-in composables live at `/workflows`. See the [data and workspace guide](./docs/guides/data-workflows.md), [search workflows](./docs/guides/search-workflows.md), [data picker](./docs/guides/data-picker.md) and [batch results](./docs/guides/batch-results.md).
 
-Dictionary sources can expose shared loading states. Forms and search offer local retry, while tables show one status summary per source. Failures retain existing labels without automatic per-field messages. Array values are translated individually; ordinary enums remain separate from explicitly configured status colors.
+This release removes dictionary fields, injection, subscriptions and translation from components. Forms and search accept ordinary options and controlled `optionsState`; tables accept formatters/renderers and `editProps.options`. Applications compose data plugins; the component package does not recognize plugin names, instances or protocols. See the [project composition guide](./docs/guides/data-workflows.md) for migration.
 
 ## Capability map
 
@@ -230,9 +228,9 @@ See [development and build](./docs/engineering.en.md) for individual checks and 
 
 ## Content widths and status columns (0.24)
 
-Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted, dictionary and status labels. Automatic widths default to 80–360px; use `minWidth/maxWidth` to adjust. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
+Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted values and status labels. Automatic widths default to 80–360px; use `minWidth/maxWidth` to adjust. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
 
-Use `{ key: 'status', status: true }` for themed status tags, or `status: { S1B: { label: 'Review', color: 'danger' }, S1C: 'success' }`. Semantic colors and CSS colors are supported. Unknown codes stay neutral, zero/false stay valid, and explicit render functions win. Display changes never rewrite data or export policy. Measurement does not invoke render functions; give graphical/custom columns explicit widths. Data and dictionary updates remeasure a bounded sample; all caches remain component-local.
+Use `{ key: 'status', status: true }` for themed status tags, or `status: { S1B: { label: 'Review', color: 'danger' }, S1C: 'success' }`. Semantic colors and CSS colors are supported. Unknown codes stay neutral, zero/false stay valid, and explicit render functions win. Display changes never rewrite data or export policy. Measurement does not invoke render functions; give graphical/custom columns explicit widths. Data and column updates remeasure a bounded sample; all caches remain component-local.
 
 Headers display their full text by default, independently of cell ellipsis. Initial layout, explicit or restored narrow widths, and interactive resizing share a minimum that includes the entire title and its sort/filter controls. The 360px measurement cap applies only to cell content; longer headers use internal horizontal scrolling. Custom header content should declare an appropriate minWidth.
 

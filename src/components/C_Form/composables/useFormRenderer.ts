@@ -26,11 +26,9 @@ import { getDataPath, setDataPath } from '../../../utils/data'
 import { resolveNumberInputProps } from '../numberInput'
 import { useComponentLocale } from '../../../composables/useComponentLocale'
 import {
-  decodeDictionaryControlValue,
-  encodeDictionaryControlValue,
-  toDictionaryControlOptions,
-  type DictionaryOption,
-} from '../../../core/dictionary'
+  createOptionValueBinding,
+  needsOptionValueBinding,
+} from '../../../core/options'
 
 /* =================== 组件映射类型 =================== */
 
@@ -104,8 +102,6 @@ export interface UseFormRendererOptions {
   instanceSlots?: Readonly<Slots>
   asyncOptionsCache: Ref<Record<string, OptionItem[]>>
   asyncLoadingMap: Ref<Record<string, boolean>>
-  getDictionaryOptions?: (field: string) => readonly DictionaryOption[]
-  isDictionaryLoading?: (field: string) => boolean
   getOptionsError?: (field: string) => unknown
   reloadOptions?: (field: string) => Promise<void>
   renderers?: ComputedRef<Record<string, FormRenderer> | undefined>
@@ -392,11 +388,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     ) {
       return asyncOptionsCache.value[item.prop] ?? []
     }
-    if (item.children !== undefined || item.asyncOptions) return staticChildren
-    return (
-      opts.getDictionaryOptions?.(item.prop).map(option => ({ ...option })) ??
-      []
-    )
+    return staticChildren
   }
 
   function resolveEffectiveItem(item: FormOption): FormOption {
@@ -410,8 +402,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
   ): RendererProps {
     if (
       item.type === 'select' &&
-      (asyncLoadingMap.value[item.prop] ||
-        opts.isDictionaryLoading?.(item.prop))
+      (asyncLoadingMap.value[item.prop] || item.optionsState?.loading)
     ) {
       props.loading = true
     }
@@ -420,55 +411,54 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
 
   /* ===== 表单项控件渲染 ===== */
 
-  function usesDictionaryControl(
-    item: FormOption,
-    renderer: FormRenderer
-  ): boolean {
-    return (
-      item.dictionary !== undefined &&
-      item.children === undefined &&
-      !item.asyncOptions &&
-      OPTION_TYPES.has(item.type) &&
-      renderer === builtInRenderers[item.type]
-    )
-  }
-
-  function applyDictionaryControl(
-    baseProps: RendererProps,
-    item: FormOption
-  ): void {
+  function applyOptionValues(baseProps: RendererProps, item: FormOption): void {
+    if (!needsOptionValueBinding(item.children, baseProps.value)) return
+    const binding = createOptionValueBinding(item.children, baseProps.value)
     const update = baseProps['onUpdate:value']
-    baseProps.value = encodeDictionaryControlValue(baseProps.value)
-    baseProps['onUpdate:value'] = value => {
-      const decoded = decodeDictionaryControlValue(value)
+    baseProps.value = binding.value
+    baseProps['onUpdate:value'] = (value, selected?: unknown) => {
+      const decoded = binding.decode(
+        value as Parameters<typeof binding.decode>[0],
+        item.type === 'select' ? selected : undefined
+      )
       if (Array.isArray(update)) update.forEach(handler => handler(decoded))
       else update?.(decoded)
     }
-    item.children = toDictionaryControlOptions(item.children ?? [])
-    baseProps.options = item.children
-    baseProps.fallbackOption = (value: unknown) => ({
-      value,
-      label: String(decodeDictionaryControlValue(value) ?? ''),
-    })
+    item.children = binding.options as OptionItem[]
+    if (item.type === 'select') {
+      baseProps.options = item.children
+      baseProps.fallbackOption ??= binding.fallbackOption
+    }
   }
 
   /** 局部加载提示放在控件下方，不覆盖 NFormItem 的校验反馈插槽。 */
   function renderOptionsError(item: FormOption): VNode | null {
-    if (opts.getOptionsError?.(item.prop) === undefined) return null
+    if (opts.getOptionsError?.(item.prop) == null) return null
+    const retry = item.optionsState?.retry
+    const loading =
+      asyncLoadingMap.value[item.prop] || item.optionsState?.loading
     return h('div', { role: 'alert', class: 'c-form-option-error' }, [
-      t('dictionary.optionsFailed'),
-      h(
-        C.NButton,
-        {
-          text: true,
-          size: 'small',
-          loading:
-            asyncLoadingMap.value[item.prop] ||
-            opts.isDictionaryLoading?.(item.prop),
-          onClick: () => opts.reloadOptions?.(item.prop),
-        },
-        { default: () => t('common.retry') }
-      ),
+      t('options.failed'),
+      // Naive 按钮卸载会清除父 FormItem 校验；辅助重试用原生按钮，不参与字段校验生命周期。
+      retry || item.asyncOptions
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class: 'c-form-option-retry',
+              disabled: loading,
+              'aria-busy': loading || undefined,
+              onClick: () => {
+                void Promise.resolve()
+                  .then(() =>
+                    retry ? retry() : opts.reloadOptions?.(item.prop)
+                  )
+                  .catch(() => undefined)
+              },
+            },
+            t('common.retry')
+          )
+        : null,
     ])
   }
 
@@ -478,11 +468,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     control: VNode | null
   ): VNode | null {
     if (!OPTION_TYPES.has(item.type)) return control
-    if (
-      !item.asyncOptions &&
-      (item.dictionary === undefined || item.children !== undefined)
-    )
-      return control
+    if (!item.asyncOptions && !item.optionsState) return control
     return h('div', { class: 'c-form-option-state' }, [
       control,
       renderOptionsError(item),
@@ -510,9 +496,12 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
         ) as RendererProps
       )
 
-      // 字典的布尔编码必须在原生控件边界转换，模型与提交值保持原始类型。
-      if (usesDictionaryControl(item, renderer))
-        applyDictionaryControl(baseProps, effectiveItem)
+      // 通用选项值只在内置控件边界转换，模型与提交值保持原始类型。
+      if (
+        ['select', 'checkbox', 'radio'].includes(item.type) &&
+        renderer === builtInRenderers[item.type]
+      )
+        applyOptionValues(baseProps, effectiveItem)
 
       const control = renderer(baseProps, effectiveItem, config.value, {
         slots: instanceSlots,

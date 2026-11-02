@@ -44,23 +44,9 @@
     min-height: 0;
   }
   > .table-toolbar,
-  > .table-dictionary-state,
   > .batch-actions-bar,
   > .pagination-wrapper {
     flex-shrink: 0;
-  }
-}
-
-.table-dictionary-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  color: var(--text-color-2, #6b7280);
-  background: var(--c-table-header-bg);
-  font-size: 12px;
-  &--error {
-    color: var(--error-color, #d03050);
   }
 }
 

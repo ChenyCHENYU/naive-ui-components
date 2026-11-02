@@ -33,7 +33,7 @@
 | 按需消费 | 60 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.26.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.27.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.24.3–0.24.4 复核了异步校验与编辑会话、字典订阅、列拖拽、媒体与图实例、数据快照及依赖边界，修复已复现的问题并删除死状态与不可达重试分支。审查范围、性能约束和验证证据见[稳定性复核](./docs/stability-review-20261031.md)。
 
@@ -41,17 +41,13 @@
 
 0.24.5 修复表单弹窗首行紧贴标题的问题：标题、内容与页脚通过原生分区样式保持留白，长表单仅内容区滚动，页脚保持可见；样式不穿透内嵌业务卡片。
 
-0.26.0 支持独立字典插件的公开只读协议，组件自动衔接；新项目安装字典时只导入 SDK 自己的插件与配置，不再手工桥接组件库 key。组件库不增加字典 SDK 的强制依赖，既有 provide API 和页面覆盖继续可用。
-
-0.25.0 完善共享字典源的加载、失败与重试反馈，表单和搜索在本地恢复，表格汇总字典状态；支持数组多值翻译，保留原始类型、历史标签和已有校验提示。数据源可直接使用 `@robot-admin/dictionary`，无需组件库与表格互相依赖。
-
 0.24.6 修复 `C_Table` 编辑弹窗未应用 `edit.modalWidth` 导致通栏的问题。表格编辑与 `C_FormModal` 共用原生分区样式和视口约束；桌面按配置宽度居中，窄屏自动单列，超高内容内部滚动，无需宿主原子类或页面样式补丁。
 
-普通下拉列的 `editProps.options` 同步传递到弹窗字段，不依赖字典绑定；显示标签、编辑及保存继续使用各自的原始值协议。
+普通下拉列的 `editProps.options` 同步传递到弹窗字段；显示标签、编辑及保存继续使用各自的原始值协议。
 
-业务工作台新增共享字典 Provider、容器搜索、区域密度、远程选择、错误导航及批量结果；纯值工具走 `/data`，组合函数走 `/workflows`。接入见[业务数据与工作台](./docs/guides/data-workflows.md)、[搜索工作流](./docs/guides/search-workflows.md)、[远程选择](./docs/guides/data-picker.md)和[批量结果](./docs/guides/batch-results.md)。
+业务工作台支持容器搜索、区域密度、远程选择、错误导航及批量结果；纯值工具走 `/data`，组合函数走 `/workflows`。接入见[业务数据与工作台](./docs/guides/data-workflows.md)、[搜索工作流](./docs/guides/search-workflows.md)、[远程选择](./docs/guides/data-picker.md)和[批量结果](./docs/guides/batch-results.md)。
 
-字典源可提供共享加载状态：表单、搜索就地重试，表格按源汇总一条状态提示；失败保留已有显示，不默认逐字段弹错误。数组编码逐项翻译，普通枚举与显式状态色保持独立。
+本版移除组件内的字典字段、注入、订阅与翻译。表单和搜索接收普通选项及通用 `optionsState`，表格接收 formatter/render 与 editProps.options；数据插件在项目层组合，组件包不识别插件名称、实例或协议。升级时将旧 dictionary 字段转换为普通选项/格式化配置，见[项目组合指南](./docs/guides/data-workflows.md)。
 
 ## 能力地图
 
@@ -238,7 +234,7 @@ bun run check:audit  # 单独运行依赖安全审计，CI 在 verify 前执行
 const columns = [
   { type: 'index' },
   { key: 'customer', title: '客户', maxWidth: 280 },
-  { key: 'status', title: '状态', dictionary: 'order-status', status: true },
+  { key: 'status', title: '状态', status: true },
   {
     key: 'planStatus',
     title: '计划状态',
@@ -251,9 +247,9 @@ const columns = [
 ]
 ```
 
-状态列复用 Naive UI 标签和主题。支持 `success/warning/danger/info/neutral`，也支持 Naive 的 `error/default/primary` 和 CSS 颜色。未知代码保持中性；`0/false` 是有效值，空值保留空态。显式 render 优先；formatter/字典文字会用于默认颜色判断和测宽。状态配置只改变展示，不会改写数据、排序、筛选或导出。
+状态列复用 Naive UI 标签和主题。支持 `success/warning/danger/info/neutral`，也支持 Naive 的 `error/default/primary` 和 CSS 颜色。未知代码保持中性；`0/false` 是有效值，空值保留空态。显式 render 优先；formatter 文字会用于默认颜色判断和测宽。状态配置只改变展示，不会改写数据、排序、筛选或导出。
 
-测宽不额外挂载或执行 render；图标、进度条和复杂自定义内容请显式指定 width。数据与字典更新会触发新的有界测量，配置和缓存只属于当前组件实例。此版本将未声明宽度的业务列由自然布局改为有界内容宽度；既有显式布局及原生 table-layout 覆盖仍保留。
+测宽不额外挂载或执行 render；图标、进度条和复杂自定义内容请显式指定 width。数据与列配置更新会触发新的有界测量，配置和缓存只属于当前组件实例。此版本将未声明宽度的业务列由自然布局改为有界内容宽度；既有显式布局及原生 table-layout 覆盖仍保留。
 
 表头默认完整展示，不随单元格 ellipsis 配置省略。所有业务列的最小宽度计入完整标题及排序/筛选控件；初始布局、显式窄列宽、恢复列设置与拖拽缩列均受此下限保护。360px 仅限制数据内容测宽；标题更长时允许超过该值，并使用表格内部横向滚动。复杂自定义标题请配置 minWidth。
 

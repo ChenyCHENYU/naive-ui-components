@@ -24,7 +24,6 @@ import {
 } from '../utils/formModel'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { useFormDirty } from './useFormDirty'
-import { useDictionaryOptions } from '../../../composables/useDictionary'
 import {
   deleteDataPath,
   getDataPath,
@@ -101,6 +100,9 @@ export function useFormState(
   const formRules = reactive<FormRules>({})
   const formItemRefs = new Map<string, FormItemInst>()
 
+  const optionsByField = computed(
+    () => new Map(options.value.map(item => [item.prop, item]))
+  )
   const asyncOptionsCache = ref<Record<string, OptionItem[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncErrorMap = ref<Record<string, unknown>>({})
@@ -148,25 +150,6 @@ export function useFormState(
       // 提示适配器失败不能打断加载/提交的清理，也不能制造未处理异常。
     }
   }
-
-  const dictionaryOptions = useDictionaryOptions(
-    () =>
-      new Map(
-        options.value
-          .filter(
-            item =>
-              item.dictionary !== undefined &&
-              item.children === undefined &&
-              !item.asyncOptions
-          )
-          .map(item => [item.prop, item.dictionary])
-      ),
-    // 字典失败由字段就地呈现；诊断可显式接管，避免密集表单逐字段弹提示。
-    {
-      onError: (error, field) =>
-        config.value.onError?.(error, { source: 'async-options', field }),
-    }
-  )
 
   /** 提示插件异常不能把已经完成的业务提交改判为失败。 */
   function notify(type: 'success' | 'info', message: string): void {
@@ -427,23 +410,15 @@ export function useFormState(
     const targets = options.value.filter(
       item => item.asyncOptions && (!field || item.prop === field)
     )
-    const dictionaries = options.value.filter(
-      item =>
-        item.dictionary !== undefined &&
-        item.children === undefined &&
-        !item.asyncOptions &&
-        (!field || item.prop === field)
-    )
-    if (field && targets.length === 0 && dictionaries.length === 0) {
+    if (field && targets.length === 0) {
       throw new Error(`[C_Form] 未找到异步选项字段: ${field}`)
     }
-    await Promise.all([
-      ...targets.map(item => {
+    await Promise.all(
+      targets.map(item => {
         scheduledOptionLoads.delete(item.prop)
         return loadAsyncOptions(item, 'manual')
-      }),
-      ...dictionaries.map(item => dictionaryOptions.reload(item.prop)),
-    ])
+      })
+    )
   }
 
   function applyValueWhen(): string[] {
@@ -822,9 +797,10 @@ export function useFormState(
     asyncOptionsCache,
     asyncLoadingMap,
     asyncErrorMap,
-    getDictionaryOptions: dictionaryOptions.getOptions,
-    isDictionaryLoading: dictionaryOptions.isLoading,
-    getDictionaryError: dictionaryOptions.getError,
+    getOptionsError: (field: string) =>
+      asyncErrorMap.value[field] ??
+      optionsByField.value.get(field)?.optionsState?.error ??
+      undefined,
     reloadOptions,
   }
 }

@@ -1,28 +1,7 @@
 import type { InjectionKey } from 'vue'
 import type { FormConfig } from './components/C_Form/composables/useFormConfig'
 import type { ComponentFeedback, ComponentLocale } from './core/contracts'
-import type { DictionaryProvider } from './core/dictionary'
-
-export type {
-  DictionaryValue,
-  DictionaryOption,
-  DictionarySource,
-  DictionaryState,
-  DictionaryProvider,
-  DictionaryBinding,
-  DictionaryParseResult,
-} from './core/dictionary'
-export {
-  createDictionaryLabelResolver,
-  getDictionaryLabel,
-  parseDictionaryValue,
-} from './core/dictionary'
-
-/** v1 只读 Provider 协议：跨独立插件/多副本共享 token，数据仍由各 Vue 应用持有。 */
-export const DICTIONARY_PROVIDER_KEY: InjectionKey<DictionaryProvider> =
-  Symbol.for('@robot-admin/dictionary/provider/v1')
-
-// 按需安装只需共享注入协议，不加载组件或 Naive UI 反馈适配器。
+// 按需安装共享组件自身配置，不加载组件或 Naive UI 反馈适配器。
 export type {
   ConfirmOptions,
   ComponentFeedback,

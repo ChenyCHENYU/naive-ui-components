@@ -39,6 +39,7 @@ type SearchComponent = <T extends object = SearchFormParams>(
 
 export const C_FormSearch = Runtime as unknown as SearchComponent
 export type { ComponentDensity } from '../../core/density'
+export type { OptionsState } from '../../core/options'
 export type {
   SearchFieldType,
   SearchOptionItem,

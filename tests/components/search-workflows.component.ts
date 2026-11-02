@@ -11,11 +11,6 @@ import {
 } from 'naive-ui'
 import FormSearchComponent from '../../src/components/C_FormSearch/index.vue'
 import type { SearchFormParams } from '../../src/components/C_FormSearch/types'
-import type {
-  DictionaryOption,
-  DictionarySource,
-} from '../../src/core/dictionary'
-import { DICTIONARY_PROVIDER_KEY } from '../../src/context'
 
 const Search = FormSearchComponent<SearchFormParams>
 
@@ -336,80 +331,48 @@ test('custom slots and renderers use a guarded update channel including fixed an
   wrapper.unmount()
 })
 
-test('dictionary options are shared, preserve boolean codes and update without replacing the draft', async () => {
-  const request = deferred<readonly DictionaryOption[]>()
-  let options: readonly DictionaryOption[] = []
-  let listener: (() => void) | undefined
-  const unsubscribe = vi.fn()
-  const source: DictionarySource = {
-    getOptions: () => options,
-    load: vi.fn(() =>
-      request.promise.then(value => {
-        options = value
-        return value
-      })
-    ),
-    subscribe: callback => {
-      listener = callback
-      return unsubscribe
-    },
-  }
+test('controlled options preserve boolean codes and refresh without replacing the draft', async () => {
   const wrapper = mount(Search, {
     props: {
       modelValue: { keyword: '', enabled: false },
       formItemList: [
         { type: 'input', prop: 'keyword' },
-        { type: 'select', prop: 'enabled', dictionary: 'enabled' },
+        { type: 'select', prop: 'enabled', list: [] },
       ],
-    },
-    global: {
-      provide: {
-        [DICTIONARY_PROVIDER_KEY as symbol]: { getDictionary: () => source },
-      },
     },
   })
   await wrapper.get('input').setValue('draft')
-  request.resolve([
-    { label: '停用', value: false },
-    { label: '启用', value: true },
-  ])
-  await flushPromises()
+  await wrapper.setProps({
+    formItemList: [
+      { type: 'input', prop: 'keyword' },
+      {
+        type: 'select',
+        prop: 'enabled',
+        list: [
+          { label: '停用', value: false },
+          { label: '启用', value: true },
+        ],
+      },
+    ],
+  })
   const select = wrapper.getComponent(NSelect)
   expect(select.text()).toContain('停用')
   expect(wrapper.vm.formParams.keyword).toBe('draft')
   const next = select.props('options')![1]
   select.vm.$emit('update:value', next.value, next)
   expect(wrapper.vm.formParams.enabled).toBe(true)
-  options = [{ label: '可用', value: true }]
-  listener?.()
-  await nextTick()
+  await wrapper.setProps({
+    formItemList: [
+      { type: 'input', prop: 'keyword' },
+      {
+        type: 'select',
+        prop: 'enabled',
+        list: [{ label: '可用', value: true }],
+      },
+    ],
+  })
   expect(select.text()).toContain('可用')
   expect(wrapper.vm.formParams.keyword).toBe('draft')
-  wrapper.unmount()
-  expect(unsubscribe).toHaveBeenCalled()
-})
-
-test('explicit select options take precedence without fetching an unused dictionary', async () => {
-  const source: DictionarySource = {
-    getOptions: () => [],
-    load: vi.fn(async () => []),
-  }
-  const wrapper = mount(Search, {
-    props: {
-      modelValue: { enabled: false },
-      formItemList: [
-        {
-          type: 'select',
-          prop: 'enabled',
-          dictionary: source,
-          list: [{ label: '本地', value: false }],
-        },
-      ],
-    },
-  })
-  await flushPromises()
-  expect(wrapper.getComponent(NSelect).text()).toContain('本地')
-  expect(source.load).not.toHaveBeenCalled()
   wrapper.unmount()
 })
 
@@ -550,12 +513,8 @@ test('fixed context changes away and back still invalidate an earlier in-flight 
   wrapper.unmount()
 })
 
-test('dictionary failures stay local and can be retried through the native selector empty state', async () => {
-  const load = vi
-    .fn()
-    .mockRejectedValueOnce(new Error('offline'))
-    .mockResolvedValueOnce([{ label: '停用', value: false }])
-  const source: DictionarySource = { getOptions: () => [], load }
+test('controlled option failures stay local and retry only when clicked', async () => {
+  const retry = vi.fn()
   const wrapper = mount(Search, {
     props: {
       modelValue: { enabled: false },
@@ -563,7 +522,8 @@ test('dictionary failures stay local and can be retried through the native selec
         {
           type: 'select',
           prop: 'enabled',
-          dictionary: source,
+          list: [],
+          optionsState: { error: new Error('offline'), retry },
           attrs: { show: true },
         },
       ],
@@ -572,13 +532,23 @@ test('dictionary failures stay local and can be retried through the native selec
   await flushPromises()
   const select = wrapper.getComponent(NSelect)
   expect(select.props('status')).toBe('error')
-  const retry = wrapper
+  expect(retry).not.toHaveBeenCalled()
+  const button = wrapper
     .findAllComponents(NButton)
-    .find(button => button.text() === '重试')
-  expect(retry).toBeDefined()
-  await retry!.trigger('click')
-  await flushPromises()
-  expect(load).toHaveBeenCalledTimes(2)
+    .find(item => item.text() === '重试')
+  expect(button).toBeDefined()
+  await button!.trigger('click')
+  expect(retry).toHaveBeenCalledOnce()
+  await wrapper.setProps({
+    formItemList: [
+      {
+        type: 'select',
+        prop: 'enabled',
+        list: [{ value: false, label: '停用' }],
+        optionsState: { loading: false, error: null },
+      },
+    ],
+  })
   expect(select.props('status')).toBeUndefined()
   expect(wrapper.vm.formParams.enabled).toBe(false)
   wrapper.unmount()

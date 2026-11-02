@@ -3,8 +3,6 @@ export { resolveComponentDensity } from './core/density'
 export type { ComponentDensity, ResolvedComponentDensity } from './core/density'
 export * from './data'
 export * from './workflows'
-export { DICTIONARY_PROVIDER_KEY } from './context'
-import { DICTIONARY_PROVIDER_KEY, type DictionaryProvider } from './context'
 import {
   COMPONENT_FEEDBACK_KEY,
   COMPONENT_LOCALE_KEY,
@@ -103,8 +101,6 @@ export interface ComponentLibOptions {
   /** An explicitly shared registry is opt-in; default installation owns its own registry. */
   formRenderers?: FormRendererRegistry
   table?: TableGlobalConfig
-  /** 复用应用数据源；组件库不另建全局缓存或注册业务接口。 */
-  dictionaries?: DictionaryProvider
 }
 
 // ====== 组件列表（全量注册使用） ======
@@ -269,8 +265,6 @@ const install = (app: App, options: ComponentLibOptions = {}) => {
     options.formRenderers ?? createFormRendererRegistry()
   )
   if (options.table) app.provide(TABLE_GLOBAL_CONFIG_KEY, options.table)
-  if (options.dictionaries)
-    app.provide(DICTIONARY_PROVIDER_KEY, options.dictionaries)
 }
 
 export default {

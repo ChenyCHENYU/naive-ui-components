@@ -13,7 +13,7 @@ import type {
   TableColumn,
 } from '../../src/components/C_Table/types'
 
-test('editable status cells share the read-only dictionary and status presentation', async () => {
+test('editable status cells share the read-only formatter and status presentation', async () => {
   const wrapper = mount(C_Table<DataRecord>, {
     props: {
       data: [{ id: 1, state: 'S1C' }],
@@ -22,7 +22,10 @@ test('editable status cells share the read-only dictionary and status presentati
           key: 'state',
           title: '状态',
           status: true,
-          dictionary: { getOptions: () => [{ value: 'S1C', label: '已完成' }] },
+          formatter: {
+            type: 'enum',
+            fn: value => (value === 'S1C' ? '已完成' : String(value ?? '')),
+          },
         },
       ],
       config: { toolbar: { show: false }, pagination: false, edit: 'cell' },

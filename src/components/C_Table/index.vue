@@ -141,28 +141,6 @@
       </slot>
     </div>
 
-    <!-- 字典只影响显示：保留数据和旧标签，不阻断表格操作。 -->
-    <div
-      v-if="dictionaryStatus.failed || dictionaryStatus.loading"
-      class="table-dictionary-state"
-      :class="{ 'table-dictionary-state--error': dictionaryStatus.failed }"
-      :role="dictionaryStatus.failed ? 'alert' : 'status'"
-    >
-      <span>{{
-        dictionaryStatus.failed
-          ? t('dictionary.failed', { count: dictionaryStatus.failed })
-          : t('dictionary.loading', { count: dictionaryStatus.loading })
-      }}</span>
-      <NButton
-        v-if="dictionaryStatus.failed"
-        text
-        size="small"
-        :loading="dictionaryStatus.loading > 0"
-        @click="retryDictionaries"
-        >{{ t('common.retry') }}</NButton
-      >
-    </div>
-
     <!-- 表格主体 -->
     <NDataTable
       v-if="!resolved.error?.show"
@@ -665,8 +643,6 @@
     reactiveColumns,
     computedColumns,
     computedScrollX,
-    dictionaryStatus,
-    retryDictionaries,
   } = columnState
 
   const dataPipeline = useTableDataPipeline({
@@ -896,19 +872,7 @@
         cfg.scope && cfg.scope !== 'source'
           ? reactiveColumns.value
           : effectiveColumns.value
-      const exportColumns = columns.map(column =>
-        column.dictionary !== undefined && !column.formatter
-          ? {
-              ...column,
-              formatter: {
-                type: 'enum' as const,
-                fn: (value: unknown) =>
-                  columnState.getDictionaryLabel(column, value),
-              },
-            }
-          : column
-      )
-      await exportTableData(rows, exportColumns, {
+      await exportTableData(rows, columns, {
         ...cfg,
         formatterConfig: resolved.value.formatterConfig,
       })

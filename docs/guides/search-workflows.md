@@ -118,17 +118,15 @@
 
 `select` 保留字符串、数字、布尔值及多选数组的业务类型。内部布尔编码仅用于适配原生选择器，提交的 `false` 不会变成字符串或 `0`。
 
-## 字典与自定义控件
+## 外部选项与自定义控件
 
-字段可配置 `dictionary: 'orderStatus'`，由应用已提供的字典 Provider 解析；也可直接传入 `DictionarySource`。搜索不另建字典缓存，使用同一来源的选项、订阅与可取消加载。
-
-显式 `list`（包括空数组）和 `attrs.options` 优先于字典，且不会加载未使用的字典。加载失败在选择器中显示重试入口；字典标签更新不会重置输入草稿。组织切换和字典加载策略仍由应用 Provider 决定。
+字段通过 `list` 或 `attrs.options` 接收普通选项数组。外部加载状态可传 `optionsState: { loading, error, retry }`，选择器就地呈现错误和重试入口；组件不会查询、注册或订阅外部来源。重试只在用户点击时调用，接口、取消与共享缓存由项目负责。
 
 `custom` 可使用 `slot` 或 `render(context)`；必须声明类型正确的 `defaultValue`，使 reset 和 clear 有确定语义。上下文提供 `value`、只读 `model`、`prop`、`size`、`disabled`、`readonly` 和 `updateValue`。修改走 `updateValue`；`fixed`、`readonly`、`disabled` 字段会拦截控件回写。自定义按钮使用 `type="button"`，避免误触发表单提交。
 
 ## 草稿、执行结果和重置
 
-- `v-model` / `formParams` 是可编辑草稿；字段配置或字典选项变化不拿旧 props 覆盖未提交输入。
+- `v-model` / `formParams` 是可编辑草稿；字段配置或外部选项变化不拿旧 props 覆盖未提交输入。
 - `@search` 是经过校验的执行通知，保留原有时机；它不表示后台查询成功。
 - 使用 `config.onSearch` 返回任务 Promise 后，只有成功完成才更新 `appliedParams` 并发出 `@applied`。回调拒绝或显式返回 `false` 时，`searchFn()` 返回 `false`，保留上一次成功条件并允许重试。可直接返回 `useDataResource.reload()` 的 boolean 结果；接入自行收拢错误的其它控制器时，回调应检查其错误状态并返回 `false`。
 - 仅使用旧 `@search` 的接入无法观察事件监听器异步结果，因此不会伪造 `appliedParams`；需要成功快照时使用 `onSearch`。

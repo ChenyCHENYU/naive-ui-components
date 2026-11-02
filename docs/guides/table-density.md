@@ -100,7 +100,15 @@ const columns: TableColumn<Order>[] = [
 const columns = [
   { type: 'index' },
   { key: 'customer', title: '客户', maxWidth: 280 },
-  { key: 'status', title: '状态', dictionary: 'order-status', status: true },
+  {
+    key: 'status',
+    title: '状态',
+    formatter: {
+      type: 'enum',
+      fn: value => statusLabels[value] ?? String(value ?? ''),
+    },
+    status: true,
+  },
   {
     key: 'planStatus',
     title: '计划状态',

@@ -41,11 +41,7 @@ test('content widths use displayed labels, bound long content and preserve expli
         {
           key: 'code',
           title: '代码',
-          dictionary: {
-            getOptions: () => [
-              { value: 'X', label: '需要按展示文字测量的字典标签' },
-            ],
-          },
+          formatter: { type: 'enum', fn: () => '需要按展示文字测量的业务标签' },
         },
       ],
     },
@@ -85,7 +81,7 @@ test('automatic widths respond to loaded data while explicit and disabled widths
   expect(wrapper.emitted('update:data')).toBeUndefined()
 })
 
-test('status shorthand preserves zero, false, dictionaries, unknown values and custom render precedence', async () => {
+test('status shorthand preserves zero, false, formatters, unknown values and custom render precedence', async () => {
   const wrapper = mount(C_Table<DataRecord>, {
     props: {
       config,
@@ -101,7 +97,10 @@ test('status shorthand preserves zero, false, dictionaries, unknown values and c
             0: { label: '待复核', color: 'warning' },
             false: { label: '特殊状态', color: '#8b5cf6' },
           },
-          dictionary: { getOptions: () => [{ value: 'S1C', label: '已完成' }] },
+          formatter: {
+            type: 'enum',
+            fn: value => (value === 'S1C' ? '已完成' : String(value ?? '')),
+          },
         },
       ],
     },

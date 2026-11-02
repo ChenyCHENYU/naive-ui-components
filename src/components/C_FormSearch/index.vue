@@ -98,28 +98,33 @@
               v-if="item.type === 'select'"
               v-bind="item.attrs"
               :value="selectBindings.get(item.prop)?.value"
-              @update:value="value => setSelectValue(item.prop, value)"
+              @update:value="
+                (value, selected) => setSelectValue(item.prop, value, selected)
+              "
               :placeholder="item.placeholder || '请选择'"
               :clearable="item.attrs?.clearable !== false"
               :size="fieldSize(item)"
               :options="selectBindings.get(item.prop)?.options"
+              :fallback-option="selectFallback(item)"
               :loading="
-                dictionary.isLoading(item.prop) || item.attrs?.loading === true
+                item.optionsState?.loading === true ||
+                item.attrs?.loading === true
               "
               :disabled="fieldDisabled(item) || fieldReadonly(item)"
               :status="selectStatus(item)"
             >
               <template #empty>
                 <div
-                  v-if="dictionary.getError(item.prop) !== undefined"
+                  v-if="item.optionsState?.error != null"
                   role="alert"
                   class="form-search-option-error"
                 >
                   选项加载失败
                   <NButton
+                    v-if="item.optionsState?.retry"
                     text
                     size="small"
-                    @click="dictionary.reload(item.prop)"
+                    @click="retryOptions(item)"
                     >重试</NButton
                   >
                 </div>
@@ -127,7 +132,7 @@
               <template #action>
                 <div
                   v-if="
-                    dictionary.getError(item.prop) !== undefined &&
+                    item.optionsState?.error != null &&
                     selectBindings.get(item.prop)?.options?.length
                   "
                   role="alert"
@@ -135,9 +140,10 @@
                 >
                   选项加载失败，保留已有选项
                   <NButton
+                    v-if="item.optionsState?.retry"
                     text
                     size="small"
-                    @click="dictionary.reload(item.prop)"
+                    @click="retryOptions(item)"
                     >重试</NButton
                   >
                 </div>
@@ -313,7 +319,6 @@
   import { resolveSearchDateInput } from './dateRange'
   import { createSearchSelectBinding } from './select'
   import { useSearchLayout } from './composables/useSearchLayout'
-  import { useDictionaryOptions } from '../../composables/useDictionary'
   import SearchCustomField, {
     type SearchControlContext,
   } from './SearchCustomField'
@@ -406,31 +411,13 @@
     gap: density.value ? densityTokens.value.gap : 32,
     columns: props.config?.columns,
   }))
-  const dictionary = useDictionaryOptions(
-    () =>
-      new Map(
-        props.formItemList
-          .filter(
-            item =>
-              item.type === 'select' &&
-              item.show !== false &&
-              item.list === undefined &&
-              !Array.isArray(item.attrs?.options)
-          )
-          .map(item => [item.prop, item.dictionary])
-      )
-  )
   const fieldOptions = (
     item: SearchFormItem<T>
   ): SearchOptionItem[] | undefined => {
     if (Array.isArray(item.attrs?.options))
       return item.attrs.options as SearchOptionItem[]
     if (item.list !== undefined) return item.list
-    return item.dictionary
-      ? dictionary
-          .getOptions(item.prop)
-          .map((option): SearchOptionItem => ({ ...option }))
-      : undefined
+    return undefined
   }
 
   const selectBindings = computed(
@@ -448,6 +435,15 @@
       )
   )
 
+  const selectFallback = (
+    item: SearchFormItem<T>
+  ): import('naive-ui').SelectProps['fallbackOption'] => {
+    const supplied = item.attrs?.fallbackOption
+    return typeof supplied === 'function' || typeof supplied === 'boolean'
+      ? (supplied as import('naive-ui').SelectProps['fallbackOption'])
+      : selectBindings.value.get(item.prop)?.fallbackOption
+  }
+
   const inputValue = (field: string): string | null => {
     const value = (formParams.value as Record<string, unknown>)[field]
     return typeof value === 'string' ? value : null
@@ -455,9 +451,13 @@
 
   const setSelectValue = (
     field: string,
-    value: string | number | Array<string | number> | null
+    value: string | number | Array<string | number> | null,
+    selected?: unknown
   ): void => {
-    setFieldValue(field, selectBindings.value.get(field)?.decode(value) ?? null)
+    setFieldValue(
+      field,
+      selectBindings.value.get(field)?.decode(value, selected) ?? null
+    )
   }
 
   const setFieldValue = (field: string, value: unknown): void => {
@@ -495,9 +495,14 @@
   const selectStatus = (
     item: SearchFormItem<T>
   ): 'error' | 'warning' | undefined => {
-    if (dictionary.getError(item.prop) !== undefined) return 'error'
+    if (item.optionsState?.error != null) return 'error'
     const status = item.attrs?.status
     return status === 'error' || status === 'warning' ? status : undefined
+  }
+  const retryOptions = (item: SearchFormItem<T>): void => {
+    void Promise.resolve()
+      .then(() => item.optionsState?.retry?.())
+      .catch(() => undefined)
   }
   const rangeInputProps = (item: SearchFormItem<T>, endpoint: 0 | 1) => {
     const native = item.attrs?.inputProps

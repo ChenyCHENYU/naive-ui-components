@@ -31,5 +31,5 @@ void [
   source,
   Workflows.useDataResource,
   Workflows.useValidationScope,
-  Config.DICTIONARY_PROVIDER_KEY,
+  Config.COMPONENT_LOCALE_KEY,
 ]

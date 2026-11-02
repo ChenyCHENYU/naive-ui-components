@@ -11,6 +11,24 @@
     color: var(--error-color, #d03050);
     font-size: 12px;
   }
+  :deep(.c-form-option-retry) {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--primary-color, #2080f0);
+    font: inherit;
+    line-height: inherit;
+    cursor: pointer;
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+    &:disabled {
+      cursor: wait;
+      opacity: 0.5;
+    }
+  }
   .c-form-actions {
     margin-top: var(--c-form-row-gap, 20px);
   }

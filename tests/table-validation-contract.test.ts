@@ -159,7 +159,7 @@ test('warning-level rules do not block saves, transforms and messages preserve n
   ).toBe('trimmed')
 })
 
-test('ordinary select columns retain options for modal forms without a dictionary binding', () => {
+test('ordinary select columns retain options for modal forms', () => {
   const options = [
     { label: '未分配', value: 0 },
     { label: '已分配', value: 1, disabled: true },

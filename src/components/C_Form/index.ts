@@ -1,5 +1,6 @@
 export { default as C_Form } from './index.vue'
 export type { ComponentDensity } from '../../core/density'
+export type { OptionsState } from '../../core/options'
 
 /* 导出类型定义 */
 export type {

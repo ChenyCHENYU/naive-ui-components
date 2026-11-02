@@ -1,16 +1,20 @@
 import {
   createNumberCodec,
   createBatchPatch,
-  type DictionarySource,
 } from '@robot-admin/naive-ui-components/data'
 import {
   useDataResource,
   useValidationScope,
   useFormArray,
 } from '@robot-admin/naive-ui-components/workflows'
-import { DICTIONARY_PROVIDER_KEY } from '@robot-admin/naive-ui-components/config'
+import { COMPONENT_LOCALE_KEY } from '@robot-admin/naive-ui-components/config'
 import type { DataPickerSource } from '@robot-admin/naive-ui-components/C_DataPicker'
-import type { FormInstance } from '@robot-admin/naive-ui-components/C_Form'
+import type {
+  FormInstance,
+  FormOption,
+} from '@robot-admin/naive-ui-components/C_Form'
+import type { SearchFormItem } from '@robot-admin/naive-ui-components/C_FormSearch'
+import type { TableColumn } from '@robot-admin/naive-ui-components/C_Table'
 
 interface Item {
   id: string
@@ -20,9 +24,6 @@ interface Item {
 const exact: string | null = createNumberCodec({
   storage: 'decimal-string',
 }).parse('9007199254740993.01')
-const dictionary: DictionarySource = {
-  getOptions: () => [{ value: false, label: 'No' }],
-}
 const patch = createBatchPatch<Item>([
   { field: 'note', operation: 'clear' },
   { field: 'count', operation: 'set', value: 0 },
@@ -39,16 +40,39 @@ const source: DataPickerSource<Item> = {
 }
 declare const form: FormInstance<Item>
 form.revealField('server.returned.path')
+const plainForm: FormOption<Item> = {
+  type: 'select',
+  prop: 'id',
+  children: [],
+  optionsState: { loading: false, error: null, retry: async () => undefined },
+  // @ts-expect-error Data plugins are composed by the host, not registered in components.
+  dictionary: 'item-kind',
+}
+const plainSearch: SearchFormItem<Item> = {
+  type: 'select',
+  prop: 'id',
+  list: [],
+  // @ts-expect-error Search consumes ordinary options rather than plugin identifiers.
+  dictionary: 'item-kind',
+}
+const plainColumn: TableColumn<Item> = {
+  key: 'id',
+  title: 'ID',
+  // @ts-expect-error Tables do not resolve external data plugins.
+  dictionary: 'item-kind',
+}
 const resource = useDataResource<string, Item[]>
 const scope = useValidationScope
 const rows = useFormArray<Item>
 void [
   exact,
-  dictionary,
   patch,
   source,
   resource,
   scope,
   rows,
-  DICTIONARY_PROVIDER_KEY,
+  COMPONENT_LOCALE_KEY,
+  plainForm,
+  plainSearch,
+  plainColumn,
 ]

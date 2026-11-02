@@ -1,3 +1,5 @@
+import type { OptionsState } from '../../core/options'
+export type { OptionsState } from '../../core/options'
 /** 搜索字段支持的控件类型 */
 export type SearchFieldType =
   | 'input'
@@ -54,7 +56,6 @@ interface SearchFormItemBase {
   fixed?: boolean
   disabled?: boolean
   readonly?: boolean
-  dictionary?: DictionaryBinding
   /** 日期初值为 null 时显式声明格式化模型，避免清空后切换模型类型。 */
   valueMode?: 'timestamp' | 'formatted'
   query?: SearchQueryEncoding
@@ -67,6 +68,8 @@ interface SearchFormItemBase {
   show?: boolean
   defaultValue?: unknown
   attrs?: Record<string, unknown>
+  /** 外部受控选项状态；仅呈现，不触发或订阅外部数据源。 */
+  optionsState?: OptionsState
   rules?: FormItemRule[]
 }
 
@@ -224,4 +227,3 @@ import type { FormInst, FormItemRule } from 'naive-ui'
 import type { ComponentFeedback, ComponentLocale } from '../../config'
 import type { ComponentDensity } from '../../core/density'
 import type { VNodeChild } from 'vue'
-import type { DictionaryBinding } from '../../core/dictionary'

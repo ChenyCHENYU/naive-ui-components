@@ -1,5 +1,13 @@
 # @robot-admin/naive-ui-components
 
+## 0.27.0
+
+### Minor Changes
+
+- 修复受控选项重试按钮卸载时清空业务校验反馈的问题；普通布尔选项与自由输入保持原始类型，真实字符串不与控件内部编码混淆。
+
+- 移除表单、搜索和表格中的字典字段、注入协议、源订阅和自动翻译。组件只消费普通选项、formatter/render 和通用受控 optionsState，数据插件由项目组合。布尔选项的类型保留改为通用控件能力，外部加载错误与重试不触发组件内数据请求。删除公开字典 API，升级需迁移旧 dictionary 字段与 Provider 接入。
+
 ## 0.26.0
 
 ### Minor Changes
