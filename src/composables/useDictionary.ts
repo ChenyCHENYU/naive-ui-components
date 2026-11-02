@@ -187,6 +187,31 @@ export function useDictionaryOptions(
     }
   }
 
+  /** 源已通知新代次时，旧共享等待的取消不能覆盖新状态或短暂触发错误反馈。 */
+  function reportLoadFailure(
+    key: string,
+    view: DictionaryView,
+    revision: number,
+    error: unknown
+  ): void {
+    try {
+      if (
+        view.revision !== revision &&
+        error instanceof Error &&
+        error.name === 'AbortError' &&
+        view.source.getState
+      ) {
+        readState(key, view)
+        return
+      }
+    } catch (currentError) {
+      report(key, currentError, view)
+      return
+    }
+    // 当前请求失败和缺少状态协议的旧源继续明确报告，不按错误名一概静默。
+    report(key, error, view)
+  }
+
   /** 单次远端请求只管理自身控制器和结果；切换/取消由 load 统一协调。 */
   async function loadRemote(
     key: string,
@@ -215,7 +240,8 @@ export function useDictionaryOptions(
       )
       readState(key, view)
     } catch (error) {
-      if (isCurrent(key, view, controller)) report(key, error, view)
+      if (isCurrent(key, view, controller))
+        reportLoadFailure(key, view, revision, error)
     } finally {
       finishLoad(key, view, controller)
     }

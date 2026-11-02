@@ -4,6 +4,8 @@
 
 ## 一个字典数据源
 
+应用已接入独立字典包的插件时，表单、搜索和 C_Table 可直接消费同一实例，应用无需再导入组件库的注入 key。下面保留不使用独立 SDK、自行提供数据源的接入方式：
+
 ```ts
 import Components from '@robot-admin/naive-ui-components'
 import type { DictionarySource } from '@robot-admin/naive-ui-components/config'
@@ -24,6 +26,14 @@ app.use(Components, {
 字段只写 `dictionary: 'planState'`。C_Form 的 `children`、`asyncOptions`，C_FormSearch 的显式 `list/attrs.options`，C_Table 的 `render/formatter/editProps.options` 仍按各自既有优先级生效，未使用的字典不会被加载。
 
 按需安装可通过 `/config` 导出的 `DICTIONARY_PROVIDER_KEY` 注入同一个 Provider。不要因为使用表单而导入 MachTable 根包。
+
+### 跨包只读协议
+
+`DICTIONARY_PROVIDER_KEY` 保留原公开名称与类型，使用版本化 token `Symbol.for('@robot-admin/dictionary/provider/v1')`。独立插件和组件库无需互相导入或新增强制依赖；只需遵循 `getDictionary(name)` 和下方选项源协议。
+
+Symbol 注册表中只有固定 token，没有字典实例、请求、缓存或 resolver。实例保留在各 Vue 应用的 provide 中，SSR 请求和多个应用互不共享；页面使用同一个 token 局部 provide 时，表单、搜索、表格与独立详情按 Vue 最近祖先规则读取同一来源。
+
+已发布旧版组件使用私有 Symbol，不能仅升级独立 SDK 就自动互通，需要同步升级组件库。原有 `app.provide(DICTIONARY_PROVIDER_KEY, provider)` 和安装选项 `dictionaries` 写法继续保留；不扫描 Vue 私有上下文，也不通过另一份全局数据源掩盖缺失配置。
 
 `DictionarySource` 支持：
 

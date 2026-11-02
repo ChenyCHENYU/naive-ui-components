@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h, shallowRef } from 'vue'
+import { defineComponent, h, shallowRef, type App } from 'vue'
 import { NSelect } from 'naive-ui'
 import { DICTIONARY_PROVIDER_KEY } from '../../src/context'
 import { useDictionaryOptions } from '../../src/composables/useDictionary'
@@ -171,6 +171,37 @@ describe('Form / Table 共享应用字典', () => {
       getDictionary: (name: string) => (name === 'status' ? source : undefined),
     },
   }
+
+  test('按需组件直接消费独立插件的协议 token，应用无需导入组件库 key', async () => {
+    const plugin = {
+      install(app: App) {
+        app.provide(Symbol.for('@robot-admin/dictionary/provider/v1'), {
+          getDictionary: () => source,
+        })
+      },
+    }
+    const form = mount(C_Form, {
+      global: { plugins: [plugin] },
+      props: {
+        modelValue: { status: false },
+        options: [{ prop: 'status', type: 'select', dictionary: 'status' }],
+        config: { showActions: false },
+      },
+    })
+    const table = mount(C_Table, {
+      global: { plugins: [plugin] },
+      props: {
+        data: [{ id: 1, status: false }],
+        columns: [{ key: 'status', title: '状态', dictionary: 'status' }],
+        config: { toolbar: { show: false }, pagination: false },
+      },
+    })
+    await flushPromises()
+    expect(form.text()).toContain('未启用')
+    expect(table.text()).toContain('未启用')
+    form.unmount()
+    table.unmount()
+  })
 
   test('表单字典选项展示标签但模型保持0/false/001，未配置字段不改行为', async () => {
     const wrapper = mount(C_Form, {

@@ -8,6 +8,133 @@ import type {
 } from '../src/core/dictionary'
 
 describe('dictionary request and subscription ownership', () => {
+  for (const nextStatus of ['idle', 'loading', 'ready', 'empty'] as const) {
+    test(`同源失效/暂停后的旧等待取消不闪现错误（新状态 ${nextStatus}）`, async () => {
+      const options: readonly DictionaryOption[] = Object.freeze([])
+      let state: DictionaryState = { status: 'loading', options }
+      let notify = () => {}
+      let reject!: (error: unknown) => void
+      const pending = new Promise<readonly DictionaryOption[]>(
+        (_resolve, fail) => {
+          reject = fail
+        }
+      )
+      const reported: unknown[] = []
+      const visible: unknown[] = []
+      const source: DictionarySource = {
+        getOptions: () => options,
+        getState: () => state,
+        load: () => pending,
+        subscribe: listener => {
+          notify = listener
+          return () => {}
+        },
+      }
+      const scope = effectScope()
+      const view = scope.run(() => {
+        const view = useDictionaryOptions(new Map([['state', source]]), {
+          onError: error => reported.push(error),
+        })
+        // 必须看同步变化：最终状态虽会清错，旧 catch 也不能短暂触发错误反馈。
+        watch(
+          () => view.getError('state'),
+          error => {
+            if (error) visible.push(error)
+          },
+          { flush: 'sync' }
+        )
+        return view
+      })!
+      state = { status: nextStatus, options }
+      notify()
+      const cancelled = new Error('旧身份等待结束')
+      cancelled.name = 'AbortError'
+      reject(cancelled)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(reported).toEqual([])
+      expect(visible).toEqual([])
+      expect(view.getError('state')).toBeUndefined()
+      expect(view.isLoading('state')).toBe(nextStatus === 'loading')
+      scope.stop()
+    })
+  }
+
+  test('同源新请求的真实错误不被旧等待的取消替换或重复上报', async () => {
+    const options: readonly DictionaryOption[] = []
+    let state: DictionaryState = { status: 'loading', options }
+    let notify = () => {}
+    let reject!: (error: unknown) => void
+    const pending = new Promise<readonly DictionaryOption[]>(
+      (_resolve, fail) => {
+        reject = fail
+      }
+    )
+    const reported: unknown[] = []
+    const source: DictionarySource = {
+      getOptions: () => options,
+      getState: () => state,
+      load: () => pending,
+      subscribe: listener => {
+        notify = listener
+        return () => {}
+      },
+    }
+    const view = useDictionaryOptions(new Map([['state', source]]), {
+      onError: error => reported.push(error),
+    })
+    const latest = new Error('新身份接口失败')
+    state = { status: 'error', error: latest, options }
+    notify()
+    const cancelled = new Error('旧身份取消')
+    cancelled.name = 'AbortError'
+    reject(cancelled)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(view.getError('state')).toBe(latest)
+    expect(reported).toEqual([latest])
+    view.dispose()
+  })
+
+  test.each([false, true])(
+    '当前请求真实取消与无共享状态的 legacy 取消继续保持可见（共享状态：%s）',
+    async sharedState => {
+      const options: readonly DictionaryOption[] = []
+      let state: DictionaryState = { status: 'loading', options }
+      let notify = () => {}
+      let reject!: (error: unknown) => void
+      const pending = new Promise<readonly DictionaryOption[]>(
+        (_resolve, fail) => {
+          reject = fail
+        }
+      )
+      const reported: unknown[] = []
+      const source: DictionarySource = {
+        getOptions: () => options,
+        ...(sharedState ? { getState: () => state } : {}),
+        load: () => pending,
+        subscribe: listener => {
+          notify = listener
+          return () => {}
+        },
+      }
+      const view = useDictionaryOptions(new Map([['state', source]]), {
+        onError: error => reported.push(error),
+      })
+      const error = new Error('当前接口被取消')
+      error.name = 'AbortError'
+      if (sharedState) state = { status: 'error', error, options }
+      // legacy 只有数据通知，不能凭 AbortError 名称就隐藏其当前请求失败。
+      notify()
+      reject(error)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(view.getError('state')).toBe(error)
+      expect(reported).toEqual([error])
+      view.dispose()
+    }
+  )
+
   test('不可变快照的加载/失败通知不复制选项、不重建索引或触发数据消费者', async () => {
     let state: DictionaryState
     let reads = 0

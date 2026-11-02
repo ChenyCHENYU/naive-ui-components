@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.26.0
+
+### Minor Changes
+
+- 表单、搜索和表格通过稳定只读协议自动消费独立字典插件，无需使用侧手工桥接组件库 key，不增加字典 SDK 的强制依赖。保留既有公开 key 与 provide 写法、应用隔离和页面覆盖优先级。修复同源暂停或身份失效时旧 AbortError 短暂覆盖新状态的反馈，真实请求失败保持可见。
+
 ## 0.25.0
 
 ### Minor Changes
