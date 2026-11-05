@@ -14,6 +14,8 @@ const ZH_CN_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
   'picker.loadFailed': '候选数据加载失败',
   'picker.labelFailed': '名称加载失败，保留原编码',
   'picker.selected': '已选 {count} 项',
+  'picker.total': '共 {count} 条',
+  'picker.pagination': '候选数据分页',
   'picker.moreSelected': '另 {count} 项',
   'batch.title': '批量操作结果',
   'batch.summary':
@@ -202,6 +204,8 @@ const EN_US_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
   'picker.loadFailed': 'Could not load candidates',
   'picker.labelFailed': 'Could not load labels; original values are retained',
   'picker.selected': '{count} selected',
+  'picker.total': '{count} results',
+  'picker.pagination': 'Candidate pagination',
   'picker.moreSelected': '{count} more',
   'batch.title': 'Batch operation results',
   'batch.summary':

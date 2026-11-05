@@ -196,7 +196,14 @@ export function useDataPicker<T extends object, TFilters extends object>(
     },
   })
   const rows = computed(() => list.data.value?.rows ?? [])
-  const total = computed(() => list.data.value?.total ?? 0)
+  // 换页期间保留已知总数，旧页行数据仍由资源管理器清除。
+  const total = shallowRef<number | null>(null)
+  watch(list.data, result => {
+    if (!opened.value || !result) return
+    total.value = result.total
+    const lastPage = Math.max(1, Math.ceil(result.total / pageSize.value))
+    if (page.value > lastPage) page.value = lastPage
+  })
   const knownRows = computed(() => {
     const known = new Map(committedRows.value)
     for (const row of labels.data.value ?? [])
@@ -212,6 +219,9 @@ export function useDataPicker<T extends object, TFilters extends object>(
       .join('、')
   )
   const selectedCount = computed(() => draft.value.length)
+  const canConfirm = computed(
+    () => !blocked.value && (!props.requireSelection || selectedCount.value > 0)
+  )
   const selected = computed(() =>
     draft.value.slice(0, 30).map(value => ({
       value,
@@ -235,6 +245,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
 
   function close(): void {
     opened.value = false
+    total.value = null
     draft.value = []
     draftRows.value = new Map()
   }
@@ -258,7 +269,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
   }
 
   function confirm(): void {
-    if (blocked.value || !opened.value) return
+    if (!canConfirm.value || !opened.value) return
     const chosen = [...draft.value]
     const chosenRows = chosen.flatMap(value =>
       draftRows.value.has(value) ? [draftRows.value.get(value)!] : []
@@ -328,14 +339,13 @@ export function useDataPicker<T extends object, TFilters extends object>(
   function applyQuery(search: string, filters: TFilters | undefined): void {
     if (!opened.value || blocked.value) return
     const previous = queryState.value
-    if (
-      previous.page === 1 &&
-      previous.search === search &&
-      isDataEqual(previous.filters, filters)
-    ) {
+    const sameQuery =
+      previous.search === search && isDataEqual(previous.filters, filters)
+    if (previous.page === 1 && sameQuery) {
       void list.reload()
       return
     }
+    if (!sameQuery) total.value = null
     queryState.value = {
       page: 1,
       search,
@@ -380,6 +390,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
     display,
     selected,
     selectedCount,
+    canConfirm,
     columns,
     tableConfig,
     selectPage,

@@ -116,30 +116,41 @@
           :config="tableConfig"
           @selection-change="selectPage"
         />
-        <NPagination
-          v-if="total > pageSize"
-          v-model:page="page"
-          :page-size="pageSize"
-          :item-count="total"
-          :size="density.size"
-        />
-        <div
-          class="c-data-picker__selection"
-          aria-live="polite"
-        >
-          <span>{{ t('picker.selected', { count: selectedCount }) }}</span>
-          <NTag
-            v-for="item in selected"
-            :key="`${typeof item.value}:${item.value}`"
-            size="small"
-            closable
-            :title="item.label"
-            @close="remove(item.value)"
-            >{{ item.label }}</NTag
+        <div class="c-data-picker__result-bar">
+          <div
+            class="c-data-picker__selection"
+            aria-live="polite"
           >
-          <span v-if="selectedCount > 30">{{
-            t('picker.moreSelected', { count: selectedCount - 30 })
-          }}</span>
+            <span v-if="total !== null">{{
+              t('picker.total', { count: total })
+            }}</span>
+            <span>{{ t('picker.selected', { count: selectedCount }) }}</span>
+            <NTag
+              v-for="item in selected"
+              :key="`${typeof item.value}:${item.value}`"
+              size="small"
+              closable
+              :title="item.label"
+              @close="remove(item.value)"
+              >{{ item.label }}</NTag
+            >
+            <span v-if="selectedCount > 30">{{
+              t('picker.moreSelected', { count: selectedCount - 30 })
+            }}</span>
+          </div>
+          <nav
+            v-if="total !== null && total > pageSize"
+            class="c-data-picker__pagination"
+            :aria-label="t('picker.pagination')"
+          >
+            <NPagination
+              v-model:page="page"
+              :page-size="pageSize"
+              :item-count="total"
+              :page-slot="5"
+              :size="density.size"
+            />
+          </nav>
         </div>
       </div>
       <template #action>
@@ -152,7 +163,7 @@
           <NButton
             type="primary"
             :size="density.size"
-            :disabled="disabled || readonly"
+            :disabled="!canConfirm"
             @click="commit"
             >{{ t('common.confirm') }}</NButton
           >
@@ -229,6 +240,7 @@
     display,
     selected,
     selectedCount,
+    canConfirm,
     columns,
     tableConfig,
     selectPage,
@@ -303,6 +315,7 @@
           preset: 'card' as const,
           class: 'c-data-picker__modal',
           title: resolvedTitle.value,
+          'aria-label': resolvedTitle.value,
           style: { width: 'min(960px, calc(100vw - 24px))' },
           'onUpdate:show': (show: boolean) => {
             if (!show) close()

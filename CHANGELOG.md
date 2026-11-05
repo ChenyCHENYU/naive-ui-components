@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.29.1
+
+### Patch Changes
+
+- `C_DataPicker` 将候选总数与已选项放在左侧，分页放在右侧。换页等待期间保留分页，结果缩减时定位到有效页。定位等必选场景可开启 `require-selection`，选中候选后才可确认。
+
 ## 0.29.0
 
 ### Minor Changes

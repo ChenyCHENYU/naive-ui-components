@@ -38,9 +38,26 @@
   &__search {
     margin-bottom: 12px;
   }
+  &__result-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-block-start: 10px;
+  }
+  &__pagination {
+    margin-inline-start: auto;
+    max-width: 100%;
+    :deep(.n-pagination) {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+  }
   &__selection {
     flex-wrap: wrap;
-    margin-top: 12px;
+    min-width: 0;
+    max-width: 100%;
     font-size: 12px;
     :deep(.n-tag) {
       max-width: 100%;

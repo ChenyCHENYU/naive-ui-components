@@ -48,6 +48,8 @@ export interface DataPickerProps<
   density?: ComponentDensity
   locale?: ComponentLocale
   pageSize?: number
+  /** Prevent confirming an empty selection when the action needs a row. */
+  requireSelection?: boolean
   /** Inline selection keeps the current page or dialog as the sole overlay. */
   presentation?: 'modal' | 'inline'
   /** Each session starts with these filters. A changed baseline invalidates the old session. */

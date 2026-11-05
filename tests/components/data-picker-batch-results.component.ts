@@ -312,6 +312,39 @@ describe('C_DataPicker远程选择会话', () => {
     wrapper.unmount()
   })
 
+  test('换页保留分页和已知总数，无选中项时禁用确认，数据缩减后重新定位', async () => {
+    const pending = deferred<{ rows: Row[]; total: number }>()
+    const request = vi
+      .fn<DataPickerSource<Row>['request']>()
+      .mockResolvedValueOnce({ rows: allRows.slice(0, 2), total: 3 })
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce({ rows: [allRows[0]!], total: 1 })
+    const wrapper = mount(C_DataPicker<Row>, {
+      props: {
+        source: { ...createSource(), request },
+        columns,
+        pageSize: 2,
+        requireSelection: true,
+      },
+    })
+    await wrapper.get('.c-data-picker__open').trigger('click')
+    await flushPromises()
+    const pager = () => wrapper.getComponent(NPagination)
+    expect(button(wrapper, '确定').props('disabled')).toBe(true)
+    expect(pager().props('itemCount')).toBe(3)
+    pager().vm.$emit('update:page', 2)
+    await flushPromises()
+    expect(pager().props('page')).toBe(2)
+    expect(pager().props('itemCount')).toBe(3)
+    expect(tableData(wrapper)).toEqual([])
+    pending.resolve({ rows: [], total: 1 })
+    await flushPromises()
+    expect(request.mock.calls.map(([query]) => query.page)).toEqual([1, 2, 1])
+    expect(tableData(wrapper)).toEqual([allRows[0]])
+    expect(wrapper.findComponent(NPagination).exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   test('切换源会取消旧请求并关闭旧会话，忽略signal的旧回包也不能覆盖新源', async () => {
     const pending = deferred<{ rows: Row[]; total: number }>()
     let signal!: AbortSignal

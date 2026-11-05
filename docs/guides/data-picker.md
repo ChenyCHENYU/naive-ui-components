@@ -48,6 +48,7 @@
 
 - `source.rowKey` 是表格行身份；`source.value(row)` 是业务提交值，两者可以不同，均须稳定且唯一。业务值支持字符串和数值，`0` 是有效值。
 - 选择在本地草稿中进行，跨分页保留；只有“确认选择”或显式清空才发出 `update:modelValue`。取消、关闭弹窗、卸载不会提交草稿。
+- 计划定位等操作可加上 `require-selection`，选中候选后才可确认。默认允许提交空选择。
 - `select(rows)` 返回已解析的选中行。提供 `source.resolve(values, signal)` 可一次批量回显全部初值；未提供时，尚未加载的初值显示原编码且保留，不猜测标签，不逐条请求。需要完整 `rows` 事件的场景应提供 `resolve`。
 - 源、受控值、单多选模式或可用状态改变时关闭旧会话；旧请求即使忽略 signal，也不能回写到新会话。
 - `readonly` 保留名称展示，但不打开选择、清空或确认；`disabled` 同样禁止变更。名称加载失败保留编码并提供重试。
@@ -56,7 +57,7 @@
 
 `request` 接收 `{ page, pageSize, search, signal }`，返回 `{ rows, total }`。应用负责接口字段转换、鉴权、业务过滤、去重及缓存。组件不猜测 `data.records` 等响应信封。
 
-默认 `pageSize=20`；密度按显式 `density`、区域 `C_Density` / 表单默认密度、`compact` 依次解析，支持 `default`、`comfortable`。列表使用虚拟表格，已选标签最多同时呈现30个，其余显示数量。可通过实例 `open()` / `close()` 控制选择会话。
+默认 `pageSize=20`。密度按显式 `density`、区域 `C_Density` / 表单默认密度、`compact` 依次解析，支持 `default`、`comfortable`。列表使用虚拟表格，底部左侧显示结果数和已选项，右侧分页在换页加载时保持可见。窄窗允许分行。已选标签最多同时呈现 30 个，其余显示数量。可通过实例 `open()` / `close()` 控制选择会话。
 
 `locale` 可覆盖应用中英文配置，标题和 placeholder 的显式配置优先；运行时切换语言不会清空选择草稿。
 
