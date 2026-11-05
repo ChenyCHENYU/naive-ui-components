@@ -1,6 +1,13 @@
 .c-data-picker {
   width: 100%;
   min-width: 0;
+  &__inline {
+    margin-top: 8px;
+    min-width: 0;
+  }
+  &__content:focus {
+    outline: none;
+  }
   &__trigger,
   &__search,
   &__actions,

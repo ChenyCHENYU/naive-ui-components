@@ -4,25 +4,39 @@ import type { ComponentLocale } from '../../core/contracts'
 
 export type DataPickerValue = string | number
 
+export interface DataPickerRequest<
+  TFilters extends object = Record<string, unknown>,
+> {
+  page: number
+  pageSize: number
+  search: string
+  signal: AbortSignal
+  /** Only present when a structured query is configured or submitted. */
+  filters?: Readonly<TFilters>
+}
+
 /** 接口、鉴权与实体映射只在应用中注册一次，组件不探测后端返回结构。 */
-export interface DataPickerSource<T extends object> {
+export interface DataPickerSource<
+  T extends object,
+  TFilters extends object = Record<string, unknown>,
+> {
   rowKey: TableRowKey<T>
   value: (row: T) => DataPickerValue
   label: (row: T) => string
-  request: (query: {
-    page: number
-    pageSize: number
-    search: string
-    signal: AbortSignal
-  }) => Promise<{ rows: T[]; total: number }>
+  request: (
+    query: DataPickerRequest<TFilters>
+  ) => Promise<{ rows: T[]; total: number }>
   resolve?: (
     values: readonly DataPickerValue[],
     signal: AbortSignal
   ) => Promise<readonly T[]>
 }
 
-export interface DataPickerProps<T extends object> {
-  source: DataPickerSource<T>
+export interface DataPickerProps<
+  T extends object,
+  TFilters extends object = Record<string, unknown>,
+> {
+  source: DataPickerSource<T, TFilters>
   columns: TableColumn<T>[]
   modelValue?: DataPickerValue | readonly DataPickerValue[] | null
   multiple?: boolean
@@ -34,6 +48,10 @@ export interface DataPickerProps<T extends object> {
   density?: ComponentDensity
   locale?: ComponentLocale
   pageSize?: number
+  /** Inline selection keeps the current page or dialog as the sole overlay. */
+  presentation?: 'modal' | 'inline'
+  /** Each session starts with these filters. A changed baseline invalidates the old session. */
+  initialValues?: TFilters
 }
 
 export interface DataPickerEmits<T extends object> {

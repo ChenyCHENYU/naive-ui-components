@@ -60,9 +60,9 @@ export function useSearchState<T extends object = SearchFormParams>(
       !isDataEqual(formParams.value, appliedParams.value)
   )
   const expanded = ref(false)
-  let scopeVersion = 0
-  const searchTasks = useActionTask<string>()
-  const searching = computed(() => searchTasks.isRunning('search'))
+  const scopeVersion = ref(0)
+  const searchTasks = useActionTask<number>()
+  const searching = computed(() => searchTasks.isRunning(scopeVersion.value))
   let active = true
   if (getCurrentScope())
     onScopeDispose(() => {
@@ -113,19 +113,23 @@ export function useSearchState<T extends object = SearchFormParams>(
     })
   }
 
-  const validate = async (): Promise<boolean> => {
+  const validate = async (version: number): Promise<boolean> => {
     try {
       await formRef.value?.validate()
       return true
     } catch {
       // 折叠仅影响显示；校验失败时展示完整条件，便于定位字段。
-      if (hasExpandButton.value) expanded.value = true
+      if (version === scopeVersion.value && hasExpandButton.value)
+        expanded.value = true
       return false
     }
   }
 
-  const canSubmit = (params: T): boolean =>
-    active && !toValue(options.loading) && isDataEqual(formParams.value, params)
+  const canSubmit = (params: T, version: number): boolean =>
+    active &&
+    version === scopeVersion.value &&
+    !toValue(options.loading) &&
+    isDataEqual(formParams.value, params)
 
   const hasRequiredValue = (params: T): boolean => {
     if (!requireValue.value) return true
@@ -138,7 +142,7 @@ export function useSearchState<T extends object = SearchFormParams>(
 
   const canApply = (params: T, version: number): boolean =>
     active &&
-    version === scopeVersion &&
+    version === scopeVersion.value &&
     fields.value
       .filter(field => field.fixed)
       .every(field =>
@@ -152,14 +156,13 @@ export function useSearchState<T extends object = SearchFormParams>(
     if (active) feedback.error(t('search.failed'), error)
   }
 
-  const executeSearch = async (): Promise<boolean> => {
+  const executeSearch = async (version: number): Promise<boolean> => {
     const params = cloneData(formParams.value)
-    const version = scopeVersion
-    if (!(await validate()) || !canSubmit(params)) return false
+    if (!(await validate(version)) || !canSubmit(params, version)) return false
     if (!hasRequiredValue(params)) return false
     history.saveCurrentInputs()
     emits('search', cloneData(params))
-    if (!canSubmit(params)) return false
+    if (!canSubmit(params, version)) return false
     const execute = config.value.onSearch
     // 旧的 emit-only 接入没有可等待的业务结果，保持返回语义，但不伪造 applied 成功。
     if (!execute) return true
@@ -167,7 +170,7 @@ export function useSearchState<T extends object = SearchFormParams>(
       // 请求收到隔离快照；回调修改入参不能更改已执行条件的事实。
       if ((await execute(cloneData(params))) === false) return false
     } catch (error) {
-      reportFailure(error)
+      if (canApply(params, version)) reportFailure(error)
       return false
     }
     if (!canApply(params, version)) return false
@@ -177,9 +180,10 @@ export function useSearchState<T extends object = SearchFormParams>(
   }
 
   const searchFn = async (): Promise<boolean> => {
+    const version = scopeVersion.value
     const result = await searchTasks.run(
-      'search',
-      executeSearch,
+      version,
+      () => executeSearch(version),
       () => !toValue(options.loading)
     )
     return result.executed && result.value
@@ -267,16 +271,18 @@ export function useSearchState<T extends object = SearchFormParams>(
   let syncVersion = 0
   initialize()
   watch(
-    () =>
+    () => [
+      config.value.queryScope,
       fields.value
         .filter(field => field.fixed)
         .map(field => [
           field.prop,
           cloneData((formParams.value as Record<string, unknown>)[field.prop]),
         ]),
+    ],
     (next, previous) => {
       if (isDataEqual(next, previous)) return
-      scopeVersion++
+      scopeVersion.value++
       appliedParams.value = null
     },
     { deep: true, flush: 'sync' }

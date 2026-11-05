@@ -12,20 +12,20 @@
     :style="densityStyle"
     :bordered="bordered"
   >
-    <div
-      ref="layoutRoot"
-      class="form-search-layout"
+    <NForm
+      class="form-search"
+      :class="{ 'form-search--grid': gridLayout }"
+      :model="formParams"
+      ref="formRef"
+      :size="resolvedSize"
+      :label-placement="config?.labelPlacement || 'top'"
+      :label-width="config?.labelWidth"
+      @submit.prevent="searchFn"
     >
-      <NForm
-        class="form-search"
-        :class="{ 'form-search--grid': gridLayout }"
+      <div
+        ref="layoutRoot"
+        class="form-search-layout"
         :style="layoutStyle"
-        :model="formParams"
-        ref="formRef"
-        :size="resolvedSize"
-        :label-placement="config?.labelPlacement || 'top'"
-        :label-width="config?.labelWidth"
-        @submit.prevent="searchFn"
       >
         <div
           class="form-search-item-box"
@@ -210,83 +210,94 @@
             </slot>
           </NFormItem>
         </div>
+      </div>
 
-        <div class="form-search-item-box form-search-actions">
-          <NFormItem
-            class="form-item-input"
-            :show-feedback="false"
-            :show-label="hasTopLabels"
-            label=" "
+      <div class="form-search-item-box form-search-actions">
+        <NFormItem
+          class="form-item-input"
+          :show-feedback="false"
+          :show-label="hasTopLabels"
+          label=" "
+        >
+          <NSpace
+            class="form-search-action-buttons"
+            justify="end"
+            :size="density ? densityTokens.gap : 8"
           >
-            <NSpace :size="density ? densityTokens.gap : 8">
-              <NTooltip trigger="hover">
-                <template #trigger>
-                  <NButton
-                    type="primary"
-                    :size="resolvedSize"
-                    aria-label="搜索"
-                    attr-type="submit"
-                    :loading="loading || searching"
-                  >
-                    <template #icon>
-                      <div class="i-mdi:search w-4 h-4" />
-                    </template>
-                  </NButton>
-                </template>
-                搜索
-              </NTooltip>
+            <NTooltip trigger="hover">
+              <template #trigger>
+                <NButton
+                  class="form-search-icon-button"
+                  type="primary"
+                  :size="resolvedSize"
+                  aria-label="搜索"
+                  attr-type="submit"
+                  :loading="loading || searching"
+                >
+                  <template #icon>
+                    <div class="i-mdi:search w-4 h-4" />
+                  </template>
+                </NButton>
+              </template>
+              搜索
+            </NTooltip>
 
-              <NTooltip trigger="hover">
-                <template #trigger>
-                  <NButton
-                    :size="resolvedSize"
-                    aria-label="重置"
-                    @click="resetFn"
-                  >
-                    <template #icon>
-                      <div class="i-mdi:refresh w-4 h-4" />
-                    </template>
-                  </NButton>
-                </template>
-                重置
-              </NTooltip>
+            <NTooltip trigger="hover">
+              <template #trigger>
+                <NButton
+                  class="form-search-icon-button"
+                  :size="resolvedSize"
+                  aria-label="重置"
+                  @click="resetFn"
+                >
+                  <template #icon>
+                    <div class="i-mdi:refresh w-4 h-4" />
+                  </template>
+                </NButton>
+              </template>
+              重置
+            </NTooltip>
 
-              <NTooltip
-                v-if="hasExpandButton"
-                trigger="hover"
-              >
-                <template #trigger>
-                  <NButton
-                    :size="resolvedSize"
-                    :aria-label="expanded ? '收起搜索条件' : '展开搜索条件'"
-                    :aria-expanded="expanded"
-                    @click="toggleFold"
-                  >
-                    <template #icon>
-                      <div
-                        :class="
-                          expanded
-                            ? 'i-mdi:chevron-up w-4 h-4'
-                            : 'i-mdi:chevron-down w-4 h-4'
-                        "
-                      />
-                    </template>
-                  </NButton>
-                </template>
-                {{ expanded ? '收起' : '展开' }}
-              </NTooltip>
-            </NSpace>
-            <span
-              v-if="hiddenActiveCount"
-              class="form-search-hidden-count"
-              role="status"
+            <NTooltip
+              v-if="hasExpandButton"
+              trigger="hover"
             >
-              {{ hiddenActiveCount }} 项隐藏条件生效
-            </span>
-          </NFormItem>
-        </div>
-      </NForm>
-    </div>
+              <template #trigger>
+                <NButton
+                  class="form-search-icon-button"
+                  :size="resolvedSize"
+                  :aria-label="expanded ? '收起搜索条件' : '展开搜索条件'"
+                  :aria-expanded="expanded"
+                  @click="toggleFold"
+                >
+                  <template #icon>
+                    <div
+                      :class="
+                        expanded
+                          ? 'i-mdi:chevron-up w-4 h-4'
+                          : 'i-mdi:chevron-down w-4 h-4'
+                      "
+                    />
+                  </template>
+                </NButton>
+              </template>
+              {{ expanded ? '收起' : '展开' }}
+            </NTooltip>
+            <slot
+              v-if="!actionsSlotIsField"
+              name="actions"
+            />
+          </NSpace>
+          <span
+            v-if="hiddenActiveCount"
+            class="form-search-hidden-count"
+            role="status"
+          >
+            {{ hiddenActiveCount }} 项隐藏条件生效
+          </span>
+        </NFormItem>
+      </div>
+    </NForm>
   </NCard>
 </template>
 
@@ -395,6 +406,12 @@
   })
 
   const gridLayout = computed(() => props.config?.layout === 'grid')
+  // Existing custom fields can already claim their own slot by prop or name.
+  const actionsSlotIsField = computed(() =>
+    props.formItemList.some(
+      item => item.type === 'custom' && (item.slot || item.prop) === 'actions'
+    )
+  )
   const hasTopLabels = computed(
     () =>
       props.config?.labelPlacement !== 'left' &&

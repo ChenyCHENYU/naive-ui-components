@@ -11,9 +11,11 @@ import type { DataTableRowKey } from 'naive-ui'
 import { useDataResource } from '../../composables/useDataResource'
 import type { TableInstance, TableConfig } from '../C_Table'
 import { validateTableRowKeys } from '../C_Table/helpers'
+import { cloneData, isDataEqual } from '../../utils/data'
 import type {
   DataPickerEmits,
   DataPickerProps,
+  DataPickerRequest,
   DataPickerSource,
   DataPickerValue,
 } from './types'
@@ -34,7 +36,7 @@ function isPickerValue(value: unknown): value is DataPickerValue {
 }
 
 function getPickerRowKey<T extends object>(
-  source: DataPickerSource<T>,
+  source: Pick<DataPickerSource<T>, 'rowKey'>,
   row: T
 ): DataTableRowKey {
   const key =
@@ -47,7 +49,7 @@ function getPickerRowKey<T extends object>(
 }
 
 function validatePickerPage<T extends object>(
-  source: DataPickerSource<T>,
+  source: Pick<DataPickerSource<T>, 'rowKey' | 'value'>,
   result: { rows: T[]; total: number },
   pageSize: number
 ): void {
@@ -79,8 +81,8 @@ function validatePickerPage<T extends object>(
 }
 
 /** 只复用 C_Table 的公开选择 API，不依赖内部行索引或 DOM。 */
-export function useDataPicker<T extends object>(
-  props: Readonly<DataPickerProps<T>>,
+export function useDataPicker<T extends object, TFilters extends object>(
+  props: Readonly<DataPickerProps<T, TFilters>>,
   emit: {
     <E extends keyof DataPickerEmits<T>>(
       event: E,
@@ -91,7 +93,12 @@ export function useDataPicker<T extends object>(
   density: () => ComponentDensity
 ) {
   const opened = shallowRef(false)
-  const queryState = shallowRef({ page: 1, search: '' })
+  const queryState = shallowRef<{
+    page: number
+    search: string
+    filters?: TFilters
+    revision: number
+  }>({ page: 1, search: '', revision: 0 })
   const page = computed({
     get: () => queryState.value.page,
     set: value => {
@@ -115,6 +122,7 @@ export function useDataPicker<T extends object>(
       : 20
   )
   const blocked = computed(() => props.disabled || props.readonly)
+  let filterBaseline = cloneData(props.initialValues)
   let restoringSelection = false
   let selectionRows: readonly T[] = []
 
@@ -135,6 +143,15 @@ export function useDataPicker<T extends object>(
     },
     { flush: 'sync' }
   )
+  watch(
+    () => props.initialValues,
+    value => {
+      if (isDataEqual(filterBaseline, value)) return
+      filterBaseline = cloneData(value)
+      close()
+    },
+    { deep: true, flush: 'sync' }
+  )
 
   const list = useDataResource({
     key: () =>
@@ -144,16 +161,18 @@ export function useDataPicker<T extends object>(
             session.value,
             page.value,
             pageSize.value,
-            search.value,
+            queryState.value.revision,
           ])
         : null,
     load: async ({ signal }) => {
       const { source } = props
-      const query = {
+      const { filters } = queryState.value
+      const query: DataPickerRequest<TFilters> = {
         page: page.value,
         pageSize: pageSize.value,
         search: search.value,
         signal,
+        ...(filters === undefined ? {} : { filters: cloneData(filters) }),
       }
       const result = await source.request(query)
       validatePickerPage(source, result, query.pageSize)
@@ -227,7 +246,12 @@ export function useDataPicker<T extends object>(
     if (blocked.value || opened.value) return
     draft.value = [...values.value]
     draftRows.value = new Map(knownRows.value)
-    queryState.value = { page: 1, search: '' }
+    queryState.value = {
+      page: 1,
+      search: '',
+      filters: cloneData(filterBaseline),
+      revision: 0,
+    }
     searchDraft.value = ''
     session.value++
     opened.value = true
@@ -294,9 +318,30 @@ export function useDataPicker<T extends object>(
   }
 
   function query(): void {
-    const changed = search.value !== searchDraft.value || page.value !== 1
-    queryState.value = { page: 1, search: searchDraft.value }
-    if (!changed) void list.reload()
+    applyQuery(searchDraft.value, queryState.value.filters)
+  }
+
+  function submitFilters(filters: TFilters): void {
+    applyQuery('', filters)
+  }
+
+  function applyQuery(search: string, filters: TFilters | undefined): void {
+    if (!opened.value || blocked.value) return
+    const previous = queryState.value
+    if (
+      previous.page === 1 &&
+      previous.search === search &&
+      isDataEqual(previous.filters, filters)
+    ) {
+      void list.reload()
+      return
+    }
+    queryState.value = {
+      page: 1,
+      search,
+      filters: cloneData(filters),
+      revision: previous.revision + 1,
+    }
   }
 
   watch(
@@ -327,6 +372,7 @@ export function useDataPicker<T extends object>(
     pageSize,
     searchDraft,
     query,
+    submitFilters,
     list,
     labels,
     rows,

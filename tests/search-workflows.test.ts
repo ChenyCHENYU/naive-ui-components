@@ -89,6 +89,44 @@ describe('explicit search request encoding', () => {
     ;(output.context as { ids: string[] }).ids.push('2')
     expect(params.context.ids).toEqual(['001'])
   })
+  test('active scope skips inactive and unconfigured drafts while retaining fixed and folded conditions', () => {
+    const params = { ...model, stale: 'old report' }
+    const modeFields = fields.map(field =>
+      field.prop === 'tenant' || field.prop === 'keyword'
+        ? { ...field, show: false }
+        : field
+    )
+    expect(serializeSearch(params, modeFields, { scope: 'active' })).toEqual({
+      tenant: '001',
+      amount: 0,
+      enabled: false,
+      start: '2026-10-01',
+      end: '2026-10-31',
+      minimum: 0,
+    })
+    expect(serializeSearch(params, modeFields)).toMatchObject({
+      tenant: '001',
+      stale: 'old report',
+      q: 'steel',
+    })
+    expect(params.keyword).toBe(' steel ')
+    expect(params.stale).toBe('old report')
+  })
+  test('renamed query fields may target another renamed source independent of declaration order', () => {
+    const params = { keyword: 'steel', code: '001' }
+    const definitions: SearchFormItem<typeof params>[] = [
+      { type: 'input', prop: 'keyword', query: { name: 'code' } },
+      { type: 'input', prop: 'code', query: { name: 'customer' } },
+    ]
+    const expected = { code: 'steel', customer: '001' }
+    expect(serializeSearch(params, definitions)).toEqual(expected)
+    expect(serializeSearch(params, [...definitions].reverse())).toEqual(
+      expected
+    )
+    expect(serializeSearch(params, definitions, { scope: 'active' })).toEqual(
+      expected
+    )
+  })
   test('rejects unsafe and colliding destinations instead of dropping a fixed scope', () => {
     expect(() =>
       serializeSearch({ name: 'a' }, [

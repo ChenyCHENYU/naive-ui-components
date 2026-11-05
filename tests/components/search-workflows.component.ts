@@ -10,7 +10,10 @@ import {
   NSelect,
 } from 'naive-ui'
 import FormSearchComponent from '../../src/components/C_FormSearch/index.vue'
-import type { SearchFormParams } from '../../src/components/C_FormSearch/types'
+import type {
+  SearchFieldContext,
+  SearchFormParams,
+} from '../../src/components/C_FormSearch/types'
 
 const Search = FormSearchComponent<SearchFormParams>
 
@@ -193,6 +196,50 @@ test('fixed scope remains locked and reset-safe, and a late response cannot appl
   expect(await pending).toBe(false)
   expect(wrapper.vm.appliedParams).toBeNull()
   expect(wrapper.emitted('applied')).toBeUndefined()
+  wrapper.unmount()
+})
+
+test('switching query scope allows a fresh query while rejecting stale results and feedback', async () => {
+  const stale = deferred<void>()
+  const feedback = { error: vi.fn() }
+  const onSearch = vi
+    .fn()
+    .mockReturnValueOnce(true)
+    .mockReturnValueOnce(stale.promise)
+    .mockReturnValueOnce(false)
+    .mockReturnValueOnce(true)
+  const wrapper = mount(Search, {
+    props: {
+      modelValue: { keyword: '炉次' },
+      formItemList: [{ type: 'input', prop: 'keyword' }],
+      config: { queryScope: 'actual', onSearch, feedback },
+    },
+  })
+
+  expect(await wrapper.vm.searchFn()).toBe(true)
+  const pending = wrapper.vm.searchFn()
+  await flushPromises()
+  expect(onSearch).toHaveBeenCalledTimes(2)
+  expect(await wrapper.vm.searchFn()).toBe(false)
+
+  await wrapper.setProps({
+    config: { queryScope: 'plan', onSearch, feedback },
+  })
+  expect(wrapper.vm.appliedParams).toBeNull()
+  expect(wrapper.vm.formParams).toEqual({ keyword: '炉次' })
+  expect(await wrapper.vm.searchFn()).toBe(false)
+  expect(wrapper.vm.appliedParams).toBeNull()
+  await wrapper.get('input').setValue('计划')
+  expect(await wrapper.vm.searchFn()).toBe(true)
+
+  stale.reject(new Error('stale request'))
+  expect(await pending).toBe(false)
+  expect(wrapper.vm.appliedParams).toEqual({ keyword: '计划' })
+  expect(wrapper.emitted('applied')).toEqual([
+    [{ keyword: '炉次' }],
+    [{ keyword: '计划' }],
+  ])
+  expect(feedback.error).not.toHaveBeenCalled()
   wrapper.unmount()
 })
 
@@ -424,7 +471,7 @@ test('grid layout responds to the panel container and clamps spans without remou
   )
   const wrapper = mount(Search, {
     props: {
-      modelValue: { keyword: '', range: null },
+      modelValue: { keyword: '', range: [0, 5] },
       formItemList: [
         { type: 'input', prop: 'keyword', label: '名称' },
         {
@@ -440,10 +487,12 @@ test('grid layout responds to the panel container and clamps spans without remou
         layout: 'grid',
         fieldMinWidth: 200,
         columns: 4,
+        foldThreshold: 1,
         labelPlacement: 'left',
         labelWidth: 80,
       },
     },
+    slots: { actions: () => h('button', { type: 'button' }, '进阶查询') },
   })
   const observer = observed.find(
     entry => entry.element === wrapper.get('.form-search-layout').element
@@ -455,26 +504,48 @@ test('grid layout responds to the panel container and clamps spans without remou
     )
     await nextTick()
   }
+  const fields = wrapper.get('.form-search-layout')
+  const actions = wrapper.get('.form-search-actions')
+  expect(fields.element.nextElementSibling).toBe(actions.element)
+  expect(actions.text()).toContain('进阶查询')
+  expect(actions.get('[role="status"]').text()).toBe('1 项隐藏条件生效')
   const { uid } = wrapper.getComponent(NInput).vm.$
   await resize(900)
-  expect(wrapper.get('form').attributes('style')).toContain(
-    'repeat(4, minmax(0, 1fr))'
-  )
+  expect(fields.attributes('style')).toContain('repeat(4, minmax(0, 1fr))')
+  await actions.get('[aria-expanded="false"]').trigger('click')
+  expect(actions.find('[aria-expanded="true"]').exists()).toBe(true)
+  expect(fields.element.nextElementSibling).toBe(actions.element)
   expect(
     wrapper.findAll('.form-search-item-box')[1].attributes('style')
   ).toContain('span 2')
   expect(wrapper.getComponent(NForm).props('labelPlacement')).toBe('left')
   expect(wrapper.getComponent(NForm).props('labelWidth')).toBe(80)
+  await resize(740)
+  expect(fields.attributes('style')).toContain('repeat(3, minmax(0, 1fr))')
   await resize(280)
-  expect(wrapper.get('form').attributes('style')).toContain(
-    'repeat(1, minmax(0, 1fr))'
-  )
+  expect(fields.attributes('style')).toContain('repeat(1, minmax(0, 1fr))')
   expect(
     wrapper.findAll('.form-search-item-box')[1].attributes('style')
   ).toContain('span 1')
   expect(wrapper.getComponent(NInput).vm.$.uid).toBe(uid)
   wrapper.unmount()
   expect(observer.disconnect).toHaveBeenCalled()
+})
+
+test('a legacy custom field named actions retains its own scoped slot', () => {
+  const wrapper = mount(Search, {
+    props: {
+      modelValue: { actions: '原有字段' },
+      formItemList: [{ prop: 'actions', type: 'custom' }],
+    },
+    slots: {
+      actions: context =>
+        h('span', String((context as SearchFieldContext).value)),
+    },
+  })
+  expect(wrapper.get('.form-search-layout').text()).toContain('原有字段')
+  expect(wrapper.get('.form-search-actions').text()).not.toContain('原有字段')
+  wrapper.unmount()
 })
 
 test('legacy event-only search dispatches without fabricating a successful applied result', async () => {

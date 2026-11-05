@@ -1,6 +1,6 @@
 # 远程实体选择器
 
-`C_DataPicker` 用于客户、订单、人员、物料等需要分页查询和多列辨认的选择场景。它复用 `C_Table`、Naive Modal 和资源生命周期，不绑定后端地址，也不维护第二份请求缓存。
+`C_DataPicker` 用于客户、订单、人员、物料等需要分页查询和多列辨认的选择场景。它复用 `C_Table` 和资源生命周期，支持独立弹窗和表单内嵌两种展示。
 
 ```vue
 <script setup lang="ts">
@@ -63,3 +63,46 @@
 同一页的业务值必须唯一且为字符串或有限数值；响应的 `rows`、`total` 无效时显示失败和重试入口。`total` 必须为非负安全整数；行身份不可缺失或重复，返回行数不得超过所请求的 `pageSize` 或 `total`，不靠静默截断伪装成合法分页。跨页再次出现同一实体时保留一项选择，移除已选标签会取消该实体。
 
 在 Form/Search 中通过现有自定义渲染器使用这一组件。将 `source` 在业务集成层定义一次并复用即可，不需要让所有表单或搜索入口静态依赖实体选择器。
+
+## 表单内嵌选择
+
+编辑弹窗内可把字段设为整行宽度，再为选择器设置 `presentation="inline"`。点击字段后，候选区在同一弹窗内展开。Enter 查询候选项，Escape 或取消收起并将焦点交回字段。使用 `@select` 从确认后的行一次性写入编码、名称等关联字段。
+
+```vue
+<C_DataPicker
+  :model-value="form.customerCode"
+  :source="source"
+  :columns="columns"
+  presentation="inline"
+  @select="applyCustomer"
+/>
+```
+
+`applyCustomer(rows)` 可从 `rows[0]` 取得完整实体。支持回显已有编码的场景继续提供 `resolve`。
+
+## 多条件查询与固定上下文
+
+声明 `DataPickerSource<Customer, CustomerFilters>`，在 `request` 中用 `filters` 接收业务类型。设置 `initialValues` 后，打开会用它查询第一页。翻页沿用最近提交的筛选条件，外部初值（例如组织）变化会关闭旧会话、取消请求并丢弃未确认选择。
+
+`#query` 的 `initialValues`、`submit(filters)` 和 `loading` 可用于接入项目现有的查询控件。独立弹窗内可直接组合 `C_FormSearch`：
+
+```vue
+<C_DataPicker
+  :source="source"
+  :columns="columns"
+  :initial-values="initialFilters"
+>
+  <template #query="{ initialValues, submit, loading }">
+    <C_FormSearch
+      :model-value="initialValues ?? initialFilters"
+      :form-item-list="searchFields"
+      :config="{ requireValue: false }"
+      :loading="loading"
+      @search="submit"
+      @reset="submit"
+    />
+  </template>
+</C_DataPicker>
+```
+
+例如将 `organization` 放进 `initialFilters`，使用一个 `fixed` 字段显示它，或让它只随查询提交。服务端鉴权和组织隔离仍由应用请求层负责。`submit` 启动加载并回到第一页，`loading` 和错误提示由选择器管理。内嵌在 `C_Form` 内时，`#query` 使用普通输入或选择控件，避免嵌套原生表单。`#trigger` 可用 `{ open, disabled, opened, display }` 替换默认触发器。

@@ -61,6 +61,137 @@ function createSource(): DataPickerSource<Row> {
 }
 
 describe('C_DataPicker远程选择会话', () => {
+  test('内嵌会话不挂载第二个弹窗，Enter 只查询候选项，Escape 取消并归还焦点', async () => {
+    const source = createSource()
+    const parentSubmit = vi.fn((event: Event) => event.preventDefault())
+    const parentKeydown = vi.fn()
+    const Host = defineComponent(
+      () => () =>
+        h('form', { onSubmit: parentSubmit, onKeydown: parentKeydown }, [
+          h(C_DataPicker<Row>, { source, columns, presentation: 'inline' }),
+        ])
+    )
+    const wrapper = mount(Host, { attachTo: document.body })
+    try {
+      const picker = wrapper.getComponent(C_DataPicker<Row>)
+      const trigger = wrapper.get<HTMLButtonElement>('.c-data-picker__open')
+      trigger.element.focus()
+      await trigger.trigger('click')
+      await flushPromises()
+      expect(wrapper.findAll('form')).toHaveLength(1)
+      expect(picker.findComponent(NModal).exists()).toBe(false)
+      const panel = picker.get('[role="region"]')
+      expect(trigger.attributes('aria-expanded')).toBe('true')
+      expect(trigger.attributes('aria-controls')).toBe(panel.attributes('id'))
+      const input = panel.get('input[aria-label="搜索候选数据"]')
+      expect(document.activeElement).toBe(input.element)
+      await input.setValue('客户')
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+      expect(source.request).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 20,
+        search: '客户',
+        signal: expect.any(AbortSignal),
+      })
+      expect(parentSubmit).not.toHaveBeenCalled()
+      expect(parentKeydown).not.toHaveBeenCalled()
+      await input.trigger('keydown', { key: 'Escape' })
+      expect(trigger.attributes('aria-expanded')).toBe('false')
+      expect(document.activeElement).toBe(trigger.element)
+      expect(picker.emitted('select')).toBeUndefined()
+      expect(parentKeydown).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  test('类型化条件随分页保持，重新查询回第一页，上下文切换废弃旧请求与草稿', async () => {
+    interface Filters {
+      organization: string
+      name: string
+      enabled: boolean | null
+    }
+    const oldRequest = deferred<{ rows: Row[]; total: number }>()
+    const request = vi.fn<DataPickerSource<Row, Filters>['request']>(query => {
+      if (query.filters?.name === '旧查询') return oldRequest.promise
+      return Promise.resolve({
+        rows: [allRows[query.page - 1]!],
+        total: allRows.length,
+      })
+    })
+    const source: DataPickerSource<Row, Filters> = {
+      ...createSource(),
+      request,
+    }
+    const initialValues: Filters = {
+      organization: 'A',
+      name: '',
+      enabled: false,
+    }
+    const wrapper = mount(C_DataPicker<Row, Filters>, {
+      props: {
+        source,
+        columns,
+        initialValues,
+        pageSize: 1,
+        presentation: 'inline',
+      },
+      slots: {
+        query: ({ initialValues, submit, loading }) =>
+          h(
+            'button',
+            {
+              type: 'button',
+              disabled: loading,
+              onClick: () => submit({ ...initialValues!, name: '旧查询' }),
+            },
+            '筛选候选'
+          ),
+      },
+    })
+    try {
+      await wrapper.get('.c-data-picker__open').trigger('click')
+      await flushPromises()
+      expect(request.mock.calls[0]?.[0].filters).toEqual(initialValues)
+      const table = wrapper.getComponent(C_Table)
+        .vm as unknown as TableInstance<Row>
+      table.selectRow('r0')
+      await flushPromises()
+      wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+      await flushPromises()
+      expect(request.mock.calls[1]?.[0]).toMatchObject({
+        page: 2,
+        filters: initialValues,
+      })
+      await wrapper.get('button[type="button"]:not(.n-button)').trigger('click')
+      await flushPromises()
+      const pending = request.mock.calls[2]?.[0]
+      expect(pending).toMatchObject({
+        page: 1,
+        filters: { ...initialValues, name: '旧查询' },
+      })
+      await wrapper.setProps({
+        initialValues: { ...initialValues, organization: 'B' },
+      })
+      expect(pending?.signal.aborted).toBe(true)
+      expect(wrapper.find('[role="region"]').exists()).toBe(false)
+      oldRequest.resolve({ rows: [allRows[2]!], total: allRows.length })
+      await wrapper.get('.c-data-picker__open').trigger('click')
+      await flushPromises()
+      expect(tableData(wrapper)).toEqual([allRows[0]])
+      expect(request).toHaveBeenCalledTimes(4)
+      expect(request.mock.calls[3]?.[0]).toMatchObject({
+        page: 1,
+        filters: { ...initialValues, organization: 'B' },
+      })
+      await button(wrapper, '确定').trigger('click')
+      expect(wrapper.emitted('select')).toEqual([[[]]])
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   test('搜索名称传递到原生输入框，可由读屏和键盘自动化定位', async () => {
     const wrapper = mount(C_DataPicker<Row>, {
       props: { source: createSource(), columns },

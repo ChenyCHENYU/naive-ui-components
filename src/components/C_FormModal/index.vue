@@ -21,6 +21,7 @@
       v-model="formModel"
       :options="options"
       :config="resolvedFormConfig"
+      :renderers="renderers"
     >
       <template
         v-for="(_, slotName) in $slots"

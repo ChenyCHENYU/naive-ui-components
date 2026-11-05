@@ -3,6 +3,7 @@ import type {
   FormConfig,
   FormOption,
   FormRecord,
+  FormRenderer,
   SubmitEventPayload,
 } from '../C_Form'
 
@@ -27,6 +28,8 @@ export interface FormModalProps<T extends object = FormRecord> {
   editor: FormModalEditor<T>
   options: FormOption<T>[]
   config?: FormConfig<T>
+  /** 当前弹窗使用的自定义字段渲染器。 */
+  renderers?: Record<string, FormRenderer>
   width?: number | string
   createText?: string
   saveText?: string

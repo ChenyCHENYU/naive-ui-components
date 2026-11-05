@@ -6,6 +6,11 @@
 }
 
 .form-search-layout {
+  display: flex;
+  flex: 1 1 var(--c-search-layout-min-width, var(--c-search-control-width));
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--c-search-layout-gap);
   min-width: 0;
 }
 
@@ -18,7 +23,7 @@
 .form-search .form-search-number-range {
   display: flex;
   gap: 8px;
-  width: var(--c-search-field-width, 260px);
+  width: var(--c-search-control-width);
   max-width: 100%;
   min-width: 0;
 
@@ -36,21 +41,62 @@
 .form-search .form-search-hidden-count {
   color: var(--n-label-text-color, var(--n-text-color));
   font-size: 12px;
-  white-space: nowrap;
+  line-height: 1.35;
+  // Feedback can wrap beneath the controls without widening their action rail.
+  width: 0;
+  min-width: 100%;
+  text-align: end;
+  overflow-wrap: anywhere;
 }
 
-.form-search-actions :deep(.n-form-item-blank) {
-  gap: 8px;
-  flex-wrap: wrap;
+.form-search-actions {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  margin-inline-start: auto;
+
+  :deep(.n-form-item-blank) {
+    flex-direction: column;
+    align-items: end;
+    gap: 2px;
+  }
+}
+
+.form-search-action-buttons {
+  max-width: 100%;
+
+  .form-search-icon-button {
+    flex: none;
+    width: var(--n-height);
+    padding: 0;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    :deep(.n-button__icon) {
+      margin: 0;
+    }
+  }
 }
 
 .form-search {
+  --c-search-control-width: var(--c-search-field-width, 260px);
+  --c-search-layout-gap: var(--c-search-row-gap, 20px) var(--c-search-gap, 32px);
+
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: var(--c-search-row-gap, 20px) var(--c-search-gap, 32px);
+  align-items: start;
+  gap: var(--c-search-layout-gap);
 
   .form-search-item-box {
+    min-width: 0;
+    max-width: 100%;
+
     .form-item-input {
       position: relative;
 
@@ -58,28 +104,12 @@
       :deep(.n-select),
       :deep(.n-input-number),
       :deep(.n-date-picker) {
-        width: var(--c-search-field-width, 260px);
+        width: var(--c-search-control-width);
         max-width: 100%;
       }
 
-      :deep(.n-space) {
-        .n-button {
-          width: var(--n-height);
-          padding: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s ease;
-
-          &:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-
-          .n-button__icon {
-            margin: 0;
-          }
-        }
+      :deep(.n-form-item-blank) {
+        min-width: 0;
       }
 
       .input-history {
@@ -192,46 +222,25 @@
 /* responsive */
 @media (max-width: 1400px) {
   .form-search {
-    gap: var(--c-search-row-gap, 16px) var(--c-search-gap, 28px);
-
-    .form-search-item-box .form-item-input {
-      :deep(.n-input),
-      :deep(.n-select),
-      :deep(.n-input-number),
-      :deep(.n-date-picker) {
-        width: var(--c-search-field-width, 240px);
-      }
-    }
+    --c-search-control-width: var(--c-search-field-width, 240px);
+    --c-search-layout-gap: var(--c-search-row-gap, 16px)
+      var(--c-search-gap, 28px);
   }
 }
 
 @media (max-width: 1200px) {
   .form-search {
-    gap: var(--c-search-row-gap, 16px) var(--c-search-gap, 24px);
-
-    .form-search-item-box .form-item-input {
-      :deep(.n-input),
-      :deep(.n-select),
-      :deep(.n-input-number),
-      :deep(.n-date-picker) {
-        width: var(--c-search-field-width, 220px);
-      }
-    }
+    --c-search-control-width: var(--c-search-field-width, 220px);
+    --c-search-layout-gap: var(--c-search-row-gap, 16px)
+      var(--c-search-gap, 24px);
   }
 }
 
 @media (max-width: 900px) {
   .form-search {
-    gap: var(--c-search-row-gap, 12px) var(--c-search-gap, 20px);
-
-    .form-search-item-box .form-item-input {
-      :deep(.n-input),
-      :deep(.n-select),
-      :deep(.n-input-number),
-      :deep(.n-date-picker) {
-        width: var(--c-search-field-width, 200px);
-      }
-    }
+    --c-search-control-width: var(--c-search-field-width, 200px);
+    --c-search-layout-gap: var(--c-search-row-gap, 12px)
+      var(--c-search-gap, 20px);
   }
 }
 
@@ -241,35 +250,28 @@
   }
 
   .form-search {
-    gap: var(--c-search-row-gap, 12px) 0;
+    --c-search-control-width: 100%;
+    --c-search-layout-gap: var(--c-search-row-gap, 12px) 0;
 
-    .form-search-item-box {
-      width: 100%;
+    .form-search-layout {
+      flex-basis: 100%;
 
-      .form-item-input {
-        :deep(.n-input),
-        :deep(.n-select),
-        :deep(.n-input-number),
-        :deep(.n-date-picker) {
-          width: 100%;
-        }
-
-        .input-history .history-item .delete-icon {
-          opacity: 1;
-        }
+      .form-search-item-box {
+        width: 100%;
       }
+    }
+
+    .form-item-input .input-history .history-item .delete-icon {
+      opacity: 1;
     }
   }
 }
 
 /* grid 由容器宽度决定列数；所有控件占轨道宽度，字段 span 在逻辑层钳制。 */
 .form-search.form-search--grid {
-  display: grid;
-  align-items: end;
-
-  .form-search-item-box {
-    min-width: 0;
-    width: auto;
+  .form-search-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
 
     .form-item-input {
       min-width: 0;
@@ -287,9 +289,5 @@
 
   .form-search-number-range :deep(.n-input-number) {
     width: 0;
-  }
-  .form-search-actions {
-    grid-column: -2 / -1;
-    justify-self: end;
   }
 }

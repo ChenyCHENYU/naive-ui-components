@@ -176,9 +176,11 @@ export interface SearchConfig<T extends object = SearchFormParams> {
   foldThreshold?: number
   historyMaxItems?: number
   requireValue?: boolean
+  /** 切换业务查询范围时重置已执行快照，并忽略旧范围的迟到结果。 */
+  queryScope?: string | number
   feedback?: ComponentFeedback
   locale?: ComponentLocale
-  onSearch?: (params: T) => void | Promise<unknown>
+  onSearch?: (params: T) => boolean | void | Promise<unknown>
 }
 
 export interface FormSearchRuntimeProps<T extends object = SearchFormParams> {

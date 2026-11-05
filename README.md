@@ -33,11 +33,13 @@
 | 按需消费 | 60 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.28.1**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.29.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 搜索条件、录入字段和操作按钮可以由响应式配置生成。筛选和编辑共享紧凑密度，支持校验、异步选项和业务弹窗。后端字典或权限由项目接入，表单和搜索消费普通选项，表格消费普通列配置。
 
 列表按场景组合 `C_FormSearch`、`C_ActionBar`、`C_FormModal` 和 `C_DataPicker`。同一套表单与搜索可搭配 `C_Table` 或 MachTable，各自使用原生表格配置和分页。见[组合用法](./docs/guides/data-workflows.md#搜索表单与弹窗组合)、[表单密度](./docs/guides/form-density.md)和[运行时性能](./docs/guides/runtime-performance.md)。
+
+搜索区用 `columns: 3` 或 `columns: 4` 限定每行字段数，操作按钮保持靠右。表单内的实体选择用 `presentation="inline"` 在原处展开，复杂的进阶查询可通过选择器的 `#query` 插槽接入多个条件。见[搜索区用法](./docs/guides/search-workflows.md)和[数据选择器](./docs/guides/data-picker.md)。
 
 ## 能力地图
 

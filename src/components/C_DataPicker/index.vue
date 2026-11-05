@@ -1,37 +1,47 @@
 <template>
   <div class="c-data-picker">
-    <div class="c-data-picker__trigger">
-      <NButton
-        class="c-data-picker__open"
-        :size="density.size"
-        :disabled="disabled"
-        :aria-readonly="readonly"
-        :title="display"
-        @click="open"
-      >
-        <span :class="{ 'c-data-picker__placeholder': !display }">{{
-          display || resolvedPlaceholder
-        }}</span>
-        <C_Icon
-          name="mdi:magnify"
-          :size="15"
-          aria-hidden="true"
-        />
-      </NButton>
-      <NButton
-        v-if="
-          clearable &&
-          modelValue != null &&
-          (!Array.isArray(modelValue) || modelValue.length)
-        "
-        class="c-data-picker__clear"
-        :size="density.size"
-        :disabled="disabled || readonly"
-        :aria-label="t('picker.clear')"
-        @click="clear"
-        >×</NButton
-      >
-    </div>
+    <slot
+      name="trigger"
+      :open="open"
+      :disabled="disabled || readonly"
+      :opened="opened"
+      :display="display"
+    >
+      <div class="c-data-picker__trigger">
+        <NButton
+          class="c-data-picker__open"
+          :size="density.size"
+          :disabled="disabled"
+          :aria-readonly="readonly"
+          :aria-expanded="inline ? opened : undefined"
+          :aria-controls="inline && opened ? panelId : undefined"
+          :title="display"
+          @click="toggle"
+        >
+          <span :class="{ 'c-data-picker__placeholder': !display }">{{
+            display || resolvedPlaceholder
+          }}</span>
+          <C_Icon
+            name="mdi:magnify"
+            :size="15"
+            aria-hidden="true"
+          />
+        </NButton>
+        <NButton
+          v-if="
+            clearable &&
+            modelValue != null &&
+            (!Array.isArray(modelValue) || modelValue.length)
+          "
+          class="c-data-picker__clear"
+          :size="density.size"
+          :disabled="disabled || readonly"
+          :aria-label="t('picker.clear')"
+          @click="clear"
+          >×</NButton
+        >
+      </div>
+    </slot>
     <span
       v-if="labels.status.value === 'error'"
       class="c-data-picker__label-error"
@@ -44,103 +54,121 @@
         >{{ t('common.retry') }}</NButton
       ></span
     >
-    <NModal
-      :show="opened"
-      preset="card"
-      class="c-data-picker__modal"
-      :title="resolvedTitle"
-      :style="{ width: 'min(960px, calc(100vw - 24px))' }"
-      @update:show="!$event && close()"
+    <component
+      :is="inline ? NCard : NModal"
+      v-if="!inline || opened"
+      v-bind="surfaceProps"
     >
-      <form
-        class="c-data-picker__search"
-        @submit.prevent="query"
+      <div
+        ref="panelContent"
+        class="c-data-picker__content"
+        :tabindex="inline ? -1 : undefined"
       >
-        <NInput
-          v-model:value="searchDraft"
-          :size="density.size"
-          :placeholder="t('picker.searchPlaceholder')"
-          :input-props="{ 'aria-label': t('picker.searchLabel') }"
-          clearable
-        />
-        <NButton
-          attr-type="submit"
-          :size="density.size"
+        <slot
+          v-if="opened"
+          name="query"
+          :initial-values="initialValues"
+          :submit="submitFilters"
           :loading="list.loading.value"
-          type="primary"
-          >{{ t('picker.search') }}</NButton
         >
-      </form>
-      <div
-        v-if="list.status.value === 'error'"
-        class="c-data-picker__error"
-        role="alert"
-      >
-        {{ t('picker.loadFailed') }}
-        <NButton
+          <component
+            :is="inline ? 'div' : 'form'"
+            class="c-data-picker__search"
+            @submit.stop.prevent="query"
+          >
+            <NInput
+              v-model:value="searchDraft"
+              :size="density.size"
+              :placeholder="t('picker.searchPlaceholder')"
+              :input-props="{ 'aria-label': t('picker.searchLabel') }"
+              @keydown.enter="searchOnEnter"
+              clearable
+            />
+            <NButton
+              :attr-type="inline ? 'button' : 'submit'"
+              :size="density.size"
+              :loading="list.loading.value"
+              type="primary"
+              @click="inline && query()"
+              >{{ t('picker.search') }}</NButton
+            >
+          </component>
+        </slot>
+        <div
+          v-if="list.status.value === 'error'"
+          class="c-data-picker__error"
+          role="alert"
+        >
+          {{ t('picker.loadFailed') }}
+          <NButton
+            :size="density.size"
+            @click="list.reload"
+            >{{ t('common.retry') }}</NButton
+          >
+        </div>
+        <C_Table
+          v-else-if="opened"
+          ref="tableRef"
+          :data="rows"
+          :columns="columns"
+          :row-key="source.rowKey"
+          :loading="list.loading.value"
+          :config="tableConfig"
+          @selection-change="selectPage"
+        />
+        <NPagination
+          v-if="total > pageSize"
+          v-model:page="page"
+          :page-size="pageSize"
+          :item-count="total"
           :size="density.size"
-          @click="list.reload"
-          >{{ t('common.retry') }}</NButton
+        />
+        <div
+          class="c-data-picker__selection"
+          aria-live="polite"
         >
-      </div>
-      <C_Table
-        v-else-if="opened"
-        ref="tableRef"
-        :data="rows"
-        :columns="columns"
-        :row-key="source.rowKey"
-        :loading="list.loading.value"
-        :config="tableConfig"
-        @selection-change="selectPage"
-      />
-      <NPagination
-        v-if="total > pageSize"
-        v-model:page="page"
-        :page-size="pageSize"
-        :item-count="total"
-        :size="density.size"
-      />
-      <div
-        class="c-data-picker__selection"
-        aria-live="polite"
-      >
-        <span>{{ t('picker.selected', { count: selectedCount }) }}</span>
-        <NTag
-          v-for="item in selected"
-          :key="`${typeof item.value}:${item.value}`"
-          size="small"
-          closable
-          :title="item.label"
-          @close="remove(item.value)"
-          >{{ item.label }}</NTag
-        >
-        <span v-if="selectedCount > 30">{{
-          t('picker.moreSelected', { count: selectedCount - 30 })
-        }}</span>
+          <span>{{ t('picker.selected', { count: selectedCount }) }}</span>
+          <NTag
+            v-for="item in selected"
+            :key="`${typeof item.value}:${item.value}`"
+            size="small"
+            closable
+            :title="item.label"
+            @close="remove(item.value)"
+            >{{ item.label }}</NTag
+          >
+          <span v-if="selectedCount > 30">{{
+            t('picker.moreSelected', { count: selectedCount - 30 })
+          }}</span>
+        </div>
       </div>
       <template #action>
         <div class="c-data-picker__actions">
           <NButton
             :size="density.size"
-            @click="close"
+            @click="dismiss"
             >{{ t('common.cancel') }}</NButton
           >
           <NButton
             type="primary"
             :size="density.size"
             :disabled="disabled || readonly"
-            @click="confirm"
+            @click="commit"
             >{{ t('common.confirm') }}</NButton
           >
         </div>
       </template>
-    </NModal>
+    </component>
   </div>
 </template>
 
-<script setup lang="ts" generic="T extends object">
-  import { computed, shallowRef } from 'vue'
-  import { NButton, NInput, NModal, NPagination, NTag } from 'naive-ui'
+<script
+  setup
+  lang="ts"
+  generic="T extends object, TFilters extends object = Record<string, unknown>"
+>
+  import { computed, nextTick, shallowRef, useId } from 'vue'
+  import { NButton, NCard, NInput, NModal, NPagination, NTag } from 'naive-ui'
   import C_Table from '../C_Table/index.vue'
   import C_Icon from '../C_Icon/index.vue'
   import type { TableInstance } from '../C_Table/types'
@@ -151,11 +179,28 @@
   import { useDataPicker } from './data'
 
   defineOptions({ name: 'C_DataPicker' })
-  const props = withDefaults(defineProps<DataPickerProps<T>>(), {
+  const props = withDefaults(defineProps<DataPickerProps<T, TFilters>>(), {
     pageSize: 20,
   })
   const emit = defineEmits<DataPickerEmits<T>>()
+  defineSlots<{
+    trigger?(props: {
+      open: () => void
+      disabled: boolean
+      opened: boolean
+      display: string
+    }): unknown
+    query?(props: {
+      initialValues: TFilters | undefined
+      submit: (filters: TFilters) => void
+      loading: boolean
+    }): unknown
+  }>()
   const tableRef = shallowRef<TableInstance<T> | null>(null)
+  const panelContent = shallowRef<HTMLElement | null>(null)
+  const panelId = useId()
+  const inline = computed(() => props.presentation === 'inline')
+  let opener: HTMLElement | null = null
   const globalFormConfig = useFormGlobalConfig()
   const resolvedDensity = computed(
     () => props.density ?? globalFormConfig.density ?? 'compact'
@@ -168,7 +213,7 @@
   )
   const {
     opened,
-    open,
+    open: startSession,
     close,
     confirm,
     clear,
@@ -176,6 +221,7 @@
     pageSize,
     searchDraft,
     query,
+    submitFilters,
     list,
     labels,
     rows,
@@ -188,6 +234,81 @@
     selectPage,
     remove,
   } = useDataPicker(props, emit, tableRef, () => resolvedDensity.value)
+
+  function open(event?: Event): void {
+    if (opened.value || props.disabled || props.readonly) return
+    if (inline.value)
+      opener = (event?.currentTarget ??
+        document.activeElement) as HTMLElement | null
+    startSession()
+    if (inline.value)
+      void nextTick(() => {
+        const content = panelContent.value
+        const firstField = content?.querySelector<HTMLInputElement>(
+          'input:not([type="hidden"])'
+        )
+        const target = firstField ?? content
+        target?.focus()
+      })
+  }
+
+  function restoreFocus(): void {
+    const trigger = opener
+    opener = null
+    if (trigger?.isConnected) trigger.focus()
+  }
+
+  function dismiss(): void {
+    close()
+    restoreFocus()
+  }
+
+  function toggle(event: MouseEvent): void {
+    if (inline.value && opened.value) dismiss()
+    else open(event)
+  }
+
+  function commit(): void {
+    confirm()
+    if (!opened.value) restoreFocus()
+  }
+
+  function searchOnEnter(event: KeyboardEvent): void {
+    if (!inline.value || event.isComposing) return
+    event.preventDefault()
+    event.stopPropagation()
+    query()
+  }
+
+  function inlineKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || event.defaultPrevented) return
+    event.preventDefault()
+    event.stopPropagation()
+    dismiss()
+  }
+
+  const surfaceProps = computed(() =>
+    inline.value
+      ? {
+          id: panelId,
+          class: 'c-data-picker__inline',
+          role: 'region',
+          'aria-label': resolvedTitle.value,
+          title: resolvedTitle.value,
+          size: 'small' as const,
+          onKeydown: inlineKeydown,
+        }
+      : {
+          show: opened.value,
+          preset: 'card' as const,
+          class: 'c-data-picker__modal',
+          title: resolvedTitle.value,
+          style: { width: 'min(960px, calc(100vw - 24px))' },
+          'onUpdate:show': (show: boolean) => {
+            if (!show) close()
+          },
+        }
+  )
   defineExpose({ open, close })
 </script>
 
