@@ -21,9 +21,8 @@
           <span :class="{ 'c-data-picker__placeholder': !display }">{{
             display || resolvedPlaceholder
           }}</span>
-          <C_Icon
-            name="mdi:magnify"
-            :size="15"
+          <span
+            class="i-mdi:magnify w-4 h-4 shrink-0"
             aria-hidden="true"
           />
         </NButton>
@@ -38,8 +37,13 @@
           :disabled="disabled || readonly"
           :aria-label="t('picker.clear')"
           @click="clear"
-          >×</NButton
         >
+          <template #icon
+            ><span
+              class="i-mdi:close w-4 h-4"
+              aria-hidden="true"
+          /></template>
+        </NButton>
       </div>
     </slot>
     <span
@@ -51,8 +55,14 @@
         text
         size="tiny"
         @click="labels.reload"
-        >{{ t('common.retry') }}</NButton
-      ></span
+      >
+        <template #icon
+          ><span
+            class="i-mdi:refresh w-4 h-4"
+            aria-hidden="true"
+        /></template>
+        {{ t('common.retry') }}
+      </NButton></span
     >
     <component
       :is="inline ? NCard : NModal"
@@ -90,8 +100,14 @@
               :loading="list.loading.value"
               type="primary"
               @click="inline && query()"
-              >{{ t('picker.search') }}</NButton
             >
+              <template #icon
+                ><span
+                  class="i-mdi:magnify w-4 h-4"
+                  aria-hidden="true"
+              /></template>
+              {{ t('picker.search') }}
+            </NButton>
           </component>
         </slot>
         <div
@@ -103,8 +119,14 @@
           <NButton
             :size="density.size"
             @click="list.reload"
-            >{{ t('common.retry') }}</NButton
           >
+            <template #icon
+              ><span
+                class="i-mdi:refresh w-4 h-4"
+                aria-hidden="true"
+            /></template>
+            {{ t('common.retry') }}
+          </NButton>
         </div>
         <C_Table
           v-else-if="opened"
@@ -158,15 +180,27 @@
           <NButton
             :size="density.size"
             @click="dismiss"
-            >{{ t('common.cancel') }}</NButton
           >
+            <template #icon
+              ><span
+                class="i-mdi:close w-4 h-4"
+                aria-hidden="true"
+            /></template>
+            {{ t('common.cancel') }}
+          </NButton>
           <NButton
             type="primary"
             :size="density.size"
             :disabled="!canConfirm"
             @click="commit"
-            >{{ t('common.confirm') }}</NButton
           >
+            <template #icon
+              ><span
+                class="i-mdi:check w-4 h-4"
+                aria-hidden="true"
+            /></template>
+            {{ t('common.confirm') }}
+          </NButton>
         </div>
       </template>
     </component>
@@ -181,7 +215,6 @@
   import { computed, nextTick, shallowRef, useId } from 'vue'
   import { NButton, NCard, NInput, NModal, NPagination, NTag } from 'naive-ui'
   import C_Table from '../C_Table/index.vue'
-  import C_Icon from '../C_Icon/index.vue'
   import type { TableInstance } from '../C_Table/types'
   import { resolveComponentDensity } from '../../core/density'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'

@@ -33,7 +33,7 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.29.1**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.29.2**. See the [changelog](./CHANGELOG.md) for release details.
 
 Search fields, form fields, and actions can be generated from reactive configuration. Compact density applies consistently across search and data entry, including validation, async options, and dialogs. The application owns dictionaries and permissions, supplying ordinary options and column definitions to components.
 

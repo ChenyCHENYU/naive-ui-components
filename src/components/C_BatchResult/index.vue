@@ -26,8 +26,15 @@
         size="small"
         :disabled="!retryKeys.length"
         @click="emit('retry', [...retryKeys])"
-        >{{ t('batch.retry', { count: retryKeys.length }) }}</NButton
       >
+        <template #icon>
+          <span
+            class="i-mdi:refresh w-4 h-4"
+            aria-hidden="true"
+          />
+        </template>
+        {{ t('batch.retry', { count: retryKeys.length }) }}
+      </NButton>
     </div>
     <C_Table
       :data="rows"

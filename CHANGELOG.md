@@ -1,5 +1,12 @@
 # @robot-admin/naive-ui-components
 
+## 0.29.2
+
+### Patch Changes
+
+- `C_DataPicker` 的查询、清空、重试、取消和确认统一使用随组件样式分发的图标。
+- `C_BatchResult` 的重试按钮使用同一套图标。
+
 ## 0.29.1
 
 ### Patch Changes
