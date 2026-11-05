@@ -49,7 +49,7 @@
 - 业务提交值与行键不同时，显式配置 `value: row => row.code`，并让 `resolve` 按业务编码查询。行键和业务值均须稳定且唯一；`DataPickerSource<T>` 保留可直接调用的 `value(row)`，组件传参用 `DataPickerSourceInput<T>` 可省略它。
 - 选择在本地草稿中进行，跨分页保留；只有“确认选择”或显式清空才发出 `update:modelValue`。取消、关闭弹窗、卸载不会提交草稿。
 - 计划定位等操作可加上 `require-selection`，选中候选后才可确认。默认允许提交空选择。
-- `select(rows)` 返回已解析的选中行。提供 `source.resolve(values, signal)` 可一次批量回显全部初值；未提供时，尚未加载的初值显示原编码且保留，不猜测标签，不逐条请求。需要完整 `rows` 事件的场景应提供 `resolve`。
+- `select(rows)` 返回确认时已解析的选中行。提供 `source.resolve(values, signal)` 可批量回显初值。打开后到达的回显会更新仍选中的标签及确认结果。尚未解析的初值显示并保留原编码。
 - 源、受控值、单多选模式或可用状态改变时关闭旧会话；旧请求即使忽略 signal，也不能回写到新会话。
 - `readonly` 保留名称展示，但不打开选择、清空或确认；`disabled` 同样禁止变更。名称加载失败保留编码并提供重试。
 
@@ -57,7 +57,7 @@
 
 `request` 接收 `{ page, pageSize, search, signal }`，返回 `{ rows, total }`。应用负责接口字段转换、鉴权、业务过滤、去重及缓存。组件不猜测 `data.records` 等响应信封。
 
-默认 `pageSize=20`。密度按显式 `density`、区域 `C_Density` / 表单默认密度、`compact` 依次解析，支持 `default`、`comfortable`。列表使用虚拟表格，底部左侧显示结果数和已选项，右侧分页在换页加载时保持可见。窄窗允许分行。已选标签最多同时呈现 30 个，其余显示数量。可通过实例 `open()` / `close()` 控制选择会话。
+默认 `pageSize=20`。密度按显式 `density`、区域 `C_Density` / 表单默认密度、`compact` 依次解析，支持 `default`、`comfortable`。首次打开时，虚拟表格与候选请求并行加载。底部左侧显示结果数和已选项，右侧分页在换页加载时保持可见。窄窗允许分行。已选标签最多同时呈现 30 个，其余显示数量。可通过实例 `open()` / `close()` 控制选择会话。
 
 `locale` 可覆盖应用中英文配置，标题和 placeholder 的显式配置优先；运行时切换语言不会清空选择草稿。
 
@@ -67,7 +67,26 @@
 
 ## 表单内嵌选择
 
-编辑弹窗内可把字段设为整行宽度，再为选择器设置 `presentation="inline"`。点击字段后，候选区在同一弹窗内展开。Enter 查询候选项，Escape 或取消收起并将焦点交回字段。使用 `@select` 从确认后的行一次性写入编码、名称等关联字段。
+常规表单字段通过 `createDataPickerField` 接入。它把选择结果写回当前字段，并继承表单的禁用和只读状态。
+
+```ts
+import { createDataPickerField } from '@robot-admin/naive-ui-components/C_DataPicker'
+import '@robot-admin/naive-ui-components/C_DataPicker/style.css'
+
+const renderers = {
+  customer: createDataPickerField({ source, columns, title: '选择客户' }),
+}
+const options = [
+  {
+    prop: 'customerId',
+    type: 'customer',
+    label: '订货客户',
+    attrs: { presentation: 'inline' },
+  },
+]
+```
+
+将 `options` 和 `renderers` 传给 `C_Form` 或 `C_FormModal`。内嵌候选区与字段同处一个弹窗，Enter 查询候选项，Escape 或取消收起并将焦点交回字段。需要一次回填编码和名称等多个关联字段时，可直接组合 `C_DataPicker` 并使用 `@select`。
 
 ```vue
 <C_DataPicker

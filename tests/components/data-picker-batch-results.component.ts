@@ -6,6 +6,8 @@ import { FORM_GLOBAL_CONFIG_KEY } from '../../src/context'
 import C_DataPicker from '../../src/components/C_DataPicker/index.vue'
 import C_BatchResult from '../../src/components/C_BatchResult/index.vue'
 import C_Table from '../../src/components/C_Table/index.vue'
+import C_Form from '../../src/components/C_Form/index.vue'
+import { createDataPickerField } from '../../src/components/C_DataPicker'
 import type {
   DataPickerSource,
   DataPickerSourceInput,
@@ -371,6 +373,97 @@ describe('C_DataPicker远程选择会话', () => {
     expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toEqual([0, 1])
     expect(wrapper.emitted('select')!.at(-1)![0]).toEqual(allRows.slice(0, 2))
     wrapper.unmount()
+  })
+
+  test('打开后迟到的名称更新当前标签和确认结果，不恢复已移除的选择', async () => {
+    const labels = deferred<readonly Row[]>()
+    const wrapper = mount(C_DataPicker<Row>, {
+      props: {
+        source: { ...createSource(), resolve: () => labels.promise },
+        columns,
+        modelValue: [1, 2],
+        multiple: true,
+        pageSize: 1,
+      },
+    })
+    try {
+      await wrapper.get('.c-data-picker__open').trigger('click')
+      await flushPromises()
+      const tags = () => wrapper.findAllComponents(NTag)
+      expect(tags().map(tag => tag.text())).toEqual(['1', '2'])
+      tags()[1]!.vm.$emit('close')
+      labels.resolve(allRows.slice(1))
+      await flushPromises()
+      expect(tags().map(tag => tag.text())).toEqual(['客户一'])
+      await button(wrapper, '确定').trigger('click')
+      expect(wrapper.emitted('update:modelValue')).toEqual([[[1]]])
+      expect(wrapper.emitted('select')).toEqual([[[allRows[1]]]])
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  test('勾选当前页时无需清除再恢复表格选择', async () => {
+    const wrapper = mount(C_DataPicker<Row>, {
+      props: { source: createSource(), columns, multiple: true },
+    })
+    try {
+      await wrapper.get('.c-data-picker__open').trigger('click')
+      await flushPromises()
+      const table = wrapper.getComponent(C_Table)
+      const api = table.vm as unknown as TableInstance<Row>
+      api.selectRow('r1')
+      await flushPromises()
+      expect(table.emitted('selection-change')).toHaveLength(1)
+      expect(wrapper.findAllComponents(NTag).map(tag => tag.text())).toEqual([
+        '客户一',
+      ])
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  test('表单适配器保留零值，字段内嵌选择后更新表单模型', async () => {
+    const model = ref({ customer: 0 })
+    const renderer = createDataPickerField({
+      source: createSource(),
+      columns,
+      title: '选择客户',
+    })
+    const form = mount(
+      defineComponent({
+        setup: () => () =>
+          h(C_Form<typeof model.value>, {
+            modelValue: model.value,
+            'onUpdate:modelValue': (value: typeof model.value) =>
+              (model.value = value),
+            options: [
+              {
+                prop: 'customer',
+                type: 'customer-picker',
+                attrs: { presentation: 'inline' },
+              },
+            ],
+            renderers: { 'customer-picker': renderer },
+          }),
+      })
+    )
+    try {
+      await flushPromises()
+      const trigger = form.get('.c-data-picker__open')
+      expect(trigger.text()).toContain('客户零')
+      await trigger.trigger('click')
+      await flushPromises()
+      expect(form.findComponent(NModal).exists()).toBe(false)
+      const table = form.getComponent(C_Table)
+        .vm as unknown as TableInstance<Row>
+      table.unselectRow('r0')
+      table.selectRow('r1')
+      await button(form, '确定').trigger('click')
+      expect(model.value).toEqual({ customer: 1 })
+    } finally {
+      form.unmount()
+    }
   })
 
   test('换页保留分页和已知总数，无选中项时禁用确认，数据缩减后重新定位', async () => {

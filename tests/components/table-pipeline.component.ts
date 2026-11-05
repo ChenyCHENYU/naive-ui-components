@@ -155,20 +155,21 @@ describe('table sorting, filtering and pagination integration', () => {
       })
       try {
         await flushPromises()
-        if (legacy) {
-          const table = wrapper.getComponent(NDataTable)
-          Reflect.set(table.vm, 'getFilteredAndSortedData', undefined)
-        }
         sorter.mockClear()
         await wrapper.setProps({ data: source.map(row => ({ ...row })) })
         await flushPromises()
-        const callsWithoutIndex = sorter.mock.calls.length
-        expect(callsWithoutIndex).toBeGreaterThan(0)
+        const nativeSortCalls = sorter.mock.calls.length
+        expect(nativeSortCalls).toBeGreaterThan(0)
+        if (legacy) {
+          const table = wrapper.getComponent(NDataTable)
+          Reflect.set(table.vm, 'getFilteredAndSortedData', undefined)
+          Reflect.set(table.vm, 'getCurrentPageData', undefined)
+        }
         const updatedRows = source.map(row => ({ ...row }))
         sorter.mockClear()
         await wrapper.setProps({ data: updatedRows, rowNumber: true })
         await flushPromises()
-        expect(sorter).toHaveBeenCalledTimes(callsWithoutIndex)
+        expect(sorter).toHaveBeenCalledTimes(nativeSortCalls)
         const last = wrapper.get('tbody tr')
         expect(last.get('td[data-col-key="_index"]').text()).toBe('11')
         expect(last.get('td[data-col-key="id"]').text()).toBe('11')
@@ -222,6 +223,34 @@ describe('table sorting, filtering and pagination integration', () => {
       pagination: { page: 1, pageSize: 2, pageCount: 50, itemCount: 6 },
     })
     expect(api.getTotalPages()).toBe(3)
+  })
+
+  test('native remote row numbers follow the loaded page while total changes', async () => {
+    const wrapper = mount(C_Table, {
+      props: {
+        data: [{ id: 41 }, { id: 42 }],
+        columns: [{ key: 'id', title: 'ID' }],
+        pagination: { page: 3, pageSize: 20, itemCount: 30 },
+        remote: true,
+        config: { toolbar: { show: false } },
+      },
+    })
+    try {
+      await flushPromises()
+      const numbers = () =>
+        wrapper
+          .findAll('tbody td[data-col-key="_index"]')
+          .map(cell => cell.text())
+      expect(numbers()).toEqual(['41', '42'])
+      expect((wrapper.vm as unknown as TableInstance).getTotalPages()).toBe(2)
+      await wrapper.setProps({
+        data: [{ id: 21 }],
+        pagination: { page: 2, pageSize: 20, itemCount: 30 },
+      })
+      expect(numbers()).toEqual(['21'])
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   const pageSizeCases: [string, NonNullable<PaginationProps['pageSizes']>][] = [

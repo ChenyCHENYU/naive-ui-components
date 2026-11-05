@@ -101,8 +101,9 @@ describe('keyboard and status accessibility contracts', () => {
   })
 
   test('action labels are not prefixed by decorative icon names', () => {
-    const source = read('src/components/C_ActionBar/index.vue')
-    expect(source.match(/'aria-hidden': true/g)).toHaveLength(2)
+    const renderer = read('src/components/C_ActionBar/actionIcon.ts')
+    expect(renderer).toContain("'aria-hidden': 'true'")
+    expect(renderer).toContain("h(C_Icon, { name, size, 'aria-hidden': true })")
   })
 
   test('editor focus does not mutate an application-owned container', () => {

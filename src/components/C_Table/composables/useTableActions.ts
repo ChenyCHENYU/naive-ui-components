@@ -10,10 +10,12 @@ import type {
   DataRecord,
   ApiFunction,
   ButtonType,
+  InlineTableAction,
   UseTableActionsOptions,
   UseTableActionsReturn,
 } from '../types'
-import C_Icon from '../../C_Icon/index.vue'
+import { renderActionIcon } from '../../C_ActionBar/actionIcon'
+import { resolveActionPreset } from '../../C_ActionBar/presets'
 import { useActionTask } from '../../../composables/useActionTask'
 import { useComponentFeedback, useComponentLocale } from '../../../config'
 
@@ -72,7 +74,6 @@ export function useTableActions<T extends object = DataRecord>(
     return response as TData
   }
 
-  /* 创建按钮的通用方法 */
   const createButton = (
     icon: string,
     title: string,
@@ -87,11 +88,13 @@ export function useTableActions<T extends object = DataRecord>(
         size: config.value.controlSize ?? 'small',
         type,
         quaternary: true,
+        title,
+        'aria-label': title,
         onClick,
         loading: loading || (runningKey ? tasks.isRunning(runningKey) : false),
         disabled: runningKey ? tasks.isRunning(runningKey) : false,
       },
-      () => [h(C_Icon, { name: icon, size: 14, title })]
+      () => renderActionIcon(icon, 14)
     )
 
   /* 处理编辑操作 */
@@ -236,7 +239,7 @@ export function useTableActions<T extends object = DataRecord>(
     }
 
     return [
-      createButton('mdi:pencil', t('common.edit'), 'warning', () =>
+      createButton('mdi:pencil-outline', t('common.edit'), 'warning', () =>
         tableManager.editStates.rowEdit.startEditRow(rowKeyValue)
       ),
     ]
@@ -249,7 +252,7 @@ export function useTableActions<T extends object = DataRecord>(
     if (isActionEnabled('detail')) {
       buttons.push(
         createButton(
-          'mdi:eye',
+          'mdi:eye-outline',
           t('common.detail'),
           'info',
           () => void handleDetail(row, index),
@@ -265,7 +268,7 @@ export function useTableActions<T extends object = DataRecord>(
     ) {
       buttons.push(
         createButton(
-          'mdi:pencil',
+          'mdi:pencil-outline',
           t('common.edit'),
           'warning',
           () => void handleEdit(row, index),
@@ -277,7 +280,7 @@ export function useTableActions<T extends object = DataRecord>(
     if (isActionEnabled('delete')) {
       buttons.push(
         createButton(
-          'mdi:delete',
+          'mdi:delete-outline',
           t('common.delete'),
           'error',
           () => void handleDelete(row, index).catch(() => undefined),
@@ -289,61 +292,92 @@ export function useTableActions<T extends object = DataRecord>(
     return buttons
   }
 
-  /* 渲染自定义操作下拉菜单 */
-  const renderCustomDropdown = (row: T, index: number) => {
-    const customActions = actions.value?.custom
-    if (!customActions?.length) return null
-
-    const visibleActions = customActions.filter(action =>
-      action.show ? action.show(row, index) : true
-    )
-
-    if (!visibleActions.length) return null
-
-    const options = visibleActions.map(action => {
-      const label =
+  const resolveRowAction = (
+    action: InlineTableAction<T>,
+    row: T,
+    index: number
+  ) => {
+    const { key, onClick, show, disabled } = action
+    const preset = resolveActionPreset({
+      key,
+      label:
         typeof action.label === 'function'
           ? action.label(row, index)
-          : action.label
-      const icon =
+          : action.label,
+      icon:
         typeof action.icon === 'function'
           ? action.icon(row, index)
-          : action.icon
-
-      return {
-        label,
-        key: action.key,
-        icon: () => h(C_Icon, { name: icon, size: 14 }),
-        disabled:
-          action.disabled?.(row, index) ||
-          tasks.isRunning(taskKey(rowKey(row), `custom:${action.key}`)),
-      }
+          : action.icon,
+      type:
+        typeof action.type === 'function'
+          ? action.type(row, index)
+          : action.type,
     })
+    const { label, icon } = preset
+    const task = taskKey(rowKey(row), `custom:${key}`)
+    const canRun = () => show?.(row, index) !== false && !disabled?.(row, index)
+    const loading = tasks.isRunning(task)
+    return {
+      key,
+      label,
+      icon,
+      type: preset.type,
+      loading,
+      disabled: loading || !!disabled?.(row, index),
+      run: () =>
+        void tasks
+          .run(task, () => onClick(row, index), canRun)
+          .catch(error =>
+            feedback.error(t('table.actionFailed', { action: label }), error)
+          ),
+    }
+  }
+
+  const renderInlineActions = (row: T, index: number) =>
+    (actions.value?.inline ?? [])
+      .filter(action => action.show?.(row, index) !== false)
+      .map(action => {
+        const entry = resolveRowAction(action, row, index)
+        return h(
+          NButton,
+          {
+            key: entry.key,
+            text: true,
+            size: config.value.controlSize ?? 'small',
+            type: entry.type,
+            title: action.tooltip ?? entry.label,
+            loading: entry.loading,
+            disabled: entry.disabled,
+            onClick: (event: MouseEvent) => {
+              // 行动作不能同时切换工作区的当前记录。
+              event.stopPropagation()
+              entry.run()
+            },
+          },
+          {
+            default: () => entry.label,
+            icon: () => renderActionIcon(entry.icon, 14),
+          }
+        )
+      })
+
+  const renderCustomDropdown = (row: T, index: number) => {
+    const entries = (actions.value?.custom ?? [])
+      .filter(action => action.show?.(row, index) !== false)
+      .map(action => resolveRowAction(action, row, index))
+    if (!entries.length) return null
 
     return h(
       NDropdown,
       {
-        options,
-        onSelect: (key: string) => {
-          const action = visibleActions.find(a => a.key === key)
-          if (!action) return
-          const actionLabel =
-            typeof action.label === 'function'
-              ? action.label(row, index)
-              : action.label
-          void tasks
-            .run(
-              taskKey(rowKey(row), `custom:${action.key}`),
-              () => action.onClick(row, index),
-              () => !action.disabled?.(row, index)
-            )
-            .catch(error =>
-              feedback.error(
-                t('table.actionFailed', { action: actionLabel }),
-                error
-              )
-            )
-        },
+        options: entries.map(({ key, label, icon, disabled }) => ({
+          key,
+          label,
+          disabled,
+          icon: () => renderActionIcon(icon, 14),
+        })),
+        onSelect: (key: string) =>
+          entries.find(entry => entry.key === key)?.run(),
       },
       () =>
         createButton(
@@ -352,9 +386,7 @@ export function useTableActions<T extends object = DataRecord>(
           'default',
           () => {},
           undefined,
-          visibleActions.some(action =>
-            tasks.isRunning(taskKey(rowKey(row), `custom:${action.key}`))
-          )
+          entries.some(entry => entry.loading)
         )
     )
   }
@@ -384,6 +416,7 @@ export function useTableActions<T extends object = DataRecord>(
         ? renderRowEditButtons(rowKeyValue)
         : []),
       ...renderBasicActions(row, index),
+      ...renderInlineActions(row, index),
     ]
 
     const dropdown = renderCustomDropdown(row, index)

@@ -63,7 +63,7 @@ const totalSize = files.reduce(
 const totalLimit = 4 * 1024 * 1024 + 224 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
-    `dist excluding reviewed SheetJS: ${((totalSize - sheetJsSize) / 1024 / 1024).toFixed(2)} MB > ${(totalLimit / 1024 / 1024).toFixed(2)} MB`
+    `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`
   )
 }
 

@@ -32,6 +32,8 @@ export interface UseSearchStateOptions<T extends object = SearchFormParams> {
   onApplied?: (params: T) => void
 }
 
+type SearchMode = 'submit' | 'reset' | 'replace'
+
 /** 搜索草稿、校验锁与成功快照；字段元数据同步不回滚输入，作用域失效不接受迟到结果。 */
 export function useSearchState<T extends object = SearchFormParams>(
   emits: {
@@ -60,9 +62,14 @@ export function useSearchState<T extends object = SearchFormParams>(
       !isDataEqual(formParams.value, appliedParams.value)
   )
   const expanded = ref(false)
-  const scopeVersion = ref(0)
+  const queryVersion = ref(0)
   const searchTasks = useActionTask<number>()
-  const searching = computed(() => searchTasks.isRunning(scopeVersion.value))
+  const searching = computed(() => searchTasks.isRunning(queryVersion.value))
+  const resetBlocked = computed(
+    () =>
+      config.value.searchOnReset && toValue(options.loading) && !searching.value
+  )
+  let resetVersion: number | undefined
   let active = true
   if (getCurrentScope())
     onScopeDispose(() => {
@@ -119,20 +126,23 @@ export function useSearchState<T extends object = SearchFormParams>(
       return true
     } catch {
       // 折叠仅影响显示；校验失败时展示完整条件，便于定位字段。
-      if (version === scopeVersion.value && hasExpandButton.value)
+      if (version === queryVersion.value && hasExpandButton.value)
         expanded.value = true
       return false
     }
   }
 
-  const canSubmit = (params: T, version: number): boolean =>
+  const canStart = (mode: SearchMode): boolean =>
+    mode === 'replace' || !toValue(options.loading)
+
+  const canSubmit = (params: T, version: number, mode: SearchMode): boolean =>
     active &&
-    version === scopeVersion.value &&
-    !toValue(options.loading) &&
+    version === queryVersion.value &&
+    canStart(mode) &&
     isDataEqual(formParams.value, params)
 
-  const hasRequiredValue = (params: T): boolean => {
-    if (!requireValue.value) return true
+  const hasRequiredValue = (params: T, mode: SearchMode): boolean => {
+    if (mode !== 'submit' || !requireValue.value) return true
     const valid = Object.entries(params)
       .filter(([key]) => key !== 'pageNum' && key !== 'pageSize')
       .some(([, value]) => !isSearchValueEmpty(value))
@@ -142,7 +152,7 @@ export function useSearchState<T extends object = SearchFormParams>(
 
   const canApply = (params: T, version: number): boolean =>
     active &&
-    version === scopeVersion.value &&
+    version === queryVersion.value &&
     fields.value
       .filter(field => field.fixed)
       .every(field =>
@@ -156,13 +166,17 @@ export function useSearchState<T extends object = SearchFormParams>(
     if (active) feedback.error(t('search.failed'), error)
   }
 
-  const executeSearch = async (version: number): Promise<boolean> => {
+  const executeSearch = async (
+    version: number,
+    mode: SearchMode
+  ): Promise<boolean> => {
     const params = cloneData(formParams.value)
-    if (!(await validate(version)) || !canSubmit(params, version)) return false
-    if (!hasRequiredValue(params)) return false
+    if (!(await validate(version)) || !canSubmit(params, version, mode))
+      return false
+    if (!hasRequiredValue(params, mode)) return false
     history.saveCurrentInputs()
     emits('search', cloneData(params))
-    if (!canSubmit(params, version)) return false
+    if (!canSubmit(params, version, mode)) return false
     const execute = config.value.onSearch
     // 旧的 emit-only 接入没有可等待的业务结果，保持返回语义，但不伪造 applied 成功。
     if (!execute) return true
@@ -179,15 +193,23 @@ export function useSearchState<T extends object = SearchFormParams>(
     return true
   }
 
-  const searchFn = async (): Promise<boolean> => {
-    const version = scopeVersion.value
+  const runSearch = async (mode: SearchMode): Promise<boolean> => {
+    const version = queryVersion.value
     const result = await searchTasks.run(
       version,
-      () => executeSearch(version),
-      () => !toValue(options.loading)
+      async () => {
+        if (mode !== 'submit') resetVersion = version
+        try {
+          return await executeSearch(version, mode)
+        } finally {
+          if (resetVersion === version) resetVersion = undefined
+        }
+      },
+      () => canStart(mode)
     )
     return result.executed && result.value
   }
+  const searchFn = () => runSearch('submit')
 
   const publishModel = (params: T) => {
     emits('change-params', cloneData(params))
@@ -202,7 +224,7 @@ export function useSearchState<T extends object = SearchFormParams>(
     })
   }
 
-  const resetFn = () => {
+  const resetDraft = () => {
     formRef.value?.restoreValidation()
     const params = cloneData(formParams.value)
     const values = params as Record<string, unknown>
@@ -222,6 +244,18 @@ export function useSearchState<T extends object = SearchFormParams>(
     formParams.value = params
     publishModel(params)
     emits('reset', cloneData(params))
+  }
+
+  const resetFn = () => {
+    if (!active || resetBlocked.value) return
+    const searchOnReset = config.value.searchOnReset === true
+    const resetPending = searchOnReset && resetVersion === queryVersion.value
+    const replacePending = searchOnReset && searching.value && !resetPending
+    // 重置查询接管执行权。旧查询即使迟到也不能覆盖成功快照或发出错误提示。
+    if (replacePending) queryVersion.value++
+    resetDraft()
+    if (searchOnReset && !resetPending)
+      void runSearch(replacePending ? 'replace' : 'reset')
   }
 
   const applyPreset = (values: Partial<T>): boolean => {
@@ -282,7 +316,7 @@ export function useSearchState<T extends object = SearchFormParams>(
     ],
     (next, previous) => {
       if (isDataEqual(next, previous)) return
-      scopeVersion.value++
+      queryVersion.value++
       appliedParams.value = null
     },
     { deep: true, flush: 'sync' }
@@ -309,6 +343,7 @@ export function useSearchState<T extends object = SearchFormParams>(
     hiddenActiveCount,
     expanded,
     searching,
+    resetBlocked,
     visibleFields,
     availableFields,
     foldThreshold,

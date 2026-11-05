@@ -186,6 +186,8 @@ export interface SearchConfig<T extends object = SearchFormParams> {
   foldThreshold?: number
   historyMaxItems?: number
   requireValue?: boolean
+  /** 重置草稿后执行查询。允许空条件，仍执行字段校验。默认只重置草稿。 */
+  searchOnReset?: boolean
   /** 切换业务查询范围时重置已执行快照，并忽略旧范围的迟到结果。 */
   queryScope?: string | number
   feedback?: ComponentFeedback

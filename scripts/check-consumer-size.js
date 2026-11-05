@@ -46,6 +46,24 @@ const cases = [
     props: "{ actions: [{ key: 'save', label: 'Save', onClick: () => {} }] }",
     budget: 95 * 1024,
   },
+  {
+    name: 'C_DataPicker',
+    component: 'C_DataPicker',
+    css: 'C_DataPicker.css',
+    props:
+      "{ columns: [{ key: 'id', title: 'ID' }], source: { rowKey: 'id', label: row => String(row.id), request: async () => ({ rows: [], total: 0 }) } }",
+    budget: 165 * 1024,
+    cssBudget: 15 * 1024,
+  },
+  {
+    name: 'C_FormModal',
+    component: 'C_FormModal',
+    css: 'C_FormModal.css',
+    props:
+      "{ options: [], editor: { visible: ref(false), title: ref('Edit'), loading: ref(false), mode: ref('edit'), model: ref({}), close() {}, submit() {} } }",
+    budget: 215 * 1024,
+    cssBudget: 17 * 1024,
+  },
 ]
 
 // Inspect actual emitted static imports. Dynamic chunks are deliberately excluded
@@ -59,7 +77,7 @@ for (const scenario of cases) {
   const entry = `virtual:consumer-size-${scenario.component}`
   const componentPath = path.join(root, 'dist', `${scenario.component}.js`)
   const cssPath = path.join(root, 'dist', scenario.css)
-  const source = `import { createApp, h } from 'vue';
+  const source = `import { createApp, h, ref } from 'vue';
     import { ${scenario.component} } from ${JSON.stringify(componentPath)};
     import ${JSON.stringify(cssPath)};
     createApp({ render: () => h(${scenario.component}, ${scenario.props}) }).mount('#app');`
@@ -110,6 +128,18 @@ for (const scenario of cases) {
     )
   if (gzipBytes > scenario.budget) {
     failures.push(`${scenario.name}: initial JS exceeds budget`)
+  }
+  if (scenario.cssBudget) {
+    const cssBytes = outputs
+      .filter(
+        output => output.type === 'asset' && output.fileName.endsWith('.css')
+      )
+      .reduce((sum, asset) => sum + gzipSync(asset.source).length, 0)
+    if (cssBytes > scenario.cssBudget)
+      failures.push(`${scenario.name}: emitted CSS exceeds budget`)
+    console.log(
+      `${scenario.name}: emitted CSS gzip ${(cssBytes / 1024).toFixed(1)} KiB / ${scenario.cssBudget / 1024} KiB`
+    )
   }
   if (eagerHeavyModules.length) {
     failures.push(

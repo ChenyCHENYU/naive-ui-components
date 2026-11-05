@@ -455,7 +455,9 @@ test('ActionBar keeps normal and primary button sizes consistent and follows run
     ],
   })
   expect(wrapper.getComponent(NButton).props('size')).toBe('large')
-  expect(wrapper.get('.c-icon').attributes('style')).toContain('18px')
+  expect(
+    wrapper.get('.n-button__icon svg[aria-hidden="true"]').attributes('width')
+  ).toBe('18')
   wrapper.unmount()
 })
 

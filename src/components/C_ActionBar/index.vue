@@ -95,7 +95,7 @@
     type PropType,
   } from 'vue'
   import { NButton, NTooltip, NDropdown, NDivider } from 'naive-ui'
-  import C_Icon from '../C_Icon/index.vue'
+  import { renderActionIcon } from './actionIcon'
   import { useActionTask } from '../../composables/useActionTask'
   import type {
     ActionItem,
@@ -276,9 +276,7 @@
             return {
               key: item.key,
               label: item.label,
-              icon: icon
-                ? () => h(C_Icon, { name: icon, size: 14, 'aria-hidden': true })
-                : undefined,
+              icon: icon ? () => renderActionIcon(icon, 14) : undefined,
               disabled:
                 isActionDisabled(action.value, props.taskKey) ||
                 isActionLoading(action.value, props.taskKey) ||
@@ -326,14 +324,10 @@
           },
           {
             default: () => resolvedAction.value.label,
-            icon: icon
-              ? () =>
-                  h(C_Icon, {
-                    name: icon,
-                    size: iconSize.value,
-                    'aria-hidden': true,
-                  })
-              : undefined,
+            icon:
+              icon && !buttonProps?.renderIcon
+                ? () => renderActionIcon(icon, iconSize.value)
+                : undefined,
           }
         )
 

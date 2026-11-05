@@ -506,9 +506,8 @@ Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put re
   <C_FormSearch
     v-model="filters"
     :form-item-list="searchFields"
-    :config="{ requireValue: false, onSearch: setQuery }"
+    :config="{ requireValue: false, onSearch: setQuery, searchOnReset: true }"
     :loading="loading"
-    @reset="setQuery"
   />
   <C_Table v-bind="bindings" />
 </template>
@@ -516,7 +515,7 @@ Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put re
 
 The search button, native form submission (including Enter in an input), and exposed `searchFn()` share validation and duplicate prevention. Only currently mounted search controls participate in Naive form validation. Editing conditions, enabling external loading, or unmounting during async validation cancels dispatch; requests receive the successfully validated snapshot. At least one non-pagination value is required by default; set `requireValue: false` to allow an empty query.
 
-The `reset(params)` event follows the synchronous v-model update and carries the complete reset snapshot. Existing no-argument handlers remain compatible. Reset restores field defaults while retaining `pageNum/pageSize`; it does not automatically request or debounce. This example uses `@reset="setQuery"` to reload on the first page. For custom fields declared as `SearchFormItem<Query>`, `render` infers `value` and `updateValue` from `prop`; arbitrary named field slots still require narrowing the actual value.
+The `reset(params)` event carries the reset snapshot after the synchronous v-model update. By default, reset restores field defaults and retains `pageNum/pageSize`. This example enables `searchOnReset` to reload the first page through the same `onSearch` callback. For custom fields declared as `SearchFormItem<Query>`, `render` infers `value` and `updateValue` from `prop`. Arbitrary named field slots still require narrowing the actual value.
 
 ### Action configuration and asynchronous work
 

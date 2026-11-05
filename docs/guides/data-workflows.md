@@ -15,7 +15,28 @@
 
 搜索组件以 `onSearch` 的返回结果更新已执行快照。控制器返回 `false` 时，应把这个值原样传回搜索区。服务端分页用同一份已提交查询翻页，表格组件按各自公开属性绑定。
 
-列表进阶定位可在 `C_FormSearch` 的 `#actions` 中打开 `C_DataPicker`，再通过选择器 `#query` 组合独立的搜索区。候选分页沿用已提交的条件，选择结果由页面决定是定位记录还是回填字段。编辑弹窗的字段用 `presentation="inline"` 在同一个弹窗中完成选择。`C_FormModal` 的 `renderers` 可复用页面的自定义字段。见[数据选择器](./data-picker.md)。
+重置后需要刷新列表时，在搜索配置中启用 `searchOnReset: true`。搜索和重置使用同一个 `onSearch`。`@reset` 可用于监听重置，例如记录用户操作。
+
+常用行操作可直接声明在 `config.actions.inline`。操作列默认追加到末尾，需要固定时提供 `{ key: '_actions', title: '操作', fixed: 'right' }`。
+
+```ts
+const config = defineTableConfig<Shipment>({
+  actions: {
+    inline: [
+      { key: 'edit', disabled: row => row.status !== 'waiting', onClick: edit },
+      {
+        key: 'delete',
+        disabled: row => row.status !== 'waiting',
+        onClick: confirmDelete,
+      },
+    ],
+  },
+})
+```
+
+常用动作继承预设图标和文案。回调收到当前行和索引。需要删除确认时，在业务回调中实现，并返回实际执行的 Promise，让按钮在完成前保持执行锁。
+
+列表进阶定位可在 `C_FormSearch` 的 `#actions` 中打开 `C_DataPicker`，再通过选择器 `#query` 组合独立的搜索区。候选分页沿用已提交的条件。表单字段可通过 `createDataPickerField` 接入 `C_Form` 或 `C_FormModal` 的 `renderers`，在同一个弹窗内完成查找和回填。见[数据选择器](./data-picker.md)。
 
 先预览再发布的页面可用 `useDataResource` 加载主档明细，用 `useValidationScope` 聚合跨区域校验。页面控制器为预览保存一份输入快照，输入变化后使旧预览失效。发布按钮返回接口 Promise，有分项结果时用 `C_BatchResult` 展示，成功项与可重试失败项分别处理。
 

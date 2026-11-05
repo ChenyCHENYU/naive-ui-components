@@ -114,6 +114,118 @@ function deferred<T>() {
 }
 afterEach(() => vi.unstubAllGlobals())
 
+test('reset-and-search replaces the running query once and ignores its stale result', async () => {
+  const oldRequest = deferred<boolean>()
+  const resetRequest = deferred<boolean>()
+  const onSearch = vi
+    .fn()
+    .mockReturnValueOnce(oldRequest.promise)
+    .mockReturnValueOnce(resetRequest.promise)
+  const wrapper = mount(Search, {
+    props: {
+      modelValue: { keyword: 'old' },
+      formItemList: [{ type: 'input', prop: 'keyword' }],
+      config: { onSearch, searchOnReset: true },
+    },
+  })
+  const pending = wrapper.vm.searchFn()
+  await flushPromises()
+  await wrapper.setProps({ loading: true })
+  await wrapper.get('button[aria-label="重置"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('input').setValue('another draft')
+  await wrapper.get('button[aria-label="重置"]').trigger('click')
+  await flushPromises()
+
+  expect(onSearch.mock.calls).toEqual([[{ keyword: 'old' }], [{ keyword: '' }]])
+  expect(wrapper.vm.formParams).toEqual({ keyword: '' })
+  expect(wrapper.emitted('reset')).toEqual([
+    [{ keyword: '' }],
+    [{ keyword: '' }],
+  ])
+  resetRequest.resolve(true)
+  await flushPromises()
+  oldRequest.resolve(true)
+  expect(await pending).toBe(false)
+  expect(wrapper.vm.appliedParams).toEqual({ keyword: '' })
+  expect(wrapper.emitted('applied')).toEqual([[{ keyword: '' }]])
+  wrapper.unmount()
+})
+
+test('reset-and-search observes external loading and retains the last successful result on failure', async () => {
+  const onSearch = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false)
+  const wrapper = mount(Search, {
+    props: {
+      modelValue: { keyword: 'old' },
+      formItemList: [{ type: 'input', prop: 'keyword' }],
+      config: { onSearch, searchOnReset: true },
+    },
+  })
+  expect(await wrapper.vm.searchFn()).toBe(true)
+  await wrapper.setProps({ loading: true })
+  expect(
+    wrapper.get('button[aria-label="重置"]').attributes('disabled')
+  ).toBeDefined()
+  wrapper.vm.cleanFn()
+  expect(wrapper.vm.formParams).toEqual({ keyword: 'old' })
+  expect(onSearch).toHaveBeenCalledTimes(1)
+
+  await wrapper.setProps({ loading: false })
+  wrapper.vm.cleanFn()
+  await flushPromises()
+  expect(wrapper.vm.formParams).toEqual({ keyword: '' })
+  expect(wrapper.vm.appliedParams).toEqual({ keyword: 'old' })
+  expect(wrapper.vm.hasUnappliedChanges).toBe(true)
+  expect(onSearch).toHaveBeenCalledTimes(2)
+  wrapper.unmount()
+})
+
+test('an event-only search slot can refresh after reset without marking a result applied', async () => {
+  const wrapper = mount(Search, {
+    props: {
+      modelValue: { keyword: 'old' },
+      formItemList: [{ type: 'input', prop: 'keyword' }],
+      config: { searchOnReset: true },
+    },
+  })
+  wrapper.vm.cleanFn()
+  await flushPromises()
+  expect(wrapper.emitted('reset')).toEqual([[{ keyword: '' }]])
+  expect(wrapper.emitted('search')).toEqual([[{ keyword: '' }]])
+  expect(wrapper.vm.appliedParams).toBeNull()
+  wrapper.unmount()
+})
+
+test('updating one select preserves the option array of another select', async () => {
+  const wrapper = mount(Search, {
+    props: {
+      modelValue: { line: 1, available: false },
+      formItemList: [
+        {
+          type: 'select',
+          prop: 'line',
+          list: [
+            { label: 'Line A', value: 1 },
+            { label: 'Line B', value: 2 },
+          ],
+        },
+        {
+          type: 'select',
+          prop: 'available',
+          list: [{ label: 'Offline', value: false }],
+        },
+      ],
+    },
+  })
+  const [line, available] = wrapper.findAllComponents(NSelect)
+  const options = available.props('options')
+  line.vm.$emit('update:value', 2)
+  await nextTick()
+  expect(wrapper.vm.formParams.line).toBe(2)
+  expect(available.props('options')).toBe(options)
+  wrapper.unmount()
+})
+
 test('successful requests apply their isolated snapshot while later draft changes stay editable', async () => {
   const request = deferred<void>()
   const onSearch = vi.fn((params: SearchFormParams) => {

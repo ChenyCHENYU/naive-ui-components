@@ -153,17 +153,13 @@
       }"
       :flex-height="flexHeight"
       :columns="computedColumns"
-      :data="
-        usesNativePagination
-          ? normalizedData
-          : paginationState.paginatedData.value
-      "
-      :pagination="nativePagination"
-      :remote="usesNativePagination ? nativeRemote : true"
-      @update:sorter="handleSorterChange"
-      @update:filters="handleFilterChange"
-      @update:page-size="handleNativePageSizeChange"
-      @update:page="handleNativePageChange"
+      :data="viewport.tableData.value"
+      :pagination="viewport.nativePagination.value"
+      :remote="viewport.tableRemote.value"
+      @update:sorter="viewport.handleSorterChange"
+      @update:filters="viewport.handleFilterChange"
+      @update:page-size="viewport.handleNativePageSizeChange"
+      @update:page="viewport.handleNativePageChange"
       :loading="normalizedLoading"
       :row-key="resolvedRowKey"
       :row-props="getRowProps"
@@ -204,8 +200,8 @@
 
     <!-- 分页 -->
     <NPagination
-      v-if="!usesNativePagination && paginationState.paginationConfig.value"
-      v-bind="paginationState.paginationConfig.value"
+      v-if="viewport.managedPagination.value"
+      v-bind="viewport.managedPagination.value"
       class="pagination-wrapper"
     />
 
@@ -309,8 +305,6 @@
     type DataTableRowKey,
     type DataTableInst,
     type DataTableProps,
-    type DataTableFilterState,
-    type PaginationProps,
     NDataTable,
     NPagination,
     NModal,
@@ -333,8 +327,7 @@
     type TableConfig,
   } from './composables/useTableConfig'
   import { useTableManager } from './composables/useTableManager'
-  import { usePagination } from './composables/usePagination'
-  import { useTableDataPipeline } from './composables/useTableDataPipeline'
+  import { useTableViewport } from './composables/useTableViewport'
   import { useTableActions } from './composables/useTableActions'
   import { useTableColumns } from './composables/useTableColumns'
   import {
@@ -533,43 +526,6 @@
 
   /* ================= Hooks ================= */
 
-  const usesNativePagination = computed(() => props.pagination !== undefined)
-  const nativeRemote = computed(
-    () => props.remote ?? resolved.value.pagination?.remote ?? false
-  )
-  const getDefaultNativePageSize = (
-    pagination: PaginationProps | false | undefined
-  ) => {
-    if (!pagination) return 10
-    if (pagination.defaultPageSize !== undefined)
-      return pagination.defaultPageSize
-    const firstSize = pagination.pageSizes?.[0]
-    return typeof firstSize === 'number' ? firstSize : firstSize?.value || 10
-  }
-  const nativeUncontrolledPageSize = ref(
-    getDefaultNativePageSize(props.pagination)
-  )
-  const nativeUncontrolledPage = ref(
-    props.pagination ? (props.pagination.defaultPage ?? 1) : 1
-  )
-  const getNativePageSize = (pagination: PaginationProps) =>
-    Math.max(1, pagination.pageSize ?? nativeUncontrolledPageSize.value)
-  const nativePagination = computed(() =>
-    props.pagination
-      ? {
-          ...props.pagination,
-          defaultPage: nativeUncontrolledPage.value,
-          defaultPageSize: nativeUncontrolledPageSize.value,
-        }
-      : false
-  )
-  const handleNativePageChange = (page: number) => {
-    nativeUncontrolledPage.value = page
-  }
-  const handleNativePageSizeChange = (pageSize: number) => {
-    nativeUncontrolledPageSize.value = pageSize
-  }
-
   const tableManager = useTableManager({
     config: managerConfig,
     data: () => normalizedData.value,
@@ -620,6 +576,7 @@
       resolved.value.showRowActions ||
       actions?.delete ||
       actions?.detail ||
+      actions?.inline?.length ||
       actions?.custom?.length ||
       actions?.render
     )
@@ -658,7 +615,7 @@
     rowNumber: computed(() => props.rowNumber),
     getRowNumber: (row, index) =>
       treeRowNumbers.value?.get(resolvedRowKey(row)) ??
-      rowNumberOffset.value + index + 1,
+      viewport.rowNumberOffset.value + index + 1,
     rowNumberTitle: () => t('table.rowNumber'),
   })
 
@@ -669,65 +626,16 @@
     computedScrollX,
   } = columnState
 
-  const dataPipeline = useTableDataPipeline({
+  const viewport = useTableViewport({
+    table: tableRef,
     data: normalizedData,
     columns: reactiveColumns,
-    remote: () =>
-      usesNativePagination.value || resolved.value.pagination?.remote === true,
-  })
-  // Older supported Naive releases do not expose current-page/filtered getters.
-  // This fallback is computed only when those public methods are unavailable.
-  const nativeFallbackPipeline = useTableDataPipeline({
-    data: normalizedData,
-    columns: reactiveColumns,
-    remote: nativeRemote,
-  })
-  const getNativeLocalRowCount = () =>
-    tableRef.value?.getFilteredAndSortedData?.().length ??
-    nativeFallbackPipeline.filteredRowCount.value
-  const paginationState = usePagination({
-    data: dataPipeline.processedData,
-    config: computed(() =>
-      usesNativePagination.value ? null : resolved.value.pagination
-    ),
+    pagination: () => resolved.value.pagination,
+    nativePagination: () => props.pagination,
+    nativeRemote: () => props.remote,
     emit: bridgedEmit,
   })
-  const rowNumberOffset = computed(() => {
-    if (!usesNativePagination.value) {
-      return resolved.value.pagination?.enabled
-        ? (paginationState.currentPage.value - 1) *
-            paginationState.currentPageSize.value
-        : 0
-    }
-    if (!props.pagination) return 0
-    const size = getNativePageSize(props.pagination)
-    const requested = props.pagination.page ?? nativeUncontrolledPage.value
-    if (requested <= 1) return 0
-    // Local Naive paging clamps against filtered rows, regardless of pager pageCount.
-    const last = nativeRemote.value
-      ? (props.pagination.pageCount ??
-        Math.ceil((props.pagination.itemCount ?? Infinity) / size))
-      : Math.ceil(getNativeLocalRowCount() / size)
-    return (Math.max(1, Math.min(requested, last)) - 1) * size
-  })
-  const displayedRows = computed<DataRecord[]>(() => {
-    if (usesNativePagination.value) {
-      const current = tableRef.value?.getCurrentPageData?.()
-      if (current) return current
-      const source = nativeFallbackPipeline.processedData.value
-      if (!props.pagination || nativeRemote.value) return source
-      const pageSize = getNativePageSize(props.pagination)
-      const page = Math.max(
-        1,
-        Math.min(
-          props.pagination.page ?? nativeUncontrolledPage.value,
-          Math.ceil(source.length / pageSize)
-        )
-      )
-      return source.slice((page - 1) * pageSize, page * pageSize)
-    }
-    return paginationState.paginatedData.value
-  })
+  const { displayedRows } = viewport
   const treeRowNumbers = computed(() => {
     if (!resolved.value.treeEnabled) return
     const childrenKey = resolved.value.treeChildrenKey
@@ -744,24 +652,10 @@
         })
     }
     displayedRows.value.forEach((row, index) =>
-      visit(row, String(rowNumberOffset.value + index + 1))
+      visit(row, String(viewport.rowNumberOffset.value + index + 1))
     )
     return numbers
   })
-  const handleSorterChange = (
-    sorter: Parameters<typeof dataPipeline.setSorter>[0]
-  ) => {
-    dataPipeline.setSorter(sorter)
-    nativeFallbackPipeline.setSorter(sorter)
-  }
-  const handleFilterChange = (filters: DataTableFilterState) => {
-    dataPipeline.setFilters(filters)
-    nativeFallbackPipeline.setFilters(filters)
-    if (!usesNativePagination.value && !resolved.value.pagination?.remote) {
-      paginationState.resetToFirstPage()
-    }
-  }
-
   /* ================= 行拖拽（可选） ================= */
 
   const attrs = useAttrs()
@@ -815,10 +709,7 @@
       draggedSourceIndexes = displayedRows.value.map(row =>
         sourceIndexes.get(resolvedRowKey(row))
       )
-      const isRemote = usesNativePagination.value
-        ? nativeRemote.value
-        : resolved.value.pagination?.remote === true
-      if (isRemote) {
+      if (viewport.remote.value) {
         bridgedEmit('update:data', newPageData)
         return
       }
@@ -843,10 +734,7 @@
     allData: normalizedData,
     rowKey: resolvedRowKey,
     config: computed(() => resolved.value.crossPageSelection),
-    remote: () =>
-      usesNativePagination.value
-        ? nativeRemote.value
-        : resolved.value.pagination?.remote === true,
+    remote: viewport.remote,
     childrenKey: () =>
       resolved.value.treeEnabled ? resolved.value.treeChildrenKey : undefined,
     rowCheckable: row => resolved.value.rowCheckable?.(row) ?? true,
@@ -1196,17 +1084,8 @@
   watch(
     () => resolved.value.persistKey,
     () => {
-      nativeUncontrolledPage.value = props.pagination
-        ? (props.pagination.defaultPage ?? 1)
-        : 1
-      nativeUncontrolledPageSize.value = getDefaultNativePageSize(
-        props.pagination
-      )
+      viewport.resetReport()
       renewNativeTable()
-      dataPipeline.setSorter(undefined)
-      dataPipeline.setFilters({})
-      nativeFallbackPipeline.setSorter(undefined)
-      nativeFallbackPipeline.setFilters({})
     }
   )
   const getSchemaColumnKeys = (columns: TableColumn[]) =>
@@ -1217,10 +1096,7 @@
     const keys = getSchemaColumnKeys(columns)
     const removed = new Set([...schemaColumnKeys].filter(key => !keys.has(key)))
     schemaColumnKeys = keys
-    if (removed.size) {
-      dataPipeline.discardColumns(removed)
-      nativeFallbackPipeline.discardColumns(removed)
-    }
+    if (removed.size) viewport.discardColumns(removed)
     if (!nativeResizedWidths.size) return
     const displayed = new Map(
       computedColumns.value.flatMap(column =>
@@ -1302,27 +1178,8 @@
       dynamicRows.print(elementRef ?? tableWrapperRef.value),
     downloadTableScreenshot: (elementRef?: HTMLElement, filename?: string) =>
       dynamicRows.download(elementRef ?? tableWrapperRef.value, filename),
-    resetToFirstPage: () => {
-      if (usesNativePagination.value) {
-        nativeUncontrolledPage.value = 1
-        tableRef.value?.page(1)
-      } else paginationState.resetToFirstPage()
-    },
-    getTotalPages: () => {
-      if (!usesNativePagination.value) return paginationState.getTotalPages()
-      const native = props.pagination
-      if (!native) return 1
-      if (
-        nativeRemote.value &&
-        native.itemCount === undefined &&
-        native.pageCount !== undefined
-      )
-        return Math.max(1, native.pageCount)
-      const count = nativeRemote.value
-        ? (native.itemCount ?? normalizedData.value.length)
-        : getNativeLocalRowCount()
-      return Math.max(1, Math.ceil(count / getNativePageSize(native)))
-    },
+    resetToFirstPage: viewport.resetToFirstPage,
+    getTotalPages: viewport.getTotalPages,
     getSelectedRows: () =>
       isCrossPageSelectionEnabled.value
         ? crossPageState.getSelectedRows()
@@ -1392,8 +1249,8 @@
       () => resolved.value.rowDrag,
       rowDragEnabled,
       () => normalizedLoading.value,
-      () => displayedRows.value.length,
-      () => paginationState.currentPage.value,
+      () => rowDragEnabled.value && displayedRows.value.length,
+      () => rowDragEnabled.value && viewport.currentPage.value,
     ],
     async () => {
       await nextTick()

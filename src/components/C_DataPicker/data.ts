@@ -28,7 +28,8 @@ function normalizeValues(
   return [...new Set(Array.isArray(value) ? value : [value as DataPickerValue])]
 }
 
-function isPickerValue(value: unknown): value is DataPickerValue {
+/** 保留原始编码类型，排除 NaN 和无穷大。 */
+export function isPickerValue(value: unknown): value is DataPickerValue {
   return (
     typeof value === 'string' ||
     (typeof value === 'number' && Number.isFinite(value))
@@ -127,8 +128,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
   const search = computed(() => queryState.value.search)
   const sourceVersion = shallowRef(0)
   const session = shallowRef(0)
-  const draft = shallowRef<DataPickerValue[]>([])
-  const draftRows = shallowRef(new Map<DataPickerValue, T>())
+  const draft = shallowRef(new Map<DataPickerValue, T | undefined>())
   const committedRows = shallowRef(new Map<DataPickerValue, T>())
   const values = computed(() => {
     const selected = normalizeValues(props.modelValue)
@@ -142,7 +142,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
   const blocked = computed(() => props.disabled || props.readonly)
   let filterBaseline = cloneData(props.initialValues)
   let restoringSelection = false
-  let selectionRows: readonly T[] = []
+  let selectionPage: { table: TableInstance<T>; rows: readonly T[] } | undefined
   const rowValue = (row: T) => getPickerValue(props.source, row)
 
   // 先失效会话，再由资源观察器读取新源，避免一次源替换发起两次回显请求。
@@ -220,7 +220,8 @@ export function useDataPicker<T extends object, TFilters extends object>(
     },
     isEmpty: result => result.size === 0,
   })
-  const rows = computed(() => list.data.value?.rows ?? [])
+  const emptyRows: T[] = []
+  const rows = computed(() => list.data.value?.rows ?? emptyRows)
   // 换页期间保留已知总数，旧页行数据仍由资源管理器清除。
   const total = shallowRef<number | null>(null)
   watch(list.data, result => {
@@ -242,16 +243,22 @@ export function useDataPicker<T extends object, TFilters extends object>(
       })
       .join('、')
   )
-  const selectedCount = computed(() => draft.value.length)
+  const selectedCount = computed(() => draft.value.size)
   const canConfirm = computed(
     () => !blocked.value && (!props.requireSelection || selectedCount.value > 0)
   )
-  const selected = computed(() =>
-    draft.value.slice(0, 30).map(value => {
-      const row = draftRows.value.get(value)
-      return { value, label: row ? props.source.label(row) : String(value) }
-    })
-  )
+  const selected = computed(() => {
+    const visible: Array<{ value: DataPickerValue; label: string }> = []
+    for (const value of draft.value.keys()) {
+      const row = resolveDraftRow(value)
+      visible.push({
+        value,
+        label: row ? props.source.label(row) : String(value),
+      })
+      if (visible.length === 30) break
+    }
+    return visible
+  })
   const columns = computed(() => [
     { type: 'selection' as const, multiple: props.multiple },
     ...props.columns.filter(column => column.type !== 'selection'),
@@ -268,8 +275,8 @@ export function useDataPicker<T extends object, TFilters extends object>(
   function close(): void {
     opened.value = false
     total.value = null
-    draft.value = []
-    draftRows.value = new Map()
+    draft.value = new Map()
+    selectionPage = undefined
   }
 
   // 缓存页面切离时丢弃未确认会话，避免 Teleport 弹窗覆盖新页面。
@@ -277,8 +284,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
 
   function open(): void {
     if (blocked.value || opened.value) return
-    draft.value = [...values.value]
-    draftRows.value = new Map(knownRows.value)
+    draft.value = new Map(values.value.map(value => [value, undefined]))
     queryState.value = {
       page: 1,
       search: '',
@@ -290,12 +296,17 @@ export function useDataPicker<T extends object, TFilters extends object>(
     opened.value = true
   }
 
+  /** 迟到的回显只补全已选值对应的行，当前会话内看到的候选数据优先。 */
+  function resolveDraftRow(value: DataPickerValue): T | undefined {
+    return draft.value.get(value) ?? knownRows.value.get(value)
+  }
+
   function confirm(): void {
     if (!canConfirm.value || !opened.value) return
-    const chosen = [...draft.value]
+    const chosen = [...draft.value.keys()]
     const resolved = new Map<DataPickerValue, T>()
     for (const value of chosen) {
-      const row = draftRows.value.get(value)
+      const row = resolveDraftRow(value)
       if (row) resolved.set(value, row)
     }
     committedRows.value = resolved
@@ -310,49 +321,67 @@ export function useDataPicker<T extends object, TFilters extends object>(
     emit('select', [])
   }
 
+  /** 只操作完成回填的表格实例，忽略换页和异步重挂载中的通知。 */
+  function currentSelectionTable(): TableInstance<T> | undefined {
+    if (
+      selectionPage?.rows === rows.value &&
+      selectionPage.table === table.value
+    )
+      return selectionPage.table
+  }
+
   function selectPage(_keys: DataTableRowKey[], selectedRows: T[]): void {
-    if (restoringSelection || !opened.value || selectionRows !== rows.value)
-      return
-    let nextValues: DataPickerValue[] = []
+    if (restoringSelection || !opened.value || !currentSelectionTable()) return
+    const nextDraft = new Map<DataPickerValue, T | undefined>()
     if (props.multiple) {
       // 只替换当前页的选择，保留其他页的草稿。
       const currentPage = new Set(rows.value.map(rowValue))
-      nextValues = draft.value.filter(value => !currentPage.has(value))
+      for (const [value, row] of draft.value) {
+        if (!currentPage.has(value)) nextDraft.set(value, row)
+      }
     }
     const next = props.multiple ? selectedRows : selectedRows.slice(-1)
-    const rowsByValue = new Map(draftRows.value)
-    for (const row of next) {
-      const value = rowValue(row)
-      rowsByValue.set(value, row)
-      nextValues.push(value)
-    }
-    draftRows.value = rowsByValue
-    draft.value = nextValues
+    for (const row of next) nextDraft.set(rowValue(row), row)
+    draft.value = nextDraft
   }
 
   function remove(value: DataPickerValue): void {
-    draft.value = draft.value.filter(item => item !== value)
+    const nextDraft = new Map(draft.value)
+    if (!nextDraft.delete(value)) return
+    draft.value = nextDraft
+    const currentTable = currentSelectionTable()
+    if (!currentTable) return
+    const row = rows.value.find(row => rowValue(row) === value)
+    if (!row) return
+    restoringSelection = true
+    try {
+      currentTable.unselectRow(getPickerRowKey(props.source, row))
+    } finally {
+      restoringSelection = false
+    }
   }
 
   function restoreSelection(): void {
-    if (!opened.value || !table.value) return
+    const currentTable = table.value
+    if (!opened.value || !currentTable) return
     restoringSelection = true
     try {
-      selectionRows = rows.value
-      const known = new Map(draftRows.value)
-      table.value.clearSelection()
+      selectionPage = { table: currentTable, rows: rows.value }
+      let nextDraft: Map<DataPickerValue, T | undefined> | undefined
+      currentTable.clearSelection()
       for (const row of rows.value) {
         const value = rowValue(row)
-        if (draft.value.includes(value)) {
-          known.set(value, row)
-          table.value.selectRow(
+        if (draft.value.has(value)) {
+          if (draft.value.get(value) !== row)
+            (nextDraft ??= new Map(draft.value)).set(value, row)
+          currentTable.selectRow(
             props.source.value === undefined
               ? value
               : getPickerRowKey(props.source, row)
           )
         }
       }
-      draftRows.value = known
+      if (nextDraft) draft.value = nextDraft
     } finally {
       restoringSelection = false
     }
@@ -385,7 +414,8 @@ export function useDataPicker<T extends object, TFilters extends object>(
   }
 
   watch(
-    [rows, draft],
+    // 表格内的点击已更新勾选，只在候选页替换或表格重挂载时回填。
+    [rows, table],
     () => {
       void nextTick(restoreSelection)
     },

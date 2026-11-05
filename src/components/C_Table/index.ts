@@ -20,6 +20,7 @@ export type {
   NormalTableColumn,
   BuiltInTableColumn,
   CustomAction,
+  InlineTableAction,
   ApiFunction,
   RenderFunction,
   RowAction,

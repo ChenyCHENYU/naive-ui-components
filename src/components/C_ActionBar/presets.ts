@@ -51,14 +51,17 @@ export const ACTION_PRESETS: Readonly<
   more: { label: '更多', icon: 'mdi:dots-horizontal' },
 }
 
-export const resolveActionPreset = (action: ActionItem): ActionItem => {
-  const preset = action.key ? ACTION_PRESETS[action.key] : undefined
+export const resolveActionPreset = (
+  action: ActionItem
+): ActionItem & { label: string; icon: string } => {
+  const preset = ACTION_PRESETS[action.key ?? ''] ?? {}
 
   return {
     ...preset,
     ...action,
-    label: action.label || preset?.label || action.key || '操作',
-    icon: action.icon || preset?.icon || DEFAULT_ACTION_ICON,
+    label: action.label || preset.label || action.key || '操作',
+    icon: action.icon || preset.icon || DEFAULT_ACTION_ICON,
+    type: action.type ?? preset.type,
   }
 }
 

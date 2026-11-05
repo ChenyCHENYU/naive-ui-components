@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { h } from 'vue'
 import { NSelect } from 'naive-ui'
@@ -15,6 +15,47 @@ const quiet = {
 }
 
 describe('C_Table combined feature contracts', () => {
+  test('inline actions use offline presets and lock only the matching row without firing row clicks', async () => {
+    let finish!: () => void
+    const work = new Promise<void>(resolve => {
+      finish = resolve
+    })
+    const edit = vi.fn(() => work)
+    const rowClick = vi.fn()
+    const wrapper = mount(C_Table<{ id: number }>, {
+      attrs: { rowProps: () => ({ onClick: rowClick }) },
+      props: {
+        data: [{ id: 1 }, { id: 2 }],
+        columns: [
+          { key: 'id', title: 'ID' },
+          { key: '_actions', title: '操作', fixed: 'right' },
+        ],
+        config: {
+          pagination: false,
+          toolbar: { show: false },
+          actions: {
+            inline: [
+              { key: 'edit', disabled: row => row.id === 2, onClick: edit },
+            ],
+          },
+        },
+      },
+    })
+    const [first, second] = wrapper
+      .findAll('button')
+      .filter(button => button.text() === '编辑')
+    expect(first!.find('svg[aria-hidden="true"] path').exists()).toBe(true)
+    expect(second!.attributes('disabled')).toBeDefined()
+    await first!.trigger('click')
+    await first!.trigger('click')
+    expect(edit).toHaveBeenCalledExactlyOnceWith({ id: 1 }, 0)
+    expect(rowClick).not.toHaveBeenCalled()
+    finish()
+    await flushPromises()
+    expect(first!.attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   test('remote pages retain selected rows and emit one event per user transition', async () => {
     const wrapper = mount(C_Table<DataRecord>, {
       props: {

@@ -97,14 +97,14 @@
             <NSelect
               v-if="item.type === 'select'"
               v-bind="item.attrs"
-              :value="selectBindings.get(item.prop)?.value"
+              :value="selectBinding(item).value"
               @update:value="
-                (value, selected) => setSelectValue(item.prop, value, selected)
+                (value, selected) => setSelectValue(item, value, selected)
               "
               :placeholder="item.placeholder || '请选择'"
               :clearable="item.attrs?.clearable !== false"
               :size="fieldSize(item)"
-              :options="selectBindings.get(item.prop)?.options"
+              :options="selectBinding(item).options"
               :fallback-option="selectFallback(item)"
               :loading="
                 item.optionsState?.loading === true ||
@@ -133,7 +133,7 @@
                 <div
                   v-if="
                     item.optionsState?.error != null &&
-                    selectBindings.get(item.prop)?.options?.length
+                    selectBinding(item).options?.length
                   "
                   role="alert"
                   class="form-search-option-error"
@@ -248,6 +248,7 @@
                   class="form-search-icon-button"
                   :size="resolvedSize"
                   aria-label="重置"
+                  :disabled="resetBlocked"
                   @click="resetFn"
                 >
                   <template #icon>
@@ -307,6 +308,7 @@
     defineAsyncComponent,
     watch,
     readonly,
+    type ComputedRef,
     type CSSProperties,
     type Ref,
     type VNodeChild,
@@ -383,6 +385,7 @@
     hiddenActiveCount,
     expanded,
     searching,
+    resetBlocked,
     availableFields,
     foldThreshold,
     hasExpandButton,
@@ -437,20 +440,25 @@
     return undefined
   }
 
-  const selectBindings = computed(
-    () =>
-      new Map<string, ReturnType<typeof createSearchSelectBinding>>(
-        availableFields.value
-          .filter(item => item.type === 'select')
-          .map(item => [
-            item.prop,
-            createSearchSelectBinding(
-              fieldOptions(item),
-              (formParams.value as Record<string, unknown>)[item.prop]
-            ),
-          ])
+  type SelectBinding = ReturnType<typeof createSearchSelectBinding>
+  const selectBindings = new WeakMap<
+    SearchFormItem<T>,
+    ComputedRef<SelectBinding>
+  >()
+  const selectBinding = (item: SearchFormItem<T>): SelectBinding => {
+    let binding = selectBindings.get(item)
+    if (!binding) {
+      // 字段各自订阅选项和当前值，更新一个条件不重建其他下拉的选项。
+      binding = computed(() =>
+        createSearchSelectBinding(
+          fieldOptions(item),
+          (formParams.value as Record<string, unknown>)[item.prop]
+        )
       )
-  )
+      selectBindings.set(item, binding)
+    }
+    return binding.value
+  }
 
   const selectFallback = (
     item: SearchFormItem<T>
@@ -458,7 +466,7 @@
     const supplied = item.attrs?.fallbackOption
     return typeof supplied === 'function' || typeof supplied === 'boolean'
       ? (supplied as import('naive-ui').SelectProps['fallbackOption'])
-      : selectBindings.value.get(item.prop)?.fallbackOption
+      : selectBinding(item).fallbackOption
   }
 
   const inputValue = (field: string): string | null => {
@@ -467,14 +475,11 @@
   }
 
   const setSelectValue = (
-    field: string,
+    item: SearchFormItem<T>,
     value: string | number | Array<string | number> | null,
     selected?: unknown
   ): void => {
-    setFieldValue(
-      field,
-      selectBindings.value.get(field)?.decode(value, selected) ?? null
-    )
+    setFieldValue(item.prop, selectBinding(item).decode(value, selected))
   }
 
   const setFieldValue = (field: string, value: unknown): void => {

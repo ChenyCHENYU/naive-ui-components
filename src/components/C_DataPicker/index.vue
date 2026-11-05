@@ -212,9 +212,15 @@
   lang="ts"
   generic="T extends object, TFilters extends object = Record<string, unknown>"
 >
-  import { computed, nextTick, shallowRef, useId } from 'vue'
+  import {
+    computed,
+    defineAsyncComponent,
+    h,
+    nextTick,
+    shallowRef,
+    useId,
+  } from 'vue'
   import { NButton, NCard, NInput, NModal, NPagination, NTag } from 'naive-ui'
-  import C_Table from '../C_Table/index.vue'
   import type { TableInstance } from '../C_Table/types'
   import { resolveComponentDensity } from '../../core/density'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
@@ -251,6 +257,12 @@
   )
   const density = computed(() => resolveComponentDensity(resolvedDensity.value))
   const { t } = useComponentLocale(() => props.locale)
+  // 候选请求与表格代码在打开后并行加载；模块加载失败独立于接口重试。
+  const C_Table = defineAsyncComponent({
+    loader: () => import('../C_Table/index.vue'),
+    loadingComponent: () => h('div', { role: 'status' }, t('table.loading')),
+    errorComponent: () => h('div', { role: 'alert' }, t('picker.loadFailed')),
+  })
   const resolvedTitle = computed(() => props.title ?? t('picker.title'))
   const resolvedPlaceholder = computed(
     () => props.placeholder ?? t('picker.placeholder')

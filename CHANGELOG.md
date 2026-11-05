@@ -1,5 +1,13 @@
 # @robot-admin/naive-ui-components
 
+## 0.30.0
+
+### Minor Changes
+
+- `C_FormSearch` 可通过 `searchOnReset` 将重置后的查询交给同一个执行入口，旧查询不能覆盖新结果。下拉选项按字段复用。
+- `C_DataPicker` 合并迟到的选中项回显并保持确认数据一致。新增 `createDataPickerField` 用于表单内选取。
+- `C_Table` 共用当前页状态计算序号、行范围与页数。常用行操作可用 `config.actions.inline` 声明，与 `C_ActionBar` 共用随包分发的预设图标。
+
 ## 0.29.3
 
 ### Patch Changes

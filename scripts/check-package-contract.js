@@ -10,6 +10,18 @@ const requireCondition = (condition, message) => {
   if (!condition) failures.push(message)
 }
 
+for (const filename of ['README.md', 'README_EN.md']) {
+  const readme = fs.readFileSync(path.join(root, filename), 'utf8')
+  const version =
+    /(?:当前仓库版本|The current repository version is) \*\*([^*]+)\*\*/.exec(
+      readme
+    )?.[1]
+  requireCondition(
+    version === pkg.version,
+    `${filename} version must match package.json`
+  )
+}
+
 requireCondition(
   pkg.packageManager === 'bun@1.4.2',
   'packageManager must stay pinned'

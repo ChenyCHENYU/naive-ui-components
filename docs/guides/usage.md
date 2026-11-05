@@ -645,9 +645,8 @@ const filters: SearchFormItem[] = [
   <C_FormSearch
     v-model="filters"
     :form-item-list="searchFields"
-    :config="{ requireValue: false, onSearch: setQuery }"
+    :config="{ requireValue: false, onSearch: setQuery, searchOnReset: true }"
     :loading="loading"
-    @reset="setQuery"
   />
   <C_Table v-bind="bindings" />
 </template>
@@ -655,7 +654,7 @@ const filters: SearchFormItem[] = [
 
 搜索按钮、原生表单提交（含输入框 Enter）和实例 `searchFn()` 走同一校验与防重路径；仅当前挂载的搜索控件参与 Naive 表单校验。异步校验期间条件改变、外部 loading 开启或组件卸载，会取消本次派发，成功校验的快照才进入请求。默认要求至少一个非分页条件；需要空条件查询时设置 `requireValue: false`。
 
-`reset(params)` 事件先同步更新 v-model，再通知重置后的完整快照；不带参数的旧回调继续可用。默认仅恢复字段默认值并保留 `pageNum/pageSize`，不自动查询、不添加 debounce。上例直接用 `@reset="setQuery"` 刷新并回到第一页。自定义字段使用 `SearchFormItem<Query>` 的 `render` 时，`value` 和 `updateValue` 会随 `prop` 推导；任意命名的字段插槽仍需在使用侧按实际值缩窄类型。
+`reset(params)` 事件在同步更新 v-model 后通知重置快照。默认恢复字段初值并保留 `pageNum/pageSize`。上例启用 `searchOnReset`，重置后通过同一个 `onSearch` 刷新并回到第一页。自定义字段使用 `SearchFormItem<Query>` 的 `render` 时，`value` 和 `updateValue` 会随 `prop` 推导。任意命名的字段插槽仍需按实际值缩窄类型。
 
 ### 动作配置与异步执行
 

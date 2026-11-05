@@ -67,6 +67,6 @@ export interface DataPickerProps<
 
 export interface DataPickerEmits<T extends object> {
   'update:modelValue': [value: DataPickerValue | DataPickerValue[] | null]
-  /** 无 resolve 的未知初值保留原编码，此事件只包含已解析的行。 */
+  /** 仅包含确认时已解析的行，尚未解析的选中值仍保留在 modelValue。 */
   select: [rows: T[]]
 }

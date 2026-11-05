@@ -94,7 +94,14 @@ export interface CustomAction<T extends object = DataRecord> {
   tooltip?: string
 }
 
-/** 简化的操作配置 - 二元法则 */
+/** 直接显示在操作列。省略文案或图标时使用 C_ActionBar 的语义预设。 */
+export type InlineTableAction<T extends object = DataRecord> = Omit<
+  CustomAction<T>,
+  'label' | 'icon'
+> &
+  Partial<Pick<CustomAction<T>, 'label' | 'icon'>>
+
+/** 表格内置操作与业务行操作。 */
 export interface SimpleTableActions<T extends object = DataRecord> {
   /** 编辑操作 - 直接传入函数 */
   edit?: false | ApiFunction<T>
@@ -102,7 +109,9 @@ export interface SimpleTableActions<T extends object = DataRecord> {
   delete?: false | ApiFunction<T>
   /** 详情操作 - 直接传入函数 */
   detail?: false | ApiFunction<T>
-  /** 自定义操作按钮 */
+  /** 常用业务动作直接显示，点击不会同时触发行点击。 */
+  inline?: InlineTableAction<T>[]
+  /** 收进更多菜单的业务动作。 */
   custom?: CustomAction<T>[]
   /** 完全自定义渲染 - 10%场景 */
   render?: RenderFunction<T>
@@ -279,7 +288,7 @@ export type TableColumn<T extends object = DataRecord> =
 
 export type StrictTableColumn<T extends object> =
   | (Omit<NormalTableColumn<T>, 'key'> & {
-      key: Extract<keyof T, string>
+      key: Extract<keyof T, string> | '_actions'
     })
   | BuiltInTableColumn<T>
 
