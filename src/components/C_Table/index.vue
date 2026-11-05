@@ -552,6 +552,8 @@
   const nativeUncontrolledPage = ref(
     props.pagination ? (props.pagination.defaultPage ?? 1) : 1
   )
+  const getNativePageSize = (pagination: PaginationProps) =>
+    Math.max(1, pagination.pageSize ?? nativeUncontrolledPageSize.value)
   const nativePagination = computed(() =>
     props.pagination
       ? {
@@ -680,6 +682,9 @@
     columns: reactiveColumns,
     remote: nativeRemote,
   })
+  const getNativeLocalRowCount = () =>
+    tableRef.value?.getFilteredAndSortedData?.().length ??
+    nativeFallbackPipeline.filteredRowCount.value
   const paginationState = usePagination({
     data: dataPipeline.processedData,
     config: computed(() =>
@@ -695,17 +700,14 @@
         : 0
     }
     if (!props.pagination) return 0
-    const size = Math.max(
-      1,
-      props.pagination.pageSize ?? nativeUncontrolledPageSize.value
-    )
+    const size = getNativePageSize(props.pagination)
     const requested = props.pagination.page ?? nativeUncontrolledPage.value
-    const total = nativeRemote.value
-      ? props.pagination.itemCount
-      : nativeFallbackPipeline.processedData.value.length
-    const last =
-      props.pagination.pageCount ??
-      (total === undefined ? requested : Math.ceil(total / size))
+    if (requested <= 1) return 0
+    // Local Naive paging clamps against filtered rows, regardless of pager pageCount.
+    const last = nativeRemote.value
+      ? (props.pagination.pageCount ??
+        Math.ceil((props.pagination.itemCount ?? Infinity) / size))
+      : Math.ceil(getNativeLocalRowCount() / size)
     return (Math.max(1, Math.min(requested, last)) - 1) * size
   })
   const displayedRows = computed<DataRecord[]>(() => {
@@ -714,13 +716,12 @@
       if (current) return current
       const source = nativeFallbackPipeline.processedData.value
       if (!props.pagination || nativeRemote.value) return source
-      const pageSize =
-        props.pagination.pageSize ?? nativeUncontrolledPageSize.value
+      const pageSize = getNativePageSize(props.pagination)
       const page = Math.max(
         1,
         Math.min(
           props.pagination.page ?? nativeUncontrolledPage.value,
-          Math.ceil(source.length / Math.max(1, pageSize))
+          Math.ceil(source.length / pageSize)
         )
       )
       return source.slice((page - 1) * pageSize, page * pageSize)
@@ -1244,9 +1245,6 @@
   /* ================= Expose ================= */
 
   const { edit, expand, selection, dynamicRows } = tableManager.stateManager
-  const getNativeLocalRowCount = () =>
-    tableRef.value?.getFilteredAndSortedData?.().length ??
-    nativeFallbackPipeline.processedData.value.length
 
   const exposedApi = {
     startEdit: edit.start,
@@ -1323,8 +1321,7 @@
       const count = nativeRemote.value
         ? (native.itemCount ?? normalizedData.value.length)
         : getNativeLocalRowCount()
-      const pageSize = native.pageSize ?? nativeUncontrolledPageSize.value
-      return Math.max(1, Math.ceil(count / Math.max(1, pageSize)))
+      return Math.max(1, Math.ceil(count / getNativePageSize(native)))
     },
     getSelectedRows: () =>
       isCrossPageSelectionEnabled.value

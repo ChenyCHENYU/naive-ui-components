@@ -125,6 +125,59 @@ describe('table sorting, filtering and pagination integration', () => {
     ).toEqual(['1'])
   })
 
+  test.each([false, true])(
+    'native local row numbers reuse the sort pass and clamp to the last filtered page (legacy getter: %s)',
+    async legacy => {
+      const source = Array.from({ length: 32 }, (_, index) => ({
+        id: ((index * 13) % 32) + 1,
+      }))
+      const sorter = vi.fn(
+        (left: DataRecord, right: DataRecord) =>
+          Number(left.id) - Number(right.id)
+      )
+      const wrapper = mount(C_Table<DataRecord>, {
+        props: {
+          data: source,
+          rowNumber: false,
+          columns: [
+            {
+              key: 'id',
+              title: 'ID',
+              sorter,
+              defaultSortOrder: 'ascend',
+              filter: (_value, row) => Number(row.id) <= 11,
+              defaultFilterOptionValues: ['keep'],
+            },
+          ],
+          pagination: { page: 9, pageSize: 5, pageCount: 50 },
+          config: { toolbar: { show: false } },
+        },
+      })
+      try {
+        await flushPromises()
+        if (legacy) {
+          const table = wrapper.getComponent(NDataTable)
+          Reflect.set(table.vm, 'getFilteredAndSortedData', undefined)
+        }
+        sorter.mockClear()
+        await wrapper.setProps({ data: source.map(row => ({ ...row })) })
+        await flushPromises()
+        const callsWithoutIndex = sorter.mock.calls.length
+        expect(callsWithoutIndex).toBeGreaterThan(0)
+        const updatedRows = source.map(row => ({ ...row }))
+        sorter.mockClear()
+        await wrapper.setProps({ data: updatedRows, rowNumber: true })
+        await flushPromises()
+        expect(sorter).toHaveBeenCalledTimes(callsWithoutIndex)
+        const last = wrapper.get('tbody tr')
+        expect(last.get('td[data-col-key="_index"]').text()).toBe('11')
+        expect(last.get('td[data-col-key="id"]').text()).toBe('11')
+      } finally {
+        wrapper.unmount()
+      }
+    }
+  )
+
   test('native pagination methods follow uncontrolled page and page-size updates', async () => {
     const wrapper = mount(C_Table, {
       props: {

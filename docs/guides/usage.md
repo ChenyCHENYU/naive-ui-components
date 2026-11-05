@@ -632,9 +632,8 @@ const filters: SearchFormItem[] = [
     rowKey: 'id',
     request: loadUsers,
   })
-  const applyQuery = async (params: SearchFormParams) => {
-    await setQuery({ keyword: String(params.keyword ?? '') })
-  }
+  const applyQuery = (params: SearchFormParams) =>
+    setQuery({ keyword: String(params.keyword ?? '') })
   const searchConfig: SearchConfig = {
     requireValue: false,
     onSearch: applyQuery,

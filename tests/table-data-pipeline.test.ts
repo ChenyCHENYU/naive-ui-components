@@ -28,6 +28,34 @@ describe('table local/remote data ownership', () => {
     expect(rowReads).toBe(0)
   })
 
+  test('wide tables only index column keys when an active sorter needs them', () => {
+    let keyReads = 0
+    const data = [{ id: 2 }, { id: 1 }]
+    const columns: TableColumn[] = Array.from(
+      { length: 1_000 },
+      (_, index) => ({
+        title: `Column ${index}`,
+        sorter: 'default',
+        get key() {
+          keyReads++
+          return index === 999 ? 'id' : `field${index}`
+        },
+      })
+    )
+    const pipeline = useTableDataPipeline({ data, columns, remote: false })
+    expect(pipeline.processedData.value).toBe(data)
+    expect(keyReads).toBe(0)
+
+    pipeline.setSorter({ columnKey: 'id', sorter: 'default', order: 'ascend' })
+    expect(pipeline.processedData.value.map(row => row.id)).toEqual([1, 2])
+    expect(keyReads).toBeLessThanOrEqual(columns.length + 2)
+
+    keyReads = 0
+    pipeline.setSorter({ columnKey: 'id', sorter: 'default', order: 'descend' })
+    expect(pipeline.processedData.value.map(row => row.id)).toEqual([2, 1])
+    expect(keyReads).toBeLessThanOrEqual(2)
+  })
+
   test('only visible columns own local sorting and filtering', () => {
     const data = [{ id: 2 }, { id: 1 }]
     const columns = ref<TableColumn[]>([

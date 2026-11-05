@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.28.1
+
+### Patch Changes
+
+- 修复 C_Table 在原生本地分页中为计算序号重复排序的问题，并跳过宽表中未启用的排序字段查找。保留跨页序号和筛选后页码收敛。README 补充动态搜索、表单和弹窗与两种表格的组合方式。
+
 ## 0.28.0
 
 ### Minor Changes

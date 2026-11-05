@@ -85,6 +85,14 @@ export function useTableDataPipeline(options: {
   const sorter = shallowRef<SortState>()
   const filters = shallowRef<DataTableFilterState>({})
   const columns = computed(() => dataColumns(toValue(options.columns)))
+  const columnsByKey = computed(() => {
+    const index = new Map<DataColumn['key'], DataColumn>()
+    for (const column of columns.value) {
+      const { key } = column
+      if (!index.has(key)) index.set(key, column)
+    }
+    return index
+  })
   const activeFilters = computed(() =>
     columns.value.flatMap(column => {
       if (column.filter !== 'default' && typeof column.filter !== 'function')
@@ -125,18 +133,19 @@ export function useTableDataPipeline(options: {
           : [sorter.value]
         : []
     }
-    return columns.value.map(column => ({
-      columnKey: column.key,
-      order: column.defaultSortOrder,
-    }))
+    return columns.value.flatMap(column => {
+      const order = column.defaultSortOrder
+      return order ? [{ columnKey: column.key, order }] : []
+    })
   })
 
   const processedData = computed(() => {
     if (toValue(options.remote)) return toValue(options.data)
     const tasks = activeSorters.value
       .flatMap(state => {
-        const column = columns.value.find(item => item.key === state.columnKey)
-        if (!column?.sorter || !state.order) return []
+        if (!state.order) return []
+        const column = columnsByKey.value.get(state.columnKey)
+        if (!column?.sorter) return []
         const priority =
           typeof column.sorter === 'object' ? (column.sorter.multiple ?? 0) : 0
         return [
@@ -156,6 +165,7 @@ export function useTableDataPipeline(options: {
 
   return {
     processedData,
+    filteredRowCount: computed(() => filteredData.value.length),
     setSorter: (value: SortState | undefined) => {
       sorter.value = value
     },

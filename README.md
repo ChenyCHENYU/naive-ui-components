@@ -33,21 +33,11 @@
 | 按需消费 | 60 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.28.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互；业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.28.1**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
-0.24.3–0.24.4 复核了异步校验与编辑会话、字典订阅、列拖拽、媒体与图实例、数据快照及依赖边界，修复已复现的问题并删除死状态与不可达重试分支。审查范围、性能约束和验证证据见[稳定性复核](./docs/stability-review-20261031.md)。
+搜索条件、录入字段和操作按钮可以由响应式配置生成。筛选和编辑共享紧凑密度，支持校验、异步选项和业务弹窗。后端字典或权限由项目接入，表单和搜索消费普通选项，表格消费普通列配置。
 
-表单与搜索共用 `config.density: 'compact'`：收紧字段、布局和空校验区，实际错误仍自然展开。表单弹窗默认紧凑，页脚按钮 22px；搜索可继承应用密度。紧凑数字输入默认隐藏步进按钮，保留键盘、精度和上下限，也可逐字段开启。按需设置默认值与显式覆盖见[表单密度](./docs/guides/form-density.md)。
-
-0.24.5 修复表单弹窗首行紧贴标题的问题：标题、内容与页脚通过原生分区样式保持留白，长表单仅内容区滚动，页脚保持可见；样式不穿透内嵌业务卡片。
-
-0.24.6 修复 `C_Table` 编辑弹窗未应用 `edit.modalWidth` 导致通栏的问题。表格编辑与 `C_FormModal` 共用原生分区样式和视口约束；桌面按配置宽度居中，窄屏自动单列，超高内容内部滚动，无需宿主原子类或页面样式补丁。
-
-普通下拉列的 `editProps.options` 同步传递到弹窗字段；显示标签、编辑及保存继续使用各自的原始值协议。
-
-业务工作台支持容器搜索、区域密度、远程选择、错误导航及批量结果；纯值工具走 `/data`，组合函数走 `/workflows`。接入见[业务数据与工作台](./docs/guides/data-workflows.md)、[搜索工作流](./docs/guides/search-workflows.md)、[远程选择](./docs/guides/data-picker.md)和[批量结果](./docs/guides/batch-results.md)。
-
-本版移除组件内的字典字段、注入、订阅与翻译。表单和搜索接收普通选项及通用 `optionsState`，表格接收 formatter/render 与 editProps.options；数据插件在项目层组合，组件包不识别插件名称、实例或协议。升级时将旧 dictionary 字段转换为普通选项/格式化配置，见[项目组合指南](./docs/guides/data-workflows.md)。
+列表按场景组合 `C_FormSearch`、`C_ActionBar`、`C_FormModal` 和 `C_DataPicker`。同一套表单与搜索可搭配 `C_Table` 或 MachTable，各自使用原生表格配置和分页。见[组合用法](./docs/guides/data-workflows.md#搜索表单与弹窗组合)、[表单密度](./docs/guides/form-density.md)和[运行时性能](./docs/guides/runtime-performance.md)。
 
 ## 能力地图
 
