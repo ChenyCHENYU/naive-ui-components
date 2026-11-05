@@ -7,7 +7,7 @@
   import { ref } from 'vue'
   import {
     C_DataPicker,
-    type DataPickerSource,
+    type DataPickerSourceInput,
   } from '@robot-admin/naive-ui-components/C_DataPicker'
   import '@robot-admin/naive-ui-components/C_DataPicker/style.css'
 
@@ -19,12 +19,11 @@
   const selected = ref<string[]>([])
 
   // customerClient 是应用已有的请求/缓存适配器；signal 透传给真实请求。
-  const source: DataPickerSource<Customer> = {
+  const source: DataPickerSourceInput<Customer> = {
     rowKey: 'id',
-    value: row => row.code,
     label: row => row.name,
     request: query => customerClient.page(query), // { rows: Customer[], total: number }
-    resolve: (codes, signal) => customerClient.byCodes(codes, { signal }),
+    resolve: (ids, signal) => customerClient.byIds(ids, { signal }),
   }
   const columns = [
     { key: 'code', title: '客户编码', width: 140 },
@@ -46,7 +45,8 @@
 
 ## 值与会话
 
-- `source.rowKey` 是表格行身份；`source.value(row)` 是业务提交值，两者可以不同，均须稳定且唯一。业务值支持字符串和数值，`0` 是有效值。
+- `source.rowKey` 是表格行身份。省略 `source.value` 时，选择和回显直接使用行键；数值 `0` 和字符串 `'0'` 保持为两个不同的值。
+- 业务提交值与行键不同时，显式配置 `value: row => row.code`，并让 `resolve` 按业务编码查询。行键和业务值均须稳定且唯一；`DataPickerSource<T>` 保留可直接调用的 `value(row)`，组件传参用 `DataPickerSourceInput<T>` 可省略它。
 - 选择在本地草稿中进行，跨分页保留；只有“确认选择”或显式清空才发出 `update:modelValue`。取消、关闭弹窗、卸载不会提交草稿。
 - 计划定位等操作可加上 `require-selection`，选中候选后才可确认。默认允许提交空选择。
 - `select(rows)` 返回已解析的选中行。提供 `source.resolve(values, signal)` 可一次批量回显全部初值；未提供时，尚未加载的初值显示原编码且保留，不猜测标签，不逐条请求。需要完整 `rows` 事件的场景应提供 `resolve`。
@@ -71,7 +71,7 @@
 
 ```vue
 <C_DataPicker
-  :model-value="form.customerCode"
+  :model-value="form.customerId"
   :source="source"
   :columns="columns"
   presentation="inline"
@@ -79,11 +79,11 @@
 />
 ```
 
-`applyCustomer(rows)` 可从 `rows[0]` 取得完整实体。支持回显已有编码的场景继续提供 `resolve`。
+`applyCustomer(rows)` 可从 `rows[0]` 取得完整实体。需要回显已有 ID 或业务编码时，继续提供 `resolve`。
 
 ## 多条件查询与固定上下文
 
-声明 `DataPickerSource<Customer, CustomerFilters>`，在 `request` 中用 `filters` 接收业务类型。设置 `initialValues` 后，打开会用它查询第一页。翻页沿用最近提交的筛选条件，外部初值（例如组织）变化会关闭旧会话、取消请求并丢弃未确认选择。
+声明 `DataPickerSourceInput<Customer, CustomerFilters>`，在 `request` 中用 `filters` 接收业务类型。设置 `initialValues` 后，打开会用它查询第一页。翻页沿用最近提交的筛选条件，外部初值（例如组织）变化会关闭旧会话、取消请求并丢弃未确认选择。
 
 `#query` 的 `initialValues`、`submit(filters)` 和 `loading` 可用于接入项目现有的查询控件。独立弹窗内可直接组合 `C_FormSearch`：
 

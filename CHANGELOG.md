@@ -1,5 +1,13 @@
 # @robot-admin/naive-ui-components
 
+## 0.29.3
+
+### Patch Changes
+
+- `C_DataPicker` 提交行键时可省略 `source.value`。显式映射继续支持；回显与确认复用已解析的键，避免重复调用业务取值函数。
+- `C_FormSearch` 的自定义 `render` 随字段名推导读取值和回填参数，保留已有宽上下文回调。
+- `C_ActionBar` 按原始分组位置识别无 key 动作，相邻按钮隐藏时执行锁不会串位。
+
 ## 0.29.2
 
 ### Patch Changes

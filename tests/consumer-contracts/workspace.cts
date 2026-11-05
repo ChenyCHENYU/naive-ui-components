@@ -25,10 +25,22 @@ const source: Picker.DataPickerSource<Item> = {
   label: row => row.id,
   request: async () => ({ rows: [], total: 0 }),
 }
+const identitySource: Picker.DataPickerSourceInput<Item> = {
+  rowKey: 'id',
+  label: source.label,
+  request: source.request,
+}
+const pickerProps: Picker.DataPickerProps<Item> = {
+  source: identitySource,
+  columns: [],
+}
+const businessValue = source.value({ id: 'one', count: 0, note: null })
 void [
   exact,
   patch,
   source,
+  pickerProps,
+  businessValue,
   Workflows.useDataResource,
   Workflows.useValidationScope,
   Config.COMPONENT_LOCALE_KEY,

@@ -16,7 +16,7 @@ import type {
   DataPickerEmits,
   DataPickerProps,
   DataPickerRequest,
-  DataPickerSource,
+  DataPickerSourceInput,
   DataPickerValue,
 } from './types'
 import type { ComponentDensity } from '../../core/density'
@@ -36,9 +36,9 @@ function isPickerValue(value: unknown): value is DataPickerValue {
 }
 
 function getPickerRowKey<T extends object>(
-  source: Pick<DataPickerSource<T>, 'rowKey'>,
+  source: Pick<DataPickerSourceInput<T>, 'rowKey'>,
   row: T
-): DataTableRowKey {
+): DataPickerValue {
   const key =
     typeof source.rowKey === 'function'
       ? source.rowKey(row)
@@ -48,8 +48,32 @@ function getPickerRowKey<T extends object>(
   return key
 }
 
+function getPickerValue<T extends object>(
+  source: Pick<DataPickerSourceInput<T>, 'rowKey' | 'value'>,
+  row: T
+): DataPickerValue {
+  return source.value === undefined
+    ? getPickerRowKey(source, row)
+    : source.value(row)
+}
+
+function validatePickerBusinessValues<T extends object>(
+  source: Pick<DataPickerSourceInput<T>, 'value'>,
+  rows: readonly T[]
+): void {
+  // 默认业务值与行键相同，行键检查已验证类型、缺失与重复。
+  if (source.value === undefined) return
+  const values = new Set<DataPickerValue>()
+  for (const row of rows) {
+    const value = source.value(row)
+    if (!isPickerValue(value) || values.has(value))
+      throw new TypeError('[C_DataPicker] 业务值必须为唯一的字符串或有限数值')
+    values.add(value)
+  }
+}
+
 function validatePickerPage<T extends object>(
-  source: Pick<DataPickerSource<T>, 'rowKey' | 'value'>,
+  source: Pick<DataPickerSourceInput<T>, 'rowKey' | 'value'>,
   result: { rows: T[]; total: number },
   pageSize: number
 ): void {
@@ -71,13 +95,7 @@ function validatePickerPage<T extends object>(
   ) {
     throw new TypeError('[C_DataPicker] rowKey 不得缺失或重复')
   }
-  const values = new Set<DataPickerValue>()
-  for (const row of result.rows) {
-    const value = source.value(row)
-    if (!isPickerValue(value) || values.has(value))
-      throw new TypeError('[C_DataPicker] 业务值必须为唯一的字符串或有限数值')
-    values.add(value)
-  }
+  validatePickerBusinessValues(source, result.rows)
 }
 
 /** 只复用 C_Table 的公开选择 API，不依赖内部行索引或 DOM。 */
@@ -125,6 +143,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
   let filterBaseline = cloneData(props.initialValues)
   let restoringSelection = false
   let selectionRows: readonly T[] = []
+  const rowValue = (row: T) => getPickerValue(props.source, row)
 
   // 先失效会话，再由资源观察器读取新源，避免一次源替换发起两次回显请求。
   watch(
@@ -192,8 +211,14 @@ export function useDataPicker<T extends object, TFilters extends object>(
       if (!Array.isArray(resolved))
         throw new TypeError('[C_DataPicker] resolve 必须返回行数组')
       const requested = new Set(selected)
-      return resolved.filter(row => requested.has(source.value(row)))
+      const rowsByValue = new Map<DataPickerValue, T>()
+      for (const row of resolved) {
+        const value = getPickerValue(source, row)
+        if (requested.has(value)) rowsByValue.set(value, row)
+      }
+      return rowsByValue
     },
+    isEmpty: result => result.size === 0,
   })
   const rows = computed(() => list.data.value?.rows ?? [])
   // 换页期间保留已知总数，旧页行数据仍由资源管理器清除。
@@ -206,8 +231,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
   })
   const knownRows = computed(() => {
     const known = new Map(committedRows.value)
-    for (const row of labels.data.value ?? [])
-      known.set(props.source.value(row), row)
+    for (const [value, row] of labels.data.value ?? []) known.set(value, row)
     return known
   })
   const display = computed(() =>
@@ -223,12 +247,10 @@ export function useDataPicker<T extends object, TFilters extends object>(
     () => !blocked.value && (!props.requireSelection || selectedCount.value > 0)
   )
   const selected = computed(() =>
-    draft.value.slice(0, 30).map(value => ({
-      value,
-      label: draftRows.value.has(value)
-        ? props.source.label(draftRows.value.get(value)!)
-        : String(value),
-    }))
+    draft.value.slice(0, 30).map(value => {
+      const row = draftRows.value.get(value)
+      return { value, label: row ? props.source.label(row) : String(value) }
+    })
   )
   const columns = computed(() => [
     { type: 'selection' as const, multiple: props.multiple },
@@ -271,15 +293,15 @@ export function useDataPicker<T extends object, TFilters extends object>(
   function confirm(): void {
     if (!canConfirm.value || !opened.value) return
     const chosen = [...draft.value]
-    const chosenRows = chosen.flatMap(value =>
-      draftRows.value.has(value) ? [draftRows.value.get(value)!] : []
-    )
-    committedRows.value = new Map(
-      chosenRows.map(row => [props.source.value(row), row])
-    )
+    const resolved = new Map<DataPickerValue, T>()
+    for (const value of chosen) {
+      const row = draftRows.value.get(value)
+      if (row) resolved.set(value, row)
+    }
+    committedRows.value = resolved
     close()
     emit('update:modelValue', props.multiple ? chosen : (chosen[0] ?? null))
-    emit('select', chosenRows)
+    emit('select', [...resolved.values()])
   }
 
   function clear(): void {
@@ -291,23 +313,25 @@ export function useDataPicker<T extends object, TFilters extends object>(
   function selectPage(_keys: DataTableRowKey[], selectedRows: T[]): void {
     if (restoringSelection || !opened.value || selectionRows !== rows.value)
       return
-    const currentPage = new Set(rows.value.map(row => props.source.value(row)))
-    const previous = props.multiple
-      ? draft.value.filter(value => !currentPage.has(value))
-      : []
+    let nextValues: DataPickerValue[] = []
+    if (props.multiple) {
+      // 只替换当前页的选择，保留其他页的草稿。
+      const currentPage = new Set(rows.value.map(rowValue))
+      nextValues = draft.value.filter(value => !currentPage.has(value))
+    }
     const next = props.multiple ? selectedRows : selectedRows.slice(-1)
-    const rowMap = new Map(draftRows.value)
-    for (const row of next) rowMap.set(props.source.value(row), row)
-    draftRows.value = rowMap
-    draft.value = [...previous, ...next.map(row => props.source.value(row))]
+    const rowsByValue = new Map(draftRows.value)
+    for (const row of next) {
+      const value = rowValue(row)
+      rowsByValue.set(value, row)
+      nextValues.push(value)
+    }
+    draftRows.value = rowsByValue
+    draft.value = nextValues
   }
 
   function remove(value: DataPickerValue): void {
     draft.value = draft.value.filter(item => item !== value)
-  }
-
-  function rowKey(row: T): DataTableRowKey {
-    return getPickerRowKey(props.source, row)
   }
 
   function restoreSelection(): void {
@@ -317,11 +341,17 @@ export function useDataPicker<T extends object, TFilters extends object>(
       selectionRows = rows.value
       const known = new Map(draftRows.value)
       table.value.clearSelection()
-      for (const row of rows.value)
-        if (draft.value.includes(props.source.value(row))) {
-          known.set(props.source.value(row), row)
-          table.value.selectRow(rowKey(row))
+      for (const row of rows.value) {
+        const value = rowValue(row)
+        if (draft.value.includes(value)) {
+          known.set(value, row)
+          table.value.selectRow(
+            props.source.value === undefined
+              ? value
+              : getPickerRowKey(props.source, row)
+          )
         }
+      }
       draftRows.value = known
     } finally {
       restoringSelection = false

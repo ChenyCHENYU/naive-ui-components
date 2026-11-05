@@ -16,12 +16,13 @@ export interface DataPickerRequest<
 }
 
 /** 接口、鉴权与实体映射只在应用中注册一次，组件不探测后端返回结构。 */
-export interface DataPickerSource<
+export interface DataPickerSourceInput<
   T extends object,
   TFilters extends object = Record<string, unknown>,
 > {
   rowKey: TableRowKey<T>
-  value: (row: T) => DataPickerValue
+  /** 提交值不同于行键时才需要指定。 */
+  value?: (row: T) => DataPickerValue
   label: (row: T) => string
   request: (
     query: DataPickerRequest<TFilters>
@@ -32,11 +33,19 @@ export interface DataPickerSource<
   ) => Promise<readonly T[]>
 }
 
+/** 显式映射的来源继续保证 value(row) 可直接调用。 */
+export interface DataPickerSource<
+  T extends object,
+  TFilters extends object = Record<string, unknown>,
+> extends DataPickerSourceInput<T, TFilters> {
+  value: (row: T) => DataPickerValue
+}
+
 export interface DataPickerProps<
   T extends object,
   TFilters extends object = Record<string, unknown>,
 > {
-  source: DataPickerSource<T, TFilters>
+  source: DataPickerSourceInput<T, TFilters>
   columns: TableColumn<T>[]
   modelValue?: DataPickerValue | readonly DataPickerValue[] | null
   multiple?: boolean

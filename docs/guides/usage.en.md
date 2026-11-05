@@ -173,6 +173,15 @@ Inside `NConfigProvider`, the popover follows its light/dark theme and primary c
 
 ## Recommended C_Form / C_Table setup
 
+Start with the smallest setup for common pages:
+
+| Use case                | Minimal setup                                                                                                                                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Basic edit form         | `<C_Form v-model="draft" :options="fields" />`; initialize `draft` with all business fields needed at submit time, including those not rendered. Use `useCForm()` if you also need to read, write, or validate outside the template. |
+| Search and remote table | Use `{ onSearch: setQuery }` for the search config and `v-bind="bindings"` for the table, both from one `useTableQuery()` instance.                                                                                                  |
+| Local table             | `<C_Table :data="rows" :columns="columns" />`; omit `row-key` if each row has a stable `id`.                                                                                                                                         |
+| Common toolbar          | `<C_ActionBar :actions="[{ key: 'refresh', onClick: reload }]" />`; compact sizing, the icon, and the label are already provided.                                                                                                    |
+
 Declare the business model once and keep nested field paths, values, column keys, callbacks, and exposed methods type-safe:
 
 ```ts
@@ -472,9 +481,7 @@ Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put re
   import { ref } from 'vue'
   import {
     C_FormSearch,
-    type SearchConfig,
     type SearchFormItem,
-    type SearchFormParams,
   } from '@robot-admin/naive-ui-components/C_FormSearch'
   import {
     C_Table,
@@ -483,31 +490,25 @@ Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put re
   import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
   import '@robot-admin/naive-ui-components/C_Table/base.css'
 
-  const filters = ref<SearchFormParams>({ keyword: '' })
-  const searchFields: SearchFormItem[] = [
+  const initialQuery = { keyword: '' }
+  const filters = ref({ ...initialQuery })
+  const searchFields: SearchFormItem<typeof initialQuery>[] = [
     { type: 'input', prop: 'keyword', placeholder: 'Keyword' },
   ]
   const { bindings, loading, setQuery } = useTableQuery({
-    initialQuery: { keyword: '' },
+    initialQuery,
     columns,
-    rowKey: 'id',
     request: loadUsers,
   })
-  const applyQuery = (params: SearchFormParams) =>
-    setQuery({ keyword: String(params.keyword ?? '') })
-  const searchConfig: SearchConfig = {
-    requireValue: false,
-    onSearch: applyQuery,
-  }
 </script>
 
 <template>
   <C_FormSearch
     v-model="filters"
     :form-item-list="searchFields"
-    :config="searchConfig"
+    :config="{ requireValue: false, onSearch: setQuery }"
     :loading="loading"
-    @reset="applyQuery"
+    @reset="setQuery"
   />
   <C_Table v-bind="bindings" />
 </template>
@@ -515,7 +516,7 @@ Use `C_FormSearch` with `v-model`; legacy `formParams` remains supported. Put re
 
 The search button, native form submission (including Enter in an input), and exposed `searchFn()` share validation and duplicate prevention. Only currently mounted search controls participate in Naive form validation. Editing conditions, enabling external loading, or unmounting during async validation cancels dispatch; requests receive the successfully validated snapshot. At least one non-pagination value is required by default; set `requireValue: false` to allow an empty query.
 
-The `reset(params)` event follows the synchronous v-model update and carries the complete reset snapshot. Existing no-argument handlers remain compatible. Reset restores field defaults while retaining `pageNum/pageSize`; it does not automatically request or debounce. This example explicitly reloads through `@reset="applyQuery"`, and `setQuery()` resets the table page. Avoid reading a separately maintained stale query in the reset handler.
+The `reset(params)` event follows the synchronous v-model update and carries the complete reset snapshot. Existing no-argument handlers remain compatible. Reset restores field defaults while retaining `pageNum/pageSize`; it does not automatically request or debounce. This example uses `@reset="setQuery"` to reload on the first page. For custom fields declared as `SearchFormItem<Query>`, `render` infers `value` and `updateValue` from `prop`; arbitrary named field slots still require narrowing the actual value.
 
 ### Action configuration and asynchronous work
 

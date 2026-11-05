@@ -269,6 +269,44 @@ test('ActionBar retains the same task lock when same-key action objects are repl
   expect(wrapper.getComponent(NButton).props('loading')).toBe(false)
 })
 
+test('ActionBar keeps keyless task locks on the original action when a neighbor is hidden', async () => {
+  const showFirst = ref(true)
+  const pending = deferred()
+  const save = vi.fn(() => pending.promise)
+  const preview = vi.fn()
+  const leftActions: ActionItem[] = []
+  leftActions.length = 1 // 保留一个空位，模拟按原始位置组装的动作数组。
+  leftActions.push(
+    { label: '辅助操作', show: showFirst },
+    { label: '保存', onClick: save },
+    { label: '预览', onClick: preview }
+  )
+  const wrapper = mount(C_ActionBar, {
+    props: { leftActions },
+  })
+
+  await wrapper.findAll('button')[1].trigger('click')
+  expect(save).toHaveBeenCalledTimes(1)
+  showFirst.value = false
+  await nextTick()
+
+  const [saveButton, previewButton] = wrapper.findAllComponents(NButton)
+  expect(saveButton.text()).toContain('保存')
+  expect(saveButton.props('loading')).toBe(true)
+  expect(saveButton.props('disabled')).toBe(true)
+  expect(previewButton.props('loading')).toBe(false)
+  expect(previewButton.props('disabled')).toBe(false)
+  await saveButton.trigger('click')
+  await previewButton.trigger('click')
+  expect(save).toHaveBeenCalledTimes(1)
+  expect(preview).toHaveBeenCalledTimes(1)
+
+  pending.resolve()
+  await flushPromises()
+  expect(saveButton.props('loading')).toBe(false)
+  wrapper.unmount()
+})
+
 test('duplicate action keys share a lock and native button click observers preserve the executor', async () => {
   let release!: () => void
   const nativeClick = vi.fn()

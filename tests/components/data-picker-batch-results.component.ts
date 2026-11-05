@@ -6,7 +6,10 @@ import { FORM_GLOBAL_CONFIG_KEY } from '../../src/context'
 import C_DataPicker from '../../src/components/C_DataPicker/index.vue'
 import C_BatchResult from '../../src/components/C_BatchResult/index.vue'
 import C_Table from '../../src/components/C_Table/index.vue'
-import type { DataPickerSource } from '../../src/components/C_DataPicker/types'
+import type {
+  DataPickerSource,
+  DataPickerSourceInput,
+} from '../../src/components/C_DataPicker/types'
 import type {
   TableColumn,
   TableInstance,
@@ -61,6 +64,64 @@ function createSource(): DataPickerSource<Row> {
 }
 
 describe('C_DataPicker远程选择会话', () => {
+  type IdentityRow = Omit<Row, 'id'> & { id: string | number }
+  test.each([
+    { kind: '字段', rowKey: 'id' as const },
+    { kind: '函数', rowKey: (row: IdentityRow) => row.id },
+  ])(
+    '默认使用$kind行键回显和提交，保留数字与字符串的区别',
+    async ({ rowKey }) => {
+      const records: IdentityRow[] = [
+        { id: 0, code: 10, name: '数字零' },
+        { id: '0', code: 20, name: '字符串零' },
+      ]
+      const source: DataPickerSourceInput<IdentityRow> = {
+        rowKey,
+        label: row => row.name,
+        request: async ({ page }) => ({
+          rows: records.slice(page - 1, page),
+          total: 2,
+        }),
+        resolve: vi.fn(async values =>
+          records.filter(row => values.includes(row.id))
+        ),
+      }
+      const wrapper = mount(C_DataPicker<IdentityRow>, {
+        props: {
+          source,
+          columns: [{ key: 'name', title: '名称' }],
+          modelValue: [0],
+          multiple: true,
+          pageSize: 1,
+        },
+      })
+      try {
+        await flushPromises()
+        expect(wrapper.get('.c-data-picker__open').text()).toBe('数字零')
+        expect(source.resolve).toHaveBeenCalledWith(
+          [0],
+          expect.any(AbortSignal)
+        )
+        await wrapper.get('.c-data-picker__open').trigger('click')
+        await flushPromises()
+        const table = () =>
+          wrapper.getComponent(C_Table)
+            .vm as unknown as TableInstance<IdentityRow>
+        expect(table().getSelectedRows()).toEqual([records[0]])
+        wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
+        await flushPromises()
+        expect(table().getSelectedRows()).toEqual([])
+        table().selectRow('0')
+        await flushPromises()
+        await button(wrapper, '确定').trigger('click')
+        expect(wrapper.emitted('update:modelValue')).toEqual([[[0, '0']]])
+        expect(wrapper.emitted('select')).toEqual([[records]])
+      } finally {
+        wrapper.unmount()
+      }
+    }
+  )
+
   test('内嵌会话不挂载第二个弹窗，Enter 只查询候选项，Escape 取消并归还焦点', async () => {
     const source = createSource()
     const parentSubmit = vi.fn((event: Event) => event.preventDefault())
@@ -563,6 +624,11 @@ describe('C_DataPicker远程选择会话', () => {
         { id: 'same', code: 0, name: '第一项' },
         { id: 'same', code: 1, name: '第二项' },
       ],
+      total: 2,
+    },
+    {
+      label: '独立业务值重复',
+      rows: [allRows[0]!, { ...allRows[1]!, code: 0 }],
       total: 2,
     },
     { label: '超出分页', rows: allRows, total: 3 },

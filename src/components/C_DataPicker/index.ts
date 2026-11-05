@@ -3,6 +3,7 @@ export type {
   DataPickerValue,
   DataPickerRequest,
   DataPickerSource,
+  DataPickerSourceInput,
   DataPickerProps,
   DataPickerEmits,
 } from './types'

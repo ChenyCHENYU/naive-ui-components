@@ -194,6 +194,15 @@ Cron 支持秒到星期的六个数字字段、范围、间隔、列表及日/�
 
 ## C_Form / C_Table 推荐用法
 
+高频页面先从最少配置开始：
+
+| 场景         | 最短接入                                                                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 普通编辑表单 | `<C_Form v-model="draft" :options="fields" />`；提交需要完整业务模型时，用 `draft` 提供包括未渲染字段在内的初值。需要在模板外统一读写或校验时，再用 `useCForm()`。 |
+| 搜索远程表格 | 搜索配置直接用 `{ onSearch: setQuery }`，表格用 `v-bind="bindings"`；`setQuery` 和 `bindings` 来自同一个 `useTableQuery()`。                                       |
+| 本地表格     | `<C_Table :data="rows" :columns="columns" />`；行键是 `id` 时可省略 `row-key`。                                                                                    |
+| 常见工具栏   | `<C_ActionBar :actions="[{ key: 'refresh', onClick: reload }]" />`；紧凑尺寸、图标和文字都有默认值，只写有业务含义的覆盖。                                         |
+
 推荐使用类型助手和绑定助手：业务模型只声明一次，字段路径、字段值、列 key、保存回调和实例方法即可保持同一套类型推导。字段支持 `profile.name`、`contacts.0.email` 这类嵌套路径。
 
 ```vue
@@ -611,9 +620,7 @@ const filters: SearchFormItem[] = [
   import { ref } from 'vue'
   import {
     C_FormSearch,
-    type SearchConfig,
     type SearchFormItem,
-    type SearchFormParams,
   } from '@robot-admin/naive-ui-components/C_FormSearch'
   import {
     C_Table,
@@ -622,31 +629,25 @@ const filters: SearchFormItem[] = [
   import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
   import '@robot-admin/naive-ui-components/C_Table/base.css'
 
-  const filters = ref<SearchFormParams>({ keyword: '' })
-  const searchFields: SearchFormItem[] = [
+  const initialQuery = { keyword: '' }
+  const filters = ref({ ...initialQuery })
+  const searchFields: SearchFormItem<typeof initialQuery>[] = [
     { type: 'input', prop: 'keyword', placeholder: '关键词' },
   ]
   const { bindings, loading, setQuery } = useTableQuery({
-    initialQuery: { keyword: '' },
+    initialQuery,
     columns,
-    rowKey: 'id',
     request: loadUsers,
   })
-  const applyQuery = (params: SearchFormParams) =>
-    setQuery({ keyword: String(params.keyword ?? '') })
-  const searchConfig: SearchConfig = {
-    requireValue: false,
-    onSearch: applyQuery,
-  }
 </script>
 
 <template>
   <C_FormSearch
     v-model="filters"
     :form-item-list="searchFields"
-    :config="searchConfig"
+    :config="{ requireValue: false, onSearch: setQuery }"
     :loading="loading"
-    @reset="applyQuery"
+    @reset="setQuery"
   />
   <C_Table v-bind="bindings" />
 </template>
@@ -654,7 +655,7 @@ const filters: SearchFormItem[] = [
 
 搜索按钮、原生表单提交（含输入框 Enter）和实例 `searchFn()` 走同一校验与防重路径；仅当前挂载的搜索控件参与 Naive 表单校验。异步校验期间条件改变、外部 loading 开启或组件卸载，会取消本次派发，成功校验的快照才进入请求。默认要求至少一个非分页条件；需要空条件查询时设置 `requireValue: false`。
 
-`reset(params)` 事件先同步更新 v-model，再通知重置后的完整快照；不带参数的旧回调继续可用。默认仅恢复字段默认值并保留 `pageNum/pageSize`，不自动查询、不添加 debounce。上例通过显式 `@reset="applyQuery"` 刷新，并由 `setQuery()` 将表格页码归一；不要在重置回调里读取一份另行维护的旧查询对象。
+`reset(params)` 事件先同步更新 v-model，再通知重置后的完整快照；不带参数的旧回调继续可用。默认仅恢复字段默认值并保留 `pageNum/pageSize`，不自动查询、不添加 debounce。上例直接用 `@reset="setQuery"` 刷新并回到第一页。自定义字段使用 `SearchFormItem<Query>` 的 `render` 时，`value` 和 `updateValue` 会随 `prop` 推导；任意命名的字段插槽仍需在使用侧按实际值缩窄类型。
 
 ### 动作配置与异步执行
 

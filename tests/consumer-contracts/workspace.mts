@@ -8,7 +8,11 @@ import {
   useFormArray,
 } from '@robot-admin/naive-ui-components/workflows'
 import { COMPONENT_LOCALE_KEY } from '@robot-admin/naive-ui-components/config'
-import type { DataPickerSource } from '@robot-admin/naive-ui-components/C_DataPicker'
+import type {
+  DataPickerProps,
+  DataPickerSource,
+  DataPickerSourceInput,
+} from '@robot-admin/naive-ui-components/C_DataPicker'
 import type {
   FormInstance,
   FormOption,
@@ -38,6 +42,16 @@ const source: DataPickerSource<Item> = {
   label: row => row.id,
   request: async () => ({ rows: [], total: 0 }),
 }
+const identitySource: DataPickerSourceInput<Item> = {
+  rowKey: 'id',
+  label: source.label,
+  request: source.request,
+}
+const pickerProps: DataPickerProps<Item> = {
+  source: identitySource,
+  columns: [],
+}
+const businessValue = source.value({ id: 'one', count: 0, note: null })
 declare const form: FormInstance<Item>
 form.revealField('server.returned.path')
 const plainForm: FormOption<Item> = {
@@ -68,6 +82,8 @@ void [
   exact,
   patch,
   source,
+  pickerProps,
+  businessValue,
   resource,
   scope,
   rows,

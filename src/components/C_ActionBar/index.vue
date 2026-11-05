@@ -132,38 +132,18 @@
   }))
 
   const leftActions = computed<ActionItem[]>(() => {
-    if (props.leftActions && props.leftActions.length > 0) {
-      return props.leftActions.filter(action => shouldShowAction(action))
+    if (props.leftActions?.length) {
+      return props.leftActions
     }
-    if (props.actions.length > 0) {
-      const hasRightActions =
-        props.rightActions && props.rightActions.length > 0
-      const hasRightGroup = props.actions.some(
-        action => action.group === 'right'
-      )
-      if (!hasRightActions && !hasRightGroup) {
-        return props.actions.filter(action => shouldShowAction(action))
-      }
-      return props.actions.filter(
-        action => action.group !== 'right' && shouldShowAction(action)
-      )
-    }
-    return []
+    return props.actions.filter(action => action.group !== 'right')
   })
 
   const rightActions = computed<ActionItem[]>(() => {
-    if (props.rightActions && props.rightActions.length > 0) {
-      return props.rightActions.filter(action => shouldShowAction(action))
+    if (props.rightActions?.length) {
+      return props.rightActions
     }
-    return props.actions.filter(
-      action => action.group === 'right' && shouldShowAction(action)
-    )
+    return props.actions.filter(action => action.group === 'right')
   })
-
-  const shouldShowAction = (action: ActionItem): boolean => {
-    if (action.show === undefined) return true
-    return resolveActionState(action.show) ?? true
-  }
 
   interface ActionEntry {
     action: ActionItem
@@ -171,28 +151,31 @@
     renderKey: string
   }
 
-  const createEntries = (
+  const visibleEntries = (
     actions: ActionItem[],
-    group: string
+    group: 'left' | 'right'
   ): ActionEntry[] => {
     const occurrences = new Map<string, number>()
-    return actions.map((action, index) => {
-      const taskKey = JSON.stringify(
+    const entries: ActionEntry[] = []
+    actions.forEach((action, index) => {
+      const taskKey =
         action.key === undefined
-          ? ['position', group, index]
-          : ['key', action.key]
-      )
+          ? `position:${group}:${index}`
+          : `key:${action.key}`
+      // 隐藏项保留原始位置与同 key 序号，显隐变化不会把执行锁交给邻项。
       const occurrence = occurrences.get(taskKey) ?? 0
       occurrences.set(taskKey, occurrence + 1)
-      return { action, taskKey, renderKey: `${taskKey}:${occurrence}` }
+      if (resolveActionState(action.show) === false) return
+      entries.push({ action, taskKey, renderKey: `${taskKey}:${occurrence}` })
     })
+    return entries
   }
 
   const leftButtonList = computed(() =>
-    createEntries(leftActions.value, 'left')
+    visibleEntries(leftActions.value, 'left')
   )
   const rightButtonList = computed(() =>
-    createEntries(rightActions.value, 'right')
+    visibleEntries(rightActions.value, 'right')
   )
   const actionTasks = useActionTask<string>()
 

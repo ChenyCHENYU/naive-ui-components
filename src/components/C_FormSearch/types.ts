@@ -30,7 +30,17 @@ export interface SearchFieldContext<T extends object = SearchFormParams> {
   disabled: boolean
   readonly: boolean
   size: 'small' | 'medium' | 'large'
-  updateValue: (value: unknown) => void
+  // 方法签名保留显式使用宽上下文的回调兼容性。
+  updateValue(value: unknown): void
+}
+
+interface SearchRenderContext<
+  T extends object,
+  P extends Extract<keyof T, string>,
+> extends SearchFieldContext<T> {
+  value: T[P]
+  prop: P
+  updateValue: (value: T[P]) => void
 }
 
 export type SearchOptionValue = string | number | boolean
@@ -154,7 +164,7 @@ export type SearchFormItem<T extends object = SearchFormParams> = {
       > & {
         prop: P
         defaultValue?: T[P]
-        render?: (context: SearchFieldContext<T>) => VNodeChild
+        render?: (context: SearchRenderContext<T, P>) => VNodeChild
       } & TypedSearchControl<T[P]>
     }[Extract<keyof T, string>])
 
