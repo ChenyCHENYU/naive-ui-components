@@ -72,11 +72,11 @@ test('automatic widths respond to loaded data while explicit and disabled widths
     props: { config, columns: consumerColumns, data: [{ id: 1, name: '短' }] },
   })
   await flushPromises()
-  expect(columnsOf(wrapper).map(col => col.width)).toEqual([90, 180, 140])
+  expect(columnsOf(wrapper).map(col => col.width)).toEqual([50, 90, 180, 140])
   await wrapper.setProps({
     data: [{ id: 1, name: '较长的客户名称'.repeat(20) }],
   })
-  expect(columnsOf(wrapper).map(col => col.width)).toEqual([200, 180, 140])
+  expect(columnsOf(wrapper).map(col => col.width)).toEqual([50, 200, 180, 140])
   expect(consumerColumns[0].width).toBeUndefined()
   expect(wrapper.emitted('update:data')).toBeUndefined()
 })
@@ -177,7 +177,7 @@ test('resizable columns cannot shrink below their header text and controls', asy
     },
   })
   await flushPromises()
-  const column = wrapper.getComponent(NDataTable).props('columns')![0]!
+  const column = wrapper.getComponent(NDataTable).props('columns')![1]!
   expect(column.minWidth).toBeGreaterThan(120)
   expect(column.width).toBe(240)
 })
@@ -205,7 +205,7 @@ test('all headers have a complete text floor, including explicit narrow widths a
     },
   })
   await flushPromises()
-  const columns = wrapper.getComponent(NDataTable).props('columns')!
+  const columns = wrapper.getComponent(NDataTable).props('columns')!.slice(1)
   expect(columns[0].minWidth).toBeGreaterThan(160)
   expect(columns[0].width).toBe(columns[0].minWidth)
   expect(columns[0].maxWidth).toBe(columns[0].minWidth)

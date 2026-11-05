@@ -125,14 +125,14 @@ test('a replaced column configuration cancels the old gesture without rolling ba
   const sortable = Sortable.get(header)!
   const cells = [...header.children] as HTMLElement[]
   const event = {
-    item: cells[2],
+    item: cells[3],
     from: header,
     to: header,
-    oldIndex: 2,
-    newIndex: 0,
+    oldIndex: 3,
+    newIndex: 1,
   } as SortableEvent
   sortable.option('onStart')?.(event)
-  header.insertBefore(event.item, cells[0])
+  header.insertBefore(event.item, cells[1])
   await wrapper.setProps({
     columns: [
       { key: 'b', title: 'B' },
@@ -144,6 +144,7 @@ test('a replaced column configuration cancels the old gesture without rolling ba
   sortable.option('onEnd')?.(event)
   expect([...header.children]).toEqual(updated)
   expect([...header.children].map(cell => cell.textContent)).toEqual([
+    '序号',
     'B',
     'C',
     'A',
@@ -270,19 +271,20 @@ test('column drag maps actual headers to business columns and restores DOM befor
   const original = [...header.children] as HTMLElement[]
   expect(original.map(cell => cell.textContent)).toEqual([
     '选择',
+    '序号',
     'A',
     'B',
     'C',
   ])
   const event = {
-    item: original[3],
+    item: original[4],
     from: header,
     to: header,
-    oldIndex: 3,
-    newIndex: 1,
+    oldIndex: 4,
+    newIndex: 2,
   } as SortableEvent
   sortable.option('onStart')?.(event)
-  header.insertBefore(event.item, original[1])
+  header.insertBefore(event.item, original[2])
   sortable.option('onEnd')?.(event)
   expect([...header.children]).toEqual(original)
   const moved = wrapper.emitted('column-change')!.at(-1)![0] as TableColumn[]
@@ -291,6 +293,7 @@ test('column drag maps actual headers to business columns and restores DOM befor
   await flushPromises()
   expect(wrapper.findAll('thead th').map(cell => cell.text())).toEqual([
     '选择',
+    '序号',
     'C',
     'A',
     'B',

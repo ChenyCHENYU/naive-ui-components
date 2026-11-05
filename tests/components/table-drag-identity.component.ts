@@ -62,7 +62,7 @@ describe('table drag uses stable business row identity', () => {
     })
     const drag = await activeDrag(wrapper)
     const rows = [...drag.element.children] as HTMLElement[]
-    expect(rows.map(row => row.textContent)).toEqual([
+    expect(rows.map(row => row.lastElementChild?.textContent)).toEqual([
       'parent',
       'child',
       'other',
@@ -85,11 +85,9 @@ describe('table drag uses stable business row identity', () => {
       data: wrapper.emitted('update:data')!.at(-1)![0] as DataRecord[],
     })
     await flushPromises()
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      'other',
-      'parent',
-      'child',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['other', 'parent', 'child'])
   })
 
   test('detail rows stay outside drag ordering and row-props callbacks remain intact', async () => {
@@ -178,7 +176,10 @@ describe('table drag uses stable business row identity', () => {
     })
     const drag = await activeDrag(wrapper)
     const rows = markedRows(drag.element)
-    expect(rows.map(row => row.textContent)).toEqual(['3', '4'])
+    expect(rows.map(row => row.lastElementChild?.textContent)).toEqual([
+      '3',
+      '4',
+    ])
     move(drag, rows[1], rows[0])
     expect(
       (wrapper.emitted('update:data')!.at(-1)![0] as DataRecord[]).map(

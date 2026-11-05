@@ -5,9 +5,9 @@ import { parseStoredCollapseKeys } from '../src/components/C_CollapsePanel/compo
 import { parseStoredTags } from '../src/components/C_TagsView/useTagsView'
 import {
   cloneTableColumns,
+  getColumnPreferences,
   mergeColumnPreferences,
   parseColumnPreferences,
-  serializeColumnPreferences,
 } from '../src/components/C_Table/components/ColumnSettings/persistence'
 import type { TableColumn } from '../src/components/C_Table/types'
 
@@ -61,21 +61,20 @@ describe('persisted component state', () => {
       { key: 'name', width: '240px', fixed: 'right', visible: 'no' },
       { key: {}, visible: false },
     ])
-    expect(parseColumnPreferences('{')).toEqual([])
-    expect(parseColumnPreferences('{}')).toEqual([])
-    expect(mergeColumnPreferences(columns, raw)).toEqual([
+    expect(parseColumnPreferences('{')).toEqual({ columns: [] })
+    expect(parseColumnPreferences('{}')).toEqual({ columns: [] })
+    expect(
+      mergeColumnPreferences(columns, parseColumnPreferences(raw))
+    ).toEqual([
       { key: 2, title: 'Number', visible: false },
       { key: 'name', title: 'Name', width: '240px', fixed: 'right' },
       { type: 'selection' },
     ])
-    expect(serializeColumnPreferences(columns)).toBe(
-      JSON.stringify([
-        { key: 'name', width: 120 },
-        { key: 2, visible: true },
-      ])
-    )
     const localColumns = cloneTableColumns(columns)
     localColumns[0].visible = false
+    expect(getColumnPreferences(columns, localColumns)).toEqual({
+      columns: [{ key: 'name', visible: false }],
+    })
     expect(columns[0].visible).toBeUndefined()
   })
 })

@@ -144,8 +144,13 @@
     <!-- 表格主体 -->
     <NDataTable
       v-if="!resolved.error?.show"
+      :key="nativeTableVersion"
       ref="tableRef"
-      v-bind="{ ...computedTableProps, ...$attrs }"
+      v-bind="{
+        ...computedTableProps,
+        ...$attrs,
+        onUnstableColumnResize: onNativeColumnResize,
+      }"
       :flex-height="flexHeight"
       :columns="computedColumns"
       :data="
@@ -153,7 +158,7 @@
           ? normalizedData
           : paginationState.paginatedData.value
       "
-      :pagination="usesNativePagination ? props.pagination : false"
+      :pagination="nativePagination"
       :remote="usesNativePagination ? nativeRemote : true"
       @update:sorter="handleSorterChange"
       @update:filters="handleFilterChange"
@@ -278,8 +283,8 @@
       >
         <ColumnSettings
           :columns="reactiveColumns"
-          :persist-key="resolved.persistKey"
           @change="onColumnSettingsChange"
+          @reset="resetColumnSettings"
         />
       </NDrawerContent>
     </NDrawer>
@@ -303,6 +308,7 @@
   import {
     type DataTableRowKey,
     type DataTableInst,
+    type DataTableProps,
     type DataTableFilterState,
     type PaginationProps,
     NDataTable,
@@ -363,6 +369,7 @@
 
   const props = withDefaults(defineProps<TableRuntimeProps<T, C>>(), {
     config: () => ({}),
+    rowNumber: true,
     pagination: undefined,
     remote: undefined,
   })
@@ -375,6 +382,7 @@
   }[keyof TableEmits]
   const emit = publicEmit as unknown as (...event: InternalTableEvent) => void
   const tableRef = ref<DataTableInst | null>(null)
+  const nativeTableVersion = ref(0)
 
   /* ================= CRUD 桥接 ================= */
 
@@ -544,6 +552,15 @@
   const nativeUncontrolledPage = ref(
     props.pagination ? (props.pagination.defaultPage ?? 1) : 1
   )
+  const nativePagination = computed(() =>
+    props.pagination
+      ? {
+          ...props.pagination,
+          defaultPage: nativeUncontrolledPage.value,
+          defaultPageSize: nativeUncontrolledPageSize.value,
+        }
+      : false
+  )
   const handleNativePageChange = (page: number) => {
     nativeUncontrolledPage.value = page
   }
@@ -636,6 +653,11 @@
     actionsRenderer: tableActions.renderActions,
     editModeChecker,
     showActionsColumn,
+    rowNumber: computed(() => props.rowNumber),
+    getRowNumber: (row, index) =>
+      treeRowNumbers.value?.get(resolvedRowKey(row)) ??
+      rowNumberOffset.value + index + 1,
+    rowNumberTitle: () => t('table.rowNumber'),
   })
 
   const {
@@ -665,6 +687,27 @@
     ),
     emit: bridgedEmit,
   })
+  const rowNumberOffset = computed(() => {
+    if (!usesNativePagination.value) {
+      return resolved.value.pagination?.enabled
+        ? (paginationState.currentPage.value - 1) *
+            paginationState.currentPageSize.value
+        : 0
+    }
+    if (!props.pagination) return 0
+    const size = Math.max(
+      1,
+      props.pagination.pageSize ?? nativeUncontrolledPageSize.value
+    )
+    const requested = props.pagination.page ?? nativeUncontrolledPage.value
+    const total = nativeRemote.value
+      ? props.pagination.itemCount
+      : nativeFallbackPipeline.processedData.value.length
+    const last =
+      props.pagination.pageCount ??
+      (total === undefined ? requested : Math.ceil(total / size))
+    return (Math.max(1, Math.min(requested, last)) - 1) * size
+  })
   const displayedRows = computed<DataRecord[]>(() => {
     if (usesNativePagination.value) {
       const current = tableRef.value?.getCurrentPageData?.()
@@ -683,6 +726,26 @@
       return source.slice((page - 1) * pageSize, page * pageSize)
     }
     return paginationState.paginatedData.value
+  })
+  const treeRowNumbers = computed(() => {
+    if (!resolved.value.treeEnabled) return
+    const childrenKey = resolved.value.treeChildrenKey
+    const numbers = new Map<DataTableRowKey, string>()
+    const visit = (row: DataRecord, number: string) => {
+      const key = resolvedRowKey(row)
+      if (numbers.has(key)) return
+      numbers.set(key, number)
+      const children = row[childrenKey]
+      if (Array.isArray(children))
+        children.forEach((child, index) => {
+          if (child && typeof child === 'object')
+            visit(child, `${number}.${index + 1}`)
+        })
+    }
+    displayedRows.value.forEach((row, index) =>
+      visit(row, String(rowNumberOffset.value + index + 1))
+    )
+    return numbers
   })
   const handleSorterChange = (
     sorter: Parameters<typeof dataPipeline.setSorter>[0]
@@ -886,13 +949,8 @@
   /* ================= 列拖拽排序 ================= */
 
   const tableWrapperRef = ref<HTMLElement>()
-  const columnDragIndex = computed(
-    () =>
-      new Map(
-        reactiveColumns.value
-          .filter(item => !item.type && item.key !== '_actions')
-          .map(item => [item.key, item])
-      )
+  const columnByKey = computed(
+    () => new Map(reactiveColumns.value.map(item => [item.key, item]))
   )
   let sortableInstance: Sortable | null = null
   let columnDragVersion = 0
@@ -916,10 +974,11 @@
         '.n-data-table-thead tr'
       )
       if (!headerRow) return
-      const rawColumn = (column: (typeof computedColumns.value)[number]) =>
-        column && !column.type
-          ? columnDragIndex.value.get(column.key)
-          : undefined
+      const rawColumn = (column: (typeof computedColumns.value)[number]) => {
+        if (!column || column.type || column.key === '_actions') return
+        const source = columnByKey.value.get(column.key)
+        return source?.type ? undefined : source
+      }
       const headerIndex = (element: HTMLElement) =>
         [...headerRow.children].indexOf(element.closest('[data-col-key]')!)
       const canMoveHeaders = (
@@ -1104,10 +1163,83 @@
 
   /* ================= 列设置 ================= */
 
+  const nativeResizedWidths = new Map<DataTableRowKey, number>()
+  const renewNativeTable = () => {
+    nativeResizedWidths.clear()
+    nativeTableVersion.value += 1
+  }
   const onColumnSettingsChange = (columns: TableColumn[]) => {
     columnState.handleColumnChange(columns)
     emit('column-change', columnState.reactiveColumns.value)
   }
+  const resetColumnSettings = () => {
+    columnState.resetColumnPreferences()
+    if (nativeResizedWidths.size) renewNativeTable()
+    emit('column-change', columnState.reactiveColumns.value)
+  }
+  const onNativeColumnResize: NonNullable<
+    DataTableProps['onUnstableColumnResize']
+  > = (width, limitedWidth, column, getWidth) => {
+    if (columnByKey.value.has(column.key)) {
+      nativeResizedWidths.set(column.key, limitedWidth)
+      columnState.rememberColumnWidth(column.key, limitedWidth)
+    }
+    const listener =
+      attrs.onUnstableColumnResize ?? attrs['on-unstable-column-resize']
+    for (const callback of Array.isArray(listener) ? listener : [listener]) {
+      if (typeof callback === 'function')
+        callback(width, limitedWidth, column, getWidth)
+    }
+  }
+  // Naive UI caches dragged widths by key. A different report gets its own table cache.
+  watch(
+    () => resolved.value.persistKey,
+    () => {
+      nativeUncontrolledPage.value = props.pagination
+        ? (props.pagination.defaultPage ?? 1)
+        : 1
+      nativeUncontrolledPageSize.value = getDefaultNativePageSize(
+        props.pagination
+      )
+      renewNativeTable()
+      dataPipeline.setSorter(undefined)
+      dataPipeline.setFilters({})
+      nativeFallbackPipeline.setSorter(undefined)
+      nativeFallbackPipeline.setFilters({})
+    }
+  )
+  const getSchemaColumnKeys = (columns: TableColumn[]) =>
+    new Set(columns.flatMap(column => (column.key == null ? [] : [column.key])))
+  let schemaColumnKeys = getSchemaColumnKeys(effectiveColumns.value)
+  watch(effectiveColumns, columns => {
+    if (!columns.length) return
+    const keys = getSchemaColumnKeys(columns)
+    const removed = new Set([...schemaColumnKeys].filter(key => !keys.has(key)))
+    schemaColumnKeys = keys
+    if (removed.size) {
+      dataPipeline.discardColumns(removed)
+      nativeFallbackPipeline.discardColumns(removed)
+    }
+    if (!nativeResizedWidths.size) return
+    const displayed = new Map(
+      computedColumns.value.flatMap(column =>
+        'key' in column ? [[column.key, column] as const] : []
+      )
+    )
+    // A cached width overrides native CSS min/max. Refresh the cache only when invalid.
+    for (const [key, width] of nativeResizedWidths) {
+      const column = displayed.get(key)
+      if (
+        !keys.has(key) ||
+        (column &&
+          (width < Number(column.minWidth ?? 0) ||
+            width > Number(column.maxWidth ?? Infinity)))
+      ) {
+        renewNativeTable()
+        break
+      }
+    }
+  })
 
   /* ================= Expose ================= */
 
@@ -1235,6 +1367,7 @@
     () =>
       resolved.value.enableColumnDrag
         ? JSON.stringify([
+            nativeTableVersion.value,
             computedColumns.value.map(column => [
               'key' in column ? column.key : undefined,
               column.type,
@@ -1258,6 +1391,7 @@
 
   watch(
     [
+      nativeTableVersion,
       () => resolved.value.rowDrag,
       rowDragEnabled,
       () => normalizedLoading.value,
@@ -1274,6 +1408,7 @@
   )
 
   onBeforeUnmount(() => {
+    columnState.flushColumnWidths()
     if (modalCloseTimer) clearTimeout(modalCloseTimer)
     destroyColumnDrag()
     rowDragState.destroyRowDrag()

@@ -385,6 +385,8 @@ export interface TableRuntimeProps<T extends object = DataRecord, C = unknown> {
   data?: MaybeRefLike<T[]>
   loading?: MaybeRefLike<boolean>
   rowKey?: TableRowKey<T>
+  /** 默认生成序号列；false 关闭自动列，显式声明的 index 列按列配置展示。 */
+  rowNumber?: boolean
   /** 功能配置的统一入口。 */
   config?: TableConfig<T, C>
   /** CRUD 模式自动提供 columns / data / loading，可省略对应属性。 */

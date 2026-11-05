@@ -296,6 +296,10 @@ const { bindings } = useTableQuery<UserRow, { keyword: string }>({
 
 When binding a headless CRUD controller through `:crud`, the table recognizes `{ error }` action results: failed deletes do not emit a successful-deletion event, and feedback already shown by the controller is not duplicated. Custom `actions.delete` callbacks may return a promise or a `{ data, error }` result.
 
+For dynamic reports, bind `<C_Table :columns="report.columns" :data="report.rows" row-key="id" />` and replace the report snapshot when the request completes. Each column uses `{ key, title }`. User width, visibility, pinning, and order follow stable keys. Give separate reports distinct `config.persistKey` values and update the report key, columns, and rows together.
+
+The table displays continuous row numbers and a pager with 10 rows per page by default. Use `:row-number="false"` for the automatic index and `:pagination="false"` to disable pagination. An explicit `{ type: 'index' }` keeps its configured position and title. Column headers and cells, including numbers, are centered by default and can be overridden with `titleAlign` and `align`.
+
 Tree data can use `<C_Table :data="rows" :columns="columns" :config="{ tree: { defaultExpandAll: true }, pagination: false }" />` directly. `children` is the default child key and can be changed with `tree.childrenKey`. Default expansion includes parent rows added later without reopening rows the user collapsed.
 
 `C_Tabs` is the data-driven page-scenario switcher for the global `C_*` system. It defaults to the compact

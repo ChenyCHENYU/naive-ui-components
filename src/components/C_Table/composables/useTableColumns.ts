@@ -7,6 +7,7 @@
 import {
   h,
   ref,
+  shallowRef,
   watch,
   computed,
   type Ref,
@@ -20,6 +21,12 @@ import {
 } from '../columnPresentation'
 import type { TableColumn, DataRecord, ColumnWithKey } from '../types'
 import type { ResolvedConfig } from './useTableConfig'
+import {
+  getColumnPreferences,
+  mergeColumnPreferences,
+  parseColumnPreferences,
+  type ColumnPreferences,
+} from '../components/ColumnSettings/persistence'
 import { applyFormatter } from './useTableGlobalConfig'
 import { EDIT_COMPONENTS } from '../data'
 import C_Icon from '../../C_Icon/index.vue'
@@ -310,6 +317,9 @@ export interface UseTableColumnsOptions {
   }>
   /** 是否渲染操作列 */
   showActionsColumn: ComputedRef<boolean>
+  rowNumber?: ComputedRef<boolean>
+  getRowNumber?: (row: DataRecord, index: number) => number | string
+  rowNumberTitle?: () => string
 }
 
 export interface UseTableColumnsReturn {
@@ -318,6 +328,9 @@ export interface UseTableColumnsReturn {
   computedColumns: ComputedRef<DataTableColumn[]>
   computedScrollX: ComputedRef<number | string | undefined>
   handleColumnChange: (columns: TableColumn[]) => void
+  resetColumnPreferences: () => void
+  rememberColumnWidth: (key: DataTableRowKey, width: number) => void
+  flushColumnWidths: () => void
 }
 
 /* ================= 主函数 ================= */
@@ -340,44 +353,73 @@ export function useTableColumns(
 
   /* ================= 响应式列状态 ================= */
 
-  const reactiveColumns = ref<TableColumn[]>([]) as Ref<TableColumn[]>
   const showSettingsPanel = ref(false)
-
-  /** 同步外部列配置到响应式状态 */
-  const syncColumns = (newColumns: TableColumn[]) => {
-    const declaredActions = newColumns.find(
-      col => (col as ColumnWithKey).key === '_actions'
-    )
-    const existingActions = reactiveColumns.value.find(
-      col => (col as ColumnWithKey).key === '_actions'
-    )
-    const regularColumns = newColumns.filter(
-      col => (col as ColumnWithKey).key !== '_actions'
-    )
-    reactiveColumns.value = showActionsColumn.value
-      ? [
-          ...regularColumns,
-          declaredActions ||
-            existingActions ||
-            ({
-              key: '_actions',
-              title: '操作',
-              width: 180,
-              editable: false,
-              visible: true,
-              fixed: 'right',
-            } as TableColumn),
-        ]
-      : regularColumns
-  }
+  const preferences = shallowRef<ColumnPreferences>({ columns: [] })
+  const storageKey = computed(() =>
+    config.value.persistKey
+      ? `c_table_cols_${config.value.persistKey}`
+      : undefined
+  )
+  const pendingWidths = new Map<DataTableRowKey, number>()
+  let resizeTimer: ReturnType<typeof setTimeout> | undefined
 
   watch(
-    [rawColumns, showActionsColumn],
-    ([cols]) => {
-      if (cols?.length) syncColumns(cols)
-      else reactiveColumns.value = []
+    storageKey,
+    (key, previousKey) => {
+      flushColumnWidths(previousKey)
+      let stored: string | null = null
+      try {
+        if (key) stored = localStorage.getItem(key)
+      } catch {
+        // Column settings continue to work when browser storage is unavailable.
+      }
+      preferences.value = stored
+        ? parseColumnPreferences(stored)
+        : { columns: [] }
     },
-    { deep: true, immediate: true }
+    { immediate: true, flush: 'sync' }
+  )
+
+  const baseColumns = computed<TableColumn[]>(() => {
+    const columns = rawColumns.value
+    const regular = columns.filter(column => column.key !== '_actions')
+    if (!columns.length || !showActionsColumn.value) return regular
+    const actions = columns.find(column => column.key === '_actions')
+    return [
+      ...regular,
+      actions ?? {
+        key: '_actions',
+        title: '操作',
+        width: 180,
+        editable: false,
+        visible: true,
+        fixed: 'right',
+      },
+    ]
+  })
+  const reactiveColumns = computed({
+    get: () => mergeColumnPreferences(baseColumns.value, preferences.value),
+    set: handleColumnChange,
+  })
+  watch(
+    [rawColumns, storageKey],
+    ([columns, key], [previous, previousKey]) => {
+      if (!columns.length || (key !== previousKey && columns === previous))
+        return
+      // An empty loading schema can be temporary. A committed schema drops deleted keys.
+      flushColumnWidths(key)
+      const current = preferences.value
+      const keys = new Set(columns.map(column => column.key))
+      if (showActionsColumn.value) keys.add('_actions')
+      const order = current.order?.filter(columnKey => keys.has(columnKey))
+      const kept = current.columns.filter(column => keys.has(column.key))
+      if (
+        kept.length !== current.columns.length ||
+        order?.length !== current.order?.length
+      )
+        savePreferences({ columns: kept, order }, key)
+    },
+    { immediate: true }
   )
 
   /* ================= 单元格渲染 ================= */
@@ -553,14 +595,15 @@ export function useTableColumns(
       ...col,
       type: undefined,
       key: '_index',
-      title: col.title ?? '序号',
+      title: col.title ?? options.rowNumberTitle?.() ?? '序号',
       width: getColWidth(column),
       className: [col.className, 'c-table-index-column']
         .filter(Boolean)
         .join(' '),
       titleAlign: col.titleAlign ?? 'center',
       align: col.align ?? 'center',
-      render: (_: DataRecord, index: number) => index + 1,
+      render: (row: DataRecord, index: number) =>
+        options.getRowNumber?.(row, index) ?? index + 1,
       fixed: column.fixed,
     }
   }
@@ -618,6 +661,21 @@ export function useTableColumns(
         }
         return mapRegularColumn(c)
       }) as DataTableColumn[]
+
+    if (
+      options.rowNumber?.value &&
+      rawColumns.value.length &&
+      !rawColumns.value.some(
+        column => column.type === 'index' || column.key === '_index'
+      )
+    ) {
+      const index = cols.findIndex(column => !column.type)
+      cols.splice(
+        index < 0 ? cols.length : index,
+        0,
+        mapIndexColumn({ type: 'index' })
+      )
+    }
 
     if (tableManager.dynamicRowsState) {
       cols = tableManager.dynamicRowsState.enhanceColumns(
@@ -709,18 +767,56 @@ export function useTableColumns(
 
   /* ================= 列设置变更 ================= */
 
-  const handleColumnChange = (columns: TableColumn[]) => {
-    reactiveColumns.value = columns.map(col => {
-      const c = col as ColumnWithKey
-      return {
-        ...col,
-        visible: c.visible !== false,
-        fixed: col.fixed,
-        width: c.width ?? (c.type ? getColWidth(col) : undefined),
-        align: c.align || 'center',
-        titleAlign: c.titleAlign || 'center',
-      } as unknown as TableColumn
+  function savePreferences(
+    settings: ColumnPreferences,
+    key: string | undefined
+  ) {
+    preferences.value = settings
+    if (!key) return
+    try {
+      if (settings.columns.length || settings.order?.length)
+        localStorage.setItem(key, JSON.stringify(settings))
+      else localStorage.removeItem(key)
+    } catch {
+      // The preferences stay active for this instance.
+    }
+  }
+
+  function flushColumnWidths(key: string | undefined) {
+    clearTimeout(resizeTimer)
+    if (!pendingWidths.size) return
+    const current = preferences.value
+    const columns = new Map(current.columns.map(column => [column.key, column]))
+    for (const [key, width] of pendingWidths)
+      columns.set(key, { ...columns.get(key), key, width })
+    pendingWidths.clear()
+    savePreferences({ ...current, columns: [...columns.values()] }, key)
+  }
+
+  const rememberColumnWidth = (key: DataTableRowKey, width: number) => {
+    if (!Number.isFinite(width) || width < 0) return
+    pendingWidths.set(key, width)
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => flushColumnWidths(storageKey.value), 150)
+  }
+
+  function handleColumnChange(columns: TableColumn[]) {
+    const updated = columns.map(column => {
+      const width =
+        column.key == null ? undefined : pendingWidths.get(column.key)
+      return width === undefined ? column : { ...column, width }
     })
+    clearTimeout(resizeTimer)
+    pendingWidths.clear()
+    savePreferences(
+      getColumnPreferences(baseColumns.value, updated),
+      storageKey.value
+    )
+  }
+  const resetColumnPreferences = () => {
+    clearTimeout(resizeTimer)
+    pendingWidths.clear()
+    savePreferences({ columns: [] }, storageKey.value)
   }
 
   return {
@@ -729,5 +825,8 @@ export function useTableColumns(
     computedColumns,
     computedScrollX,
     handleColumnChange,
+    resetColumnPreferences,
+    rememberColumnWidth,
+    flushColumnWidths: () => flushColumnWidths(storageKey.value),
   }
 }

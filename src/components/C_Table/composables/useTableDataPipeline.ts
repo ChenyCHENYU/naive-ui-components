@@ -156,11 +156,27 @@ export function useTableDataPipeline(options: {
 
   return {
     processedData,
-    setSorter: (value: SortState) => {
+    setSorter: (value: SortState | undefined) => {
       sorter.value = value
     },
     setFilters: (value: DataTableFilterState) => {
       filters.value = { ...value }
+    },
+    discardColumns(keys: ReadonlySet<string | number>) {
+      const state = sorter.value
+      if (Array.isArray(state))
+        sorter.value = state.filter(item => !keys.has(item.columnKey))
+      else if (state && keys.has(state.columnKey)) sorter.value = undefined
+      const active = filters.value
+      const filterKeys = new Set([...keys].map(String))
+      if (
+        [...filterKeys].some(key =>
+          Object.prototype.hasOwnProperty.call(active, key)
+        )
+      )
+        filters.value = Object.fromEntries(
+          Object.entries(active).filter(([key]) => !filterKeys.has(key))
+        )
     },
   }
 }

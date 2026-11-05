@@ -33,7 +33,7 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.27.0**; see the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.28.0**; see the [changelog](./CHANGELOG.md) for release details.
 
 The 0.24.3–0.24.4 review covers async validation and edit sessions, dictionaries, column dragging, media and graph instances, data snapshots and dependency boundaries. Reproduced issues are fixed; dead state and unreachable retry branches are removed. See the [stability review](./docs/stability-review-20261031.md) for scope, performance constraints and verification evidence.
 
@@ -52,6 +52,8 @@ This release removes dictionary fields, injection, subscriptions and translation
 ## Capability map
 
 `C_Table` retains the native Naive UI empty state, including provider theme, locale and `componentOptions.DataTable.renderEmpty`. Use `#empty` to replace the content of one table.
+
+`C_Table` shows row numbers and a pager by default and centers all cells, including numbers. Use `:row-number="false"` and `:pagination="false"` to disable the automatic index and pager respectively. Bind server-provided columns and rows directly as shown in the [usage guide](./docs/guides/usage.en.md).
 
 | Scenario              | Representative components                                        | Capabilities                                                                         |
 | --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |

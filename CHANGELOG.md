@@ -1,5 +1,13 @@
 # @robot-admin/naive-ui-components
 
+## 0.28.0
+
+### Minor Changes
+
+- C_Table 默认显示序号和内置分页。使用 `row-number="false"` 关闭自动序号，自定义序号列继续按声明显示。普通列和数值列默认居中。
+
+  接口刷新列定义时延续同一报表的用户列偏好。首次异步加载也能按报表标识恢复已保存设置。文档补充动态列、分页和序号开关示例。
+
 ## 0.27.0
 
 ### Minor Changes

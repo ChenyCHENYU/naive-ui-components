@@ -376,6 +376,47 @@ const fields = defineFormOptions([
 
 将 Headless CRUD 绑定到 `:crud` 时，表格会识别操作结果中的 `{ error }`：失败不会触发删除成功事件，也不会重复展示 CRUD 控制器已经展示的反馈。自定义 `actions.delete` 可返回 Promise，或返回 `{ data, error }` 结构。
 
+### 后端返回列和行
+
+接口的列定义使用 `{ key, title }` 时直接绑定。把同一次查询的列和行一起提交给响应式状态：
+
+```vue
+<script setup lang="ts">
+  import { shallowRef } from 'vue'
+  import {
+    C_Table,
+    type TableColumn,
+  } from '@robot-admin/naive-ui-components/C_Table'
+  import { getReport } from './api'
+
+  const report = shallowRef<{
+    columns: TableColumn[]
+    rows: Record<string, unknown>[]
+  }>({ columns: [], rows: [] })
+
+  async function load() {
+    report.value = await getReport()
+  }
+</script>
+
+<template>
+  <button
+    type="button"
+    @click="load"
+    >查询</button
+  >
+  <C_Table
+    :columns="report.columns"
+    :data="report.rows"
+    row-key="id"
+  />
+</template>
+```
+
+表格默认显示跨页连续序号和分页器（每页 10 条），标题及单元格均居中，数字也一样。通过 `:row-number="false"` 关闭自动序号，通过 `:pagination="false"` 或 `:config="{ pagination: false }"` 关闭分页。手动声明的 `{ type: 'index' }` 保留指定的位置和标题，表格只补一份序号。单列可以用 `align`、`titleAlign` 覆盖默认对齐。
+
+同一张报表的列 `key` 保持稳定时，换列仍会应用已有的宽度、显隐、固定和排序偏好。新列使用接口给出的配置，已移除的列退出当前偏好。需要跨页面刷新恢复偏好或切换多张报表时，给每张报表一个不同的 `config.persistKey`。切换报表时一起更新该标识、列和行。
+
 树形数据可直接使用 `<C_Table :data="rows" :columns="columns" :config="{ tree: { defaultExpandAll: true }, pagination: false }" />`；`children` 是默认子节点字段，也可通过 `tree.childrenKey` 指定。默认展开会初始化所有父节点，并在异步追加新父节点时展开新节点，不会重新展开用户手动收起的旧节点。
 
 `C_Tabs` 是面向页面场景切换的统一数据驱动标签页，名称与全局 `C_*` 体系保持一致。默认使用紧凑

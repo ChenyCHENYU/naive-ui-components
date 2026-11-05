@@ -213,7 +213,11 @@ describe('table column layout contracts', () => {
     })
     await flushPromises()
     const columns = finalColumns(wrapper)
-    expect(columns[0]).toMatchObject({ width: 42, minWidth: 42, maxWidth: 56 })
+    expect(columns.find(column => column.key === 'id')).toMatchObject({
+      width: 42,
+      minWidth: 42,
+      maxWidth: 56,
+    })
     const actions = columns.find(column => column.key === '_actions')!
     expect(actions).toMatchObject({
       width: 98,
@@ -320,8 +324,9 @@ describe('table column layout contracts', () => {
     await flushPromises()
     expect(finalColumns(wrapper).map(column => column.key)).toEqual([
       '_radio_selection',
+      '_index',
       'name',
     ])
-    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(180)
+    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(230)
   })
 })

@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted, watch } from 'vue'
+  import { ref, computed, watch } from 'vue'
   import {
     NInput,
     NText,
@@ -200,11 +200,7 @@
   import C_Icon from '../../../C_Icon/index.vue'
   import type { TableColumn } from '../../types'
   import { getFixedOptions, isSpecialColumn } from './data'
-  import {
-    cloneTableColumns,
-    mergeColumnPreferences,
-    serializeColumnPreferences,
-  } from './persistence'
+  import { cloneTableColumns } from './persistence'
 
   defineOptions({ name: 'ColumnSettings' })
 
@@ -212,72 +208,41 @@
 
   const props = defineProps<{
     columns: TableColumn[]
-    /** 列配置持久化 key（传入即启用 localStorage） */
-    persistKey?: string
   }>()
-  const emit = defineEmits<{ (e: 'change', columns: TableColumn[]): void }>()
+  const emit = defineEmits<{
+    change: [columns: TableColumn[]]
+    reset: []
+  }>()
 
   /* ================= 响应式状态 ================= */
 
-  /** 从 localStorage 恢复持久化列配置 */
-  const loadPersistedColumns = (columns: TableColumn[]): TableColumn[] => {
-    if (!props.persistKey) return cloneTableColumns(columns)
-    try {
-      const stored = localStorage.getItem(`c_table_cols_${props.persistKey}`)
-      if (!stored) return cloneTableColumns(columns)
-      return mergeColumnPreferences(columns, stored)
-    } catch {
-      return cloneTableColumns(columns)
-    }
-  }
-
-  /** 保存列配置到 localStorage */
-  const persistColumns = (columns: TableColumn[]) => {
-    if (!props.persistKey) return
-    try {
-      localStorage.setItem(
-        `c_table_cols_${props.persistKey}`,
-        serializeColumnPreferences(columns)
-      )
-    } catch {
-      // localStorage 不可用时静默忽略
-    }
-  }
-
-  const localColumns = ref<TableColumn[]>(loadPersistedColumns(props.columns))
+  const localColumns = ref<TableColumn[]>([])
   const searchText = ref('')
   const listRef = ref<HTMLElement>()
   const draggedIndex = ref<number | null>(null)
   const dragOverIndex = ref<number | null>(null)
   const enableResizable = ref(false)
 
-  onMounted(() => {
-    enableResizable.value = localColumns.value.some(
-      col => col.resizable === true
-    )
-    // 如有持久化配置，初始化时通知父组件
-    if (props.persistKey) {
-      emit('change', [...localColumns.value])
-    }
-  })
-
   watch(
     () => props.columns,
     columns => {
-      localColumns.value = loadPersistedColumns(columns)
+      localColumns.value = cloneTableColumns(columns)
       enableResizable.value = localColumns.value.some(
         col => col.resizable === true
       )
+      draggedIndex.value = null
+      dragOverIndex.value = null
     },
-    { deep: true }
+    { deep: true, immediate: true }
   )
 
   /* ================= 计算属性 ================= */
 
   const filteredColumns = computed(() => {
-    if (!searchText.value) return localColumns.value
+    const manageable = localColumns.value.filter(column => column.key != null)
+    if (!searchText.value) return manageable
     const search = searchText.value.toLowerCase()
-    return localColumns.value.filter(
+    return manageable.filter(
       col =>
         String(col.title ?? '')
           .toLowerCase()
@@ -289,15 +254,19 @@
   })
 
   const visibleCount = computed(
-    () => localColumns.value.filter(col => col.visible !== false).length
+    () =>
+      localColumns.value.filter(col => col.key != null && col.visible !== false)
+        .length
   )
-  const totalCount = computed(() => localColumns.value.length)
+  const totalCount = computed(
+    () => localColumns.value.filter(col => col.key != null).length
+  )
 
   /* ================= 批量操作 ================= */
 
   const setAllColumnsVisible = (visible: boolean) => {
     localColumns.value.forEach(col => {
-      if (col.key !== '_actions') col.visible = visible
+      if (col.key != null && col.key !== '_actions') col.visible = visible
     })
     applyChanges()
   }
@@ -336,25 +305,17 @@
   }
 
   const applyChanges = () => {
-    persistColumns(localColumns.value)
     emit('change', [...localColumns.value])
   }
 
-  const resetColumns = () => {
-    localColumns.value = cloneTableColumns(props.columns)
-    applyChanges()
-  }
+  const resetColumns = () => emit('reset')
 
   /* ================= 列宽调整 ================= */
 
   const handleResizableChange = (value: boolean) => {
     localColumns.value.forEach(col => {
-      if (!isSpecialColumn(col)) {
+      if (col.key != null && !isSpecialColumn(col)) {
         col.resizable = value
-        if (value) {
-          col.minWidth = col.minWidth || 80
-          col.maxWidth = col.maxWidth || 500
-        }
       }
     })
     applyChanges()

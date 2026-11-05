@@ -60,7 +60,8 @@ describe('table sorting, filtering and pagination integration', () => {
         config,
       },
     })
-    const rows = () => wrapper.findAll('tbody tr').map(row => row.text())
+    const rows = () =>
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
     await flushPromises()
     expect(rows()).toEqual(['1', '2'])
     wrapper.getComponent(NPagination).vm.$emit('update:page', 2)
@@ -95,12 +96,9 @@ describe('table sorting, filtering and pagination integration', () => {
     })
     await flushPromises()
     expect(wrapper.getComponent(NDataTable).props('remote')).toBe(true)
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      '4',
-      '3',
-      '2',
-      '1',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['4', '3', '2', '1'])
     expect(wrapper.getComponent(NPagination).props('itemCount')).toBe(100)
   })
 
@@ -122,7 +120,9 @@ describe('table sorting, filtering and pagination integration', () => {
     })
     await flushPromises()
     expect(wrapper.findAllComponents(NPagination)).toHaveLength(1)
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual(['1'])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['1'])
   })
 
   test('native pagination methods follow uncontrolled page and page-size updates', async () => {
@@ -281,10 +281,9 @@ describe('table sorting, filtering and pagination integration', () => {
       },
     })
     await flushPromises()
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      '3',
-      '4',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['3', '4'])
     moveDisplayedRow(0, 1)
     const update = wrapper.emitted('update:data')!.at(-1)![0] as DataRecord[]
     expect(update.map(row => row.id)).toEqual([1, 2, 4, 3])
@@ -307,10 +306,9 @@ describe('table sorting, filtering and pagination integration', () => {
     await wrapper.setProps({ data: [...source] })
     await flushPromises()
     expect(table.vm.getCurrentPageData).toBeUndefined()
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      '3',
-      '4',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['3', '4'])
     expect(drag.options!.data.value.map(row => row.id)).toEqual([3, 4])
     moveDisplayedRow(0, 1)
     const update = wrapper.emitted('update:data')!.at(-1)![0] as DataRecord[]
@@ -354,27 +352,25 @@ describe('table sorting, filtering and pagination integration', () => {
     // Native filter() is silent; normal filter-menu interaction also emits this event.
     table.vm.$emit('update:filters', { name: ['keep'] })
     await flushPromises()
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      'keep-c',
-      'keep-d',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['keep-c', 'keep-d'])
     expect(drag.options!.data.value.map(row => row.id)).toEqual([4, 6])
     expect(api.getTotalPages()).toBe(2)
     api.resetToFirstPage()
     await flushPromises()
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      'keep-a',
-      'keep-b',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['keep-a', 'keep-b'])
     expect(drag.options!.data.value.map(row => row.id)).toEqual([1, 3])
     wrapper.getComponent(NPagination).vm.$emit('update:pageSize', 1)
     await flushPromises()
     expect(api.getTotalPages()).toBe(4)
     table.vm.sort('name', 'descend')
     await flushPromises()
-    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([
-      'keep-d',
-    ])
+    expect(
+      wrapper.findAll('tbody tr').map(row => row.get('td:last-child').text())
+    ).toEqual(['keep-d'])
     expect(drag.options!.data.value.map(row => row.id)).toEqual([6])
   })
 })
