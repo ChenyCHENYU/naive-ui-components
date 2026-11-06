@@ -60,7 +60,8 @@ const totalSize = files.reduce(
 // 0.20 目录面包屑与 0.21 双格式状态保护/文案/配置入口各保留 48 KiB；
 // 独立入口仍受单独的首屏 gzip 预算约束，不能用总预算掩盖懒加载回退。
 // 两个发布 CSS 入口恢复约 109 KiB 主题样式，另留序列化保护代码的有限空间。
-const totalLimit = 4 * 1024 * 1024 + 224 * 1024
+// 0.31.4 的交互修复与 Node 20 入口兼容使双格式产物增加约 3 KiB。
+const totalLimit = 4 * 1024 * 1024 + 228 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

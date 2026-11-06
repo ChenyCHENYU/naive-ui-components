@@ -442,6 +442,8 @@ Use `config.pagination` for new pages. For remote tables, bind the `useTableQuer
 
 Local data is filtered and sorted before pagination. Remote mode displays the server's page without slicing it again. `crossPageSelection: true` retains selected row objects from visited remote pages; `selectAll()` only adds the currently loaded page and cannot represent unseen server records. Use `getSelectedRows()` or the row objects from `@selection-change` for batch work. Server-wide operations need an explicit query or a server-side task supplied by the application.
 
+`selection.maxSelection` applies to both regular and cross-page selection. If `crossPageSelection.maxSelection` is also set, cross-page selection uses the lower limit. Choosing a new row in a single-selection column replaces the previous row across pages.
+
 Choose export scope explicitly:
 
 | `config.export` option      | Data source                                                                                |

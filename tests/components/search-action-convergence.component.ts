@@ -612,7 +612,7 @@ test('a large search select reuses its options on selection and refreshes them w
   wrapper.unmount()
 })
 
-test('folded search fields remain validated and failures reveal the field', async () => {
+test('folded search validation reveals the field and shows its rule message', async () => {
   const onSearch = vi.fn()
   const wrapper = mount(C_FormSearch, {
     props: {
@@ -621,7 +621,7 @@ test('folded search fields remain validated and failures reveal the field', asyn
         {
           type: 'input',
           prop: 'required',
-          rules: [{ required: true, message: 'required' }],
+          rules: [{ required: true, message: '请输入需要检索的完整编号' }],
         },
         {
           type: 'input',
@@ -631,15 +631,20 @@ test('folded search fields remain validated and failures reveal the field', asyn
         },
       ],
       modelValue: { name: 'Ada', required: '', hidden: '' },
-      config: { foldThreshold: 1, onSearch },
+      config: { density: 'compact', foldThreshold: 1, onSearch },
     },
   })
   const container = wrapper.findAll('.form-search-item-box')[1]
   const field = container.get('input')
+  const feedback = container.get('.n-form-item-feedback-wrapper')
+  expect(feedback.attributes('style')).toContain('min-height: 0')
+  expect(feedback.text()).toBe('')
+  expect(wrapper.findAll('.n-form-item-feedback-wrapper')).toHaveLength(1)
   expect(container.attributes('style')).toContain('display: none')
   expect(await wrapper.vm.searchFn()).toBe(false)
   await flushPromises()
   expect(container.attributes('style') ?? '').not.toContain('display: none')
+  expect(feedback.text()).toBe('请输入需要检索的完整编号')
   expect(onSearch).not.toHaveBeenCalled()
   expect(wrapper.emitted('search')).toBeUndefined()
   await field.setValue('valid')

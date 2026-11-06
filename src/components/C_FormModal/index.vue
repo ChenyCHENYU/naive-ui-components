@@ -37,6 +37,13 @@
     </C_Form>
 
     <template #footer>
+      <p
+        v-if="draftChanged"
+        role="status"
+        style="margin: 0 0 8px"
+      >
+        表单已修改，请重新保存。
+      </p>
       <C_ActionBar
         :key="session"
         :actions="modalActions"
@@ -63,6 +70,7 @@
   import { useComponentFeedback } from '../../config'
   import { resolveComponentDensity } from '../../core/density'
   import { notifyObserver } from '../../core/observer'
+  import { cloneData, isDataEqual } from '../../utils/data'
   import { resolveFormModalStyles } from '../shared/formModal'
   import type { ActionBarConfig } from '../C_ActionBar/types'
   import type { FormModalEmits, FormModalProps } from './types'
@@ -100,6 +108,7 @@
   })
   const modalTitle = computed(() => props.editor.title.value)
   const session = ref(0)
+  const draftChanged = ref(false)
   const saveTasks = useActionTask<number>()
   const saving = computed(() => saveTasks.isRunning(session.value))
   const busy = computed(
@@ -112,7 +121,10 @@
   watch(
     [() => props.editor, () => props.editor.visible.value],
     ([editor, visible], [previousEditor]) => {
-      if (visible || editor !== previousEditor) session.value++
+      if (visible || editor !== previousEditor) {
+        session.value++
+        draftChanged.value = false
+      }
     },
     { flush: 'sync' }
   )
@@ -128,6 +140,14 @@
       if (!saving.value) props.editor.setModel(value)
     },
   })
+
+  const canSaveDraft = (validatedDraft: T | undefined): boolean => {
+    if (validatedDraft === undefined) return true
+    if (isDataEqual(validatedDraft, formRef.value?.getModel())) return true
+    draftChanged.value = true
+    return false
+  }
+
   const resolvedFormConfig = computed<FormConfig<T>>(() => ({
     ...props.config,
     // 持久化阶段使用字段原生禁用态，根节点 inert 同时覆盖自定义插槽。
@@ -139,17 +159,23 @@
     // 弹窗只在 editor 确认保存后提示成功，表单校验完成不代表保存完成。
     submitSuccessText: '',
     onSubmit: async (payload, context) => {
-      const { editor } = props
+      const { editor, config } = props
       const submittedSession = session.value
+      draftChanged.value = false
       const isFormActive = () =>
         submittedSession === session.value &&
         !context?.signal.aborted &&
         editor.visible.value
-      await props.config?.onSubmit?.(payload, context)
+      let validatedDraft: T | undefined
+      if (config?.onSubmit) {
+        // 前置钩子可转换提交数据，比较时保留转换前的校验快照。
+        validatedDraft = cloneData(payload.model)
+        await config.onSubmit(payload, context)
+      }
       const result = await saveTasks.run(
         submittedSession,
         () => editor.submit(payload.model),
-        isFormActive
+        () => isFormActive() && canSaveDraft(validatedDraft)
       )
       if (!result.executed) return
       const saved = result.value

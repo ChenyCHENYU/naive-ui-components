@@ -282,7 +282,8 @@
 
 <script setup lang="ts">
   import { computed, nextTick, ref, useId, watch } from 'vue'
-  import { VVirtualList, type VirtualListInst } from 'vueuc'
+  import type { VirtualListInst } from 'vueuc'
+  import { VVirtualList } from '../../utils/virtualList'
   import { useGlobalSearch } from './composables/useGlobalSearch'
   import type { GlobalSearchOptions } from './types'
 

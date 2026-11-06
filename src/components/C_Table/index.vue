@@ -335,7 +335,10 @@
     mergeGlobalConfig,
   } from './composables/useTableGlobalConfig'
   import { useRowDrag } from './composables/useRowDrag'
-  import { useCrossPageSelection } from './composables/useCrossPageSelection'
+  import {
+    normalizeSelectionLimit,
+    useCrossPageSelection,
+  } from './composables/useCrossPageSelection'
   import { exportTableData } from './composables/useTableExport'
   import { generateFormOptions } from './data'
   import ColumnSettings from './components/ColumnSettings/index.vue'
@@ -737,10 +740,27 @@
 
   /* ================= 跨页多选（可选） ================= */
 
+  const singleSelection = computed(
+    () =>
+      resolved.value.maxSelection === 1 ||
+      effectiveColumns.value.some(
+        column => column.type === 'selection' && column.multiple === false
+      )
+  )
+  const crossPageConfig = computed(() => {
+    const config = resolved.value.crossPageSelection
+    if (!config) return
+    const limit = singleSelection.value
+      ? 1
+      : normalizeSelectionLimit(resolved.value.maxSelection)
+    if (limit === undefined) return config
+    const crossPageLimit = normalizeSelectionLimit(config.maxSelection)
+    return { ...config, maxSelection: Math.min(limit, crossPageLimit ?? limit) }
+  })
   const crossPageState = useCrossPageSelection({
     allData: normalizedData,
     rowKey: resolvedRowKey,
-    config: computed(() => resolved.value.crossPageSelection),
+    config: crossPageConfig,
     remote: viewport.remote,
     childrenKey: () =>
       resolved.value.treeEnabled ? resolved.value.treeChildrenKey : undefined,
@@ -827,7 +847,11 @@
   /** 选中行变更统一处理 */
   const handleCheckedKeysChange = (keys: DataTableRowKey[]) => {
     if (isCrossPageSelectionEnabled.value) {
-      crossPageState.handlePageSelectionChange(keys, displayedRows.value)
+      crossPageState.handlePageSelectionChange(
+        keys,
+        displayedRows.value,
+        singleSelection.value
+      )
       return
     }
     tableManager.expandState?.handleSelectionChange?.(keys)

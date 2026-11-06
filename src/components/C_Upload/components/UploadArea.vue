@@ -14,6 +14,7 @@
     @keydown.space.prevent="handleClick"
   >
     <input
+      :key="inputVersion"
       ref="inputRef"
       type="file"
       class="upload-area__input"
@@ -56,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
+  import { ref, computed, nextTick } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import { filterByAccept, useDragDrop } from '../composables/useDragDrop'
 
@@ -94,6 +95,8 @@
 
   const areaRef = ref<HTMLElement>()
   const inputRef = ref<HTMLInputElement>()
+  const inputVersion = ref(0)
+  const retiredInputs = new WeakSet<HTMLInputElement>()
 
   // 拖拽 & 粘贴
   const { isDragOver, invalidatePendingDrop } = useDragDrop(
@@ -107,16 +110,28 @@
 
   /** 点击触发文件选择 */
   function handleClick() {
-    if (props.disabled) return
-    inputRef.value?.click()
+    const input = inputRef.value
+    if (props.disabled || !input) return
+    if (!retiredInputs.has(input)) {
+      input.click()
+      return
+    }
+    // 同一操作内先换单再打开选择器时，等待新的原生 input 挂载。
+    const version = inputVersion.value
+    void nextTick(() => {
+      if (version === inputVersion.value && !props.disabled)
+        inputRef.value?.click()
+    })
   }
 
   /** input change */
   function handleInputChange(e: Event) {
     const input = e.target as HTMLInputElement
-    const files = props.disabled
-      ? []
-      : filterByAccept(Array.from(input.files ?? []), props.accept)
+    const isCurrent =
+      !props.disabled && input === inputRef.value && !retiredInputs.has(input)
+    const files = isCurrent
+      ? filterByAccept(Array.from(input.files ?? []), props.accept)
+      : []
     if (files.length > 0) {
       emit('files', files)
     }
@@ -124,10 +139,17 @@
     input.value = ''
   }
 
+  function invalidatePendingInput() {
+    invalidatePendingDrop()
+    // 系统选择窗口可在换单后才返回，旧 input 只属于旧记录。
+    if (inputRef.value) retiredInputs.add(inputRef.value)
+    inputVersion.value++
+  }
+
   /** 暴露触发方法 */
   defineExpose({
     triggerSelect: handleClick,
-    invalidatePendingDrop,
+    invalidatePendingInput,
   })
 </script>
 

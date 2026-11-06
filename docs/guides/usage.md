@@ -559,6 +559,8 @@ function preview() {
 
 本地数据先筛选、排序，再分页；远程模式显示服务器返回的这一页，不再次切片。`crossPageSelection: true` 保留已访问远程页中选中的行对象；`selectAll()` 只追加当前加载页，不能代表选中尚未获取的全部服务器记录。批量操作用 `getSelectedRows()`／`@selection-change` 的行对象；需要服务器“全部命中”操作时由业务提供查询条件或服务端任务。
 
+`selection.maxSelection` 同时适用于普通和跨页选择。也配置 `crossPageSelection.maxSelection` 时，跨页选择取两个上限中较小的值。单选列在另一页选择新行时会替换先前选中的行。
+
 `TableInstance<Row>` 的 `selectRow()`、`getSelectedRows()` 和 `clearSelection()` 会自动使用当前选择模式。需要响应式数量时读取 `table.value?.crossPageSelection.selectedCount.value`；嵌套对象的 Ref 不会被 Vue 顶层解包。`getManager()` 保留为高级兼容入口，常用操作不必依赖内部管理器。
 
 导出范围应显式选择：
@@ -857,7 +859,7 @@ CRUD 控制器只需满足结构契约；`@robot-admin/request-core` 0.6.3 起�
 
 `C_Upload.concurrency` 统一限制普通上传与分片上传请求。取消、移除和卸载会停止后续哈希读取并释放排队任务；已经开始的单次 Blob 读取完成后不再处理结果。业务自行提供的校验、合并回调仍由业务负责其网络生命周期。
 
-在同一编辑弹窗切换记录时，调用上传实例的 `replaceFileList(record.attachments)`。它会废弃上一条记录尚未读完的拖入目录，取消上传任务，再回填新记录的附件；`defaultFileList` 仍用于首次初始化。`clearAll()` 使用同样的取消路径。
+在同一编辑弹窗切换记录时，调用上传实例的 `replaceFileList(record.attachments)`。它会废弃上一条记录尚未返回的文件选择结果和拖入目录，取消上传任务，再回填新记录的附件。`defaultFileList` 用于首次初始化。`clearAll()` 使用同样的取消路径。
 
 普通单文件模式一次只接收一个符合 `accept` 的文件，点击、拖放和粘贴一致。需要接收整个目录时开启 `directory`；需要限制整个列表的数量时使用 `maxCount`。
 

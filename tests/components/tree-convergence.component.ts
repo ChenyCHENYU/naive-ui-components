@@ -401,6 +401,88 @@ describe('C_Tree state and native capability contracts', () => {
     expect(wrapper.emitted('load-error')).toHaveLength(1)
   })
 
+  test.each(['collapse all', 'replace loader'])(
+    'pending lazy success stays collapsed after %s',
+    async change => {
+      let finish!: () => void
+      const onLoad = vi.fn(
+        () =>
+          new Promise<void>(resolve => {
+            finish = resolve
+          })
+      )
+      const root = { id: 1, name: 'Lazy root', isLeaf: false }
+      const wrapper = mount(C_Tree<TreeNodeData>, {
+        props: { data: [root], treeProps: { onLoad, animated: false } },
+      })
+      try {
+        await wrapper.get('.n-tree-node-switcher').trigger('click')
+        expect(onLoad).toHaveBeenCalledExactlyOnceWith(root)
+        if (change === 'collapse all') api(wrapper).collapseAll()
+        else
+          await wrapper.setProps({
+            treeProps: { onLoad: async () => {}, animated: false },
+          })
+        await wrapper.setProps({
+          data: [{ ...root, children: [{ id: 2, name: 'Loaded child' }] }],
+        })
+        const previousUpdates =
+          wrapper.emitted('update:expandedKeys')?.length ?? 0
+        finish()
+        await flushPromises()
+        expect(wrapper.getComponent(NTree).props('expandedKeys')).toEqual([])
+        expect(wrapper.text()).not.toContain('Loaded child')
+        expect(wrapper.emitted('update:expandedKeys')?.length ?? 0).toBe(
+          previousUpdates
+        )
+      } finally {
+        finish?.()
+        wrapper.unmount()
+      }
+    }
+  )
+
+  test('sibling refresh does not duplicate a pending load or block its immutable result', async () => {
+    let finish!: () => void
+    const work = new Promise<void>(resolve => {
+      finish = resolve
+    })
+    const root = { id: 1, name: 'Lazy root', isLeaf: false }
+    const sibling = { id: 2, name: 'Updated sibling' }
+    const onLoad = vi.fn(async (): Promise<void> => {
+      await work
+      await wrapper.setProps({
+        data: [
+          { ...root, children: [{ id: 3, name: 'Loaded child' }] },
+          sibling,
+        ],
+      })
+    })
+    const wrapper = mount(C_Tree<TreeNodeData>, {
+      props: {
+        data: [root, { id: 2, name: 'Original sibling' }],
+        treeProps: { onLoad, animated: false },
+      },
+    })
+    try {
+      const clickRoot = () =>
+        wrapper.findAll('.n-tree-node-switcher')[0]!.trigger('click')
+      await clickRoot()
+      await wrapper.setProps({ data: [root, sibling] })
+      await clickRoot()
+      expect(onLoad).toHaveBeenCalledExactlyOnceWith(root)
+      finish()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Loaded child')
+      expect(wrapper.getComponent(NTree).props('expandedKeys')).toEqual([1])
+      expect(wrapper.emitted('update:expandedKeys')).toHaveLength(1)
+    } finally {
+      finish()
+      await flushPromises()
+      wrapper.unmount()
+    }
+  })
+
   test('pending native load is deduplicated and late failure after replacement or unmount emits nothing', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     let reject!: (reason: Error) => void

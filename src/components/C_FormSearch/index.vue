@@ -39,7 +39,8 @@
             v-if="item.type !== 'spacer'"
             :path="item.prop"
             :rule="item.rules"
-            :show-feedback="false"
+            :show-feedback="!!item.rules?.length"
+            feedback-style="min-height: 0; overflow-wrap: anywhere"
             :label="item.label"
             :show-label="!!item.label"
           >

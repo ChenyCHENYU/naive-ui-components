@@ -37,7 +37,8 @@
 
 <script setup lang="ts">
   import { computed, shallowRef, watch } from 'vue'
-  import { VVirtualList, type VVirtualListInst } from 'vueuc'
+  import type { VVirtualListInst } from 'vueuc'
+  import { VVirtualList } from '../../../utils/virtualList'
   import TransferRow from './TransferRow.vue'
   import type { TransferItem, TransferProps } from '../types'
 

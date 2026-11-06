@@ -390,7 +390,11 @@
     sourceChanged: boolean,
     autoChanged: boolean
   ): void {
-    if (previousMode === 'modal' || previousMode === 'inline') {
+    if (
+      sourceChanged ||
+      previousMode === 'modal' ||
+      previousMode === 'inline'
+    ) {
       releasePreview(sourceChanged)
     }
     // 自动预览只响应新文件或模式变化，关闭后不重新打开同一文件。

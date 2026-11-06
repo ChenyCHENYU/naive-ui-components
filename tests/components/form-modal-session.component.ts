@@ -137,6 +137,44 @@ test('异步校验与保存共用关闭保护，失败时保留草稿并允许�
   expect(wrapper.emitted('close')).toHaveLength(1)
 })
 
+test('提交前钩子等待期间修改草稿时保留新值，重试仍可转换提交值', async () => {
+  const editor = createEditor()
+  const preparing = deferred<void>()
+  const onSubmit = vi.fn(async ({ model }: { model: Draft }) => {
+    model.name = model.name.trim()
+    await preparing.promise
+  })
+  editor.submit.mockImplementation(async () => {
+    editor.close()
+    return true
+  })
+  const wrapper = mountModal(editor)
+  await wrapper.setProps({ config: { onSubmit } })
+  const body = new DOMWrapper(document.body)
+
+  await button(wrapper, '保存').trigger('click')
+  await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+  const input = body.get('input')
+  expect(input.element.disabled).toBe(false)
+  await input.setValue(' 新草稿 ')
+  preparing.resolve()
+  await flushPromises()
+
+  expect(editor.submit).not.toHaveBeenCalled()
+  expect(editor.visible.value).toBe(true)
+  expect(editor.model.value).toEqual({ name: ' 新草稿 ' })
+  expect(wrapper.emitted('submit')).toBeUndefined()
+  expect(body.get('[role="status"]').text()).toBe('表单已修改，请重新保存。')
+
+  await button(wrapper, '保存').trigger('click')
+  await flushPromises()
+  expect(editor.submit).toHaveBeenCalledExactlyOnceWith({ name: '新草稿' })
+  expect(editor.visible.value).toBe(false)
+  expect(wrapper.emitted('submit')).toEqual([
+    [expect.objectContaining({ model: { name: '新草稿' } }), true],
+  ])
+})
+
 test('编辑器保存成功并先自行关闭时，通知结果并使用全局表单反馈', async () => {
   const editor = createEditor()
   const success = vi.fn()

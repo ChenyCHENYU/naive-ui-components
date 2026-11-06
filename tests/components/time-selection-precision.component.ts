@@ -163,3 +163,72 @@ test('hidden generated steps do not block confirmation, while explicit native re
   await wrapper.setProps({ endTimeProps: { show: true, minutes: [0, 30] } })
   expect(confirm().attributes('disabled')).toBeDefined()
 })
+
+test.each([
+  { attrs: { format: undefined } },
+  { endTimeProps: { format: undefined } },
+])(
+  'undefined forwarded formats retain the component format: %j',
+  async props => {
+    const wrapper = mount(C_Time, {
+      props: {
+        ...props,
+        mode: 'range',
+        minuteStep: 1,
+        enableTimeRestriction: true,
+        modelValue: [clock(30, 10), clock(31)],
+        endTimeProps: { ...props.endTimeProps, show: true },
+      },
+      global: { stubs: { teleport: true } },
+    })
+    await flushPromises()
+    const end = wrapper.findAllComponents(NTimePicker)[1]
+    expect(end.props('format')).toBe('HH:mm')
+    expect(wrapper.findAll('.n-time-picker-col')).toHaveLength(2)
+    await end.get('input').setValue('09:32')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+      [clock(30, 10), clock(32)],
+    ])
+  }
+)
+
+test('undefined endpoint formats inherit explicit shared formatting and second precision', async () => {
+  const wrapper = mount(C_Time, {
+    props: {
+      mode: 'range',
+      minuteStep: 1,
+      attrs: { format: 'HH:mm:ss' },
+      startTimeProps: { format: undefined },
+      endTimeProps: { format: undefined, show: true },
+      enableTimeRestriction: true,
+      modelValue: [clock(30, 10), clock(30, 20)],
+    },
+    global: { stubs: { teleport: true } },
+  })
+  await flushPromises()
+  const [start, end] = wrapper.findAllComponents(NTimePicker)
+  expect(start.props('format')).toBe('HH:mm:ss')
+  expect(end.props('format')).toBe('HH:mm:ss')
+  expect(end.props('isMinuteDisabled')?.(30, 9)).toBe(false)
+  await end.get('input').setValue('09:30:25')
+  expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+    [clock(30, 10), clock(30, 25)],
+  ])
+})
+
+test('explicit endpoint formats still override shared and component formatting', async () => {
+  const wrapper = mount(C_Time, {
+    props: {
+      mode: 'range',
+      format: 'HH:mm:ss',
+      attrs: { format: 'HH:mm' },
+      startTimeProps: { format: 'HH' },
+      endTimeProps: { format: 'HH:ss' },
+    },
+  })
+  const [start, end] = wrapper.findAllComponents(NTimePicker)
+  expect(start.props('format')).toBe('HH')
+  expect(end.props('format')).toBe('HH:ss')
+  await wrapper.setProps({ mode: 'single', attrs: { format: undefined } })
+  expect(wrapper.getComponent(NTimePicker).props('format')).toBe('HH:mm:ss')
+})

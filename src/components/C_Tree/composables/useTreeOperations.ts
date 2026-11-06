@@ -333,25 +333,53 @@ export function useTreeOperations<T extends object = TreeNodeData>(
     )
   }
   let active = true
+  let loadRevision = 0
+  type PendingLoad = { revision: number; promise: Promise<unknown> }
+  const pendingLoads = new WeakMap<T, PendingLoad>()
   if (getCurrentScope())
     onScopeDispose(() => {
       active = false
     })
+  watch(
+    () => native.value.onLoad,
+    () => {
+      loadRevision++
+    },
+    { flush: 'sync' }
+  )
+  const reportLoadError = (error: unknown, node: T, rawNode: T) => {
+    const key: unknown = Reflect.get(node, keyField.value)
+    if (typeof key !== 'string' && typeof key !== 'number') return
+    const current = index.value.nodes.get(key)
+    if (current && toRaw(current) === rawNode) emit('load-error', error, node)
+  }
   const handleLoad = computed(() => {
     const load = native.value.onLoad
     if (!load) return undefined
     return async (node: T) => {
+      if (!active || native.value.onLoad !== load) return false
+      const rawNode = toRaw(node)
+      const revision = loadRevision
+      const pending = pendingLoads.get(rawNode)
+      if (pending?.revision === revision) {
+        // 原生树在替换根数组时清掉加载标记，只有首个请求可以触发展开。
+        return pending.promise.then(
+          () => false,
+          () => false
+        )
+      }
+      let request: PendingLoad | undefined
+      const isCurrent = () => active && loadRevision === revision
       try {
-        return await load(node)
+        request = { revision, promise: Promise.resolve(load(node)) }
+        pendingLoads.set(rawNode, request)
+        const result = await request.promise
+        return isCurrent() ? result : false
       } catch (error) {
-        const key: unknown = Reflect.get(node, keyField.value)
-        const current =
-          typeof key === 'string' || typeof key === 'number'
-            ? index.value.nodes.get(key)
-            : undefined
-        if (active && current && toRaw(current) === toRaw(node))
-          emit('load-error', error, node)
+        if (isCurrent()) reportLoadError(error, node, rawNode)
         return false
+      } finally {
+        if (pendingLoads.get(rawNode) === request) pendingLoads.delete(rawNode)
       }
     }
   })
@@ -433,8 +461,10 @@ export function useTreeOperations<T extends object = TreeNodeData>(
     handleExpandedKeysChange([...index.value.expandableKeys])
     retainExpandAll.value = true
   }
-  const collapseAll = () =>
+  const collapseAll = () => {
+    loadRevision++
     handleExpandedKeysChange([], [], { node: null, action: 'collapse' })
+  }
   const handleAdd = () => emit('add')
   const handleRefresh = () => emit('refresh')
   const expose: Omit<

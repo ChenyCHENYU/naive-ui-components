@@ -239,7 +239,8 @@
 <script setup lang="ts">
   import { useComponentLocale } from '../../config'
   import { computed, ref, watch } from 'vue'
-  import { VVirtualList, type VirtualListInst } from 'vueuc'
+  import type { VirtualListInst } from 'vueuc'
+  import { VVirtualList } from '../../utils/virtualList'
   import ChatMessageItem from './components/ChatMessageItem.vue'
   import ChatContactItem from './components/ChatContactItem.vue'
   import { useChatScroll } from './composables/useChatScroll'

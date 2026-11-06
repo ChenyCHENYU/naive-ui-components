@@ -1,7 +1,10 @@
 import { test, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import Upload from '../../src/components/C_Upload/index.vue'
-import type { CustomUploadRequest } from '../../src/components/C_Upload/types'
+import type {
+  CustomUploadRequest,
+  UploadFileItem,
+} from '../../src/components/C_Upload/types'
 
 function dispatchDrop(element: Element, items: unknown[], files: File[] = []) {
   const event = new Event('drop', { bubbles: true, cancelable: true })
@@ -63,6 +66,71 @@ test.each(['replace', 'clear'] as const)(
     wrapper.unmount()
   }
 )
+
+test.each(['replace', 'clear'] as const)(
+  'upload %s ignores a late native chooser result and can reopen for the new record',
+  async operation => {
+    const request = vi.fn<CustomUploadRequest>(() => ({ abort: vi.fn() }))
+    const open = vi.spyOn(HTMLInputElement.prototype, 'click')
+    const wrapper = mount(Upload, {
+      props: { data: { record: 'A' }, customRequest: request },
+    })
+    const oldInput = wrapper.get('input[type=file]')
+    wrapper.vm.selectFiles()
+    expect(open.mock.contexts).toEqual([oldInput.element])
+
+    await wrapper.setProps({ data: { record: 'B' } })
+    if (operation === 'replace') wrapper.vm.replaceFileList([])
+    else wrapper.vm.clearAll()
+    wrapper.vm.selectFiles()
+    // 换单和旧选择回调可能发生在同一轮更新内。
+    Object.defineProperty(oldInput.element, 'files', {
+      value: [new File(['old'], 'record-A.txt')],
+      configurable: true,
+    })
+    await oldInput.trigger('change')
+    await flushPromises()
+    expect(request).not.toHaveBeenCalled()
+
+    const nextInput = wrapper.get('input[type=file]')
+    expect(nextInput.element).not.toBe(oldInput.element)
+    expect(open.mock.contexts).toEqual([oldInput.element, nextInput.element])
+    Object.defineProperty(nextInput.element, 'files', {
+      value: [new File(['new'], 'record-B.txt')],
+      configurable: true,
+    })
+    await nextInput.trigger('change')
+    await flushPromises()
+    expect(request).toHaveBeenCalledOnce()
+    expect(request.mock.calls[0]?.[0]).toMatchObject({
+      filename: 'record-B.txt',
+      data: { record: 'B' },
+    })
+  }
+)
+
+test('a remove observer switching records preserves the new attachment with the same uid', async () => {
+  const previous: UploadFileItem = {
+    uid: '1',
+    name: 'record-A.txt',
+    size: 1,
+    type: 'text/plain',
+    status: 'success',
+    percent: 100,
+  }
+  const next = { ...previous, name: 'record-B.txt' }
+  const wrapper = mount(Upload, {
+    props: {
+      defaultFileList: [previous],
+      onRemove: () => wrapper.vm.replaceFileList([next]),
+    },
+  })
+
+  wrapper.vm.removeFile(previous.uid)
+  await flushPromises()
+  expect(wrapper.emitted('remove')).toEqual([[previous]])
+  expect(wrapper.vm.getFileList()).toEqual([next])
+})
 
 test.each(['drop', 'paste'] as const)(
   'single upload accepts one matching file per %s',

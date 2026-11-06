@@ -65,26 +65,30 @@ export function useTimeSelection(
   const valueFormat = computed(() => props.valueFormat ?? timeFormat.value)
 
   // Match the native picker columns, including forwarded format overrides.
-  function visibleFields(attrs: Record<string, unknown>) {
-    const { format } = attrs
-    const effectiveFormat =
-      typeof format === 'string' ? format : timeFormat.value
+  function visibleFields(format: string) {
     return {
-      hours: /H|h|K|k/.test(effectiveFormat),
-      minutes: effectiveFormat.includes('m'),
-      seconds: effectiveFormat.includes('s'),
+      hours: /H|h|K|k/.test(format),
+      minutes: format.includes('m'),
+      seconds: format.includes('s'),
     }
   }
 
   function pickerAttrs(overrides?: Record<string, unknown>) {
+    const format =
+      typeof overrides?.format === 'string'
+        ? overrides.format
+        : typeof props.attrs?.format === 'string'
+          ? props.attrs.format
+          : timeFormat.value
     const attrs = {
       size: props.size,
       clearable: props.clearable,
       valueFormat: props.valueFormat,
       ...props.attrs,
       ...overrides,
+      format,
     }
-    const fields = visibleFields(attrs)
+    const fields = visibleFields(format)
     return {
       hours: fields.hours ? allowedHours.value : undefined,
       minutes: fields.minutes ? allowedMinutes.value : undefined,
@@ -96,7 +100,7 @@ export function useTimeSelection(
   const mergedAttrs = computed(() => pickerAttrs())
   const mergedStartAttrs = computed(() => pickerAttrs(props.startTimeProps))
   const mergedEndAttrs = computed(() => pickerAttrs(props.endTimeProps))
-  const endFields = computed(() => visibleFields(mergedEndAttrs.value))
+  const endFields = computed(() => visibleFields(mergedEndAttrs.value.format))
 
   const isLocked = (attrs: Record<string, unknown>) =>
     props.disabled ||

@@ -166,10 +166,12 @@
   /** 移除文件 */
   function handleRemove(uid: string) {
     if (props.disabled) return
-    const file = fileList.value.find(f => f.uid === uid)
+    const list = fileList.value
+    const file = list.find(f => f.uid === uid)
     if (file) {
       emit('remove', snapshotFile(file))
-      removeFile(uid)
+      // remove 监听器可以同步换单，旧 uid 不应删除新列表中的附件。
+      if (list === fileList.value) removeFile(uid)
     }
   }
 
@@ -250,7 +252,7 @@
   // ─── Expose ──────────────────────────────────
 
   function replaceAttachments(files: readonly UploadFileItem[]) {
-    uploadAreaRef.value?.invalidatePendingDrop()
+    uploadAreaRef.value?.invalidatePendingInput()
     previousStates.clear()
     // 回显附件属于新记录，不能算作刚完成的上传。
     finishEmitted = true

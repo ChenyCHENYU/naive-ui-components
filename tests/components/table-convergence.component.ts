@@ -107,6 +107,74 @@ describe('C_Table combined feature contracts', () => {
     expect(instance.crossPageSelection.selectedCount.value).toBe(0)
   })
 
+  test.each([
+    { selection: { maxSelection: 1 }, multiple: undefined },
+    { selection: true, multiple: false },
+  ])(
+    'remote single selection replaces the previous page selection ($selection, $multiple)',
+    async ({ selection, multiple }) => {
+      const wrapper = mount(C_Table<{ id: number }>, {
+        props: {
+          data: [{ id: 1 }],
+          columns: [
+            { type: 'selection', multiple },
+            { key: 'id', title: 'ID' },
+          ],
+          config: {
+            toolbar: { show: false },
+            pagination: { remote: true, total: 2, pageSize: 1 },
+            selection,
+            crossPageSelection: true,
+          },
+        },
+      })
+      try {
+        const instance = wrapper.vm as unknown as TableInstance<{ id: number }>
+        await wrapper.get('input[type=radio]').setValue(true)
+        expect(instance.getSelectedRows()).toEqual([{ id: 1 }])
+        await wrapper.setProps({ data: [{ id: 2 }] })
+        await wrapper.get('input[type=radio]').setValue(true)
+        expect(instance.getSelectedRows()).toEqual([{ id: 2 }])
+        expect(
+          wrapper.emitted('selection-change')?.map(event => event[0])
+        ).toEqual([[1], [2]])
+      } finally {
+        wrapper.unmount()
+      }
+    }
+  )
+
+  test.each([
+    { selectionLimit: 2, crossPageLimit: 3 },
+    { selectionLimit: 3, crossPageLimit: 2 },
+  ])(
+    'cross-page multi-selection respects both limits ($selectionLimit, $crossPageLimit)',
+    ({ selectionLimit, crossPageLimit }) => {
+      const data = [{ id: 1 }, { id: 2 }, { id: 3 }]
+      const wrapper = mount(C_Table<{ id: number }>, {
+        props: {
+          data,
+          columns: [{ type: 'selection' }, { key: 'id', title: 'ID' }],
+          config: {
+            toolbar: { show: false },
+            pagination: false,
+            selection: { maxSelection: selectionLimit },
+            crossPageSelection: { enabled: true, maxSelection: crossPageLimit },
+          },
+        },
+      })
+      try {
+        const instance = wrapper.vm as unknown as TableInstance<{ id: number }>
+        expect(instance.selectRow(1)).toBe(true)
+        expect(instance.selectRow(2)).toBe(true)
+        expect(instance.selectRow(3)).toBe(false)
+        expect(instance.getSelectedRows()).toEqual(data.slice(0, 2))
+      } finally {
+        wrapper.unmount()
+      }
+    }
+  )
+
   test('failed expansion makes one request and offers an explicit retry', async () => {
     let calls = 0
     const wrapper = mount(C_Table<DataRecord>, {

@@ -36,7 +36,11 @@ export interface UseCrossPageSelectionReturn<T extends object = DataRecord> {
   selectedKeys: Ref<Set<DataTableRowKey>>
   selectedCount: ComputedRef<number>
   getPageCheckedKeys: (pageData: T[]) => DataTableRowKey[]
-  handlePageSelectionChange: (keys: DataTableRowKey[], pageData: T[]) => void
+  handlePageSelectionChange: (
+    keys: DataTableRowKey[],
+    pageData: T[],
+    single?: boolean
+  ) => void
   /** In remote mode, adds the currently loaded page; never claims to select unseen server rows. */
   selectAll: () => void
   select: (key: DataTableRowKey) => boolean
@@ -44,6 +48,12 @@ export interface UseCrossPageSelectionReturn<T extends object = DataRecord> {
   clearAll: () => void
   getSelectedRows: () => T[]
   isSelected: (key: DataTableRowKey) => boolean
+}
+
+/** Keep the component and its cross-page state on the same limit rules. */
+export function normalizeSelectionLimit(limit?: number): number | undefined {
+  if (limit === undefined || !Number.isFinite(limit) || limit < 1) return
+  return Math.trunc(limit)
 }
 
 /** Preserve selected identities and loaded row snapshots across local or remote pages. */
@@ -73,10 +83,8 @@ export function useCrossPageSelection<T extends object = DataRecord>(
     return { index, duplicates }
   })
   const selectable = (row: T) => options.rowCheckable?.(row) !== false
-  const getMaxSelection = () => {
-    const max = toValue(options.config)?.maxSelection
-    return Number.isFinite(max) && (max ?? 0) > 0 ? Math.trunc(max!) : undefined
-  }
+  const getMaxSelection = () =>
+    normalizeSelectionLimit(toValue(options.config)?.maxSelection)
   const selectedCount = computed(() => selectedKeys.value.size)
   const getSelectedRows = () =>
     [...selectedKeys.value].flatMap(key => {
@@ -122,13 +130,21 @@ export function useCrossPageSelection<T extends object = DataRecord>(
 
   const handlePageSelectionChange = (
     keys: DataTableRowKey[],
-    pageData: T[]
+    pageData: T[],
+    single = false
   ) => {
     if (!enabled()) return
     const currentRows = rows(pageData)
     const available = new Set(
       currentRows.filter(selectable).map(options.rowKey)
     )
+    if (single) {
+      const key = keys.find(key => available.has(key))
+      if (key !== undefined) {
+        commit([key], currentRows)
+        return
+      }
+    }
     const next = new Set(selectedKeys.value)
     currentRows.forEach(row => next.delete(options.rowKey(row)))
     keys.forEach(key => {
