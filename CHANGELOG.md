@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.31.3
+
+### Patch Changes
+
+- 表单弹窗在保存期间锁定草稿，表格批量操作完成时保留后续修改的选择。远程 Excel 预览在读取中执行大小限制，时间范围按实际显示精度限制结束时间。
+
 ## 0.31.2
 
 ### Patch Changes

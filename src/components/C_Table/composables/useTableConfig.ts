@@ -234,7 +234,7 @@ export interface ErrorConfig {
 /** 批量操作配置 */
 export interface BatchActionsConfig<T extends object = DataRecord> {
   enabled?: boolean
-  /** 操作成功后清空选择，默认不清空 */
+  /** 操作成功且等待期间选择未变更时清空，默认不清空。 */
   clearSelectionOnSuccess?: boolean
   /** 批量操作失败回调 */
   onError?: (error: unknown, actionKey: string) => void

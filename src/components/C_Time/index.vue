@@ -15,9 +15,6 @@
       <NTimePicker
         :placeholder="startPlaceholder"
         :format="timeFormat"
-        :hours="allowedHours"
-        :minutes="allowedMinutes"
-        :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         v-bind="mergedStartAttrs"
         :value="startTime"
@@ -28,9 +25,6 @@
       <NTimePicker
         :placeholder="endPlaceholder"
         :format="timeFormat"
-        :hours="allowedHours"
-        :minutes="allowedMinutes"
-        :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         :is-hour-disabled="
           props.enableTimeRestriction ? isEndHourDisabled : undefined
@@ -56,9 +50,6 @@
       <NTimePicker
         :placeholder="placeholder"
         :format="timeFormat"
-        :hours="allowedHours"
-        :minutes="allowedMinutes"
-        :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         v-bind="mergedAttrs"
         :value="singleTime"
@@ -119,9 +110,6 @@
     endTime,
     singleTime,
     timeFormat,
-    allowedHours,
-    allowedMinutes,
-    allowedSeconds,
     startTimeDisabled,
     endTimeDisabled,
     singleTimeDisabled,

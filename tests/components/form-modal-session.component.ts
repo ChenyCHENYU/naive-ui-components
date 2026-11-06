@@ -63,6 +63,8 @@ test('异步校验与保存共用关闭保护，失败时保留草稿并允许�
   const editor = createEditor()
   const validation = deferred<void>()
   const validator = vi.fn(() => validation.promise)
+  const preparing = deferred<void>()
+  const onSubmit = vi.fn(() => preparing.promise)
   const saving = deferred<boolean>()
   const success = vi.fn()
   editor.submit.mockImplementation(async () => {
@@ -76,10 +78,11 @@ test('异步校验与保存共用关闭保护，失败时保留草稿并允许�
   const wrapper = mountModal(editor)
   await wrapper.setProps({
     options: [{ type: 'input', prop: 'name', rules: [{ validator }] }],
-    config: { submitSuccessText: '已保存', feedback: { success } },
+    config: { onSubmit, submitSuccessText: '已保存', feedback: { success } },
   })
   const modal = wrapper.getComponent(NModal)
   const body = new DOMWrapper(document.body)
+  const input = body.get('input')
   const verifyLocked = async () => {
     expect(modal.props()).toMatchObject({
       closable: false,
@@ -100,9 +103,17 @@ test('异步校验与保存共用关闭保护，失败时保留草稿并允许�
   await button(wrapper, '保存').trigger('click')
   await vi.waitFor(() => expect(validator).toHaveBeenCalledOnce())
   expect(editor.loading.value).toBe(false)
+  expect(input.element.disabled).toBe(false)
   await verifyLocked()
   validation.resolve()
+  await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+  expect(editor.submit).not.toHaveBeenCalled()
+  expect(input.element.disabled).toBe(false)
+  expect(body.get('form').attributes('inert')).toBeUndefined()
+  preparing.resolve()
   await vi.waitFor(() => expect(editor.submit).toHaveBeenCalledOnce())
+  expect(input.element.disabled).toBe(true)
+  expect(body.get('form').element.hasAttribute('inert')).toBe(true)
   await verifyLocked()
   saving.resolve(false)
   await flushPromises()
@@ -112,6 +123,10 @@ test('异步校验与保存共用关闭保护，失败时保留草稿并允许�
   ])
   expect(success).not.toHaveBeenCalled()
   expect(editor.model.value).toEqual({ name: '待保存' })
+  expect(input.element.disabled).toBe(false)
+  expect(body.get('form').attributes('inert')).toBeUndefined()
+  await input.setValue('失败后重新编辑')
+  expect(editor.model.value).toEqual({ name: '失败后重新编辑' })
   expect(modal.props()).toMatchObject({
     closable: true,
     closeOnEsc: true,
@@ -157,6 +172,7 @@ test.each(['重新打开', '替换编辑器', '卸载弹窗'])(
   async change => {
     const editor = createEditor()
     const saving = deferred<boolean>()
+    const replacementSaving = deferred<boolean>()
     const success = vi.fn()
     editor.submit.mockReturnValue(saving.promise)
     const activeEditor = shallowRef<FormModalEditor<Draft>>(editor)
@@ -172,8 +188,11 @@ test.each(['重新打开', '替换编辑器', '卸载弹窗'])(
       { attachTo: document.body }
     )
     const wrapper = host.getComponent(C_FormModal<Draft>)
+    const body = new DOMWrapper(document.body)
     await button(wrapper, '保存').trigger('click')
     await vi.waitFor(() => expect(editor.submit).toHaveBeenCalledOnce())
+    expect(editor.loading.value).toBe(false)
+    expect(body.get('input').element.disabled).toBe(true)
 
     if (change === '重新打开') {
       editor.close()
@@ -183,12 +202,18 @@ test.each(['重新打开', '替换编辑器', '卸载弹窗'])(
       await vi.waitFor(() =>
         expect(button(wrapper, '保存').props('loading')).toBe(false)
       )
+      expect(body.get('input').element.disabled).toBe(false)
     } else if (change === '替换编辑器') {
-      activeEditor.value = createEditor()
+      const replacement = createEditor()
+      replacement.submit.mockReturnValue(replacementSaving.promise)
+      activeEditor.value = replacement
       await nextTick()
       await vi.waitFor(() =>
         expect(button(wrapper, '保存').props('loading')).toBe(false)
       )
+      expect(body.get('input').element.disabled).toBe(false)
+      await button(wrapper, '保存').trigger('click')
+      await vi.waitFor(() => expect(replacement.submit).toHaveBeenCalledOnce())
     } else {
       host.unmount()
     }
@@ -197,5 +222,11 @@ test.each(['重新打开', '替换编辑器', '卸载弹窗'])(
     await flushPromises()
     expect(wrapper.emitted('submit')).toBeUndefined()
     expect(success).not.toHaveBeenCalled()
+    if (change === '替换编辑器') {
+      expect(body.get('input').element.disabled).toBe(true)
+      replacementSaving.resolve(false)
+      await flushPromises()
+      expect(body.get('input').element.disabled).toBe(false)
+    }
   }
 )

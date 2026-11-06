@@ -14,6 +14,14 @@ const quiet = {
   error: () => undefined,
 }
 
+const deferredBatch = () => {
+  let resolve!: () => void
+  const promise = new Promise<void>(done => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
 describe('C_Table combined feature contracts', () => {
   test('inline actions use offline presets and lock only the matching row without firing row clicks', async () => {
     let finish!: () => void
@@ -248,6 +256,116 @@ describe('C_Table combined feature contracts', () => {
       await button!.trigger('click')
       expect(onClick).toHaveBeenCalledExactlyOnceWith([2], [child])
     } finally {
+      wrapper.unmount()
+    }
+  })
+
+  test('batch completion preserves a reselected key and clears an unchanged selection after refreshing data', async () => {
+    const first = deferredBatch()
+    const second = deferredBatch()
+    const onClick = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+    const data = [{ id: 1, name: 'first' }]
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        data,
+        columns: [{ type: 'selection' }, { key: 'name', title: 'Name' }],
+        config: {
+          toolbar: { show: false },
+          pagination: false,
+          selection: true,
+          batchActions: {
+            enabled: true,
+            clearSelectionOnSuccess: true,
+            actions: [{ key: 'batch', label: '批量处理', onClick }],
+          },
+        },
+      },
+    })
+    try {
+      const instance = wrapper.vm as unknown as TableInstance
+      const clickRow = () => wrapper.findAll('.n-checkbox')[1].trigger('click')
+      const clickBatch = () =>
+        wrapper.get('.batch-actions-bar button').trigger('click')
+      await clickRow()
+      await clickBatch()
+      expect(onClick).toHaveBeenNthCalledWith(1, [1], data)
+
+      await clickRow()
+      await clickRow()
+      first.resolve()
+      await flushPromises()
+      expect(instance.getSelectedRows()).toEqual(data)
+
+      await clickBatch()
+      expect(onClick).toHaveBeenNthCalledWith(2, [1], data)
+      const refreshed = [{ id: 1, name: 'refreshed' }]
+      await wrapper.setProps({ data: refreshed })
+      expect(instance.getSelectedRows()).toEqual(refreshed)
+      second.resolve()
+      await flushPromises()
+      expect(instance.getSelectedRows()).toEqual([])
+    } finally {
+      first.resolve()
+      second.resolve()
+      wrapper.unmount()
+    }
+  })
+
+  test('overlapping remote batch actions only clear their unchanged selection', async () => {
+    const first = deferredBatch()
+    const second = deferredBatch()
+    const onFirst = vi.fn(() => first.promise)
+    const onSecond = vi.fn(() => second.promise)
+    const firstRow = { id: 1, name: 'first' }
+    const secondRow = { id: 2, name: 'second' }
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        data: [firstRow],
+        columns: [{ type: 'selection' }, { key: 'name', title: 'Name' }],
+        config: {
+          toolbar: { show: false },
+          pagination: { remote: true, total: 2, pageSize: 1 },
+          selection: true,
+          crossPageSelection: true,
+          batchActions: {
+            enabled: true,
+            clearSelectionOnSuccess: true,
+            actions: [
+              { key: 'first', label: '首次处理', onClick: onFirst },
+              { key: 'second', label: '再次处理', onClick: onSecond },
+            ],
+          },
+        },
+      },
+    })
+    try {
+      const instance = wrapper.vm as unknown as TableInstance
+      await wrapper.findAll('.n-checkbox')[1].trigger('click')
+      await wrapper.findAll('.batch-actions-bar button')[0].trigger('click')
+      expect(onFirst).toHaveBeenCalledExactlyOnceWith([1], [firstRow])
+      await wrapper.setProps({ data: [secondRow] })
+      await wrapper.findAll('.n-checkbox')[1].trigger('click')
+      await wrapper.findAll('.batch-actions-bar button')[1].trigger('click')
+      expect(onSecond).toHaveBeenCalledExactlyOnceWith(
+        [1, 2],
+        [firstRow, secondRow]
+      )
+
+      first.resolve()
+      await flushPromises()
+      expect(instance.getSelectedRows()).toEqual([firstRow, secondRow])
+      second.resolve()
+      await flushPromises()
+      expect(instance.getSelectedRows()).toEqual([])
+      expect(
+        wrapper.emitted('selection-change')!.map(event => event[0])
+      ).toEqual([[1], [1, 2], []])
+    } finally {
+      first.resolve()
+      second.resolve()
       wrapper.unmount()
     }
   })

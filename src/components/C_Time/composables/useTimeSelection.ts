@@ -55,27 +55,48 @@ export function useTimeSelection(
 
   function timeOfDay(value: number): number {
     const date = new Date(value)
-    return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
+    return (
+      (endFields.value.hours ? date.getHours() * 3600 : 0) +
+      (endFields.value.minutes ? date.getMinutes() * 60 : 0) +
+      (endFields.value.seconds ? date.getSeconds() : 0)
+    )
   }
 
   const valueFormat = computed(() => props.valueFormat ?? timeFormat.value)
 
-  const mergedAttrs = computed(() => ({
-    size: props.size,
-    clearable: props.clearable,
-    valueFormat: props.valueFormat,
-    ...props.attrs,
-  }))
+  // Match the native picker columns, including forwarded format overrides.
+  function visibleFields(attrs: Record<string, unknown>) {
+    const { format } = attrs
+    const effectiveFormat =
+      typeof format === 'string' ? format : timeFormat.value
+    return {
+      hours: /H|h|K|k/.test(effectiveFormat),
+      minutes: effectiveFormat.includes('m'),
+      seconds: effectiveFormat.includes('s'),
+    }
+  }
 
-  const mergedStartAttrs = computed(() => ({
-    ...mergedAttrs.value,
-    ...props.startTimeProps,
-  }))
+  function pickerAttrs(overrides?: Record<string, unknown>) {
+    const attrs = {
+      size: props.size,
+      clearable: props.clearable,
+      valueFormat: props.valueFormat,
+      ...props.attrs,
+      ...overrides,
+    }
+    const fields = visibleFields(attrs)
+    return {
+      hours: fields.hours ? allowedHours.value : undefined,
+      minutes: fields.minutes ? allowedMinutes.value : undefined,
+      seconds: fields.seconds ? allowedSeconds.value : undefined,
+      ...attrs,
+    }
+  }
 
-  const mergedEndAttrs = computed(() => ({
-    ...mergedAttrs.value,
-    ...props.endTimeProps,
-  }))
+  const mergedAttrs = computed(() => pickerAttrs())
+  const mergedStartAttrs = computed(() => pickerAttrs(props.startTimeProps))
+  const mergedEndAttrs = computed(() => pickerAttrs(props.endTimeProps))
+  const endFields = computed(() => visibleFields(mergedEndAttrs.value))
 
   const isLocked = (attrs: Record<string, unknown>) =>
     props.disabled ||
@@ -120,22 +141,27 @@ export function useTimeSelection(
 
   /* ==================== 时间限制函数 ==================== */
   const isEndHourDisabled = (hour: number): boolean => {
-    if (startTime.value === null) return false
-    return hour < new Date(startTime.value).getHours()
+    if (startTime.value === null || !endFields.value.hours) return false
+    const startHour = new Date(startTime.value).getHours()
+    return (
+      hour < startHour ||
+      (hour === startHour &&
+        !endFields.value.minutes &&
+        !endFields.value.seconds)
+    )
   }
 
   const isEndMinuteDisabled = (
     minute: number,
     selectedHour: number | null
   ): boolean => {
-    if (startTime.value === null || selectedHour === null) return false
+    if (startTime.value === null || !endFields.value.minutes) return false
     const startDate = new Date(startTime.value)
-    return (
-      selectedHour === startDate.getHours() &&
-      (props.useSeconds
-        ? minute < startDate.getMinutes()
-        : minute <= startDate.getMinutes())
-    )
+    if (endFields.value.hours && selectedHour !== startDate.getHours())
+      return false
+    return endFields.value.seconds
+      ? minute < startDate.getMinutes()
+      : minute <= startDate.getMinutes()
   }
 
   const isEndSecondDisabled = (
@@ -143,17 +169,11 @@ export function useTimeSelection(
     selectedMinute: number | null,
     selectedHour: number | null
   ): boolean => {
-    if (
-      startTime.value === null ||
-      !props.useSeconds ||
-      selectedHour === null ||
-      selectedMinute === null
-    )
-      return false
+    if (startTime.value === null || !endFields.value.seconds) return false
     const startDate = new Date(startTime.value)
     return (
-      selectedHour === startDate.getHours() &&
-      selectedMinute === startDate.getMinutes() &&
+      (!endFields.value.hours || selectedHour === startDate.getHours()) &&
+      (!endFields.value.minutes || selectedMinute === startDate.getMinutes()) &&
       second <= startDate.getSeconds()
     )
   }

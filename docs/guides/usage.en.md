@@ -697,7 +697,7 @@ With `C_FullCalendar` and `v-model:events`, listen for `@event-dropped` or `@eve
 
 Upload `concurrency` applies across normal and chunk upload requests. Cancellation stops subsequent hash reads; a Blob read already in progress is discarded on completion. Application-provided check/merge callbacks retain responsibility for their own network lifecycle.
 
-Excel previews preserve raw values, cell types and workbook display formatting. Sheets expand on demand. Defaults are 32 MiB per file and 100000 cells per sheet; `previewLimits: { maxBytes, maxCells }` accepts finite safe positive integers. Over-budget previews report an error and retain download access. These limits do not guarantee a bound on decompressed archive memory.
+Excel previews preserve raw values, cell types and workbook display formatting. Sheets expand on demand. Defaults are 32 MiB per file and 100000 cells per sheet. `previewLimits: { maxBytes, maxCells }` accepts finite safe positive integers. Remote Excel previews stop reading the response once the byte limit is exceeded. Over-budget previews ask users to download the original file. Memory used to decompress a workbook depends on its contents.
 
 WaterFall fills a visible sentinel for at most five consecutive pages, then exposes a manual continuation. Custom `footer` slots receive `paused` and `loadMore`. Continue updating `loading` and `noMore` in the host. Draggable instances sort independently by default; cross-list transfers require an explicitly shared `group`.
 

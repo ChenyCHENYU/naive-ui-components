@@ -64,13 +64,11 @@ export const FULLSCREEN_EVENTS = [
 
 export const extractFileNameFromUrl = (url: string): string => {
   try {
-    const urlPath = url.split('/').pop() || url.split('\\').pop()
-    if (urlPath?.includes('.')) {
-      const decodedName = decodeURIComponent(urlPath.split('?')[0])
-      if (decodedName && decodedName !== url) return decodedName
-    }
-  } catch (error) {
-    console.warn('解析URL文件名失败:', error)
+    const path = new URL(url, 'https://preview.invalid').pathname
+    const name = decodeURIComponent(path.slice(path.lastIndexOf('/') + 1))
+    if (name.includes('.')) return name
+  } catch {
+    // 无法从 URL 判断类型时，由调用方提供文件名。
   }
   return '未知文件'
 }
@@ -162,6 +160,52 @@ function resolvePreviewLimit(
   if (!Number.isSafeInteger(value) || value <= 0)
     throw new Error(`previewLimits.${name} 必须为有限正整数`)
   return value
+}
+
+function excelByteLimit(limits?: FilePreviewLimits): number {
+  return resolvePreviewLimit(limits?.maxBytes, MAX_EXCEL_FILE_BYTES, 'maxBytes')
+}
+
+function assertExcelByteLimit(size: number, maxBytes: number): void {
+  if (size > maxBytes)
+    throw new Error(
+      `Excel 文件超过 ${formatFileSize(maxBytes)} 的预览上限，请下载文件查看`
+    )
+}
+
+/** 限制实际读取的文件字节，避免把超限响应完整缓存在内存里。 */
+export async function readExcelPreviewBlob(
+  response: Response,
+  limits?: FilePreviewLimits
+): Promise<Blob> {
+  const { body, headers } = response
+  if (!body) return response.blob()
+
+  const reader = body.getReader()
+  try {
+    const maxBytes = excelByteLimit(limits)
+    const encoding = headers.get('content-encoding')?.toLowerCase()
+    // 跨域可能隐藏编码头。压缩响应的 Content-Length 表示传输大小。
+    if (encoding === 'identity' || (!encoding && response.type !== 'cors'))
+      assertExcelByteLimit(Number(headers.get('content-length')), maxBytes)
+
+    const chunks: BlobPart[] = []
+    let size = 0
+    while (true) {
+      // eslint-disable-next-line no-await-in-loop -- 按顺序读取并在超限时取消余下数据。
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      assertExcelByteLimit(size, maxBytes)
+      chunks.push(value)
+    }
+    return new Blob(chunks, { type: headers.get('content-type') ?? '' })
+  } catch (error) {
+    void reader.cancel().catch(() => {})
+    throw error
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 interface ExcelMergeInfo {
@@ -320,20 +364,13 @@ export async function loadExcel(
   file: File,
   limits: FilePreviewLimits = {}
 ): Promise<ExcelLoadResult> {
-  const maxBytes = resolvePreviewLimit(
-    limits.maxBytes,
-    MAX_EXCEL_FILE_BYTES,
-    'maxBytes'
-  )
+  const maxBytes = excelByteLimit(limits)
   const maxCells = resolvePreviewLimit(
     limits.maxCells,
     MAX_EXCEL_PREVIEW_CELLS,
     'maxCells'
   )
-  if (file.size > maxBytes)
-    throw new Error(
-      `Excel 文件超过 ${formatFileSize(maxBytes)} 的预览上限，请下载文件查看`
-    )
+  assertExcelByteLimit(file.size, maxBytes)
   const arrayBuffer = await file.arrayBuffer()
   const workbook = XLSX.read(arrayBuffer, {
     type: 'array',

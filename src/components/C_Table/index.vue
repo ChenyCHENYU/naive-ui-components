@@ -758,6 +758,28 @@
       ? crossPageState.selectedCount.value
       : (tableManager.checkedKeys?.value?.length ?? 0)
   )
+  const batchSelectionKeys = computed(() =>
+    isCrossPageSelectionEnabled.value
+      ? crossPageState.selectedKeys.value
+      : tableManager.checkedKeys.value
+  )
+  let batchSelectionRevision = 0
+  watch(
+    [isCrossPageSelectionEnabled, batchSelectionKeys],
+    ([crossPage, keys], [previousCrossPage, previous]) => {
+      // 刷新数据也会重建当前页的选中数组，键未变时仍属于同一批选择。
+      if (
+        crossPage === previousCrossPage &&
+        Array.isArray(keys) &&
+        Array.isArray(previous) &&
+        keys.length === previous.length &&
+        keys.every((key, index) => key === previous[index])
+      )
+        return
+      batchSelectionRevision++
+    },
+    { flush: 'sync' }
+  )
   const batchTasks = useActionTask<string>()
   type BatchAction = {
     key: string
@@ -765,12 +787,10 @@
   }
 
   /** 处理批量操作按钮点击 */
-  // eslint-disable-next-line complexity -- 跨页/当前页选择与异步回滚必须作为同一操作处理。
   const handleBatchAction = async (action: BatchAction) => {
     if (batchTasks.isRunning(action.key)) return
-    const keys = isCrossPageSelectionEnabled.value
-      ? [...crossPageState.selectedKeys.value]
-      : (tableManager.checkedKeys?.value ?? [])
+    const revision = batchSelectionRevision
+    const keys = [...batchSelectionKeys.value]
     const rows = isCrossPageSelectionEnabled.value
       ? crossPageState.getSelectedRows()
       : tableManager.stateManager.selection.getSelected()
@@ -778,8 +798,11 @@
       const result = await batchTasks.run(action.key, () =>
         action.onClick(keys, rows)
       )
-      if (!result.executed) return
-      if (resolved.value.batchActions?.clearSelectionOnSuccess) {
+      if (
+        result.executed &&
+        revision === batchSelectionRevision &&
+        resolved.value.batchActions?.clearSelectionOnSuccess
+      ) {
         clearBatchSelection()
       }
     } catch (error) {
@@ -1270,6 +1293,7 @@
   )
 
   onBeforeUnmount(() => {
+    batchSelectionRevision++
     columnFontSet?.removeEventListener('loadingdone', refreshColumnFonts)
     columnState.flushColumnWidths()
     if (modalCloseTimer) clearTimeout(modalCloseTimer)

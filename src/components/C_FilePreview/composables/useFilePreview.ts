@@ -10,6 +10,7 @@ import {
   loadPdf,
   loadWord,
   loadExcel,
+  readExcelPreviewBlob,
 } from '../data'
 import type {
   FilePreviewType,
@@ -108,7 +109,11 @@ export function useFilePreview(
   }
 
   /* ==================== 文件解析 ==================== */
-  const resolveFile = async (signal: AbortSignal): Promise<File> => {
+  const resolveFile = async (
+    signal: AbortSignal,
+    type: FilePreviewType,
+    limits?: FilePreviewLimits
+  ): Promise<File> => {
     const sourceFile = file.value
     const sourceUrl = url.value
     if (sourceFile) {
@@ -117,11 +122,15 @@ export function useFilePreview(
     if (sourceUrl) {
       const safeUrl = resolvePreviewUrl(sourceUrl, window.location.href)
       if (!safeUrl) throw new Error('不支持此文件地址')
+      if (type === 'unknown') throw new Error('不支持的文件格式')
       const response = await fetch(safeUrl, { signal })
       if (!response.ok)
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
 
-      const blob = await response.blob()
+      const blob =
+        type === 'excel'
+          ? await readExcelPreviewBlob(response, limits)
+          : await response.blob()
       const resolved = new File([blob], displayFileName.value, {
         type: blob.type,
       })
@@ -133,7 +142,8 @@ export function useFilePreview(
   const loadByType = async (
     currentFile: File,
     type: FilePreviewType,
-    version: number
+    version: number,
+    limits?: FilePreviewLimits
   ): Promise<void> => {
     switch (type) {
       case 'pdf': {
@@ -154,7 +164,7 @@ export function useFilePreview(
         break
       }
       case 'excel': {
-        const result = await loadExcel(currentFile, previewLimits?.value)
+        const result = await loadExcel(currentFile, limits)
         if (version !== loadVersion) return
         excelSheets.value = result.sheets
         break
@@ -181,10 +191,15 @@ export function useFilePreview(
 
     try {
       const currentType = fileType.value
-      const currentFile = await resolveFile(controller.signal)
+      const limits = previewLimits?.value
+      const currentFile = await resolveFile(
+        controller.signal,
+        currentType,
+        limits
+      )
       if (version !== loadVersion) return false
       fileSize.value = currentFile.size
-      await loadByType(currentFile, currentType, version)
+      await loadByType(currentFile, currentType, version, limits)
       return isCurrentLoad(version, controller)
     } catch (err) {
       if (!isCurrentLoad(version, controller)) return false

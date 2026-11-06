@@ -259,6 +259,103 @@ test('source clearing aborts fetch and unmounting cannot emit a stale preview', 
   expect(api.wordContent.value).toBe('')
 })
 
+test.each([
+  { url: 'large.xlsx', declaredLength: '9', expectedReads: 0 },
+  { url: '/large.xlsx#sheet', declaredLength: '2', expectedReads: 2 },
+  {
+    url: '/large.xlsx?signature=key/part',
+    declaredLength: undefined,
+    expectedReads: 2,
+  },
+])(
+  'remote Excel cancels oversized downloads from $url (Content-Length: $declaredLength)',
+  async ({ url, declaredLength, expectedReads }) => {
+    let chunks = 0
+    const pull = vi.fn((controller: ReadableStreamDefaultController) => {
+      if (chunks++ === 3) controller.close()
+      else controller.enqueue(new Uint8Array(3))
+    })
+    const cancel = vi.fn()
+    const body = new ReadableStream<Uint8Array>(
+      { pull, cancel },
+      {
+        highWaterMark: 0,
+      }
+    )
+    const headers = declaredLength
+      ? { 'content-length': declaredLength }
+      : undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(body, { headers }))
+    )
+    const wrapper = mount(FilePreview, {
+      props: {
+        show: true,
+        url,
+        previewLimits: { maxBytes: 5 },
+      },
+      global: { stubs: { teleport: true, C_Icon: true } },
+    })
+    await flushPromises()
+    expect(wrapper.text()).toContain('超过 5 B 的预览上限')
+    expect(
+      wrapper.findAll('button').some(button => button.text() === '下载')
+    ).toBe(true)
+    expect(wrapper.emitted('preview')).toBeUndefined()
+    expect(pull).toHaveBeenCalledTimes(expectedReads)
+    expect(cancel).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  }
+)
+
+test('remote preview with no supported extension does not fetch the response', async () => {
+  const fetch = vi.fn()
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = mount(FilePreview, {
+    props: { inline: true, url: '/download?id=123' },
+    global: { stubs: { C_Icon: true } },
+  })
+  await flushPromises()
+  expect(wrapper.text()).toContain('不支持的文件格式')
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+test('remote Excel previews the decoded workbook at the exact byte limit', async () => {
+  const XLSX = await import('xlsx')
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([['Budget workbook']]),
+    'Sheet'
+  )
+  const file = new Blob([
+    XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }),
+  ])
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(file.stream(), {
+        headers: {
+          'content-encoding': 'gzip',
+          'content-length': String(file.size + 20),
+        },
+      })
+    )
+  )
+  const wrapper = mount(FilePreview, {
+    props: {
+      inline: true,
+      url: '/budget.xlsx',
+      previewLimits: { maxBytes: file.size },
+    },
+    global: { stubs: { C_Icon: true } },
+  })
+  await flushPromises()
+  expect(wrapper.text()).toContain('Budget workbook')
+  wrapper.unmount()
+})
+
 class AudioMock extends EventTarget {
   static instances: AudioMock[] = []
   src: string

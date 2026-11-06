@@ -23,6 +23,7 @@
       :options="options"
       :config="resolvedFormConfig"
       :renderers="renderers"
+      :inert="saving"
     >
       <template
         v-for="(_, slotName) in $slots"
@@ -58,6 +59,7 @@
     mergeFormConfig,
     useFormGlobalConfig,
   } from '../C_Form'
+  import { useActionTask } from '../../composables/useActionTask'
   import { useComponentFeedback } from '../../config'
   import { resolveComponentDensity } from '../../core/density'
   import { notifyObserver } from '../../core/observer'
@@ -97,10 +99,15 @@
     },
   })
   const modalTitle = computed(() => props.editor.title.value)
-  const busy = computed(
-    () => props.editor.loading.value || !!formRef.value?.isSubmitting
-  )
   const session = ref(0)
+  const saveTasks = useActionTask<number>()
+  const saving = computed(() => saveTasks.isRunning(session.value))
+  const busy = computed(
+    () =>
+      saving.value ||
+      props.editor.loading.value ||
+      !!formRef.value?.isSubmitting
+  )
   // 重新打开或更换编辑器时隔离表单与页脚任务。保存成功的自行关闭仍属于当前会话。
   watch(
     [() => props.editor, () => props.editor.visible.value],
@@ -118,11 +125,13 @@
   const formModel = computed<T>({
     get: () => props.editor.model.value ?? ({} as T),
     set: value => {
-      props.editor.setModel(value)
+      if (!saving.value) props.editor.setModel(value)
     },
   })
   const resolvedFormConfig = computed<FormConfig<T>>(() => ({
     ...props.config,
+    // 持久化阶段使用字段原生禁用态，根节点 inert 同时覆盖自定义插槽。
+    ...(saving.value ? { disabled: true } : {}),
     density: density.value,
     mode: props.editor.mode.value,
     // v-model 已提供初始快照；重复订阅整个 model 会让每次输入都重建配置及所有字段。
@@ -133,10 +142,17 @@
       const { editor } = props
       const submittedSession = session.value
       const isFormActive = () =>
-        !context?.signal.aborted && editor.visible.value
+        submittedSession === session.value &&
+        !context?.signal.aborted &&
+        editor.visible.value
       await props.config?.onSubmit?.(payload, context)
-      if (submittedSession !== session.value || !isFormActive()) return
-      const saved = await editor.submit(payload.model)
+      const result = await saveTasks.run(
+        submittedSession,
+        () => editor.submit(payload.model),
+        isFormActive
+      )
+      if (!result.executed) return
+      const saved = result.value
       // editor 可先关闭弹窗再返回成功，子表单卸载后的取消信号不影响这个结果。
       if (submittedSession !== session.value || (!saved && !isFormActive()))
         return
