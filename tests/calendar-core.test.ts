@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { effectScope, nextTick, reactive } from 'vue'
+import type { EventDropArg } from '@fullcalendar/core'
+import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 import { buildLocalEventRange } from '../src/components/C_FullCalendar/calendarDate'
 import { useCalendarEvents } from '../src/components/C_FullCalendar/composables/useCalendarEvents'
+import type { CalendarProps } from '../src/components/C_FullCalendar/types'
 
 describe('C_FullCalendar local event time', () => {
   test('uses the selected local calendar day, not a UTC date string', () => {
@@ -77,6 +80,62 @@ describe('C_FullCalendar local event time', () => {
       props.events = []
       await nextTick()
       expect(calendar.calendarOptions.value.events).toHaveLength(0)
+    } finally {
+      scope.stop()
+    }
+  })
+
+  test('managed drag and resize retain write-back, and native overrides remain guarded', () => {
+    const notified: string[] = []
+    const props = reactive<CalendarProps>({
+      editable: true,
+      events: [{ id: 'one', title: 'One', start: '2026-10-18' }],
+    })
+    const scope = effectScope()
+    const calendar = scope.run(() =>
+      useCalendarEvents(props, event => notified.push(event))
+    )!
+    const start = new Date(2026, 9, 19, 9)
+    const end = new Date(2026, 9, 19, 11)
+    let reverted = 0
+    const change = {
+      event: { id: 'one', title: 'One', start, end, allDay: false },
+      revert: () => {
+        reverted++
+      },
+    }
+    const drop = change as unknown as EventDropArg
+    const resize = change as unknown as EventResizeDoneArg
+    try {
+      calendar.calendarOptions.value.eventDrop?.(drop)
+      expect(calendar.expose.getEvents()[0]?.start).toEqual(start)
+      calendar.calendarOptions.value.eventResize?.(resize)
+      expect(calendar.expose.getEvents()[0]?.end).toEqual(end)
+      expect(notified).toEqual([
+        'update:events',
+        'event-dropped',
+        'update:events',
+        'event-updated',
+        'event-resized',
+      ])
+
+      props.config = {
+        eventDrop: () => {
+          notified.push('native-drop')
+        },
+        eventResize: () => {
+          notified.push('native-resize')
+        },
+      }
+      const options = calendar.calendarOptions.value
+      options.eventDrop?.(drop)
+      options.eventResize?.(resize)
+      expect(notified.slice(5)).toEqual(['native-drop', 'native-resize'])
+      props.editable = false
+      options.eventDrop?.(drop)
+      options.eventResize?.(resize)
+      expect(reverted).toBe(2)
+      expect(notified).toHaveLength(7)
     } finally {
       scope.stop()
     }

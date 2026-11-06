@@ -75,6 +75,7 @@ export const componentNames = [
   'C_Progress',
   'C_QRCode',
   'C_SectionNav',
+  'C_Select',
   'C_Signature',
   'C_Skeleton',
   'C_SplitPane',

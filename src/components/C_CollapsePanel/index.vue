@@ -29,10 +29,11 @@
     >
       <!-- 面板头部 -->
       <div
+        :id="`${panelId}-header-${item.key}`"
         class="collapse-item__header"
         role="button"
         :aria-expanded="isExpanded(item.key)"
-        :aria-controls="`collapse-content-${item.key}`"
+        :aria-controls="`${panelId}-content-${item.key}`"
         :aria-disabled="item.disabled"
         :tabindex="item.disabled ? -1 : 0"
         @click="!item.disabled && toggle(item.key)"
@@ -100,10 +101,10 @@
       >
         <div
           v-show="isExpanded(item.key)"
-          :id="`collapse-content-${item.key}`"
+          :id="`${panelId}-content-${item.key}`"
           class="collapse-item__content-wrapper"
           role="region"
-          :aria-labelledby="`collapse-header-${item.key}`"
+          :aria-labelledby="`${panelId}-header-${item.key}`"
         >
           <div
             v-if="shouldRender(item)"
@@ -128,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, toRef } from 'vue'
+  import { ref, toRef, useId } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import { useCollapsePanel } from './composables/useCollapsePanel'
   import type {
@@ -176,6 +177,7 @@
     change: [activeKeys: string[]]
   }>()
 
+  const panelId = `collapse-${useId()}`
   const containerRef = ref<HTMLElement | null>(null)
   const panelRefs = ref<Map<string, HTMLElement>>(new Map())
 
@@ -201,10 +203,8 @@
     defaultActiveKeys: props.defaultActiveKeys,
     accordion: toRef(props, 'accordion'),
     persistKey: toRef(props, 'persistKey'),
-    onChange: keys => {
-      emit('update:activeKeys', keys)
-      emit('change', keys)
-    },
+    onUpdate: keys => emit('update:activeKeys', keys),
+    onChange: keys => emit('change', keys),
     onExpand: key => emit('expand', key),
     onCollapse: key => emit('collapse', key),
   })

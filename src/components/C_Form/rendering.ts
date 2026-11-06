@@ -52,6 +52,9 @@ export const FORM_COMPONENTS: ComponentMap = {
   NCascader: defineAsyncComponent(
     () => import('../../internal/naive-fields/cascader')
   ),
+  NTreeSelect: defineAsyncComponent(
+    () => import('../../internal/naive-fields/tree-select')
+  ),
   NColorPicker: defineAsyncComponent(
     () => import('../../internal/naive-fields/color-picker')
   ),

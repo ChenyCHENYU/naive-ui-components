@@ -82,8 +82,10 @@
               resolved.readonly
             "
             @click="submit"
-            >{{ resolved.submitText || t('common.submit') }}</NButton
           >
+            <template #icon><component :is="submitIcon" /></template>
+            {{ resolved.submitText || t('common.submit') }}
+          </NButton>
         </slot>
       </template>
     </component>
@@ -112,8 +114,10 @@
               resolved.readonly
             "
             @click="handleReset"
-            >{{ resolved.resetText || t('common.reset') }}</NButton
           >
+            <template #icon><component :is="resetIcon" /></template>
+            {{ resolved.resetText || t('common.reset') }}
+          </NButton>
           <slot
             name="action-extra"
             v-bind="actionSlotProps"
@@ -129,8 +133,10 @@
               resolved.readonly
             "
             @click="handleSubmit"
-            >{{ resolved.submitText || t('common.submit') }}</NButton
           >
+            <template #icon><component :is="submitIcon" /></template>
+            {{ resolved.submitText || t('common.submit') }}
+          </NButton>
         </NSpace>
       </slot>
     </NFormItem>
@@ -151,6 +157,7 @@
   import { type FormInst, NForm, NFormItem, NButton, NSpace } from 'naive-ui'
   import { useComponentLocale } from '../../config'
   import { resolveComponentDensity } from '../../core/density'
+  import { renderActionIcon } from '../C_ActionBar/actionIcon'
   import type {
     FormOption,
     LayoutType,
@@ -236,6 +243,8 @@
   const densityEnabled = computed(
     () => mergedConfig.value.density !== undefined
   )
+  const submitIcon = () => renderActionIcon('mdi:check', 14)
+  const resetIcon = () => renderActionIcon('mdi:restore', 14)
   const densityTokens = computed(() =>
     resolveComponentDensity(resolved.value.density)
   )

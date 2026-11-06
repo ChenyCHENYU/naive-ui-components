@@ -12,7 +12,9 @@ interface UseCollapsePanelOptions {
   accordion: Ref<boolean>
   /** localStorage 持久化 key */
   persistKey: Ref<string | undefined>
-  /** activeKeys 变化回调 */
+  /** 请求更新 activeKeys，受控模式由外部确认 */
+  onUpdate?: (keys: string[]) => void
+  /** 已生效的 activeKeys 变化回调 */
   onChange?: (keys: string[]) => void
   /** 单面板展开回调 */
   onExpand?: (key: string) => void
@@ -43,6 +45,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
     defaultActiveKeys,
     accordion,
     persistKey,
+    onUpdate,
     onChange,
     onExpand,
     onCollapse,
@@ -87,15 +90,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
 
   /* ─── 计算属性 ────────────────────────────────── */
   /** 当前激活的 key 数组（兼容受控 / 非受控） */
-  const currentKeys = computed<string[]>({
-    get: () =>
-      externalKeys.value !== undefined
-        ? externalKeys.value
-        : internalKeys.value,
-    set: val => {
-      internalKeys.value = val
-    },
-  })
+  const currentKeys = computed(() => externalKeys.value ?? internalKeys.value)
 
   /**
    * 判断面板是否展开
@@ -118,48 +113,49 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
   }
 
   /* ─── 操作方法 ────────────────────────────────── */
-  const updateKeys = (newKeys: string[]) => {
-    currentKeys.value = newKeys
-    onChange?.(newKeys)
+  const commitKeys = (newKeys: string[], local = false) => {
+    const previous = internalKeys.value
+    if (
+      previous.length === newKeys.length &&
+      previous.every((key, index) => key === newKeys[index])
+    )
+      return
+
+    internalKeys.value = [...newKeys]
+    const next = new Set(newKeys)
+    const before = new Set(previous)
+    next.forEach(key => renderedOnce.value.add(key))
     savePersistedKeys(newKeys)
+    if (local) onUpdate?.([...newKeys])
+    onChange?.([...newKeys])
+    before.forEach(key => {
+      if (!next.has(key)) onCollapse?.(key)
+    })
+    next.forEach(key => {
+      if (!before.has(key)) onExpand?.(key)
+    })
+  }
+
+  const updateKeys = (newKeys: string[]) => {
+    if (externalKeys.value === undefined) commitKeys(newKeys, true)
+    else onUpdate?.(newKeys)
   }
 
   const toggle = (key: string) => {
     const item = items.value.find(i => i.key === key)
     if (!item || item.disabled) return
 
-    const expanded = isExpanded(key)
-
-    if (expanded) {
-      /* 折叠 */
+    if (isExpanded(key)) {
       updateKeys(currentKeys.value.filter(k => k !== key))
-      onCollapse?.(key)
     } else {
-      /* 展开 */
-      renderedOnce.value.add(key)
-
-      if (accordion.value) {
-        /* 手风琴模式：关闭其他面板 */
-        const prevKeys = currentKeys.value
-        updateKeys([key])
-        /* 通知被折叠的面板 */
-        prevKeys.forEach(k => {
-          if (k !== key) onCollapse?.(k)
-        })
-      } else {
-        updateKeys([...currentKeys.value, key])
-      }
-      onExpand?.(key)
+      updateKeys(accordion.value ? [key] : [...currentKeys.value, key])
     }
   }
 
   const expandAll = () => {
     if (accordion.value) return /* 手风琴模式不支持全展开 */
 
-    const allKeys = items.value.filter(i => !i.disabled).map(i => i.key)
-
-    allKeys.forEach(k => renderedOnce.value.add(k))
-    updateKeys(allKeys)
+    updateKeys(items.value.filter(i => !i.disabled).map(i => i.key))
   }
 
   const collapseAll = () => {
@@ -182,11 +178,8 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
   watch(
     () => externalKeys.value?.slice(),
     newVal => {
-      if (newVal !== undefined) {
-        internalKeys.value = [...newVal]
-        newVal.forEach(k => renderedOnce.value.add(k))
-        savePersistedKeys(newVal)
-      }
+      // 仅确认后的键会触发懒挂载、变更事件和持久化。
+      if (newVal !== undefined) commitKeys(newVal)
     }
   )
 

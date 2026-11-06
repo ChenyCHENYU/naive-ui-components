@@ -10,7 +10,7 @@
   <div class="c-file-preview-wrapper">
     <!-- 文件信息卡片模式 -->
     <div
-      v-if="!autoPreview && !inline"
+      v-if="props.show === undefined && !autoPreview && !inline"
       class="file-info-card"
     >
       <div class="file-info">
@@ -43,7 +43,7 @@
         <div class="file-actions">
           <NButton
             type="primary"
-            @click="openPreview"
+            @click="visible = true"
           >
             <template #icon>
               <C_Icon name="ic:outline-visibility" />
@@ -123,19 +123,11 @@
     <!-- 模态框预览 -->
     <NModal
       v-if="!inline"
-      v-model:show="showModal"
+      v-model:show="visible"
       :mask-closable="false"
       :closable="false"
       :auto-focus="false"
       transform-origin="center"
-      style="
-        width: 85vw;
-        max-width: 1200px;
-        min-width: 800px;
-        height: 75vh;
-        max-height: 700px;
-        min-height: 500px;
-      "
     >
       <div
         ref="modalContainer"
@@ -149,7 +141,7 @@
               :size="20"
               :color="fileConfig.color"
             />
-            <span>{{ displayFileName }}</span>
+            <span :title="displayFileName">{{ displayFileName }}</span>
           </div>
           <div class="modal-actions">
             <NButton
@@ -165,7 +157,8 @@
             <NButton
               size="small"
               type="tertiary"
-              @click="showModal = false"
+              aria-label="关闭预览"
+              @click="visible = false"
             >
               <template #icon>
                 <C_Icon name="ic:outline-close" />
@@ -178,8 +171,8 @@
         <div class="modal-content">
           <!-- 文件信息头部 -->
           <div class="preview-header">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-3">
+            <div class="preview-header-row">
+              <div class="preview-meta">
                 <NTag
                   :type="fileConfig.tagType as any"
                   size="small"
@@ -189,9 +182,7 @@
                   </template>
                   {{ fileType.toUpperCase() }}
                 </NTag>
-                <NEllipsis style="max-width: 300px">{{
-                  displayFileName
-                }}</NEllipsis>
+                <NEllipsis>{{ displayFileName }}</NEllipsis>
                 <span class="text-sm text-gray-500">{{
                   formatFileSize(fileSize)
                 }}</span>
@@ -297,7 +288,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, toRefs, watch } from 'vue'
+  import { computed, ref, toRefs, watch } from 'vue'
   import { NButton, NEllipsis, NTag, NModal, NSpin, NResult } from 'naive-ui'
   import { formatFileSize } from './data'
   import PdfViewer from './components/PdfViewer/index.vue'
@@ -313,6 +304,7 @@
     fileName: '未知文件',
     autoPreview: false,
     inline: false,
+    show: undefined,
   })
 
   const {
@@ -327,6 +319,7 @@
   const emit = defineEmits<{
     preview: [file: File | string]
     download: [file: File | string]
+    'update:show': [show: boolean]
   }>()
 
   /* ==================== Composables ==================== */
@@ -345,47 +338,73 @@
     fileType,
     fileConfig,
     loadFile,
-    openPreview,
+    loadPreview,
     downloadFile,
+    clearPreview,
   } = useFilePreview({ file, url, fileName: propFileName, previewLimits }, emit)
 
+  const visible = computed({
+    get: () => props.show ?? showModal.value,
+    set: show => {
+      if (show === visible.value) return
+      if (props.show === undefined) showModal.value = show
+      emit('update:show', show)
+    },
+  })
   const modalContainer = ref<HTMLElement>()
   const { isFullscreen, toggleFullscreen, exitFullscreen } =
     useFullscreen(modalContainer)
 
-  /* ==================== Modal 关闭时退出全屏 ==================== */
-  watch(showModal, isShow => {
-    if (!isShow) exitFullscreen()
-  })
+  const source = computed(() => [
+    file.value,
+    url.value,
+    propFileName.value,
+    props.previewLimits?.maxBytes,
+    props.previewLimits?.maxCells,
+  ])
+  const presentation = computed(() =>
+    inline.value ? 'inline' : visible.value ? 'modal' : 'hidden'
+  )
+  const autoOpen = computed(() => props.show === undefined && autoPreview.value)
 
   watch(
-    [
-      file,
-      url,
-      autoPreview,
-      inline,
-      propFileName,
-      () => props.previewLimits?.maxBytes,
-      () => props.previewLimits?.maxCells,
-    ],
-    (current, previous) => {
-      if (typeof window === 'undefined' || !hasSource.value) return
-      if (inline.value) {
-        void loadFile()
+    [source, presentation, autoOpen],
+    ([currentSource, mode, auto], [previousSource, previousMode, wasAuto]) => {
+      if (typeof window === 'undefined') return
+      const sourceChanged = currentSource !== previousSource
+      const modeChanged = mode !== previousMode
+      if (modeChanged && previousMode === 'modal') exitFullscreen()
+      if (mode === 'hidden') {
+        syncHiddenPreview(previousMode, sourceChanged, auto !== wasAuto)
         return
       }
-      if (showModal.value) {
-        if (
-          [0, 1, 4, 5, 6].some(index => current[index] !== previous?.[index])
-        ) {
-          void loadFile()
-        }
-        return
-      }
-      if (autoPreview.value) void openPreview()
+      if (!hasSource.value) return
+      if (modeChanged && mode === 'modal') void loadPreview()
+      else if (modeChanged || sourceChanged) void loadFile()
     },
     { immediate: true }
   )
+
+  function syncHiddenPreview(
+    previousMode: typeof presentation.value | undefined,
+    sourceChanged: boolean,
+    autoChanged: boolean
+  ): void {
+    if (previousMode === 'modal' || previousMode === 'inline') {
+      releasePreview(sourceChanged)
+    }
+    // 自动预览只响应新文件或模式变化，关闭后不重新打开同一文件。
+    const autoRequested =
+      autoChanged || sourceChanged || previousMode === 'inline'
+    if (autoOpen.value && autoRequested && hasSource.value) visible.value = true
+  }
+
+  // 释放文档资源后，文件卡片仍可显示已知大小。
+  function releasePreview(sourceChanged: boolean): void {
+    const knownSize = fileSize.value
+    clearPreview()
+    fileSize.value = file.value?.size ?? (sourceChanged ? 0 : knownSize)
+  }
 </script>
 
 <style lang="scss" scoped>

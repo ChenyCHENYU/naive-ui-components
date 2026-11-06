@@ -711,6 +711,12 @@ const actions = defineActions([
 
 `C_Date`、`C_Time`、`C_Menu`、`C_FormSearch` 均支持标准 `v-model`。组件可直接放在没有 `NMessageProvider` / `NDialogProvider` 的页面；如需统一提示、确认和文案，可在安装时传入 `feedback`、`locale`、`form` 与 `table.defaults`。
 
+独立 `C_Date` 默认使用格式化日期字符串。独立 `C_Time` 默认使用时间戳，需要直接绑定如 `08:30` 的业务值时，使用 `<C_Time v-model="start" mode="single" value-mode="formatted" />`。范围模式支持先选一端，值为 `[string | null, string | null]`。可用 `format` 设置显示格式，用 `value-format` 单独设置存储格式。
+
+表单的 `datePicker`、`daterange` 和 `timePicker` 默认保留时间戳。改用字符串时声明 `valueMode: 'formatted'`，并通过 `attrs.valueFormat` 指定接口格式。例如 `{ prop: 'delivery', type: 'datePicker', valueMode: 'formatted', attrs: { valueFormat: 'yyyy-MM-dd' } }`。同一字段配置可传给 `C_Form` 或 `C_FormModal`。
+
+表格日期列使用 `editType: 'date'` 与 `editProps: { valueMode: 'formatted', valueFormat: 'yyyy-MM-dd' }`。单元格、整行和弹窗编辑都会保留字符串。
+
 ## C_Captcha 服务端校验
 
 验证码入口使用组件库内置 SVG 状态图标，不依赖操作系统 Emoji 或在线图标服务；默认、校验中、成功和失败状态均保持一致的尺寸与语义颜色。`C_Login` 会把验证入口放在提交按钮之前并显示明确操作文案，同时透传 `captcha-visible-change`，宿主可在拼图交互期间暂停高开销背景动画。品牌接入可在外层通过 `--cc-height`、`--cc-radius`、`--cc-color`、`--cc-icon-color`、`--cc-bg`、`--cc-bg-hover`、`--cc-border`、`--cc-border-hover` 和 `--cc-focus` 调整外观，无需穿透组件内部 DOM。
@@ -841,9 +847,17 @@ CRUD 控制器只需满足结构契约；`@robot-admin/request-core` 0.6.3 起�
 - ER 的节点拖动与 Workflow 的拖动、连接、删除会同步外部快照；父级回填不再次触发用户变更事件。
 - Login 的人机验证门禁适用于密码模式；短信模式使用自己的字段规则及验证码提交事件。
 
+`C_GlobalSearch` 的 `menuItems()` 可读取响应式授权菜单。最近访问的菜单按键匹配当前数据，菜单移除后历史入口随之隐藏，仍可使用旧版纯文本查询。
+
+`C_CollapsePanel` 可通过 `v-model:active-keys` 受控使用。监听 `update:activeKeys` 可决定是否接受切换，`change`、`expand`、`collapse` 和持久化以实际生效的键为准。
+
+`C_FullCalendar` 配合 `v-model:events` 使用时，可监听 `@event-dropped` 和 `@event-resized` 观察拖动和时段调整，内置写回会先更新事件。需要接管写回或调用 FullCalendar 的 `revert()` 时，再配置 `config.eventDrop` 或 `config.eventResize`。旧有的 `@event-updated` 仍会在内置时段调整后发出。
+
 ### 上传、文档和长列表
 
 `C_Upload.concurrency` 统一限制普通上传与分片上传请求。取消、移除和卸载会停止后续哈希读取并释放排队任务；已经开始的单次 Blob 读取完成后不再处理结果。业务自行提供的校验、合并回调仍由业务负责其网络生命周期。
+
+在同一编辑弹窗切换记录时，调用上传实例的 `replaceFileList(record.attachments)`。它会取消旧记录的任务，再回填新记录的附件；`defaultFileList` 仍用于首次初始化。
 
 Excel 保留原始值、单元格类型和工作簿格式，不把文本编号转换为数值，也不自行舍入小数。工作表数据在首次打开时展开，默认文件预算 32 MiB、每表 100000 格；超限明确提示下载原文件，不静默截断。可使用一个配置调整预算：
 

@@ -98,7 +98,8 @@ const fullStyleDependencies = {
   C_Cron: ['C_Icon', 'C_Loading'],
   C_FormulaEditor: ['C_Icon'],
   C_Captcha: ['C_Icon'],
-  C_Form: ['C_Editor'],
+  C_Form: ['C_Editor', 'C_Select'],
+  C_FormSearch: ['C_Select'],
   C_FormModal: ['C_Form', 'C_ActionBar'],
   C_DataPicker: ['C_Table'],
   C_BatchResult: ['C_Table'],
@@ -114,7 +115,7 @@ const fullStyleDependencies = {
 }
 const baseStyleDependencies = {
   ...fullStyleDependencies,
-  C_Form: [],
+  C_Form: ['C_Select'],
   C_Table: ['C_Icon', 'C_ActionBar', 'C_Form', 'C_Loading'],
 }
 const vendorStyleCache = new Map()

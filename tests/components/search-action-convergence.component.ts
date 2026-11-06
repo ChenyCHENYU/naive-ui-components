@@ -593,7 +593,7 @@ test('a large search select reuses its options on selection and refreshes them w
     flags: [false, 0],
   })
   expect(select.props('options')).toBe(options)
-  expect(select.text()).toContain('项目 0')
+  expect(select.text()).toContain('+1')
 
   await wrapper.setProps({
     formItemList: [
@@ -604,8 +604,11 @@ test('a large search select reuses its options on selection and refreshes them w
     ],
   })
   expect(select.props('options')).toHaveLength(1)
-  expect(select.text()).toContain('已更新')
   expect(select.text()).toContain('false')
+  expect(select.props('options')?.[0]).toMatchObject({
+    label: '已更新',
+    value: 0,
+  })
   wrapper.unmount()
 })
 

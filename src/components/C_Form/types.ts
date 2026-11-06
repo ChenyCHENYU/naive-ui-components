@@ -168,6 +168,7 @@ export type ComponentType =
   | 'daterange'
   | 'timePicker'
   | 'cascader'
+  | 'treeSelect'
   | 'colorPicker'
   | 'upload'
   | 'editor'
@@ -427,6 +428,8 @@ interface FormOptionBase<T extends object> {
   placeholder?: string
   rules?: readonly FormValidationRule[]
   attrs?: Record<string, unknown>
+  /** datePicker、daterange、timePicker 的模型值类型。默认保持时间戳。 */
+  valueMode?: 'timestamp' | 'formatted'
   /** 外部受控选项状态；仅呈现，不触发或订阅外部数据源。 */
   optionsState?: OptionsState
   children?: OptionItem[]
@@ -451,7 +454,7 @@ interface FormOptionBase<T extends object> {
   /** 字段级只读（优先级高于全局 config.readonly） */
   readonly?: boolean | ((formModel: FormModel<T>) => boolean)
 
-  /** 异步数据源：select / cascader / checkbox / radio 的远程选项加载 */
+  /** 异步数据源：select / cascader / treeSelect / checkbox / radio 的远程选项加载 */
   asyncOptions?: (
     formModel: FormModel<T>,
     context?: AsyncOptionsContext

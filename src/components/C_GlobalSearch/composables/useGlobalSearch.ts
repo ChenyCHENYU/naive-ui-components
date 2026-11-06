@@ -15,6 +15,30 @@ import {
   searchMenuIndex,
 } from './searchIndex'
 
+type StoredHistoryItem = (
+  { menuKey: string; query?: never } | { menuKey: null; query: string }
+) & {
+  timestamp: number
+}
+
+/** 兼容旧版纯文本记录和旧版菜单快照，仅保留可重新验证的键。 */
+function decodeHistoryItem(item: unknown): StoredHistoryItem[] {
+  const record = typeof item === 'string' ? { query: item } : item
+  if (!record || typeof record !== 'object') return []
+  const { query, menuKey, menuItem, timestamp } = record as Record<
+    string,
+    unknown
+  >
+  const key =
+    typeof menuKey === 'string'
+      ? menuKey
+      : (menuItem as { key?: unknown } | null)?.key
+  const time = Number.isFinite(timestamp) ? (timestamp as number) : 0
+  if (typeof key === 'string') return [{ menuKey: key, timestamp: time }]
+  if (typeof query !== 'string' || !query.trim()) return []
+  return [{ query: query.slice(0, 200), menuKey: null, timestamp: time }]
+}
+
 /**
  * 全局搜索逻辑 — 管理菜单搜索、历史记录、键盘导航
  *
@@ -44,7 +68,7 @@ export function useGlobalSearch(
   const searchValue = ref('')
   const selectedIndex = ref(0)
   const searchInputRef = ref<HTMLInputElement>()
-  const searchHistory = ref<HistoryItem[]>([])
+  const searchHistory = ref<StoredHistoryItem[]>([])
   const isComposing = ref(false)
 
   // ==================== 计算属性 ====================
@@ -56,8 +80,24 @@ export function useGlobalSearch(
     return searchMenuIndex(menuIndex.value, searchValue.value)
   })
 
+  const visibleHistory = computed(() => {
+    const result: { item: HistoryItem; sourceIndex: number }[] = []
+    for (const [sourceIndex, record] of searchHistory.value.entries()) {
+      if (result.length >= displayHistoryLimit.value) break
+      const { menuKey, query, timestamp } = record
+      const menuItem =
+        menuKey === null ? null : menuIndex.value.byKey.get(menuKey)
+      const label = menuItem?.label ?? query
+      if (menuItem === undefined || label === undefined) continue
+      result.push({
+        item: { query: label, menuItem, timestamp },
+        sourceIndex,
+      })
+    }
+    return result
+  })
   const displayHistory = computed(() =>
-    searchHistory.value.slice(0, displayHistoryLimit.value)
+    visibleHistory.value.map(({ item }) => item)
   )
   const hasResults = computed(() => filteredMenuItems.value.length > 0)
   const hasContent = computed(
@@ -101,14 +141,9 @@ export function useGlobalSearch(
   const persistHistory = () => {
     if (typeof localStorage === 'undefined') return
     try {
-      const serializableHistory = searchHistory.value.map(item => ({
-        query: item.query,
-        menuKey: item.menuItem?.key ?? null,
-        timestamp: item.timestamp,
-      }))
       localStorage.setItem(
         storageKey.value,
-        JSON.stringify(serializableHistory)
+        JSON.stringify(searchHistory.value)
       )
     } catch {
       // Storage can be unavailable or full; search remains usable in memory.
@@ -117,13 +152,11 @@ export function useGlobalSearch(
 
   const addToHistory = (menuItem: SearchMenuItem) => {
     if (!menuItem.label.trim()) return
-    const query = menuItem.label
     const filtered = searchHistory.value.filter(
-      (item: HistoryItem) =>
-        !(item.query === query && item.menuItem?.key === menuItem.key)
+      item => item.menuKey !== menuItem.key
     )
     searchHistory.value = [
-      { query, menuItem, timestamp: Date.now() },
+      { menuKey: menuItem.key, timestamp: Date.now() },
       ...filtered,
     ].slice(0, historyLimit.value)
     persistHistory()
@@ -137,41 +170,8 @@ export function useGlobalSearch(
       if (saved) {
         const parsed: unknown = JSON.parse(saved)
         if (!Array.isArray(parsed)) return
-        const menuMap = new Map(getMenuItems().map(item => [item.key, item]))
         searchHistory.value = parsed
-          // eslint-disable-next-line complexity -- 同时兼容并严格校验两版持久化记录。
-          .flatMap(item => {
-            if (typeof item === 'string') {
-              return [
-                { query: item.slice(0, 200), menuItem: null, timestamp: 0 },
-              ]
-            }
-            if (!item || typeof item !== 'object') return []
-            const record = item as Record<string, unknown>
-            const query = typeof record.query === 'string' ? record.query : ''
-            if (!query.trim()) return []
-            const legacyMenu =
-              record.menuItem && typeof record.menuItem === 'object'
-                ? (record.menuItem as Record<string, unknown>)
-                : null
-            const menuKey =
-              typeof record.menuKey === 'string'
-                ? record.menuKey
-                : typeof legacyMenu?.key === 'string'
-                  ? legacyMenu.key
-                  : ''
-            return [
-              {
-                query: query.slice(0, 200),
-                menuItem: menuMap.get(menuKey) ?? null,
-                timestamp:
-                  typeof record.timestamp === 'number' &&
-                  Number.isFinite(record.timestamp)
-                    ? record.timestamp
-                    : 0,
-              },
-            ]
-          })
+          .flatMap(decodeHistoryItem)
           .slice(0, historyLimit.value)
       }
     } catch {
@@ -190,11 +190,14 @@ export function useGlobalSearch(
   }
 
   const removeHistoryItem = (index: number) => {
-    searchHistory.value.splice(index, 1)
+    const entry = visibleHistory.value[index]
+    if (!entry) return
+    searchHistory.value.splice(entry.sourceIndex, 1)
     persistHistory()
-    if (selectedIndex.value >= searchHistory.value.length) {
-      selectedIndex.value = Math.max(0, searchHistory.value.length - 1)
-    }
+    selectedIndex.value = Math.max(
+      0,
+      Math.min(selectedIndex.value, displayHistory.value.length - 1)
+    )
   }
 
   // ==================== 对话框控制 ====================
@@ -217,8 +220,9 @@ export function useGlobalSearch(
   // ==================== 选择项目 ====================
   const selectHistoryItem = (historyItem: HistoryItem) => {
     if (historyItem.menuItem) {
-      const hasChildren = !!historyItem.menuItem.children?.length
-      getOptions().onSelect?.(historyItem.menuItem.key, hasChildren)
+      const menuItem = menuIndex.value.byKey.get(historyItem.menuItem.key)
+      if (!menuItem) return
+      getOptions().onSelect?.(menuItem.key, !!menuItem.children?.length)
       closeDialog()
     } else {
       searchValue.value = historyItem.query
@@ -227,9 +231,10 @@ export function useGlobalSearch(
   }
 
   const selectItem = (item: SearchMenuItem) => {
-    addToHistory(item)
-    const hasChildren = !!item.children?.length
-    getOptions().onSelect?.(item.key, hasChildren)
+    const menuItem = menuIndex.value.byKey.get(item.key)
+    if (!menuItem) return
+    addToHistory(menuItem)
+    getOptions().onSelect?.(menuItem.key, !!menuItem.children?.length)
     closeDialog()
   }
 

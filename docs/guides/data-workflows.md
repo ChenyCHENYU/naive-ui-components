@@ -52,6 +52,49 @@ const config = defineTableConfig<Shipment>({
 
 布尔值只在原生选择器边界编码，提交仍保留 `false/true`；字符串、数字和前导零编码保持原样。配置项变化不会覆盖搜索草稿。
 
+## 多选标签和日期时间
+
+独立控件可用 `C_Select`，表单和搜索使用现有的 `type: 'select'` 与 `attrs: { multiple: true }`。三处默认显示首个标签和其余选中数量。用 `maxTagCount` 或 `attrs.maxTagCount` 覆盖显示数量。自由输入加 `filterable` 和 `tag`，普通多选省略 `tag`。多选清空为 `[]`，选项加载中可以保留已有编码。
+
+```vue
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import { C_Select } from '@robot-admin/naive-ui-components/C_Select'
+  import '@robot-admin/naive-ui-components/C_Select/style.css'
+
+  const deliveryMethods = ref<string[]>(['ROAD'])
+  const options = [
+    { value: 'ROAD', label: '公路' },
+    { value: 'RAIL', label: '铁路' },
+  ]
+</script>
+
+<template>
+  <C_Select
+    v-model="deliveryMethods"
+    :options="options"
+    multiple
+    clearable
+  />
+</template>
+```
+
+表单和搜索用 `valueMode: 'formatted'` 显式保留接口字符串。即使初值或清空值为 `null`，下一次选择仍回写字符串。显示格式 `format` 与回写格式 `valueFormat` 可以不同。
+
+```ts
+// C_Form / C_FormModal
+const field = {
+  prop: 'deliveryDate',
+  type: 'datePicker',
+  valueMode: 'formatted',
+  attrs: { valueFormat: 'yyyy-MM-dd' },
+}
+// C_FormSearch
+const condition = { prop: 'startTime', type: 'time', valueMode: 'formatted' }
+```
+
+独立日期用 `C_Date`，独立时分用 `<C_Time mode="single" value-mode="formatted" />`。未配置格式化值的现有表单、搜索和时间选择器仍按各自原有默认类型回写。
+
 ## 数值：存储、显示和校验分别定义
 
 ```ts

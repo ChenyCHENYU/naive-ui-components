@@ -206,6 +206,8 @@ export interface UploadExpose {
   resumeAll: () => void
   /** 清空文件列表 */
   clearAll: () => void
+  /** 切换记录后替换回显附件，同时取消此前尚未完成的任务。 */
+  replaceFileList: (files: readonly UploadFileItem[]) => void
   /** 移除指定文件 */
   removeFile: (uid: string) => void
   /** 重试失败文件 */

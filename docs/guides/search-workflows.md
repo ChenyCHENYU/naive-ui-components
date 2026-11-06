@@ -108,13 +108,13 @@
 
 ## 控件与原始模型
 
-支持 `input`、`select`、`number`、`number-range`、`date`、`month`、`date-range`、`custom`、`spacer`。
+支持 `input`、`select`、`number`、`number-range`、`date`、`month`、`date-range`、`time`、`custom`、`spacer`。
 
 数字输入继续使用 Naive UI；`attrs` 可配置 `min`、`max`、`precision` 等。紧凑模式的单数字默认隐藏步进按钮，显式 `attrs.showButton` 可覆盖。范围模型为 `[number | null, number | null] | null`，允许先填写单边，两边清空时回到 `null`。范围先后、跨度上限等业务规则通过字段 `rules` 声明，组件不预设业务阈值。
 
 数字控件只用于 `number` 模型。精确十进制字符串、超出安全范围的金额/编号应使用 `custom` 输入与明确的 codec，避免先转 `Number` 导致原值损失。搜索组件不负责计算税额或汇率。
 
-日期/月默认使用时间戳；已有 `date-range` 时间戳模型保持兼容。字符串模型声明 `valueMode: 'formatted'`，包括初始值为 `null` 时。默认格式分别为 `yyyy-MM-dd`、`yyyy-MM`、`yyyy-MM-dd HH:mm`，可通过 `attrs.format` / `attrs.valueFormat` 显式覆盖。展示格式与回写类型分开，清空不会将字符串日期改成时间戳。
+日期、月份、日期范围和时间默认使用时间戳。字符串模型声明 `valueMode: 'formatted'`，包括初始值为 `null` 时。四类控件默认分别使用 `yyyy-MM-dd`、`yyyy-MM`、`yyyy-MM-dd HH:mm` 和 `HH:mm`，可通过 `attrs.format` 和 `attrs.valueFormat` 分别设置显示格式和模型格式。显式声明值类型后，清空仍保留原来的绑定方式。
 
 `select` 保留字符串、数字、布尔值及多选数组的业务类型。内部布尔编码仅用于适配原生选择器，提交的 `false` 不会变成字符串或 `0`。
 

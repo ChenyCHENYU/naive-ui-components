@@ -29,6 +29,7 @@ type EmitFn = {
   (event: 'event-updated', eventData: Partial<CalendarEvent>): void
   (event: 'event-deleted', eventData: { id: string; title: string }): void
   (event: 'event-dropped', eventData: Partial<CalendarEvent>): void
+  (event: 'event-resized', eventData: Partial<CalendarEvent>): void
 }
 
 let fallbackEventId = 0
@@ -112,14 +113,16 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     openAddModal(info.date)
   }
 
-  /**
-   *
-   */
-  function handleEventDrop(info: EventDropArg) {
-    if (props.editable === false) {
-      info.revert()
-      return
+  /** 即使原生事件单独启用编辑，组件只读时也拒绝拖动和缩放。 */
+  const guardInteraction =
+    <T extends { revert(): void }>(handler: (info: T) => void) =>
+    (info: T) => {
+      if (props.editable === false) info.revert()
+      else handler(info)
     }
+
+  /** 内置拖动交互写回并通知观察者。 */
+  function handleEventDrop(info: EventDropArg) {
     const payload = {
       id: info.event.id,
       start: info.event.start ?? undefined,
@@ -131,14 +134,8 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     message.success(`事件 "${info.event.title}" 时间已更新`)
   }
 
-  /**
-   *
-   */
+  /** 调整时段复用既有更新事件，并提供专用的观察事件。 */
   function handleEventResize(info: EventResizeDoneArg) {
-    if (props.editable === false) {
-      info.revert()
-      return
-    }
     const payload = {
       id: info.event.id,
       start: info.event.start ?? undefined,
@@ -147,6 +144,7 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     }
     updateEventInArray(payload)
     emit('event-updated', payload)
+    emit('event-resized', payload)
   }
 
   /**
@@ -282,9 +280,11 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     buttonText: BUTTON_TEXT,
     eventClick: handleEventClick,
     dateClick: handleDateClick,
-    eventDrop: handleEventDrop,
-    eventResize: handleEventResize,
     ...props.config,
+    eventDrop: guardInteraction(props.config?.eventDrop ?? handleEventDrop),
+    eventResize: guardInteraction(
+      props.config?.eventResize ?? handleEventResize
+    ),
     plugins: [dayGridPlugin, interactionPlugin, listPlugin],
     initialView: props.initialView ?? 'dayGridMonth',
     events: internalEvents.value,

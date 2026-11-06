@@ -96,7 +96,7 @@
 
             <NSelect
               v-if="item.type === 'select'"
-              v-bind="item.attrs"
+              v-bind="selectTagPresentation(item)"
               :value="selectBinding(item).value"
               @update:value="
                 (value, selected) => setSelectValue(item, value, selected)
@@ -195,6 +195,11 @@
               "
               :size="resolvedSize"
               v-bind="dateBinding(item)"
+            />
+            <NTimePicker
+              v-if="item.type === 'time'"
+              :size="resolvedSize"
+              v-bind="timeBinding(item)"
             />
 
             <slot
@@ -306,6 +311,7 @@
   import {
     computed,
     defineAsyncComponent,
+    mergeProps,
     watch,
     readonly,
     type ComputedRef,
@@ -314,6 +320,7 @@
     type VNodeChild,
   } from 'vue'
   import { resolveComponentDensity } from '../../core/density'
+  import { shouldSummarizeSelectTags } from '../../core/selectPresentation'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
   import {
     NCard,
@@ -330,6 +337,10 @@
   import { useSearchState } from './composables/useSearchState'
   import { normalizeSearchFieldValue, isSearchFieldLocked } from './fieldValue'
   import { resolveSearchDateInput } from './dateRange'
+  import {
+    bindTemporalField,
+    resolveSingleTemporalInput,
+  } from '../../core/temporalField'
   import { createOptionValueBinder } from '../../core/options'
   import { useSearchLayout } from './composables/useSearchLayout'
   import SearchCustomField, {
@@ -346,6 +357,9 @@
 
   const NDatePicker = defineAsyncComponent(
     () => import('../../internal/naive-fields/date-picker')
+  )
+  const NTimePicker = defineAsyncComponent(
+    () => import('../../internal/naive-fields/time-picker')
   )
 
   defineOptions({ name: 'C_FormSearch' })
@@ -439,6 +453,13 @@
     if (item.list !== undefined) return item.list
     return undefined
   }
+  const selectTagPresentation = (item: SearchFormItem<T>) =>
+    shouldSummarizeSelectTags(item.attrs?.multiple, item.attrs?.maxTagCount)
+      ? mergeProps(item.attrs ?? {}, {
+          class: 'c-select--bounded',
+          maxTagCount: 1,
+        })
+      : item.attrs
 
   type SelectBinding = ReturnType<ReturnType<typeof createOptionValueBinder>>
   const selectBindings = new WeakMap<
@@ -560,28 +581,35 @@
       item,
       (formParams.value as Record<string, unknown>)[field]
     )
-    const controlled =
-      date.mode === 'formatted'
-        ? {
-            formattedValue: date.value,
-            'onUpdate:formattedValue': (value: unknown) =>
-              setFieldValue(field, value),
-          }
-        : {
-            value: date.value,
-            'onUpdate:value': (value: unknown) => setFieldValue(field, value),
-          }
     return {
       type: date.type,
-      format: date.format,
-      valueFormat: date.format,
       startPlaceholder: '开始时间',
       endPlaceholder: '结束时间',
+      format: date.format,
+      valueFormat: date.format,
       clearable: true,
       ...item.attrs,
-      ...controlled,
+      ...bindTemporalField(date, value => setFieldValue(field, value)),
       disabled: fieldDisabled(item),
       readonly: fieldReadonly(item),
+    }
+  }
+  const timeBinding = (item: SearchFormItem<T>) => {
+    const field = item.prop
+    const input = resolveSingleTemporalInput(
+      (formParams.value as Record<string, unknown>)[field],
+      item.valueMode
+    )
+    return {
+      placeholder: item.placeholder,
+      format: 'HH:mm',
+      valueFormat: 'HH:mm',
+      clearable: true,
+      ...item.attrs,
+      ...bindTemporalField<string | null, number | null>(input, value =>
+        setFieldValue(field, value)
+      ),
+      disabled: fieldDisabled(item) || fieldReadonly(item),
     }
   }
 

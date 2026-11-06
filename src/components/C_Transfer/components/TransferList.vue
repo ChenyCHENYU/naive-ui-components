@@ -15,6 +15,7 @@
       <TransferRow
         :item="item"
         :checked="checked.has(item.key)"
+        :locked="locked"
         @check="emit('check', $event)"
       />
     </template>
@@ -28,6 +29,7 @@
       :key="item.key"
       :item="item"
       :checked="checked.has(item.key)"
+      :locked="locked"
       @check="emit('check', $event)"
     />
   </div>
@@ -44,6 +46,7 @@
     checked: ReadonlySet<string | number>
     size?: TransferProps['size']
     virtualScroll?: boolean
+    locked?: boolean
     query: string
   }>()
   const emit = defineEmits<{ check: [key: string | number] }>()

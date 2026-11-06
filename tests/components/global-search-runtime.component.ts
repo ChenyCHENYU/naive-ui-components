@@ -1,7 +1,9 @@
 import { describe, expect, test, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { VVirtualList } from 'vueuc'
+import { ref, nextTick } from 'vue'
 import C_GlobalSearch from '../../src/components/C_GlobalSearch/index.vue'
+import type { SearchMenuItem } from '../../src/components/C_GlobalSearch/types'
 
 const body = () => new DOMWrapper(document.body)
 const open = async (wrapper: ReturnType<typeof mount>) => {
@@ -10,6 +12,59 @@ const open = async (wrapper: ReturnType<typeof mount>) => {
 }
 
 describe('global search official virtual-list integration', () => {
+  test('resolves menu history against the active menu and still supports legacy queries', async () => {
+    const storageKey = 'test-current-menu-history'
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify([
+        {
+          query: 'Former private',
+          menuItem: { key: '/private' },
+          timestamp: 2,
+        },
+        { query: 'Former public', menuKey: '/public', timestamp: 1 },
+        'legacy query',
+      ])
+    )
+    const menus = ref<SearchMenuItem[]>([
+      { key: '/private', label: 'Private page' },
+      { key: '/public', label: 'Current public' },
+    ])
+    const onSelect = vi.fn()
+    const wrapper = mount(C_GlobalSearch, {
+      attachTo: document.body,
+      props: {
+        options: { menuItems: () => menus.value, onSelect, storageKey },
+      },
+    })
+    try {
+      await open(wrapper)
+      const staleRow = body().findAll('.robot-history-item')[0]
+      expect(staleRow.text()).toContain('Private page')
+      menus.value.shift()
+      // 当前 DOM 还未刷新时触发旧点击，仍要检查最新菜单。
+      staleRow.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      expect(onSelect).not.toHaveBeenCalled()
+      await nextTick()
+      const [publicRow, legacyRow] = body().findAll('.robot-history-item')
+      expect(publicRow.text()).toContain('Current public')
+      expect(legacyRow.text()).toContain('legacy query')
+      expect(body().text()).not.toContain('Private page')
+      await publicRow.get('button').trigger('click')
+      expect(JSON.parse(localStorage.getItem(storageKey)!)).toEqual([
+        { menuKey: '/private', timestamp: 2 },
+        { query: 'legacy query', menuKey: null, timestamp: 0 },
+      ])
+      await body().get('.robot-history-item').trigger('click')
+      expect((body().get('input').element as HTMLInputElement).value).toBe(
+        'legacy query'
+      )
+    } finally {
+      wrapper.unmount()
+      localStorage.removeItem(storageKey)
+    }
+  })
+
   test('keeps thousands of results available with bounded DOM and scrolls keyboard selection into view', async () => {
     const onSelect = vi.fn()
     const wrapper = mount(C_GlobalSearch, {

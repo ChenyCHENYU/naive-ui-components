@@ -1,12 +1,16 @@
 <template>
   <div
     class="c-transfer__item"
-    :class="{ 'is-disabled': item.disabled, 'is-checked': checked }"
+    :class="{
+      'is-disabled': item.disabled,
+      'is-checked': checked,
+      'is-locked': locked,
+    }"
     @click="toggle"
   >
     <NCheckbox
       :checked="checked"
-      :disabled="item.disabled"
+      :disabled="locked || item.disabled"
       :aria-label="item.label"
       size="small"
       @update:checked="toggle"
@@ -25,10 +29,14 @@
   import { NCheckbox } from 'naive-ui'
   import C_Icon from '../../C_Icon/index.vue'
   import type { TransferItem } from '../types'
-  const props = defineProps<{ item: TransferItem; checked: boolean }>()
+  const props = defineProps<{
+    item: TransferItem
+    checked: boolean
+    locked?: boolean
+  }>()
   const emit = defineEmits<{ check: [key: string | number] }>()
   const toggle = () => {
-    if (!props.item.disabled) emit('check', props.item.key)
+    if (!props.locked && !props.item.disabled) emit('check', props.item.key)
   }
 </script>
 
@@ -48,12 +56,15 @@
     &:hover {
       background: var(--tf-item-hover);
     }
-    &.is-disabled {
-      opacity: 0.45;
+    &.is-disabled,
+    &.is-locked {
       cursor: not-allowed;
       &:hover {
         background: transparent;
       }
+    }
+    &.is-disabled {
+      opacity: 0.45;
     }
     &.is-checked {
       color: var(--tf-accent);

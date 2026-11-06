@@ -10,6 +10,7 @@ export interface MenuSearchIndex {
     path: string
   }[]
   paths: Map<string, string>
+  byKey: Map<string, SearchMenuItem>
 }
 
 /** Cache derived text while retaining the source menu objects and their order. */
@@ -17,13 +18,15 @@ export function createMenuSearchIndex(
   items: SearchMenuItem[]
 ): MenuSearchIndex {
   const paths = new Map<string, string>()
+  const byKey = new Map<string, SearchMenuItem>()
   const entries = items.map(item => {
     const { key } = item
     const path = formatSearchMenuPath(key)
     paths.set(key, path)
+    byKey.set(key, item)
     return { item, label: item.label.toLowerCase(), path: path.toLowerCase() }
   })
-  return { entries, paths }
+  return { entries, paths, byKey }
 }
 
 /** Search labels and displayed paths with the existing literal substring rules. */

@@ -50,6 +50,7 @@
             circle
             size="tiny"
             type="warning"
+            :disabled="disabled"
             aria-label="重试上传"
             @click="emit('retry', file.uid)"
           >
@@ -61,6 +62,7 @@
             circle
             size="tiny"
             type="error"
+            :disabled="disabled"
             aria-label="移除文件"
             @click="emit('remove', file.uid)"
           >
@@ -90,6 +92,7 @@
   const props = defineProps<{
     /** 文件列表 */
     fileList: UploadFileItem[]
+    disabled?: boolean
   }>()
 
   const emit = defineEmits<{

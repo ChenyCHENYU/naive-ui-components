@@ -46,6 +46,7 @@ const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   daterange: null,
   timePicker: null,
   cascader: null,
+  treeSelect: null,
   colorPicker: null,
   checkbox: [],
   upload: [],
@@ -60,7 +61,9 @@ function getDefaultValue(item: FormOption): unknown {
   const value =
     item.value !== undefined
       ? item.value
-      : DEFAULT_VALUES[item.type as ComponentType]
+      : item.type === 'select' && item.attrs?.multiple === true
+        ? []
+        : DEFAULT_VALUES[item.type as ComponentType]
   return cloneFormValue(value ?? null)
 }
 

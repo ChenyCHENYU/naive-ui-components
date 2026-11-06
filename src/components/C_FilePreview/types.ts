@@ -77,6 +77,8 @@ export interface FilePreviewProps {
   url?: string
   fileName?: string
   autoPreview?: boolean
+  /** 由外部按钮控制弹窗。传入后仅渲染弹窗，不显示默认文件卡片。 */
+  show?: boolean
   /** 在容器中直接阅读文档，默认保留原有弹窗模式。 */
   inline?: boolean
 }

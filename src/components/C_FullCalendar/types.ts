@@ -28,7 +28,10 @@ export interface CalendarEditForm {
 }
 
 export interface CalendarProps {
-  /** 视图、布局与交互扩展；数据、插件和编辑开关由组件受控属性管理。 */
+  /**
+   * 视图、布局与交互扩展；数据、插件和编辑开关由组件受控属性管理。
+   * eventDrop/eventResize 接管写回。保留内置写回时可监听 event-dropped/event-resized。
+   */
   config?: Omit<
     CalendarOptions,
     'events' | 'eventSources' | 'plugins' | 'initialView' | 'editable'
@@ -46,6 +49,8 @@ export interface CalendarEmits {
   'event-updated': [event: Partial<CalendarEvent>]
   'event-deleted': [event: { id: string; title: string }]
   'event-dropped': [event: Partial<CalendarEvent>]
+  /** 由内置交互更新结束时间时发出，同时保留 event-updated。 */
+  'event-resized': [event: Partial<CalendarEvent>]
 }
 
 export interface CalendarExpose {

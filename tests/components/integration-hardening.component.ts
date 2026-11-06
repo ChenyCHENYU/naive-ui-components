@@ -20,6 +20,46 @@ test('受控折叠面板原地追加键也渲染懒内容', async () => {
   expect(wrapper.text()).toContain('Lazy body')
 })
 
+test('受控折叠请求被拒绝时不挂载、不通知且不覆盖持久化', async () => {
+  const persistKey = 'controlled-collapse'
+  const storageKey = `collapse-panel:${persistKey}`
+  localStorage.setItem(storageKey, '["a"]')
+  const wrapper = mount(C_CollapsePanel, {
+    props: {
+      items: [
+        { key: 'a', title: 'A', content: 'A content' },
+        { key: 'b', title: 'B', lazy: true, content: 'B content' },
+      ],
+      activeKeys: ['a'],
+      accordion: true,
+      persistKey,
+    },
+  })
+  try {
+    const [first, second] = wrapper.findAll('.collapse-item__header')
+    await second.trigger('click')
+    expect(wrapper.emitted('update:activeKeys')).toEqual([[['b']]])
+    expect(wrapper.emitted('change')).toBeUndefined()
+    expect(wrapper.emitted('expand')).toBeUndefined()
+    expect(wrapper.emitted('collapse')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('B content')
+    expect(localStorage.getItem(storageKey)).toBe('["a"]')
+    expect(first.attributes('aria-expanded')).toBe('true')
+    await wrapper.setProps({ activeKeys: ['b'] })
+    expect(wrapper.emitted('update:activeKeys')).toHaveLength(1)
+    expect(wrapper.emitted('change')).toEqual([[['b']]])
+    expect(wrapper.emitted('expand')).toEqual([['b']])
+    expect(wrapper.emitted('collapse')).toEqual([['a']])
+    expect(localStorage.getItem(storageKey)).toBe('["b"]')
+    const region = wrapper.get(`[id="${second.attributes('aria-controls')}"]`)
+    expect(region.attributes('aria-labelledby')).toBe(second.attributes('id'))
+    expect(region.text()).toContain('B content')
+  } finally {
+    wrapper.unmount()
+    localStorage.removeItem(storageKey)
+  }
+})
+
 import {
   NMenu,
   NInput,

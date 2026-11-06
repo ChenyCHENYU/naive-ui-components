@@ -15,6 +15,8 @@
   const day = ref<string | null>(null)
   const days = ref<[string, string] | null>(null)
   const time = ref<number | null>(null)
+  const clock = ref<string | null>(null)
+  const clockRange = ref<TimeModelValue<'range', 'formatted'>>(null)
   const times = ref<[number | null, number | null] | null>(null)
   const dateMode = ref<DatePickerMode>('date')
   const dynamicDate = ref<DateModelValue>(null)
@@ -99,6 +101,21 @@
     v-model="times"
     mode="range"
     @change="rangeTimeChanged"
+  />
+  <C_Time
+    v-model="clock"
+    mode="single"
+    value-mode="formatted"
+  />
+  <C_Time
+    v-model="clockRange"
+    value-mode="formatted"
+  />
+  <!-- @vue-expect-error 格式化模式不接受时间戳模型。 -->
+  <C_Time
+    v-model="time"
+    mode="single"
+    value-mode="formatted"
   />
   <C_Time
     v-model="times"

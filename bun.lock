@@ -23,6 +23,7 @@
         "@wangeditor-next/editor-for-vue": "6.2.0",
         "altcha": "3.2.2",
         "async-validator": "4.2.5",
+        "date-fns": "^4.1.0",
         "dompurify": "^3.4.17",
         "driver.js": "^1.8.0",
         "highlight.js": "^11.12.0",

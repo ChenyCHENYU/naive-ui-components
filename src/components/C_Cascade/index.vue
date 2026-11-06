@@ -8,14 +8,15 @@
 <template>
   <div class="n-cascade-selector">
     <NSelect
-      v-for="(level, index) in levels"
+      v-for="index in levels"
       :key="index"
-      v-model:value="selectedValues[index]"
+      :value="selectedValues[index]"
       :options="levelOptions[index]"
       clearable
       :placeholder="placeholders[index]"
-      :disabled="index > 0 && selectedValues[index - 1] === null"
-      @update:value="handleChange(index)"
+      :size="size"
+      :disabled="isLevelLocked(index)"
+      @update:value="handleChange(index, $event)"
       class="n-select-item"
     />
   </div>
@@ -34,6 +35,9 @@
       data: CascadeItem[]
       placeholders?: string[]
       modelValue?: CascadeValue
+      disabled?: boolean
+      readonly?: boolean
+      size?: 'small' | 'medium' | 'large'
     }>(),
     {
       placeholders: () => ['请选择', '请选择', '请选择'],
@@ -67,7 +71,20 @@
     )
   )
 
-  const handleChange = (index: number) => {
+  const isLevelLocked = (index: number) =>
+    props.disabled ||
+    props.readonly ||
+    (index > 0 && selectedValues.value[index - 1] === null)
+
+  const handleChange = (index: number, value: unknown) => {
+    if (isLevelLocked(index)) return
+    if (
+      value !== null &&
+      typeof value !== 'string' &&
+      typeof value !== 'number'
+    )
+      return
+    selectedValues.value[index] = value
     selectedValues.value.splice(
       index + 1,
       levels.length - index - 1,
@@ -110,10 +127,11 @@
 <style scoped lang="scss">
   .n-cascade-selector {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     .n-select-item {
-      min-width: 140px;
-      flex: 1;
+      min-width: 0;
+      flex: 1 1 120px;
     }
   }
 </style>

@@ -19,7 +19,12 @@ import {
   createColumnMeasurer,
   resolveColumnStatus,
 } from '../columnPresentation'
-import type { TableColumn, DataRecord, ColumnWithKey } from '../types'
+import type {
+  TableColumn,
+  DataRecord,
+  ColumnWithKey,
+  EditProps,
+} from '../types'
 import type { ResolvedConfig } from './useTableConfig'
 import {
   getColumnPreferences,
@@ -29,11 +34,13 @@ import {
 } from '../components/ColumnSettings/persistence'
 import { applyFormatter } from './useTableGlobalConfig'
 import { EDIT_COMPONENTS } from '../data'
+import { bindTemporalField } from '../../../core/temporalField'
 import C_Icon from '../../C_Icon/index.vue'
 import {
   createOptionValueBinding,
   needsOptionValueBinding,
 } from '../../../core/options'
+import { shouldSummarizeSelectTags } from '../../../core/selectPresentation'
 
 /* ================= 内部辅助类型 ================= */
 
@@ -89,22 +96,43 @@ function resolveEditProps(
   context: EditComponentContext
 ) {
   const col = column as ColumnWithKey
+  const { valueMode, ...editProps } = column.editProps ?? {}
   const props = {
     value,
     'onUpdate:value': onUpdate,
     placeholder: `请输入${col.title ?? ''}`,
     style: { width: '100%' },
     ...(context.size ? { size: context.size } : {}),
-    ...column.editProps,
+    ...editProps,
     ...(context.busy ? { disabled: true } : {}),
   }
-  if (column.editType !== 'select' || !Array.isArray(column.editProps?.options))
-    return props
-  if (!needsOptionValueBinding(column.editProps.options, value)) return props
-  const binding = createOptionValueBinding(column.editProps.options, value)
+  if (column.editType === 'date' && valueMode === 'formatted') {
+    const { value, 'onUpdate:value': update, ...nativeProps } = props
+    return {
+      ...nativeProps,
+      ...bindTemporalField({ mode: 'formatted', value }, update),
+    }
+  }
+  return column.editType === 'select' ? resolveSelectEditProps(props) : props
+}
+
+function resolveSelectEditProps<
+  T extends EditProps & {
+    value: unknown
+    'onUpdate:value': (value: unknown) => void
+  },
+>(props: T) {
+  const selectProps = shouldSummarizeSelectTags(
+    props.multiple,
+    props.maxTagCount
+  )
+    ? { ...props, maxTagCount: 1, class: 'c-select--bounded' }
+    : props
+  if (!needsOptionValueBinding(props.options, props.value)) return selectProps
+  const binding = createOptionValueBinding(props.options, props.value)
   const update = props['onUpdate:value']
   return {
-    ...props,
+    ...selectProps,
     value: binding.value,
     options: binding.options,
     fallbackOption: props.fallbackOption ?? binding.fallbackOption,

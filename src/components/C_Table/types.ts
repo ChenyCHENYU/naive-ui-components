@@ -216,9 +216,15 @@ export interface EditProps {
   placeholder?: string
   options?: SelectOption[]
   fallbackOption?: import('naive-ui').SelectProps['fallbackOption']
+  multiple?: boolean
+  filterable?: boolean
+  tag?: boolean
+  maxTagCount?: import('naive-ui').SelectProps['maxTagCount']
   rules?: FormItemRule[]
   format?: string
   valueFormat?: string
+  /** 日期编辑的模型值类型，默认使用时间戳。 */
+  valueMode?: 'timestamp' | 'formatted'
   clearable?: boolean
   disabled?: boolean
   readonly?: boolean

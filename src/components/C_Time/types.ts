@@ -1,13 +1,32 @@
-export type TimeMode = 'range' | 'single'
-export type TimeRangeValue = [number | null, number | null]
-/** 静态 mode 保留单值或范围；动态 mode 使用完整联合类型。 */
-export type TimeModelValue<M extends TimeMode | undefined = TimeMode> =
-  M extends 'single' ? number | null : TimeRangeValue | null
+import type { TemporalValueMode } from '../../core/temporalField'
 
-export interface TimeRuntimeProps<M extends TimeMode | undefined = TimeMode> {
+export type TimeMode = 'range' | 'single'
+type TimeValue<V extends TemporalValueMode> = V extends 'formatted'
+  ? string
+  : number
+export type TimeRangeValue<V extends TemporalValueMode = 'timestamp'> = [
+  TimeValue<V> | null,
+  TimeValue<V> | null,
+]
+/** 静态 mode 保留单值或范围；动态 mode 使用完整联合类型。 */
+export type TimeModelValue<
+  M extends TimeMode | undefined = TimeMode,
+  V extends TemporalValueMode = 'timestamp',
+> = M extends 'single' ? TimeValue<V> | null : TimeRangeValue<V> | null
+
+export interface TimeRuntimeProps<
+  M extends TimeMode | undefined = TimeMode,
+  V extends TemporalValueMode = 'timestamp',
+> {
   /** 标准双向绑定；range 为元组，single 为单值 */
-  modelValue?: TimeModelValue<NoInfer<M>>
+  modelValue?: TimeModelValue<NoInfer<M>, NoInfer<V>>
   mode?: M
+  valueMode?: V
+  valueFormat?: string
+  disabled?: boolean
+  readonly?: boolean
+  size?: 'small' | 'medium' | 'large'
+  clearable?: boolean
   startPlaceholder?: string
   endPlaceholder?: string
   placeholder?: string
@@ -28,20 +47,23 @@ export interface TimeRuntimeProps<M extends TimeMode | undefined = TimeMode> {
 }
 
 /** 显式模式保留 undefined；省略模式时只允许默认分支的模型。 */
-export type TimeProps<M extends TimeMode | undefined = TimeMode> = Omit<
-  TimeRuntimeProps<M>,
-  'mode' | 'modelValue'
-> &
+export type TimeProps<
+  M extends TimeMode | undefined = TimeMode,
+  V extends TemporalValueMode = 'timestamp',
+> = Omit<TimeRuntimeProps<M, V>, 'mode' | 'modelValue'> &
   (
-    | { mode: M; modelValue?: TimeModelValue<NoInfer<M>> }
+    | { mode: M; modelValue?: TimeModelValue<NoInfer<M>, NoInfer<V>> }
     | ('range' extends M
-        ? { mode?: undefined; modelValue?: TimeRangeValue | null }
+        ? { mode?: undefined; modelValue?: TimeRangeValue<NoInfer<V>> | null }
         : never)
   )
 
-export interface TimeEmits<M extends TimeMode | undefined = TimeMode> {
-  'update:modelValue': [value: TimeModelValue<M>]
-  change: [value: TimeModelValue<M>]
+export interface TimeEmits<
+  M extends TimeMode | undefined = TimeMode,
+  V extends TemporalValueMode = 'timestamp',
+> {
+  'update:modelValue': [value: TimeModelValue<M, V>]
+  change: [value: TimeModelValue<M, V>]
   'change-range': [startTime: number | null, endTime: number | null]
   'change-single': [time: number | null]
   'change-start': [time: number | null]

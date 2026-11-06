@@ -10,7 +10,10 @@ import { h } from 'vue'
 import OrgChart from '../../src/components/C_OrgChart/index.vue'
 import FilePreview from '../../src/components/C_FilePreview/index.vue'
 import Upload from '../../src/components/C_Upload/index.vue'
-import type { UploadRequestOptions } from '../../src/components/C_Upload/types'
+import type {
+  UploadFileItem,
+  UploadRequestOptions,
+} from '../../src/components/C_Upload/types'
 
 test('custom node slots reach every recursive level and survive collapse', async () => {
   const wrapper = mount(OrgChart, {
@@ -98,3 +101,82 @@ test('upload change publishes independent snapshots for progress and pause', asy
   ).toBe('paused')
   expect(abort).toHaveBeenCalledTimes(1)
 })
+
+test('replacing a record cancels the current queue and ignores late upload callbacks', async () => {
+  let request: UploadRequestOptions | undefined
+  const abort = vi.fn()
+  const wrapper = mount(Upload, {
+    props: {
+      customRequest: options => {
+        request = options
+        return { abort }
+      },
+    },
+  })
+  const input = wrapper.get('input[type=file]')
+  Object.defineProperty(input.element, 'files', {
+    value: [new File(['a'], 'old.txt', { type: 'text/plain' })],
+  })
+  await input.trigger('change')
+  await flushPromises()
+  const oldItem = wrapper.vm.getFileList()[0]!
+  const stored: UploadFileItem = {
+    uid: oldItem.uid,
+    name: 'stored.txt',
+    type: 'text/plain',
+    size: 6,
+    percent: 100,
+    status: 'success',
+  }
+  const changesBefore = wrapper.emitted('change')?.length ?? 0
+  wrapper.vm.replaceFileList([stored])
+  request?.onSuccess?.({ url: '/old.txt' })
+  await flushPromises()
+  expect(abort).toHaveBeenCalledExactlyOnceWith()
+  expect(wrapper.vm.getFileList()).toEqual([stored])
+  expect(wrapper.emitted('change')?.slice(changesBefore)).toEqual([[[stored]]])
+  expect(wrapper.emitted('success')).toBeUndefined()
+  expect(wrapper.emitted('finish')).toBeUndefined()
+  wrapper.unmount()
+})
+
+test.each(['text', 'image'] as const)(
+  'disabled %s upload preserves attachments and only emits one change on a permitted removal',
+  async listType => {
+    const attachment: UploadFileItem = {
+      uid: 'stored',
+      name: 'example.png',
+      type: 'image/png',
+      size: 5,
+      percent: 0,
+      status: 'error',
+    }
+    const customRequest = vi.fn(() => ({ abort: vi.fn() }))
+    const wrapper = mount(Upload, {
+      props: {
+        disabled: true,
+        listType,
+        defaultFileList: [attachment],
+        customRequest,
+      },
+    })
+    const retry = wrapper.get('button[aria-label="重试上传"]')
+    const remove = wrapper.get('button[aria-label="移除文件"]')
+    expect(retry.attributes('disabled')).toBeDefined()
+    expect(remove.attributes('disabled')).toBeDefined()
+    await retry.trigger('click')
+    await remove.trigger('click')
+    wrapper.vm.retryFile(attachment.uid)
+    wrapper.vm.removeFile(attachment.uid)
+    await flushPromises()
+    expect(customRequest).not.toHaveBeenCalled()
+    expect(wrapper.vm.getFileList()).toEqual([attachment])
+    expect(wrapper.emitted('change')).toBeUndefined()
+
+    await wrapper.setProps({ disabled: false })
+    await remove.trigger('click')
+    expect(wrapper.emitted('remove')).toEqual([[attachment]])
+    expect(wrapper.emitted('change')).toEqual([[[]]])
+    wrapper.unmount()
+  }
+)

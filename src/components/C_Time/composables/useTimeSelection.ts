@@ -1,9 +1,13 @@
 import { ref, computed, watch } from 'vue'
-import type { TimeModelValue, TimeRuntimeProps } from '../types'
+import type { TemporalValueMode } from '../../../core/temporalField'
+import { formatLocalTime, parseLocalTime } from '../../../utils/localTime'
+import type { TimeModelValue, TimeMode, TimeRuntimeProps } from '../types'
+
+type RuntimeModel = TimeModelValue<TimeMode, TemporalValueMode>
 
 type EmitFn = {
-  (event: 'update:modelValue', value: TimeModelValue): void
-  (event: 'change', value: TimeModelValue): void
+  (event: 'update:modelValue', value: RuntimeModel): void
+  (event: 'change', value: RuntimeModel): void
   (
     event: 'change-range',
     startTime: number | null,
@@ -15,7 +19,10 @@ type EmitFn = {
 }
 
 /** 时间选择器逻辑 — 管理时间段/单选模式、智能限制 */
-export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
+export function useTimeSelection(
+  props: TimeRuntimeProps<TimeMode | undefined, TemporalValueMode>,
+  emit: EmitFn
+) {
   const mode = computed(() => props.mode ?? 'range')
 
   /* ==================== 响应式状态 ==================== */
@@ -51,27 +58,62 @@ export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
     return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
   }
 
-  const endTimeDisabled = computed(
-    () => mode.value === 'range' && startTime.value === null
-  )
+  const valueFormat = computed(() => props.valueFormat ?? timeFormat.value)
+
+  const mergedAttrs = computed(() => ({
+    size: props.size,
+    clearable: props.clearable,
+    valueFormat: props.valueFormat,
+    ...props.attrs,
+  }))
 
   const mergedStartAttrs = computed(() => ({
-    ...props.attrs,
+    ...mergedAttrs.value,
     ...props.startTimeProps,
   }))
 
   const mergedEndAttrs = computed(() => ({
-    ...props.attrs,
+    ...mergedAttrs.value,
     ...props.endTimeProps,
   }))
 
-  const mergedAttrs = computed(() => ({ ...props.attrs }))
+  const isLocked = (attrs: Record<string, unknown>) =>
+    props.disabled ||
+    props.readonly ||
+    attrs.disabled === true ||
+    attrs.readonly === true
+  const startTimeDisabled = computed(() => isLocked(mergedStartAttrs.value))
+  const endTimeDisabled = computed(
+    () =>
+      isLocked(mergedEndAttrs.value) ||
+      (mode.value === 'range' && startTime.value === null)
+  )
+  const singleTimeDisabled = computed(() => isLocked(mergedAttrs.value))
 
-  const emitModel = () => {
-    const value: TimeModelValue =
-      mode.value === 'range'
-        ? [startTime.value, endTime.value]
-        : singleTime.value
+  const formatted = (value: number | null) =>
+    value === null ? null : formatLocalTime(value, valueFormat.value)
+  const timestamp = (value: unknown): number | null => {
+    if (props.valueMode === 'formatted') {
+      return typeof value === 'string'
+        ? parseLocalTime(value, valueFormat.value)
+        : null
+    }
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
+  }
+
+  function emitModel() {
+    let value: RuntimeModel
+    if (props.valueMode === 'formatted') {
+      value =
+        mode.value === 'range'
+          ? [formatted(startTime.value), formatted(endTime.value)]
+          : formatted(singleTime.value)
+    } else {
+      value =
+        mode.value === 'range'
+          ? [startTime.value, endTime.value]
+          : singleTime.value
+    }
     emit('update:modelValue', value)
     emit('change', value)
   }
@@ -118,6 +160,7 @@ export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
 
   /* ==================== 事件处理 ==================== */
   const handleStartTimeChange = (value: number | null) => {
+    if (startTimeDisabled.value) return
     startTime.value = value
     if (value === null) {
       endTime.value = null
@@ -134,6 +177,7 @@ export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
   }
 
   const handleEndTimeChange = (value: number | null) => {
+    if (endTimeDisabled.value) return
     const accepted =
       props.enableTimeRestriction &&
       value !== null &&
@@ -148,6 +192,7 @@ export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
   }
 
   const handleSingleTimeChange = (value: number | null) => {
+    if (singleTimeDisabled.value) return
     singleTime.value = value
     emit('change-single', value)
     emitModel()
@@ -158,25 +203,26 @@ export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
     () =>
       [
         props.mode,
+        props.valueMode,
+        valueFormat.value,
         props.modelValue,
         props.defaultStartTime,
         props.defaultEndTime,
         props.defaultSingleTime,
       ] as const,
-    // eslint-disable-next-line complexity -- Compatibility sync handles two modes and legacy defaults atomically.
     () => {
       if (props.modelValue !== undefined) {
         if (mode.value === 'range') {
           startTime.value = Array.isArray(props.modelValue)
-            ? (props.modelValue[0] ?? null)
+            ? timestamp(props.modelValue[0])
             : null
           endTime.value = Array.isArray(props.modelValue)
-            ? (props.modelValue[1] ?? null)
+            ? timestamp(props.modelValue[1])
             : null
         } else {
           singleTime.value = Array.isArray(props.modelValue)
             ? null
-            : props.modelValue
+            : timestamp(props.modelValue)
         }
         return
       }
@@ -203,7 +249,9 @@ export function useTimeSelection(props: TimeRuntimeProps, emit: EmitFn) {
     allowedHours,
     allowedMinutes,
     allowedSeconds,
+    startTimeDisabled,
     endTimeDisabled,
+    singleTimeDisabled,
     mergedStartAttrs,
     mergedEndAttrs,
     mergedAttrs,

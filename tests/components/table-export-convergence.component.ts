@@ -189,3 +189,44 @@ test('a cold date editor loads the actual Naive picker and saves its updated val
   ).toBe(updated)
   expect(data[0].dueAt).toBe(original)
 })
+
+test.each(['cell', 'modal'] as const)(
+  'formatted table date keeps business strings in %s mode',
+  async mode => {
+    const data = [{ id: 1, dueAt: '2026-01-01' }]
+    const onSave = vi.fn()
+    const wrapper = mount(C_Table<(typeof data)[number]>, {
+      props: {
+        data,
+        columns: [
+          {
+            key: 'dueAt',
+            title: 'Due date',
+            editType: 'date',
+            editProps: { valueMode: 'formatted', valueFormat: 'yyyy-MM-dd' },
+          },
+        ],
+        config: {
+          toolbar: { show: false },
+          pagination: false,
+          edit: { mode, onSave },
+        },
+      },
+    })
+    const api = wrapper.vm as unknown as TableInstance<(typeof data)[number]>
+    api.startEdit(1, mode === 'cell' ? 'dueAt' : undefined)
+    dateChunk.resolve()
+    await vi.waitFor(() =>
+      expect(wrapper.findComponent(NDatePicker).exists()).toBe(true)
+    )
+    const picker = wrapper.getComponent(NDatePicker)
+    expect(picker.props('value')).toBeUndefined()
+    expect(picker.props('formattedValue')).toBe('2026-01-01')
+    picker.vm.$emit('update:formattedValue', '2026-01-02', Date.UTC(2026, 0, 2))
+    await flushPromises()
+    await api.saveEdit()
+    expect(onSave.mock.calls[0][0].dueAt).toBe('2026-01-02')
+    expect(data[0].dueAt).toBe('2026-01-01')
+    wrapper.unmount()
+  }
+)

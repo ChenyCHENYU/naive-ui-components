@@ -8,6 +8,7 @@ export type SearchFieldType =
   | 'number-range'
   | 'date'
   | 'month'
+  | 'time'
   | 'date-range'
   | 'custom'
   | 'spacer'
@@ -87,13 +88,14 @@ type FieldOptions<V> = Array<
   Omit<SearchOptionItem, 'value'> & { value: Extract<V, SearchOptionValue> }
 >
 type FieldAttributes = Record<string, unknown>
+type SingleTemporalField = 'date' | 'month' | 'time'
 type TypedSingleDate<V> = null extends V
   ? number extends V
     ? string extends V
-      ? { type: 'date' | 'month'; valueMode?: 'timestamp' | 'formatted' }
-      : { type: 'date' | 'month'; valueMode?: 'timestamp' }
+      ? { type: SingleTemporalField; valueMode?: 'timestamp' | 'formatted' }
+      : { type: SingleTemporalField; valueMode?: 'timestamp' }
     : string extends V
-      ? { type: 'date' | 'month'; valueMode: 'formatted' }
+      ? { type: SingleTemporalField; valueMode: 'formatted' }
       : never
   : never
 type TypedDateRange<V> = null extends V

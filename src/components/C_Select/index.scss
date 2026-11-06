@@ -1,0 +1,36 @@
+.c-select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.c-select--bounded .n-base-selection-tags {
+  flex-wrap: nowrap;
+
+  > .n-base-selection-tag-wrapper:first-child {
+    min-width: 0;
+    max-width: min(100%, 12rem);
+  }
+
+  > .n-base-selection-tag-wrapper + .n-base-selection-tag-wrapper {
+    flex: none;
+  }
+
+  .n-tag {
+    min-width: 0;
+    border-radius: 5px;
+    font-size: inherit;
+  }
+
+  .n-base-selection-tag-wrapper:first-child .n-tag:not(.n-tag--disabled) {
+    background: color-mix(
+      in srgb,
+      var(--n-caret-color, var(--c-primary)) 12%,
+      transparent
+    );
+  }
+
+  .n-tag__content {
+    min-width: 0;
+    white-space: nowrap;
+  }
+}

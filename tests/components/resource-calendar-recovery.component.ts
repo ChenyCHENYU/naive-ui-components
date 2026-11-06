@@ -158,6 +158,36 @@ test('clearing inline DOCX removes the old document and shows the empty state', 
   expect(wrapper.text()).toContain('暂无预览文件')
 })
 
+test('controlled preview follows a row action and stops loading when the host closes it', async () => {
+  const document = new File(['a'], 'document.docx')
+  const late = deferred<{ content: string; headings: [] }>()
+  parsing.word.mockReturnValueOnce(late.promise)
+  const wrapper = mount(FilePreview, {
+    props: { file: document, show: false, autoPreview: true },
+    global: { stubs: { teleport: true } },
+  })
+  expect(wrapper.find('.file-info-card').exists()).toBe(false)
+  expect(parsing.word).not.toHaveBeenCalled()
+  await wrapper.setProps({ show: true })
+  await flushPromises()
+  expect(parsing.word).toHaveBeenCalledTimes(1)
+  const close = wrapper.get('button[aria-label="关闭预览"]')
+  await close.trigger('click')
+  expect(wrapper.emitted('update:show')).toEqual([[false]])
+  expect(close.isVisible()).toBe(true)
+
+  await wrapper.setProps({ show: false })
+  late.resolve({ content: '<p>Late document</p>', headings: [] })
+  await flushPromises()
+  expect(wrapper.emitted('preview')).toBeUndefined()
+  await wrapper.setProps({ show: true })
+  await flushPromises()
+  expect(wrapper.text()).toContain('Document A')
+  expect(wrapper.text()).not.toContain('Late document')
+  expect(wrapper.emitted('preview')).toEqual([[document]])
+  wrapper.unmount()
+})
+
 test('late parsing cannot resurrect a document after its source is cleared', async () => {
   const pending = deferred<{ content: string; headings: [] }>()
   parsing.word.mockReturnValueOnce(pending.promise)

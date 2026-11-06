@@ -199,13 +199,18 @@ export function useFilePreview(
     }
   }
 
-  const openPreview = async () => {
+  const loadPreview = async () => {
     if (disposed) return
     const source = file.value || url.value
-    showModal.value = true
     const loaded = await loadFile()
     if (loaded && source && source === (file.value || url.value) && !disposed)
       emit('preview', source)
+  }
+
+  const openPreview = async () => {
+    if (disposed) return
+    showModal.value = true
+    await loadPreview()
   }
 
   const downloadFile = () => {
@@ -271,6 +276,7 @@ export function useFilePreview(
     fileConfig,
     /* 方法 */
     loadFile,
+    loadPreview,
     openPreview,
     downloadFile,
     clearPreview,

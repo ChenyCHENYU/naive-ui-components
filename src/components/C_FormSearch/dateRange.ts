@@ -1,3 +1,5 @@
+import { resolveSingleTemporalInput } from '../../core/temporalField'
+
 export type DateRangeInput =
   | { mode: 'formatted'; value: [string, string] }
   | { mode: 'timestamp'; value: [number, number] | null }
@@ -30,25 +32,20 @@ type DateInput =
   | { mode: 'formatted'; value: string | [string, string] | null }
   | { mode: 'timestamp'; value: number | [number, number] | null }
 
-const resolveSingleDateInput = (value: unknown): DateInput => {
-  if (typeof value === 'string') return { mode: 'formatted', value }
-  return {
-    mode: 'timestamp',
-    value: typeof value === 'number' && Number.isFinite(value) ? value : null,
-  }
-}
-
 /** 日期控件的模型模式独立于显示格式，null 初值使用显式 valueMode 决定回写通道。 */
 export function resolveSearchDateInput(
   field: { type: string; valueMode?: 'formatted' | 'timestamp' },
   value: unknown
-) {
+): DateInput & {
+  type: (typeof DATE_FORMATS)[keyof typeof DATE_FORMATS]['type']
+  format: string
+} {
   const type =
     field.type === 'date' || field.type === 'month' ? field.type : 'date-range'
   const parsed =
     type === 'date-range'
       ? resolveDateRangeInput(value)
-      : resolveSingleDateInput(value)
+      : resolveSingleTemporalInput(value)
   const mode = field.valueMode ?? parsed.mode
   const metadata = DATE_FORMATS[type]
   return mode === 'formatted'

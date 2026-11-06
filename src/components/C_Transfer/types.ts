@@ -30,6 +30,10 @@ export interface TransferProps<T extends TransferItem = TransferItem> {
   titles?: readonly [string, string]
   /** 是否可搜索 */
   filterable?: boolean
+  /** 禁止操作，搜索输入也随组件禁用。 */
+  disabled?: boolean
+  /** 保留列表浏览与筛选，禁止勾选和转移。 */
+  readonly?: boolean
   /** 搜索占位符 */
   filterPlaceholder?: string
   /** 自定义筛选函数 */

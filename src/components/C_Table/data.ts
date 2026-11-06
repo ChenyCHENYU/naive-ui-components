@@ -32,7 +32,11 @@ export const EDIT_COMPONENTS: Record<EditType, Component> = {
   email: NInput,
   mobile: NInput,
   date: (props: DatePickerProps) =>
-    h(NDatePicker, { ...props, type: 'date', format: 'yyyy-MM-dd' }),
+    h(NDatePicker, {
+      ...props,
+      type: 'date',
+      format: props.format ?? 'yyyy-MM-dd',
+    }),
   select: NSelect,
   textarea: (props: InputProps) =>
     h(NInput, { ...props, type: 'textarea', rows: 3 }),
@@ -57,11 +61,14 @@ export const generateFormOptions = (
 ): FormOption[] =>
   columns.filter(isEditableDataColumn).map(column => {
     const attrs = { ...column.editProps }
+    const { valueMode } = attrs
     delete attrs.rules
+    delete attrs.valueMode
     return {
       prop: String(column.key),
       label: column.title || String(column.key),
       type: EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input',
+      valueMode,
       ...(Array.isArray(column.editProps?.options)
         ? { children: column.editProps.options.map(option => ({ ...option })) }
         : {}),

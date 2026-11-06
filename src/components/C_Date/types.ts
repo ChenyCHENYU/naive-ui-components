@@ -17,6 +17,10 @@ export interface DateRuntimeProps<
   startPlaceholder?: string
   endPlaceholder?: string
   disabled?: boolean
+  readonly?: boolean
+  size?: 'small' | 'medium' | 'large'
+  clearable?: boolean
+  format?: string
   disabledBeforeToday?: boolean
   disabledAfterToday?: boolean
   valueFormat?: string

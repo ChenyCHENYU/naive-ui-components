@@ -85,6 +85,7 @@
           text
           type="warning"
           size="tiny"
+          :disabled="disabled"
           aria-label="重试上传"
           @click="emit('retry', file.uid)"
         >
@@ -96,6 +97,7 @@
           text
           type="error"
           size="tiny"
+          :disabled="disabled"
           aria-label="移除文件"
           @click="emit('remove', file.uid)"
         >
@@ -124,6 +126,7 @@
     fileList: UploadFileItem[]
     /** 是否显示缩略图 */
     showThumbnail?: boolean
+    disabled?: boolean
   }>()
 
   const emit = defineEmits<{

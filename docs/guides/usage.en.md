@@ -572,6 +572,8 @@ The exposed instance provides `getMap()`, `refresh()`, and `fitToMarkers()` for 
 
 `C_Date`, `C_Time`, `C_Menu`, and `C_FormSearch` support standard `v-model`. Message/dialog providers are optional; application-wide feedback, locale, form defaults, and `table.defaults` can be supplied through plugin options.
 
+`C_Date` uses formatted strings. `C_Time` uses timestamps by default. Use `<C_Time v-model="start" mode="single" value-mode="formatted" />` to bind a value such as `08:30` directly. Form fields `datePicker`, `daterange`, and `timePicker` also support `valueMode: 'formatted'` with `attrs.valueFormat` for API fields that expect strings.
+
 ## C_Captcha Server Verification
 
 The captcha trigger uses package-owned SVG status icons and does not depend on platform emoji or an online icon service. Idle, verifying, success, and error states keep consistent sizing and semantic colors. `C_Login` places the verification action before submit, keeps the action label explicit, and forwards `captcha-visible-change` so hosts can pause expensive background animation during puzzle interaction. Brand styling can be adjusted from the host with `--cc-height`, `--cc-radius`, `--cc-color`, `--cc-icon-color`, `--cc-bg`, `--cc-bg-hover`, `--cc-border`, `--cc-border-hover`, and `--cc-focus`, without reaching into internal DOM.
@@ -686,6 +688,12 @@ Parent buttons open a themed directory panel with page counts and current-page f
 Use `@robot-admin/naive-ui-components/config` to import `COMPONENT_LOCALE_KEY`, `COMPONENT_FEEDBACK_KEY` and their protocol types. This entry shares injection identities with the root entry without importing components, router or the Naive feedback adapter. Provide a reactive configuration or locale getter for language changes. Built-in `zh-CN`/`en-US` text now also covers Tree, Transfer, SplitPane, Chat, NotificationCenter, Theme, Language, Skeleton and Timeline. Explicit labels remain application-owned.
 
 Form action slots receive the current model, including a normal business field named `value`. Collapsed search fields remain mounted and validated; errors expand the form. `show: false` excludes a field. Table expansion discards stale completions after dataset changes, and nested selection honors eligibility, parent limits and consistent events. Native Menu options preserve string/number keys; route-mode callbacks remain string paths. Chat drafts belong to the contact and retain at most 50 nonempty inactive drafts. ER and Workflow emit user-completed canvas edits without echoing parent updates. Human verification gates password login; SMS uses its own validation.
+
+`C_GlobalSearch` resolves recent menu entries against the current reactive `menuItems()` source. Removed menus disappear from history. Legacy plain-text queries can still be reused.
+
+Control `C_CollapsePanel` with `v-model:active-keys`. The `update:activeKeys` event requests a change. Persistence and the `change`, `expand`, and `collapse` events follow the active keys confirmed by the parent.
+
+With `C_FullCalendar` and `v-model:events`, listen for `@event-dropped` or `@event-resized` after the built-in update. Use `config.eventDrop` or `config.eventResize` to take over the update and access FullCalendar's `revert()`. Built-in resizing continues to emit `@event-updated`.
 
 Upload `concurrency` applies across normal and chunk upload requests. Cancellation stops subsequent hash reads; a Blob read already in progress is discarded on completion. Application-provided check/merge callbacks retain responsibility for their own network lifecycle.
 

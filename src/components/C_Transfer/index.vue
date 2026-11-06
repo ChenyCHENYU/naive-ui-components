@@ -13,6 +13,7 @@
           v-if="mergedProps.showSelectAll"
           :checked="isSourceAllChecked"
           :indeterminate="isSourceIndeterminate"
+          :disabled="locked"
           @update:checked="toggleSourceAll"
         >
           {{ mergedProps.titles?.[0] }}
@@ -37,6 +38,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
+          :disabled="props.disabled"
           :input-props="{ 'aria-label': t('transfer.searchSource') }"
         >
           <template #prefix>
@@ -50,6 +52,7 @@
         :items="filteredSourceList"
         :checked="sourceChecked"
         :query="sourceQuery"
+        :locked="locked"
         :size="mergedProps.size"
         :virtual-scroll="mergedProps.virtualScroll"
         @check="toggleSourceCheck"
@@ -93,6 +96,7 @@
           v-if="mergedProps.showSelectAll"
           :checked="isTargetAllChecked"
           :indeterminate="isTargetIndeterminate"
+          :disabled="locked"
           @update:checked="toggleTargetAll"
         >
           {{ mergedProps.titles?.[1] }}
@@ -117,6 +121,7 @@
           clearable
           size="small"
           :placeholder="mergedProps.filterPlaceholder"
+          :disabled="props.disabled"
           :input-props="{ 'aria-label': t('transfer.searchTarget') }"
         >
           <template #prefix>
@@ -130,6 +135,7 @@
         :items="filteredTargetList"
         :checked="targetChecked"
         :query="targetQuery"
+        :locked="locked"
         :size="mergedProps.size"
         :virtual-scroll="mergedProps.virtualScroll"
         @check="toggleTargetCheck"
@@ -168,6 +174,7 @@
 
   defineOptions({ name: 'C_Transfer' })
   const emit = defineEmits<TransferEmits<T>>()
+  const locked = computed(() => props.disabled || props.readonly)
 
   const mergedProps = computed(() => ({
     ...DEFAULT_TRANSFER_PROPS,
@@ -232,10 +239,10 @@
   const sourceChecked = shallowReactive(new Set<T['key']>())
   const targetChecked = shallowReactive(new Set<T['key']>())
   const movableSourceKeys = computed(() =>
-    movableKeys(sourceList.value, sourceChecked)
+    locked.value ? [] : movableKeys(sourceList.value, sourceChecked)
   )
   const movableTargetKeys = computed(() =>
-    movableKeys(targetList.value, targetChecked)
+    locked.value ? [] : movableKeys(targetList.value, targetChecked)
   )
 
   watch([sourceList, targetList], () => {
@@ -254,7 +261,7 @@
   /** 切换源列表项选中状态 */
   function toggleSourceCheck(key: string | number) {
     const item = dataMap.value.get(key)
-    if (!item || item.disabled) return
+    if (locked.value || !item || item.disabled) return
     if (sourceChecked.has(item.key)) sourceChecked.delete(item.key)
     else sourceChecked.add(item.key)
   }
@@ -262,7 +269,7 @@
   /** 切换目标列表项选中状态 */
   function toggleTargetCheck(key: string | number) {
     const item = dataMap.value.get(key)
-    if (!item || item.disabled) return
+    if (locked.value || !item || item.disabled) return
     if (targetChecked.has(item.key)) targetChecked.delete(item.key)
     else targetChecked.add(item.key)
   }
@@ -286,6 +293,7 @@
 
   /** 切换源列表全选状态 */
   function toggleSourceAll(checked: boolean) {
+    if (locked.value) return
     for (const item of filteredSourceList.value) {
       if (item.disabled) continue
       if (checked) sourceChecked.add(item.key)
@@ -295,6 +303,7 @@
 
   /** 切换目标列表全选状态 */
   function toggleTargetAll(checked: boolean) {
+    if (locked.value) return
     for (const item of filteredTargetList.value) {
       if (item.disabled) continue
       if (checked) targetChecked.add(item.key)

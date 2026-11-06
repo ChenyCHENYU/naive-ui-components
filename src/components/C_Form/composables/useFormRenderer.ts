@@ -24,11 +24,14 @@ import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
 import { getDataPath, setDataPath } from '../../../utils/data'
 import { resolveNumberInputProps } from '../numberInput'
+import { bindTemporalField } from '../../../core/temporalField'
 import { useComponentLocale } from '../../../composables/useComponentLocale'
 import {
+  createOptionValueBinder,
   createOptionValueBinding,
   needsOptionValueBinding,
 } from '../../../core/options'
+import { shouldSummarizeSelectTags } from '../../../core/selectPresentation'
 
 /* =================== 组件映射类型 =================== */
 
@@ -123,6 +126,16 @@ function resolveFieldFlag(
   return typeof flag === 'function' ? flag(formModel) : flag
 }
 
+/** 显式字符串模式复用字段原有的受控更新与校验。 */
+function temporalProps(props: RendererProps, item: FormOption) {
+  if (item.valueMode !== 'formatted') return props
+  const { value, 'onUpdate:value': updateValue, ...nativeProps } = props
+  return mergeProps(
+    nativeProps,
+    bindTemporalField({ mode: 'formatted', value }, updateValue)
+  )
+}
+
 /* =================== 渲染器工厂 =================== */
 
 /** 根据组件映射表構建内置渲染器集合 */
@@ -135,18 +148,17 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
     switch: props => h(C.NSwitch, { ...props }),
     slider: props => h(C.NSlider, { ...props }),
     rate: props => h(C.NRate, { ...props }),
-    datePicker: props => h(C.NDatePicker, { ...props }),
-    daterange: props => h(C.NDatePicker, { ...props, type: 'daterange' }),
-    timePicker: props => h(C.NTimePicker, { ...props }),
-    cascader: props => h(C.NCascader, { ...props }),
+    datePicker: (props, item) => h(C.NDatePicker, temporalProps(props, item)),
+    daterange: (props, item) =>
+      h(C.NDatePicker, { ...temporalProps(props, item), type: 'daterange' }),
+    timePicker: (props, item) => h(C.NTimePicker, temporalProps(props, item)),
+    cascader: (props, item) =>
+      h(C.NCascader, { ...props, options: item.children }),
+    treeSelect: (props, item) =>
+      h(C.NTreeSelect, { ...props, options: item.children }),
     colorPicker: props => h(C.NColorPicker, { ...props }),
 
-    select: (baseProps, item) =>
-      h(C.NSelect, {
-        ...baseProps,
-        options:
-          item.children?.map((child: OptionItem) => ({ ...child })) || [],
-      }),
+    select: props => h(C.NSelect, props),
 
     checkbox: (baseProps, item) =>
       h(
@@ -229,7 +241,7 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
       )
     },
 
-    editor: (baseProps, item) => {
+    editor: baseProps => {
       const editorProps = { ...baseProps }
       const { value } = editorProps
       const updateValue = editorProps['onUpdate:value']
@@ -237,7 +249,6 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
       delete editorProps['onUpdate:value']
       return h(C.C_Editor, {
         ...editorProps,
-        editorId: `editor-${item.prop}`,
         modelValue: typeof value === 'string' ? value : '',
         'onUpdate:modelValue': (nextValue: string) => updateValue?.(nextValue),
       })
@@ -272,7 +283,14 @@ export function unregisterRenderer(
 
 /* =================== 带选项类型集合 =================== */
 
-const OPTION_TYPES = new Set(['select', 'checkbox', 'radio', 'cascader'])
+const OPTION_TYPES = new Set([
+  'select',
+  'checkbox',
+  'radio',
+  'cascader',
+  'treeSelect',
+])
+const EMPTY_OPTIONS: OptionItem[] = []
 /** Rate 的 size 是数字、Upload 无 size；只向接受标准尺寸的控件补默认值。 */
 const SIZED_FIELD_TYPES = new Set([
   'input',
@@ -286,6 +304,7 @@ const SIZED_FIELD_TYPES = new Set([
   'daterange',
   'timePicker',
   'cascader',
+  'treeSelect',
   'colorPicker',
 ])
 const NATIVE_READONLY_TYPES = new Set([
@@ -329,6 +348,13 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     ? inject(FORM_RENDERER_REGISTRY_KEY, undefined)
     : undefined
   const registry = opts.registry ?? injectedRegistry ?? legacyRendererRegistry
+  const selectOptionsCache = new WeakMap<
+    OptionItem[],
+    ComputedRef<{
+      hasBooleans: boolean
+      bind: ComputedRef<ReturnType<typeof createOptionValueBinder>>
+    }>
+  >()
 
   const getRenderer = (type: string): FormRenderer | undefined =>
     instanceRenderers?.value?.[type] ??
@@ -382,13 +408,20 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
 
   /** 合并静态 children 与 asyncOptions 缓存 */
   function resolveChildren(item: FormOption): OptionItem[] {
-    const staticChildren = item.children ?? []
     if (
       Object.prototype.hasOwnProperty.call(asyncOptionsCache.value, item.prop)
     ) {
       return asyncOptionsCache.value[item.prop] ?? []
     }
-    return staticChildren
+    const nativeOptions = item.attrs?.options
+    if (
+      (item.type === 'select' ||
+        item.type === 'cascader' ||
+        item.type === 'treeSelect') &&
+      Array.isArray(nativeOptions)
+    )
+      return nativeOptions as OptionItem[]
+    return item.children ?? EMPTY_OPTIONS
   }
 
   function resolveEffectiveItem(item: FormOption): FormOption {
@@ -401,7 +434,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     props: RendererProps
   ): RendererProps {
     if (
-      item.type === 'select' &&
+      (item.type === 'select' || item.type === 'treeSelect') &&
       (asyncLoadingMap.value[item.prop] || item.optionsState?.loading)
     ) {
       props.loading = true
@@ -412,23 +445,53 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
   /* ===== 表单项控件渲染 ===== */
 
   function applyOptionValues(baseProps: RendererProps, item: FormOption): void {
-    if (!needsOptionValueBinding(item.children, baseProps.value)) return
-    const binding = createOptionValueBinding(item.children, baseProps.value)
+    const select = item.type === 'select'
+    const options = item.children ?? EMPTY_OPTIONS
+    if (select) {
+      baseProps.options = options
+      if (
+        shouldSummarizeSelectTags(baseProps.multiple, baseProps.maxTagCount)
+      ) {
+        baseProps.maxTagCount = 1
+        baseProps.class = [baseProps.class, 'c-select--bounded']
+      }
+    }
+    const binding = select
+      ? bindSelectOptions(options, baseProps.value)
+      : needsOptionValueBinding(options, baseProps.value)
+        ? createOptionValueBinding(options, baseProps.value)
+        : undefined
+    if (!binding) return
     const update = baseProps['onUpdate:value']
     baseProps.value = binding.value
     baseProps['onUpdate:value'] = (value, selected?: unknown) => {
       const decoded = binding.decode(
         value as Parameters<typeof binding.decode>[0],
-        item.type === 'select' ? selected : undefined
+        select ? selected : undefined
       )
       if (Array.isArray(update)) update.forEach(handler => handler(decoded))
       else update?.(decoded)
     }
     item.children = binding.options as OptionItem[]
-    if (item.type === 'select') {
+    if (select) {
       baseProps.options = item.children
       baseProps.fallbackOption ??= binding.fallbackOption
     }
+  }
+
+  function bindSelectOptions(options: OptionItem[], value: unknown) {
+    let entry = selectOptionsCache.get(options)
+    if (!entry) {
+      entry = computed(() => ({
+        hasBooleans: needsOptionValueBinding(options, undefined),
+        bind: computed(() => createOptionValueBinder(options)),
+      }))
+      selectOptionsCache.set(options, entry)
+    }
+    const { hasBooleans, bind } = entry.value
+    return hasBooleans || needsOptionValueBinding(undefined, value)
+      ? bind.value(value)
+      : undefined
   }
 
   /** 局部加载提示放在控件下方，不覆盖 NFormItem 的校验反馈插槽。 */
@@ -469,10 +532,16 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
   ): VNode | null {
     if (!OPTION_TYPES.has(item.type)) return control
     if (!item.asyncOptions && !item.optionsState) return control
-    return h('div', { class: 'c-form-option-state' }, [
-      control,
-      renderOptionsError(item),
-    ])
+    return h(
+      'div',
+      {
+        class: 'c-form-option-state',
+        'aria-busy': Boolean(
+          asyncLoadingMap.value[item.prop] || item.optionsState?.loading
+        ),
+      },
+      [control, renderOptionsError(item)]
+    )
   }
 
   const renderFormItem = (item: FormOption): VNode | null => {

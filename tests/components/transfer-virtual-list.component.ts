@@ -65,6 +65,35 @@ const selectAll = async (wrapper: VueWrapper, side = 0) => {
   await flushPromises()
 }
 
+test('readonly transfer can filter but cannot select or move items', async () => {
+  const wrapper = mount(C_Transfer, {
+    props: {
+      data: createData(5),
+      modelValue: [1],
+      readonly: true,
+      filterable: true,
+    },
+  })
+  const filter = wrapper.get('input[aria-label="搜索可选列表"]')
+  expect(filter.attributes('disabled')).toBeUndefined()
+  await filter.setValue('Item 0')
+  expect(rows(wrapper).map(row => row.text())).toEqual(['Item 0'])
+  await selectAll(wrapper)
+  await rows(wrapper)[0].trigger('click')
+  const move = wrapper.get('button[aria-label="移至已选列表"]')
+  expect(move.attributes('disabled')).toBeDefined()
+  await move.trigger('click')
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+
+  await wrapper.setProps({ readonly: false, disabled: true })
+  expect(filter.attributes('disabled')).toBeDefined()
+  await wrapper.setProps({ disabled: false })
+  await rows(wrapper)[0].trigger('click')
+  await move.trigger('click')
+  expect(wrapper.emitted('update:modelValue')).toEqual([[[1, 0]]])
+  wrapper.unmount()
+})
+
 test('3000 items mount a bounded native viewport while the full panel count remains accurate', async () => {
   const wrapper = mount(C_Transfer, {
     props: { data: createData(3000), modelValue: [1], filterable: true },

@@ -21,7 +21,7 @@ Use the online docs and repository guides for component contracts, and Robot Adm
 | `C_ActionBar`    | Action button bar         | -                             |
 | `C_Theme`        | Theme switcher            | -                             |
 | `C_Language`     | Language switcher         | -                             |
-| `C_Date`         | Enhanced date picker      | -                             |
+| `C_Date`         | Enhanced date picker      | `date-fns`                    |
 | `C_City`         | Province / city selector  | -                             |
 | `C_Breadcrumb`   | Breadcrumb navigation     | -                             |
 | `C_Menu`         | Navigation menu           | -                             |
@@ -67,11 +67,12 @@ Image/calendar behavior notes: `C_ImageCropper` flips the actual source and rese
 | `C_Form`          | Dynamic form engine (Grid/Tabs/Steps/Card layout) | -                    |
 | `C_FormModal`     | Data-driven create/edit form modal                | -                    |
 | `C_FormSearch`    | Search form                                       | -                    |
+| `C_Select`        | Single and multiple selection with freeform tags  | -                    |
 | `C_CollapsePanel` | Collapse panel                                    | -                    |
 | `C_SplitPane`     | Split pane                                        | -                    |
 | `C_Draggable`     | Drag & drop sorting                               | `vue-draggable-plus` |
 | `C_Tree`          | Advanced tree control                             | -                    |
-| `C_Time`          | Enhanced time picker                              | -                    |
+| `C_Time`          | Enhanced time picker                              | `date-fns`           |
 | `C_Cron`          | Cron expression editor                            | -                    |
 | `C_Transfer`      | Transfer / shuttle box                            | -                    |
 
@@ -94,6 +95,8 @@ Image/calendar behavior notes: `C_ImageCropper` flips the actual source and rese
 ## Dependency Notes
 
 `C_FilePreview` accepts HTTPS URLs and same-origin HTTP URLs for local development. Script/data URLs, credential-bearing URLs, and cross-origin plain HTTP are rejected. `autoPreview` opens a supplied file automatically, and changing the source refreshes an open preview. Repeated previews release the previous PDF object URL and ignore stale loading results. Excel values `0` and `false` remain intact.
+
+Bind `C_FilePreview` with `v-model:show` to open it from a toolbar or table row. The page controls visibility, and closing releases the current preview resources.
 
 `C_AntV` keeps the public BPMN model as `{ nodes, flows }`. It converts that model to X6 cells internally and restores node positions, types, properties, and flow conditions in `data-change` and `getData()`. BPMN and UML load built-in samples only when `data` is absent; an explicit empty model produces an empty canvas.
 

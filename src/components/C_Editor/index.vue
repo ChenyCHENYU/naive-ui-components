@@ -7,7 +7,7 @@
 -->
 <template>
   <div
-    :id="editorId"
+    :id="editorId ?? defaultEditorId"
     class="c-editor w-full"
     :class="{
       'editor-dark': isDark,
@@ -40,6 +40,7 @@
     onBeforeUnmount,
     readonly as readonlyRef,
     shallowRef,
+    useId,
     type Component,
     type CSSProperties,
   } from 'vue'
@@ -57,7 +58,7 @@
   }
 
   interface Props {
-    editorId: string
+    editorId?: string
     modelValue?: string
     placeholder?: string
     disabled?: boolean
@@ -83,6 +84,7 @@
   })
 
   const emit = defineEmits<Emits>()
+  const defaultEditorId = `editor-${useId()}`
   let disposed = false
   let creationVersion = 0
   const destroyedEditors = new WeakSet<EditorInstance>()

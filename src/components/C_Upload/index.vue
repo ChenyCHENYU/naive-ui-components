@@ -44,6 +44,7 @@
     <ImagePreview
       v-if="props.listType === 'image'"
       :file-list="fileList"
+      :disabled="props.disabled"
       @remove="handleRemove"
       @retry="handleRetry"
     />
@@ -53,6 +54,7 @@
       v-else-if="props.showFileList && fileList.length > 0"
       :file-list="fileList"
       :show-thumbnail="props.showThumbnail"
+      :disabled="props.disabled"
       @remove="handleRemove"
       @retry="handleRetry"
     />
@@ -109,6 +111,7 @@
     addFiles,
     removeFile,
     clearAll,
+    replaceFileList,
     startUpload,
     pauseAll,
     resumeAll,
@@ -135,6 +138,7 @@
 
   /** 处理接收到的文件 */
   function handleFiles(files: File[]) {
+    if (props.disabled) return
     // 数量超限
     const maxCount = Math.max(0, Math.trunc(Number(props.maxCount) || 0))
     if (maxCount > 0 && fileList.value.length + files.length > maxCount) {
@@ -145,7 +149,12 @@
     }
 
     const items = addFiles(files)
-    emit('change', snapshotList())
+    for (const item of items) {
+      previousStates.set(item.uid, {
+        status: item.status,
+        percent: item.percent,
+      })
+    }
 
     // 自动上传
     items.forEach(file => void processFile(file))
@@ -155,16 +164,17 @@
 
   /** 移除文件 */
   function handleRemove(uid: string) {
+    if (props.disabled) return
     const file = fileList.value.find(f => f.uid === uid)
     if (file) {
       emit('remove', snapshotFile(file))
       removeFile(uid)
-      emit('change', snapshotList())
     }
   }
 
   /** 重试上传 */
   function handleRetry(uid: string) {
+    if (props.disabled) return
     retryFile(uid)
   }
 
@@ -173,7 +183,12 @@
   const previousStates = new Map<
     string,
     { status: UploadFileItem['status']; percent: number }
-  >()
+  >(
+    fileList.value.map(file => [
+      file.uid,
+      { status: file.status, percent: file.percent },
+    ])
+  )
   let finishEmitted = false
 
   watch(
@@ -235,17 +250,22 @@
 
   defineExpose<UploadExpose>({
     selectFiles: () => uploadAreaRef.value?.triggerSelect(),
-    startUpload,
+    startUpload: () => {
+      if (!props.disabled) startUpload()
+    },
     pauseAll,
-    resumeAll,
-    clearAll: () => {
-      clearAll()
-      emit('change', snapshotList())
+    resumeAll: () => {
+      if (!props.disabled) resumeAll()
     },
-    removeFile: (uid: string) => {
-      handleRemove(uid)
+    clearAll,
+    replaceFileList: files => {
+      previousStates.clear()
+      // 回显附件属于新记录，不能算作刚完成的上传。
+      finishEmitted = true
+      replaceFileList(files)
     },
-    retryFile,
+    removeFile: handleRemove,
+    retryFile: handleRetry,
     getFileList: snapshotList,
     getSuccessList: () => getSuccessList().map(snapshotFile),
     /** 总体进度 */

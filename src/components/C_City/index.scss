@@ -5,7 +5,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  min-width: 200px;
+  min-width: min(200px, 100%);
+  max-width: 100%;
   height: 34px;
   padding: 0 12px;
   border: 1px solid #e0e0e6;
@@ -13,8 +14,12 @@
   cursor: pointer;
   transition: all 0.3s;
 
-  &:hover {
+  &:not(:disabled):hover {
     border-color: var(--c-primary, #1890ff);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
   }
 
   &:focus-visible {
@@ -25,6 +30,9 @@
   &__text {
     flex: 1;
     font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__icon {
@@ -42,20 +50,23 @@
 .city-selector-content {
   display: flex;
   flex-direction: column;
-  height: 500px;
+  height: min(500px, 70vh);
+  height: min(500px, 70dvh);
   padding: 0;
 }
 
 .city-selector-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px;
   border-bottom: 1px solid rgba(247, 247, 247, 0.514);
   flex-shrink: 0;
 
   .city-selector-search {
-    flex: 1;
+    flex: 1 1 120px;
+    min-width: 0;
   }
 }
 
@@ -94,6 +105,7 @@
 
 .city-selector-body {
   flex: 1;
+  min-height: 0;
   margin: 12px;
   margin-top: 8px;
   overflow: hidden;

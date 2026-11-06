@@ -35,7 +35,9 @@ export interface CollapsePanelExpose {
 }
 
 export interface CollapsePanelEmits {
+  /** 受控模式的变更请求。 */
   'update:activeKeys': [keys: string[]]
+  /** 以下事件仅在实际面板状态变化后发出。 */
   expand: [key: string]
   collapse: [key: string]
   change: [activeKeys: string[]]

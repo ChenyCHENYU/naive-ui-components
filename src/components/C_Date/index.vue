@@ -15,7 +15,10 @@
       :disabled="disabled"
       :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
-      clearable
+      :readonly="readonly"
+      :size="size"
+      :format="format"
+      :clearable="clearable"
       v-bind="$attrs"
     />
 
@@ -27,7 +30,10 @@
       :disabled="disabled"
       :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
-      clearable
+      :readonly="readonly"
+      :size="size"
+      :format="format"
+      :clearable="clearable"
       v-bind="$attrs"
     />
 
@@ -40,7 +46,10 @@
       :disabled="disabled"
       :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
-      clearable
+      :readonly="readonly"
+      :size="size"
+      :format="format"
+      :clearable="clearable"
       v-bind="$attrs"
     />
 
@@ -53,7 +62,10 @@
       :disabled="disabled"
       :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
-      clearable
+      :readonly="readonly"
+      :size="size"
+      :format="format"
+      :clearable="clearable"
       v-bind="$attrs"
     />
 
@@ -64,25 +76,27 @@
       <div class="flex gap-2.5 items-center">
         <NDatePicker
           class="flex-1"
-          v-model:formatted-value="startDate"
+          :formatted-value="startDate"
+          @update:formatted-value="updateSmartStart"
           type="date"
           :placeholder="startPlaceholder || '请选择开始日期'"
-          :disabled="disabled"
-          :is-date-disabled="singleDisabledDate"
+          v-bind="{ size, format, clearable, ...startDateProps }"
+          :disabled="disabled || startDateProps.disabled === true"
+          :readonly="readonly || startDateProps.readonly === true"
+          :is-date-disabled="smartStartDisabledDate"
           :value-format="resolvedValueFormat"
-          clearable
-          v-bind="startDateProps"
         />
         <NDatePicker
           class="flex-1"
-          v-model:formatted-value="endDate"
+          :formatted-value="endDate"
+          @update:formatted-value="updateSmartEnd"
           type="date"
           :placeholder="endPlaceholder || '请选择结束日期'"
-          :disabled="endDateDisabled"
+          v-bind="{ size, format, clearable, ...endDateProps }"
+          :disabled="endDateDisabled || endDateProps.disabled === true"
+          :readonly="readonly || endDateProps.readonly === true"
           :is-date-disabled="endDisabledDate"
           :value-format="resolvedValueFormat"
-          clearable
-          v-bind="endDateProps"
         />
       </div>
     </div>
@@ -90,8 +104,9 @@
 </template>
 
 <script lang="ts" setup generic="M extends DatePickerMode | undefined = 'date'">
-  import { ref, watch, computed } from 'vue'
+  import { ref, watch, computed, useAttrs } from 'vue'
   import { NDatePicker } from 'naive-ui'
+  import { parseLocalTime } from '../../utils/localTime'
   import { localDayStart } from './dateUtils'
   import type {
     DateRuntimeProps,
@@ -110,6 +125,7 @@
     startPlaceholder: '',
     endPlaceholder: '',
     disabled: false,
+    clearable: true,
     disabledBeforeToday: false,
     disabledAfterToday: false,
     startDateProps: () => ({}),
@@ -122,17 +138,12 @@
   })
 
   const emits = defineEmits<DateEmits<M>>()
+  const attrs = useAttrs()
   const mode = computed(() => props.mode ?? 'date')
 
   /** 模式分支确定值形状；类型转换仅留在包的事件桥接边界。 */
   const modeValue = (value: DateModelValue): DateModelValue<M> =>
     value as DateModelValue<M>
-
-  const getTodayStart = (): number => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d.getTime()
-  }
 
   const resolvedValueFormat = computed(() => {
     if (props.valueFormat) return props.valueFormat
@@ -197,74 +208,135 @@
   const endDateDisabled = computed(
     () => props.disabled || startDate.value === null
   )
-  let syncingSmartRange = false
+  const smartRangeValue = computed(() =>
+    props.modelValue === undefined
+      ? props.smartRange
+      : (props.modelValue as DateRangeValue)
+  )
+  const startDay = computed(() => {
+    if (startDate.value === null) return null
+    const timestamp = parseLocalTime(startDate.value, resolvedValueFormat.value)
+    return timestamp === null ? null : localDayStart(timestamp)
+  })
+  let awaitingClear = false
 
-  // 将外部 smartRange prop 同步到内部 startDate/endDate
   watch(
-    () => [props.modelValue, props.smartRange, props.mode] as const,
-    ([modelValue, smartRange, mode]) => {
-      const val =
-        mode === 'smart-range' && modelValue !== undefined
-          ? (modelValue as DateRangeValue)
-          : smartRange
-      const newStart = val?.[0] ?? null
-      const newEnd = val?.[1] ?? null
-      if (newStart === startDate.value && newEnd === endDate.value) return
-      syncingSmartRange = true
-      startDate.value = newStart
-      endDate.value = newEnd
-      syncingSmartRange = false
+    [mode, smartRangeValue],
+    ([nextMode, value], [previousMode]) => {
+      // 父组件回写刚发出的 null 时保留待补全的开始日期。
+      const isClearEcho =
+        awaitingClear && previousMode === nextMode && value === null
+      awaitingClear = false
+      if (nextMode !== 'smart-range' || isClearEcho) return
+      startDate.value = value?.[0] ?? null
+      endDate.value = value?.[1] ?? null
     },
     { immediate: true, deep: true }
   )
 
-  // 用户选择后：两者均有值时 emit；清空开始日期时级联清空结束日期
-  watch(
-    () => [startDate.value, endDate.value] as const,
-    ([startVal, endVal]) => {
-      if (syncingSmartRange) return
-      if (startVal === null && endVal !== null) {
-        endDate.value = null
-        return
-      }
-      if (
-        startVal !== null &&
-        endVal !== null &&
-        localDayStart(endVal) < localDayStart(startVal)
-      ) {
-        endDate.value = null
-        return
-      }
-      const value: DateRangeValue =
-        startVal !== null && endVal !== null ? [startVal, endVal] : null
-      emits('update:modelValue', modeValue(value))
-      emits('update:smartRange', value)
-      emits('change', modeValue(value))
-    },
-    { deep: true, flush: 'sync' }
-  )
+  function publishSmartRange() {
+    const start = startDate.value
+    const end = endDate.value
+    const value: DateRangeValue =
+      start !== null && end !== null ? [start, end] : null
+    awaitingClear =
+      value === null && start !== null && smartRangeValue.value != null
+    emits('update:modelValue', modeValue(value))
+    emits('update:smartRange', value)
+    emits('change', modeValue(value))
+  }
 
-  // —— 日期禁用逻辑 ——
+  function updateSmartStart(value: DateValue, timestamp?: number | null) {
+    if (smartEndpointLocked(props.startDateProps)) return
+    const start =
+      value === null
+        ? null
+        : (timestamp ?? parseLocalTime(value, resolvedValueFormat.value))
+    if (value !== null && (start === null || smartStartDisabledDate(start)))
+      return
+    startDate.value = value
+    const end =
+      endDate.value === null
+        ? null
+        : parseLocalTime(endDate.value, resolvedValueFormat.value)
+    if (!isOrderedRange(start, end)) endDate.value = null
+    publishSmartRange()
+  }
+
+  function updateSmartEnd(value: DateValue, timestamp?: number | null) {
+    if (endDateDisabled.value || smartEndpointLocked(props.endDateProps)) return
+    const end =
+      value === null
+        ? null
+        : (timestamp ?? parseLocalTime(value, resolvedValueFormat.value))
+    if (value !== null && (end === null || endDisabledDate(end))) return
+    endDate.value = value
+    publishSmartRange()
+  }
+
+  function smartEndpointLocked(endpoint: Record<string, unknown>): boolean {
+    return (
+      props.disabled ||
+      props.readonly ||
+      endpoint.disabled === true ||
+      endpoint.readonly === true
+    )
+  }
+
+  function isOrderedRange(start: number | null, end: number | null): boolean {
+    return (
+      start !== null &&
+      end !== null &&
+      localDayStart(end) >= localDayStart(start)
+    )
+  }
+
   const singleDisabledDate = (timestamp: number): boolean => {
-    const todayStart = getTodayStart()
-    if (props.disabledBeforeToday && timestamp < todayStart) return true
-    if (props.disabledAfterToday && timestamp > todayStart) return true
-    return false
+    if (!props.disabledBeforeToday && !props.disabledAfterToday) return false
+    const today = localDayStart(Date.now())
+    const day = localDayStart(timestamp)
+    return (
+      (props.disabledBeforeToday && day < today) ||
+      (props.disabledAfterToday && day > today)
+    )
+  }
+
+  function customDisabledDate(
+    timestamp: number,
+    endpoint: Record<string, unknown>
+  ): boolean {
+    const disabledDate =
+      endpoint.isDateDisabled ??
+      attrs.isDateDisabled ??
+      attrs['is-date-disabled']
+    return (
+      typeof disabledDate === 'function' && disabledDate(timestamp) === true
+    )
+  }
+
+  const smartStartDisabledDate = (timestamp: number): boolean => {
+    return (
+      singleDisabledDate(timestamp) ||
+      customDisabledDate(timestamp, props.startDateProps)
+    )
   }
 
   const endDisabledDate = (timestamp: number): boolean => {
-    if (startDate.value === null) return true
-    if (timestamp < localDayStart(startDate.value)) return true
-    return singleDisabledDate(timestamp)
+    const start = startDay.value
+    return (
+      start === null ||
+      localDayStart(timestamp) < start ||
+      singleDisabledDate(timestamp) ||
+      customDisabledDate(timestamp, props.endDateProps)
+    )
   }
 
   // clearAll：emit 驱动父组件清空同名绑定，同时重置 smart-range 内部 ref
   defineExpose<DateExpose>({
     clearAll: () => {
-      syncingSmartRange = true
+      awaitingClear = false
       startDate.value = null
       endDate.value = null
-      syncingSmartRange = false
       emits('update:modelValue', modeValue(null))
       emits('update:singleDate', null)
       emits('update:singleDateTime', null)

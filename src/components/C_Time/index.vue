@@ -13,7 +13,6 @@
       class="time-range-container"
     >
       <NTimePicker
-        v-model:value="startTime"
         :placeholder="startPlaceholder"
         :format="timeFormat"
         :hours="allowedHours"
@@ -21,11 +20,12 @@
         :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         v-bind="mergedStartAttrs"
+        :value="startTime"
+        :disabled="startTimeDisabled"
         @update:value="handleStartTimeChange"
       />
       <span class="range-separator">至</span>
       <NTimePicker
-        v-model:value="endTime"
         :placeholder="endPlaceholder"
         :format="timeFormat"
         :hours="allowedHours"
@@ -41,8 +41,9 @@
         :is-second-disabled="
           props.enableTimeRestriction ? isEndSecondDisabled : undefined
         "
-        :disabled="endTimeDisabled"
         v-bind="mergedEndAttrs"
+        :value="endTime"
+        :disabled="endTimeDisabled"
         @update:value="handleEndTimeChange"
       />
     </div>
@@ -53,7 +54,6 @@
       class="time-single-container"
     >
       <NTimePicker
-        v-model:value="singleTime"
         :placeholder="placeholder"
         :format="timeFormat"
         :hours="allowedHours"
@@ -61,16 +61,26 @@
         :seconds="allowedSeconds"
         :actions="['now', 'confirm']"
         v-bind="mergedAttrs"
+        :value="singleTime"
+        :disabled="singleTimeDisabled"
         @update:value="handleSingleTimeChange"
       />
     </div>
   </div>
 </template>
 
-<script lang="ts" setup generic="M extends TimeMode | undefined = 'range'">
+<script
+  lang="ts"
+  setup
+  generic="
+    M extends TimeMode | undefined = 'range',
+    V extends TemporalValueMode = 'timestamp'
+  "
+>
   import { computed, type Ref } from 'vue'
   import { NTimePicker } from 'naive-ui'
   import { useTimeSelection } from './composables/useTimeSelection'
+  import type { TemporalValueMode } from '../../core/temporalField'
   import type {
     TimeRuntimeProps,
     TimeEmits,
@@ -80,7 +90,7 @@
 
   defineOptions({ name: 'C_Time' })
 
-  const props = withDefaults(defineProps<TimeRuntimeProps<M>>(), {
+  const props = withDefaults(defineProps<TimeRuntimeProps<M, V>>(), {
     startPlaceholder: '请选择开始时间',
     endPlaceholder: '请选择结束时间',
     placeholder: '请选择时间',
@@ -98,9 +108,10 @@
     defaultEndTime: null,
     defaultSingleTime: null,
     enableTimeRestriction: false,
+    clearable: undefined,
   })
 
-  const emit = defineEmits<TimeEmits<M>>()
+  const emit = defineEmits<TimeEmits<M, V>>()
   const mode = computed(() => props.mode ?? 'range')
 
   const {
@@ -111,7 +122,9 @@
     allowedHours,
     allowedMinutes,
     allowedSeconds,
+    startTimeDisabled,
     endTimeDisabled,
+    singleTimeDisabled,
     mergedStartAttrs,
     mergedEndAttrs,
     mergedAttrs,

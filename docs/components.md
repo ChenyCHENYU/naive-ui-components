@@ -21,7 +21,7 @@
 | `C_ActionBar`    | 操作按钮栏              | -                             |
 | `C_Theme`        | 主题切换器              | -                             |
 | `C_Language`     | 语言切换器              | -                             |
-| `C_Date`         | 日期选择器增强          | -                             |
+| `C_Date`         | 日期选择器增强          | `date-fns`                    |
 | `C_City`         | 省市区三级联动          | -                             |
 | `C_Breadcrumb`   | 面包屑导航              | -                             |
 | `C_Menu`         | 导航菜单                | -                             |
@@ -67,11 +67,12 @@
 | `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | -                    |
 | `C_FormModal`     | 数据驱动的新增/编辑表单弹窗                       | -                    |
 | `C_FormSearch`    | 搜索表单                                          | -                    |
+| `C_Select`        | 单选、多选和自由标签输入                          | -                    |
 | `C_CollapsePanel` | 折叠面板                                          | -                    |
 | `C_SplitPane`     | 分割面板                                          | -                    |
 | `C_Draggable`     | 拖拽排序                                          | `vue-draggable-plus` |
 | `C_Tree`          | 高级树形控件                                      | -                    |
-| `C_Time`          | 时间选择器增强                                    | -                    |
+| `C_Time`          | 时间选择器增强                                    | `date-fns`           |
 | `C_Cron`          | Cron 表达式编辑器                                 | -                    |
 | `C_Transfer`      | 穿梭框（搜索/全选/批量操作）                      | -                    |
 
@@ -94,6 +95,8 @@
 ## 依赖说明
 
 `C_FilePreview` 的 URL 入口仅接受 HTTPS 或当前站点同源 HTTP（便于本地开发）；不接受脚本、数据 URL、带凭据 URL 或跨站明文 HTTP。`autoPreview` 会在有文件源时自动打开预览，已打开时切换文件源会刷新内容。重复预览会释放旧 PDF 对象 URL，并忽略过期加载结果。Excel 单元格的 `0` 与 `false` 会原样保留。
+
+工具栏或表格行按钮可以通过 `v-model:show` 打开 `C_FilePreview`。提供该绑定后由页面控制开关，关闭时释放当前预览资源。
 
 `C_AntV` 的 BPMN 对外数据保持 `{ nodes, flows }` 领域结构；组件内部转换为 X6 单元格，并在 `data-change` / `getData()` 中还原节点位置、类型、属性和连线条件。BPMN/UML 仅在未提供 `data` 时加载内置示例；显式传入空数据会显示空画布。
 

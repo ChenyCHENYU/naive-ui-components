@@ -157,24 +157,37 @@ export function useUploadCore(props: UploadProps) {
     const idx = fileList.value.findIndex(f => f.uid === uid)
     if (idx !== -1) {
       const file = fileList.value[idx]
-      revokeOwnedObjectUrl(file.thumbUrl)
       fileList.value.splice(idx, 1)
+      if (
+        file.thumbUrl &&
+        ownedObjectUrls.has(file.thumbUrl) &&
+        !fileList.value.some(item => item.thumbUrl === file.thumbUrl)
+      ) {
+        revokeOwnedObjectUrl(file.thumbUrl)
+      }
     }
   }
 
-  /** 清空所有 */
-  function clearAll() {
+  /** 切换记录时先废弃旧任务，再一次性回填新列表。 */
+  function replaceFileList(files: readonly UploadFileItem[]) {
+    const next = files.map(file => ({ ...file }))
+    const retainedUrls = new Set(next.map(file => file.thumbUrl))
+    operationVersions.clear()
     scheduler.abortAll()
     cancelHashes()
     chunkUploader.abortAll()
     uploadQueue.abortAll()
     pausedSet.clear()
 
-    fileList.value.forEach(f => {
-      revokeOwnedObjectUrl(f.thumbUrl)
+    ownedObjectUrls.forEach(url => {
+      if (!retainedUrls.has(url)) revokeOwnedObjectUrl(url)
     })
-    fileList.value = []
-    operationVersions.clear()
+    fileList.value = next
+  }
+
+  /** 清空所有 */
+  function clearAll() {
+    replaceFileList([])
   }
 
   // ─── 上传流程 ────────────────────────────────
@@ -442,6 +455,7 @@ export function useUploadCore(props: UploadProps) {
   return {
     /** 文件列表 */
     fileList,
+    replaceFileList,
     /** 总进度 */
     totalPercent,
     /** 正在计算 hash */

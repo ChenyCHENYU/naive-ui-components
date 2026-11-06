@@ -7,22 +7,26 @@
 -->
 <template>
   <NPopover
-    v-model:show="visible"
+    :show="visible"
+    :disabled="locked"
     placement="bottom-start"
-    :width="430"
+    style="width: min(430px, calc(100vw - 24px)); box-sizing: border-box"
     trigger="click"
     :show-arrow="false"
+    @update:show="updateVisible"
   >
     <template #trigger>
       <slot
         name="trigger"
         :value="modelValue"
         :visible="visible"
+        :disabled="locked"
       >
         <button
           type="button"
           class="city-selector-trigger"
           :aria-expanded="visible"
+          :disabled="locked"
           aria-label="选择城市"
         >
           <span class="city-selector-trigger__text">{{
@@ -171,6 +175,8 @@
     modelValue?: string
     placeholder?: string
     showLetters?: boolean
+    disabled?: boolean
+    readonly?: boolean
   }
 
   interface Emits {
@@ -178,7 +184,7 @@
     (e: 'change', value: string): void
   }
 
-  withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<Props>(), {
     placeholder: '请选择城市',
     showLetters: true,
   })
@@ -186,9 +192,18 @@
   const emit = defineEmits<Emits>()
 
   const visible = ref(false)
+  const locked = computed(() => props.disabled || props.readonly)
   const contentRef = ref<HTMLElement | null>(null)
   const radioValue = ref<'city' | 'province'>('city')
   const searchValue = ref('')
+
+  function updateVisible(open: boolean) {
+    visible.value = open && !locked.value
+  }
+
+  watch(locked, value => {
+    if (value) updateVisible(false)
+  })
 
   watch(visible, open => {
     if (!open || cityData.value || cityLoadPromise) return
@@ -256,6 +271,7 @@
   })
 
   const handleCitySelect = (cityName: string): void => {
+    if (locked.value) return
     emit('update:modelValue', cityName)
     emit('change', cityName)
     visible.value = false

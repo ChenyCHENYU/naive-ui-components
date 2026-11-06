@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { Boot, type IDomEditor } from '@wangeditor-next/editor'
+import { defineComponent, h } from 'vue'
 import C_Editor from '../../src/components/C_Editor/index.vue'
+import C_Form from '../../src/components/C_Form/index.vue'
 
 // DOMPurify requires a browser DOM for HTML fidelity; this suite exercises the
 // real editor lifecycle and model bridge. Browser E2E retains the real sanitizer.
@@ -56,6 +58,36 @@ test('unmount before dynamic import settles never creates an editor', async () =
   await flushPromises()
   expect(instances).toHaveLength(0)
   expect(mounted).not.toHaveBeenCalled()
+})
+
+test('same-name fields in separate forms have unique editor IDs and accept an explicit ID', async () => {
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h('div', [
+          h(C_Form, { options: [{ prop: 'body', type: 'editor' }] }),
+          h(C_Form, { options: [{ prop: 'body', type: 'editor' }] }),
+          h(C_Form, {
+            options: [
+              {
+                prop: 'body',
+                type: 'editor',
+                attrs: { editorId: 'custom-editor' },
+              },
+            ],
+          }),
+        ]),
+    }),
+    { attachTo: document.body }
+  )
+  await vi.waitFor(() => expect(wrapper.findAll('.c-editor')).toHaveLength(3))
+  const ids = wrapper
+    .findAll('.c-editor')
+    .map(editor => editor.attributes('id'))
+  expect(ids.every(Boolean)).toBe(true)
+  expect(new Set(ids).size).toBe(3)
+  expect(ids[2]).toBe('custom-editor')
+  wrapper.unmount()
 })
 
 test('real runtime retains HTML sync, disabled state, restart and idempotent disposal', async () => {
