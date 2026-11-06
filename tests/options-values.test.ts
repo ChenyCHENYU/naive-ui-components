@@ -63,3 +63,21 @@ test('an external or typed token string only invalidates its colliding boolean e
   expect(after.fallbackOption(after.options![1]!.value!).label).toBe('false')
   expect(before.decode([typed])).toEqual([false])
 })
+
+test('custom fallback keeps labels and boolean ownership without mutating supplied options', () => {
+  const token = '__c_option_boolean_false__'
+  const binding = createOptionValueBinding([], [false, token])
+  const supplied = Object.freeze({ label: '历史选项', class: 'historical' })
+  const fallback = binding.resolveFallbackOption(() => supplied)
+  expect(typeof fallback).toBe('function')
+  if (fallback === false) throw new Error('expected fallback')
+  const native = binding.value as string[]
+  const selected = native.map(fallback)
+  expect(selected.map(option => option.label)).toEqual(['历史选项', '历史选项'])
+  expect(binding.decode(native, selected)).toEqual([false, token])
+  expect(Reflect.ownKeys(supplied)).toEqual(['label', 'class'])
+  expect(binding.resolveFallbackOption(false)).toBe(false)
+  expect(
+    binding.decode([native[0]], [{ value: native[0], label: native[0] }])
+  ).toEqual([native[0]])
+})

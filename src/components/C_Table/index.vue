@@ -771,10 +771,9 @@
     const keys = isCrossPageSelectionEnabled.value
       ? [...crossPageState.selectedKeys.value]
       : (tableManager.checkedKeys?.value ?? [])
-    const selectedKeySet = new Set(keys)
     const rows = isCrossPageSelectionEnabled.value
       ? crossPageState.getSelectedRows()
-      : normalizedData.value.filter(r => selectedKeySet.has(resolvedRowKey(r)))
+      : tableManager.stateManager.selection.getSelected()
     try {
       const result = await batchTasks.run(action.key, () =>
         action.onClick(keys, rows)

@@ -110,7 +110,6 @@
     totalPercent,
     addFiles,
     removeFile,
-    clearAll,
     replaceFileList,
     startUpload,
     pauseAll,
@@ -139,16 +138,18 @@
   /** 处理接收到的文件 */
   function handleFiles(files: File[]) {
     if (props.disabled) return
-    // 数量超限
+    // 单选限制一次输入；显式目录模式仍接收一批文件。
+    const selected =
+      props.multiple || props.directory ? files : files.slice(0, 1)
     const maxCount = Math.max(0, Math.trunc(Number(props.maxCount) || 0))
-    if (maxCount > 0 && fileList.value.length + files.length > maxCount) {
-      emit('exceed', files, snapshotList())
-      const available = maxCount - fileList.value.length
-      if (available <= 0) return
-      files = files.slice(0, available)
-    }
+    const available =
+      maxCount > 0 ? maxCount - fileList.value.length : selected.length
+    if (selected.length > available) emit('exceed', files, snapshotList())
+    if (available <= 0) return
 
-    const items = addFiles(files)
+    const items = addFiles(
+      selected.length > available ? selected.slice(0, available) : selected
+    )
     for (const item of items) {
       previousStates.set(item.uid, {
         status: item.status,
@@ -248,6 +249,14 @@
 
   // ─── Expose ──────────────────────────────────
 
+  function replaceAttachments(files: readonly UploadFileItem[]) {
+    uploadAreaRef.value?.invalidatePendingDrop()
+    previousStates.clear()
+    // 回显附件属于新记录，不能算作刚完成的上传。
+    finishEmitted = true
+    replaceFileList(files)
+  }
+
   defineExpose<UploadExpose>({
     selectFiles: () => uploadAreaRef.value?.triggerSelect(),
     startUpload: () => {
@@ -257,13 +266,8 @@
     resumeAll: () => {
       if (!props.disabled) resumeAll()
     },
-    clearAll,
-    replaceFileList: files => {
-      previousStates.clear()
-      // 回显附件属于新记录，不能算作刚完成的上传。
-      finishEmitted = true
-      replaceFileList(files)
-    },
+    clearAll: () => replaceAttachments([]),
+    replaceFileList: replaceAttachments,
     removeFile: handleRemove,
     retryFile: handleRetry,
     getFileList: snapshotList,

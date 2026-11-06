@@ -51,12 +51,27 @@ function createOptionValueCodec(falseToken: string, trueToken: string) {
     if (value === trueToken) return true
     return value
   }
+  const fallbackOption = (value: NativeValue) => {
+    const original = decode(value)
+    return { value, label: String(original), [rawOptionValue]: original }
+  }
+  const resolveFallbackOption = (supplied: unknown) => {
+    if (supplied === false) return false
+    if (typeof supplied !== 'function') return fallbackOption
+    return (value: NativeValue) => {
+      const option: unknown = supplied(value)
+      return {
+        ...fallbackOption(value),
+        ...(option && typeof option === 'object' ? option : {}),
+        value,
+        [rawOptionValue]: decode(value),
+      }
+    }
+  }
   return {
     encode,
-    fallbackOption: (value: NativeValue) => {
-      const original = decode(value)
-      return { value, label: String(original), [rawOptionValue]: original }
-    },
+    fallbackOption,
+    resolveFallbackOption,
     decode: (value: NativeValue | NativeValue[] | null, selected?: unknown) =>
       Array.isArray(value)
         ? value.map((entry, index) =>
@@ -124,7 +139,8 @@ export function createOptionValueBinder(
     // 自由输入或外部模型碰巧使用内部编码时，重新给布尔值选一个编码。
     if (binding?.falseToken !== falseToken || binding.trueToken !== trueToken)
       binding = bindTokens(falseToken, trueToken)
-    const { encode, decode, fallbackOption } = binding.codec
+    const { encode, decode, fallbackOption, resolveFallbackOption } =
+      binding.codec
     return {
       options: binding.nativeOptions,
       value: Array.isArray(modelValue)
@@ -133,6 +149,7 @@ export function createOptionValueBinder(
             .filter((value): value is NativeValue => value !== null)
         : encode(modelValue),
       fallbackOption,
+      resolveFallbackOption,
       decode,
     }
   }

@@ -554,10 +554,7 @@
   const selectFallback = (
     item: SearchFormItem<T>
   ): import('naive-ui').SelectProps['fallbackOption'] => {
-    const supplied = item.attrs?.fallbackOption
-    return typeof supplied === 'function' || typeof supplied === 'boolean'
-      ? (supplied as import('naive-ui').SelectProps['fallbackOption'])
-      : selectBinding(item).fallbackOption
+    return selectBinding(item).resolveFallbackOption(item.attrs?.fallbackOption)
   }
 
   const inputValue = (field: string): string | null => {

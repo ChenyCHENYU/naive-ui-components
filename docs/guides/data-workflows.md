@@ -54,7 +54,7 @@ const config = defineTableConfig<Shipment>({
 
 ## 多选标签和日期时间
 
-独立控件可用 `C_Select`，表单和搜索使用现有的 `type: 'select'` 与 `attrs: { multiple: true }`。三处默认显示首个标签和其余选中数量。用 `maxTagCount` 或 `attrs.maxTagCount` 覆盖显示数量。自由输入加 `filterable` 和 `tag`，普通多选省略 `tag`。多选清空为 `[]`，选项加载中可以保留已有编码。
+独立控件可用 `C_Select`，表单和搜索使用现有的 `type: 'select'` 与 `attrs: { multiple: true }`。三处默认显示首个标签和其余选中数量。用 `maxTagCount` 或 `attrs.maxTagCount` 覆盖显示数量。自由输入加 `filterable` 和 `tag`，普通多选省略 `tag`。多选清空为 `[]`，选项加载中可以保留已有编码。自定义 `fallbackOption` 只负责未加载选项的回显文案；组件仍保留布尔、数字和字符串的原始类型，不会修改回调返回的选项对象。
 
 ```vue
 <script setup lang="ts">
@@ -94,6 +94,8 @@ const condition = { prop: 'startTime', type: 'time', valueMode: 'formatted' }
 ```
 
 独立日期用 `C_Date`，独立时分用 `<C_Time mode="single" value-mode="formatted" />`。未配置格式化值的现有表单、搜索和时间选择器仍按各自原有默认类型回写。
+
+`C_Date` 的 `disabledBeforeToday` / `disabledAfterToday` 与 `isDateDisabled` 同时配置时，只要任一规则禁用，日期就不可选。基础范围模式会原样传递原生回调的起止位置和当前范围；`smart-range` 的两个端点使用单日期回调，端点配置优先于公共业务规则。
 
 ## 数值：存储、显示和校验分别定义
 

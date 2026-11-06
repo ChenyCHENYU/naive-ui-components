@@ -13,13 +13,13 @@
       type="date"
       :placeholder="placeholder || '请选择日期'"
       :disabled="disabled"
-      :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
       :size="size"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
+      :is-date-disabled="basicDisabledDate"
     />
 
     <NDatePicker
@@ -28,13 +28,13 @@
       type="datetime"
       :placeholder="placeholder || '请选择日期时间'"
       :disabled="disabled"
-      :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
       :size="size"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
+      :is-date-disabled="basicDisabledDate"
     />
 
     <NDatePicker
@@ -44,13 +44,13 @@
       :start-placeholder="startPlaceholder || '开始日期'"
       :end-placeholder="endPlaceholder || '结束日期'"
       :disabled="disabled"
-      :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
       :size="size"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
+      :is-date-disabled="basicDisabledDate"
     />
 
     <NDatePicker
@@ -60,13 +60,13 @@
       :start-placeholder="startPlaceholder || '开始日期时间'"
       :end-placeholder="endPlaceholder || '结束日期时间'"
       :disabled="disabled"
-      :is-date-disabled="singleDisabledDate"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
       :size="size"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
+      :is-date-disabled="basicDisabledDate"
     />
 
     <div
@@ -303,31 +303,58 @@
 
   function customDisabledDate(
     timestamp: number,
-    endpoint: Record<string, unknown>
+    endpoint: Record<string, unknown>,
+    details: unknown[]
   ): boolean {
     const disabledDate =
       endpoint.isDateDisabled ??
+      endpoint['is-date-disabled'] ??
       attrs.isDateDisabled ??
       attrs['is-date-disabled']
     return (
-      typeof disabledDate === 'function' && disabledDate(timestamp) === true
+      typeof disabledDate === 'function' &&
+      disabledDate(timestamp, ...details) === true
     )
   }
 
-  const smartStartDisabledDate = (timestamp: number): boolean => {
+  const basicDisabledDate = (
+    timestamp: number,
+    ...details: unknown[]
+  ): boolean => {
     return (
       singleDisabledDate(timestamp) ||
-      customDisabledDate(timestamp, props.startDateProps)
+      customDisabledDate(timestamp, {}, details)
     )
   }
 
-  const endDisabledDate = (timestamp: number): boolean => {
+  const smartStartDisabledDate = (
+    timestamp: number,
+    ...details: unknown[]
+  ): boolean => {
+    return (
+      singleDisabledDate(timestamp) ||
+      customDisabledDate(
+        timestamp,
+        props.startDateProps,
+        details.length ? details : [{ type: 'input' }]
+      )
+    )
+  }
+
+  const endDisabledDate = (
+    timestamp: number,
+    ...details: unknown[]
+  ): boolean => {
     const start = startDay.value
     return (
       start === null ||
       localDayStart(timestamp) < start ||
       singleDisabledDate(timestamp) ||
-      customDisabledDate(timestamp, props.endDateProps)
+      customDisabledDate(
+        timestamp,
+        props.endDateProps,
+        details.length ? details : [{ type: 'input' }]
+      )
     )
   }
 

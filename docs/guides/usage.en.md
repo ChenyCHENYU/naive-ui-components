@@ -279,7 +279,7 @@ For create/edit flows, `C_FormModal` consumes a structural headless `editor` dir
 </template>
 ```
 
-The editor contract is structural: the component package does not depend on a request library. Any controller exposing `visible/mode/model/title/loading/setModel/close/submit` can drive it. The default uses a responsive 620px width, compact density, `small` form controls, and a right-aligned icon-based `C_ActionBar` with `tiny` footer buttons. Close button, mask close, and Escape remain enabled by default and can be disabled for high-risk forms.
+Any controller exposing `visible/mode/model/title/loading/setModel/close/submit` can drive the modal. The default uses a responsive 620px width, compact density, `small` form controls, and a right-aligned icon-based `C_ActionBar` with `tiny` footer buttons. You can configure the close button, mask click, and Escape for idle sessions. Validation and saving temporarily block all modal close controls. `@submit(payload, saved)` reports the current session's save result, including when the editor closes the modal after a successful save. `submitSuccessText` appears only when `saved` is `true`.
 
 For remote tables, `useTableQuery` owns cancellation, latest-request-wins behavior, pagination, and loading. Destructure its `bindings` and use `<C_Table v-bind="bindings" />`:
 

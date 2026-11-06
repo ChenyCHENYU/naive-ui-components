@@ -9,14 +9,15 @@
     :content-style="modalStyles.content"
     :footer-style="modalStyles.footer"
     footer-class="c-form-modal__footer"
-    :mask-closable="maskClosable"
-    :close-on-esc="closeOnEsc"
-    :closable="closable"
+    :mask-closable="maskClosable && !busy"
+    :close-on-esc="closeOnEsc && !busy"
+    :closable="closable && !busy"
     class="c-form-modal"
     :class="`c-form-modal--${density}`"
   >
     <C_Form
       v-if="modalVisible && editor.model.value"
+      :key="session"
       ref="formRef"
       v-model="formModel"
       :options="options"
@@ -36,6 +37,7 @@
 
     <template #footer>
       <C_ActionBar
+        :key="session"
         :actions="modalActions"
         :config="footerConfig"
       />
@@ -44,7 +46,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = FormRecord">
-  import { computed, ref } from 'vue'
+  import { computed, onScopeDispose, ref, watch } from 'vue'
   import { NModal } from 'naive-ui'
   import C_ActionBar from '../C_ActionBar/index.vue'
   import { defineActions } from '../C_ActionBar/presets'
@@ -56,7 +58,9 @@
     mergeFormConfig,
     useFormGlobalConfig,
   } from '../C_Form'
+  import { useComponentFeedback } from '../../config'
   import { resolveComponentDensity } from '../../core/density'
+  import { notifyObserver } from '../../core/observer'
   import { resolveFormModalStyles } from '../shared/formModal'
   import type { ActionBarConfig } from '../C_ActionBar/types'
   import type { FormModalEmits, FormModalProps } from './types'
@@ -76,6 +80,12 @@
   const emit = defineEmits<FormModalEmits<T>>()
   const formRef = ref<FormInstance<T> | null>(null)
   const globalFormConfig = useFormGlobalConfig()
+  const effectiveFormConfig = computed(() =>
+    mergeFormConfig(props.config as FormConfig, globalFormConfig)
+  )
+  const feedback = useComponentFeedback(
+    () => effectiveFormConfig.value.feedback
+  )
   const density = computed(
     () => props.config?.density ?? globalFormConfig.density ?? 'compact'
   )
@@ -87,7 +97,21 @@
     },
   })
   const modalTitle = computed(() => props.editor.title.value)
-  const busy = computed(() => props.editor.loading.value)
+  const busy = computed(
+    () => props.editor.loading.value || !!formRef.value?.isSubmitting
+  )
+  const session = ref(0)
+  // 重新打开或更换编辑器时隔离表单与页脚任务。保存成功的自行关闭仍属于当前会话。
+  watch(
+    [() => props.editor, () => props.editor.visible.value],
+    ([editor, visible], [previousEditor]) => {
+      if (visible || editor !== previousEditor) session.value++
+    },
+    { flush: 'sync' }
+  )
+  onScopeDispose(() => {
+    session.value++
+  })
   const modalStyles = computed(() =>
     resolveFormModalStyles(props.width, density.value)
   )
@@ -103,29 +127,39 @@
     mode: props.editor.mode.value,
     // v-model 已提供初始快照；重复订阅整个 model 会让每次输入都重建配置及所有字段。
     showActions: false,
+    // 弹窗只在 editor 确认保存后提示成功，表单校验完成不代表保存完成。
+    submitSuccessText: '',
     onSubmit: async (payload, context) => {
+      const { editor } = props
+      const submittedSession = session.value
+      const isFormActive = () =>
+        !context?.signal.aborted && editor.visible.value
       await props.config?.onSubmit?.(payload, context)
-      if (context?.signal.aborted) return
-      const saved = await props.editor.submit(payload.model as T)
-      if (!context?.signal.aborted) emit('submit', payload, saved)
+      if (submittedSession !== session.value || !isFormActive()) return
+      const saved = await editor.submit(payload.model)
+      // editor 可先关闭弹窗再返回成功，子表单卸载后的取消信号不影响这个结果。
+      if (submittedSession !== session.value || (!saved && !isFormActive()))
+        return
+      emit('submit', payload, saved)
+      const text = effectiveFormConfig.value.submitSuccessText
+      if (saved && text) notifyObserver(() => feedback.success(text))
     },
   }))
 
   const close = (): void => {
+    if (busy.value || !modalVisible.value) return
     props.editor.close()
     emit('close')
   }
 
   const footerConfig = computed<ActionBarConfig>(() => {
-    const config = mergeFormConfig(
-      resolvedFormConfig.value as FormConfig,
-      globalFormConfig
-    )
     const tokens = resolveComponentDensity(density.value)
     return {
       align: 'right',
       // 紧凑页脚采用 22px；业务明确指定的字段尺寸仍同步到页脚。
-      size: config.size ?? (density.value === 'compact' ? 'tiny' : tokens.size),
+      size:
+        effectiveFormConfig.value.size ??
+        (density.value === 'compact' ? 'tiny' : tokens.size),
       gap: tokens.gap,
       compact: density.value === 'compact',
     }

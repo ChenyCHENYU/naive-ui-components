@@ -96,12 +96,13 @@
   const inputRef = ref<HTMLInputElement>()
 
   // 拖拽 & 粘贴
-  const { isDragOver } = useDragDrop(
+  const { isDragOver, invalidatePendingDrop } = useDragDrop(
     areaRef,
     computed(() => props.draggable && !props.disabled),
     computed(() => props.pasteable && !props.disabled),
     computed(() => props.accept),
-    files => emit('files', files)
+    files => emit('files', files),
+    computed(() => props.directory)
   )
 
   /** 点击触发文件选择 */
@@ -126,6 +127,7 @@
   /** 暴露触发方法 */
   defineExpose({
     triggerSelect: handleClick,
+    invalidatePendingDrop,
   })
 </script>
 

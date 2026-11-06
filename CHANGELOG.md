@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.31.2
+
+### Patch Changes
+
+- 修复上传换单时迟到的目录输入、选择回显中的布尔值、表单弹窗的提交反馈，以及树表批量操作的子行数据。日期选择器同时执行内置与业务禁用规则。
+
 ## 0.31.1
 
 ### Patch Changes

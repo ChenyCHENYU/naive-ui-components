@@ -219,6 +219,39 @@ describe('C_Table combined feature contracts', () => {
     expect(source[0].children[0].name).toBe('child')
   })
 
+  test('batch actions receive the selected tree child with its key', async () => {
+    const child = { id: 2, name: 'child' }
+    const onClick = vi.fn()
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        data: [{ id: 1, name: 'parent', children: [child] }],
+        columns: [{ type: 'selection' }, { key: 'name', title: 'Name' }],
+        config: {
+          toolbar: { show: false },
+          pagination: false,
+          tree: { defaultExpandAll: true },
+          selection: true,
+          batchActions: {
+            enabled: true,
+            actions: [{ key: 'batch', label: '批量处理', onClick }],
+          },
+        },
+      },
+    })
+    try {
+      const instance = wrapper.vm as unknown as TableInstance
+      instance.selectRow(2)
+      await flushPromises()
+      const button = wrapper
+        .findAll('button')
+        .find(item => item.text() === '批量处理')
+      await button!.trigger('click')
+      expect(onClick).toHaveBeenCalledExactlyOnceWith([2], [child])
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   test('dynamic row insertion uses the table string row key', () => {
     const wrapper = mount(C_Table<DataRecord>, {
       props: {

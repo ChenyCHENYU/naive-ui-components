@@ -18,7 +18,7 @@
     :virtual-scroll="virtualScroll"
     :status="status"
     :input-props="inputProps"
-    :fallback-option="fallbackOption ?? binding.fallbackOption"
+    :fallback-option="binding.resolveFallbackOption(fallbackOption)"
     @update:value="update"
   >
     <template

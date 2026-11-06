@@ -15,18 +15,26 @@ import { ref, readonly, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
  * @param pasteable     是否启用粘贴
  * @param accept        文件类型限制
  * @param onFiles       文件回调
+ * @param directory     是否遍历目录；独立 composable 保留原有默认行为
  */
 export function useDragDrop(
   containerRef: Ref<HTMLElement | undefined>,
   enabled: Ref<boolean>,
   pasteable: Ref<boolean>,
   accept: Ref<string>,
-  onFiles: (files: File[]) => void
+  onFiles: (files: File[]) => void,
+  directory = ref(true)
 ) {
   /** 是否正在拖拽悬停 */
   const isDragOver = ref(false)
   let boundElement: HTMLElement | null = null
-  let disposed = false
+  let dropVersion = 0
+
+  /** 换单后浏览器的目录回调仍可能返回，但不能再进入上传队列。 */
+  function invalidatePendingDrop() {
+    dropVersion++
+    isDragOver.value = false
+  }
 
   // ─── 拖拽事件 ─────────────────────────────────
 
@@ -60,11 +68,12 @@ export function useDragDrop(
     e.preventDefault()
     isDragOver.value = false
 
-    const items = e.dataTransfer?.items
-    if (!items) return
-
-    const files = await collectDropFiles(items, e.dataTransfer)
-    if (disposed || !enabled.value) return
+    const transfer = e.dataTransfer
+    if (!transfer) return
+    const version = dropVersion
+    const isCurrent = () => version === dropVersion && enabled.value
+    const files = await collectDropFiles(transfer, directory.value, isCurrent)
+    if (!isCurrent()) return
     const filtered = filterByAccept(files, accept.value)
     if (filtered.length > 0) onFiles(filtered)
   }
@@ -125,23 +134,23 @@ export function useDragDrop(
     boundElement = null
   }
 
-  onMounted(() => {
-    disposed = false
-    bindEvents()
-  })
+  onMounted(bindEvents)
   onBeforeUnmount(() => {
-    disposed = true
+    invalidatePendingDrop()
     unbindEvents()
   })
 
-  watch([containerRef, enabled, pasteable], () => {
+  watch([containerRef, enabled, directory], invalidatePendingDrop, {
+    flush: 'sync',
+  })
+  watch([containerRef, pasteable], () => {
     unbindEvents()
     bindEvents()
   })
 
   return {
-    /** 是否正在拖拽悬停 */
     isDragOver: readonly(isDragOver),
+    invalidatePendingDrop,
   }
 }
 
@@ -149,32 +158,33 @@ export function useDragDrop(
 
 /** 从 drop 事件收集文件（含目录遍历） */
 async function collectDropFiles(
-  items: DataTransferItemList,
-  dataTransfer: DataTransfer | null
+  transfer: DataTransfer,
+  directory: boolean,
+  isCurrent: () => boolean
 ): Promise<File[]> {
-  const entries: FileSystemEntry[] = []
-  for (let i = 0; i < items.length; i++) {
-    const entry = items[i].webkitGetAsEntry?.()
-    if (entry) entries.push(entry)
-  }
+  const items = Array.from(transfer.items ?? [])
+  const entries = items.map(item => item.webkitGetAsEntry?.())
+  if (!entries.some(Boolean)) return Array.from(transfer.files ?? [])
 
-  if (entries.length > 0) {
-    const results = await Promise.all(entries.map(readEntry))
-    return results.flat()
-  }
-
-  const files: File[] = []
-  const dtFiles = dataTransfer?.files
-  if (dtFiles) {
-    for (let i = 0; i < dtFiles.length; i++) {
-      files.push(dtFiles[i])
-    }
-  }
-  return files
+  // 一个拖放可以同时带可遍历条目和普通文件，不能只保留其中一种。
+  const results = await Promise.all(
+    items.map((item, index) => {
+      const entry = entries[index]
+      if (entry) return readEntry(entry, directory, isCurrent)
+      const file = item.getAsFile?.()
+      return file ? [file] : []
+    })
+  )
+  return results.flat()
 }
 
 /** 递归读取 FileSystemEntry */
-async function readEntry(entry: FileSystemEntry): Promise<File[]> {
+async function readEntry(
+  entry: FileSystemEntry,
+  directory: boolean,
+  isCurrent: () => boolean
+): Promise<File[]> {
+  if (!isCurrent()) return []
   if (entry.isFile) {
     return new Promise(resolve => {
       ;(entry as FileSystemFileEntry).file(
@@ -184,10 +194,10 @@ async function readEntry(entry: FileSystemEntry): Promise<File[]> {
     })
   }
 
-  if (entry.isDirectory) {
+  if (entry.isDirectory && directory) {
     const reader = (entry as FileSystemDirectoryEntry).createReader()
     const entries: FileSystemEntry[] = []
-    while (true) {
+    while (isCurrent()) {
       // eslint-disable-next-line no-await-in-loop -- FileSystem API 分批返回目录项，必须读至空批次。
       const batch = await new Promise<FileSystemEntry[]>(resolve => {
         reader.readEntries(
@@ -195,10 +205,13 @@ async function readEntry(entry: FileSystemEntry): Promise<File[]> {
           () => resolve([])
         )
       })
+      if (!isCurrent()) return []
       if (batch.length === 0) break
       entries.push(...batch)
     }
-    const results = await Promise.all(entries.map(readEntry))
+    const results = await Promise.all(
+      entries.map(child => readEntry(child, directory, isCurrent))
+    )
     return results.flat()
   }
 

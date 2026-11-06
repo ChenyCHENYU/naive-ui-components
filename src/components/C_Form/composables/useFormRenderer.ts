@@ -475,7 +475,9 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     item.children = binding.options as OptionItem[]
     if (select) {
       baseProps.options = item.children
-      baseProps.fallbackOption ??= binding.fallbackOption
+      baseProps.fallbackOption = binding.resolveFallbackOption(
+        baseProps.fallbackOption
+      )
     }
   }
 

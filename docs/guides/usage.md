@@ -332,7 +332,7 @@ const fields = defineFormOptions([
 </template>
 ```
 
-`editor` 采用结构类型，不要求组件库依赖某个请求库；任何提供 `visible/mode/model/title/loading/setModel/close/submit` 的 Headless 控制器都可接入。弹窗默认保留关闭按钮、遮罩关闭和 Esc 行为，也可按高风险表单显式关闭。
+`editor` 采用结构类型，不要求组件库依赖某个请求库。任何提供 `visible/mode/model/title/loading/setModel/close/submit` 的 Headless 控制器都可接入。空闲时可通过标题栏按钮、遮罩或 Esc 关闭弹窗，三种方式均可配置。校验或保存期间，弹窗暂停这三种关闭方式及页脚取消。`@submit(payload, saved)` 接收当前会话的保存结果，编辑器保存成功并自行关闭时仍会发出通知。`submitSuccessText` 仅在 `saved` 为 `true` 时显示。
 
 远程表格推荐交给 `useTableQuery` 管理请求取消、竞态、分页和 loading；只需把 `bindings` 绑定给组件。`rowKey` 必须稳定且唯一，默认会检测缺失和重复键。
 
@@ -857,7 +857,9 @@ CRUD 控制器只需满足结构契约；`@robot-admin/request-core` 0.6.3 起�
 
 `C_Upload.concurrency` 统一限制普通上传与分片上传请求。取消、移除和卸载会停止后续哈希读取并释放排队任务；已经开始的单次 Blob 读取完成后不再处理结果。业务自行提供的校验、合并回调仍由业务负责其网络生命周期。
 
-在同一编辑弹窗切换记录时，调用上传实例的 `replaceFileList(record.attachments)`。它会取消旧记录的任务，再回填新记录的附件；`defaultFileList` 仍用于首次初始化。
+在同一编辑弹窗切换记录时，调用上传实例的 `replaceFileList(record.attachments)`。它会废弃上一条记录尚未读完的拖入目录，取消上传任务，再回填新记录的附件；`defaultFileList` 仍用于首次初始化。`clearAll()` 使用同样的取消路径。
+
+普通单文件模式一次只接收一个符合 `accept` 的文件，点击、拖放和粘贴一致。需要接收整个目录时开启 `directory`；需要限制整个列表的数量时使用 `maxCount`。
 
 Excel 保留原始值、单元格类型和工作簿格式，不把文本编号转换为数值，也不自行舍入小数。工作表数据在首次打开时展开，默认文件预算 32 MiB、每表 100000 格；超限明确提示下载原文件，不静默截断。可使用一个配置调整预算：
 
