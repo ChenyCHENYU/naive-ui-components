@@ -88,11 +88,12 @@ export function defineTableConfig<T extends object, C = unknown>(
 /** Find missing and duplicate row keys before stateful table features consume them. */
 export function validateTableRowKeys<T extends object>(
   data: readonly T[],
-  rowKey: (row: T) => DataTableRowKey | null | undefined
+  rowKey: (row: T) => DataTableRowKey | null | undefined,
+  childrenKey?: string
 ): TableRowKeyIssue<T>[] {
   const seen = new Map<DataTableRowKey, number>()
   const issues: TableRowKeyIssue<T>[] = []
-  data.forEach((row, index) => {
+  flattenTableRows(data, childrenKey).forEach((row, index) => {
     let key: DataTableRowKey | null | undefined
     try {
       key = rowKey(row)

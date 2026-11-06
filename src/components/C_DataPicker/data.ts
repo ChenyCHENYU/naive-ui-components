@@ -129,7 +129,9 @@ export function useDataPicker<T extends object, TFilters extends object>(
   const sourceVersion = shallowRef(0)
   const session = shallowRef(0)
   const draft = shallowRef(new Map<DataPickerValue, T | undefined>())
-  const committedRows = shallowRef(new Map<DataPickerValue, T>())
+  const committedRows = shallowRef(
+    new Map<DataPickerValue, { row: T; fromPage: boolean }>()
+  )
   const values = computed(() => {
     const selected = normalizeValues(props.modelValue)
     return props.multiple ? selected : selected.slice(0, 1)
@@ -230,15 +232,17 @@ export function useDataPicker<T extends object, TFilters extends object>(
     const lastPage = Math.max(1, Math.ceil(result.total / pageSize.value))
     if (page.value > lastPage) page.value = lastPage
   })
-  const knownRows = computed(() => {
-    const known = new Map(committedRows.value)
-    for (const [value, row] of labels.data.value ?? []) known.set(value, row)
-    return known
-  })
+  function knownRow(value: DataPickerValue): T | undefined {
+    const committed = committedRows.value.get(value)
+    // 用户确认过的候选行优先。仅来自回显的缓存仍可被新回显补全或更新。
+    return committed?.fromPage
+      ? committed.row
+      : (labels.data.value?.get(value) ?? committed?.row)
+  }
   const display = computed(() =>
     values.value
       .map(value => {
-        const row = knownRows.value.get(value)
+        const row = knownRow(value)
         return row ? props.source.label(row) : String(value)
       })
       .join('、')
@@ -298,21 +302,29 @@ export function useDataPicker<T extends object, TFilters extends object>(
 
   /** 迟到的回显只补全已选值对应的行，当前会话内看到的候选数据优先。 */
   function resolveDraftRow(value: DataPickerValue): T | undefined {
-    return draft.value.get(value) ?? knownRows.value.get(value)
+    return draft.value.get(value) ?? knownRow(value)
   }
 
   function confirm(): void {
     if (!canConfirm.value || !opened.value) return
     const chosen = [...draft.value.keys()]
-    const resolved = new Map<DataPickerValue, T>()
+    const committed = new Map<DataPickerValue, { row: T; fromPage: boolean }>()
+    const resolved: T[] = []
     for (const value of chosen) {
       const row = resolveDraftRow(value)
-      if (row) resolved.set(value, row)
+      if (!row) continue
+      committed.set(value, {
+        row,
+        fromPage:
+          draft.value.get(value) !== undefined ||
+          committedRows.value.get(value)?.fromPage === true,
+      })
+      resolved.push(row)
     }
-    committedRows.value = resolved
+    committedRows.value = committed
     close()
     emit('update:modelValue', props.multiple ? chosen : (chosen[0] ?? null))
-    emit('select', [...resolved.values()])
+    emit('select', resolved)
   }
 
   function clear(): void {
@@ -422,15 +434,27 @@ export function useDataPicker<T extends object, TFilters extends object>(
     { flush: 'post' }
   )
   watch(
-    () =>
-      [
-        props.modelValue,
-        props.multiple,
-        props.disabled,
-        props.readonly,
-      ] as const,
+    values,
+    (next, previous) => {
+      if (
+        next.length === previous.length &&
+        next.every((value, index) => Object.is(value, previous[index]))
+      )
+        return
+      close()
+      // 保留刚确认的受控值；已离开选择的值再次进入时从当前数据源回显。
+      if (!committedRows.value.size) return
+      const selectedValues = new Set(next)
+      committedRows.value = new Map(
+        [...committedRows.value].filter(([value]) => selectedValues.has(value))
+      )
+    },
+    { flush: 'sync' }
+  )
+  watch(
+    [() => props.multiple, () => props.disabled, () => props.readonly],
     close,
-    { deep: true, flush: 'sync' }
+    { flush: 'sync' }
   )
   return {
     opened,

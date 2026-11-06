@@ -561,6 +561,54 @@ test('search boolean encoding keeps false, zero and conflicting string options d
   expect(wrapper.emitted('reset')?.at(-1)?.[0]).toEqual({ flags: [false] })
 })
 
+test('a large search select reuses its options on selection and refreshes them when the source changes', async () => {
+  const source = [
+    { value: false, labelDefault: '停用' },
+    ...Array.from({ length: 4999 }, (_, value) => ({
+      value,
+      label: `项目 ${value}`,
+    })),
+  ]
+  const field = {
+    prop: 'flags',
+    type: 'select' as const,
+    attrs: { multiple: true, options: source },
+  }
+  const wrapper = mount(C_FormSearch, {
+    props: { modelValue: { flags: [false] }, formItemList: [field] },
+  })
+  const select = wrapper.getComponent(NSelect)
+  const options = select.props('options')!
+  expect(options).toHaveLength(5000)
+  expect(select.text()).toContain('停用')
+
+  const chosen = [options[0], options[1]]
+  select.vm.$emit(
+    'update:value',
+    chosen.map(option => option.value),
+    chosen
+  )
+  await nextTick()
+  expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual({
+    flags: [false, 0],
+  })
+  expect(select.props('options')).toBe(options)
+  expect(select.text()).toContain('项目 0')
+
+  await wrapper.setProps({
+    formItemList: [
+      {
+        ...field,
+        attrs: { ...field.attrs, options: [{ value: 0, label: '已更新' }] },
+      },
+    ],
+  })
+  expect(select.props('options')).toHaveLength(1)
+  expect(select.text()).toContain('已更新')
+  expect(select.text()).toContain('false')
+  wrapper.unmount()
+})
+
 test('folded search fields remain validated and failures reveal the field', async () => {
   const onSearch = vi.fn()
   const wrapper = mount(C_FormSearch, {

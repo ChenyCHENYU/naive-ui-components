@@ -11,7 +11,10 @@ import { createSSRApp, h, inject } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 import { assertDeclarationBoundary } from './build/declaration-boundary.js'
-import { readPublishedStyle } from './build/published-style.js'
+import {
+  readPublishedStyle,
+  SHARED_TOKENS_FILE,
+} from './build/published-style.js'
 import { checkSharedStyleConsumer } from './check-shared-styles.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -58,7 +61,11 @@ const missingEntries = componentNames.flatMap(name =>
     .map(extension => path.join(distDir, `${name}.${extension}`))
     .filter(file => !fs.existsSync(file))
 )
-for (const asset of ['C_Form.base.css', 'C_Table.base.css']) {
+for (const asset of [
+  SHARED_TOKENS_FILE,
+  'C_Form.base.css',
+  'C_Table.base.css',
+]) {
   const filename = path.join(distDir, asset)
   if (!fs.existsSync(filename)) missingEntries.push(filename)
 }

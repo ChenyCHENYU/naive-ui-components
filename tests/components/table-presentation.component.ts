@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { h } from 'vue'
+import { h, nextTick, ref } from 'vue'
 import { NDataTable, NTag } from 'naive-ui'
 import C_Table from '../../src/components/C_Table/index.vue'
 import type {
@@ -155,6 +155,54 @@ test('measurement work is bounded and custom renderers are not invoked for sizin
   await wrapper.setProps({ loading: true })
   expect(formatter).toHaveBeenCalledTimes(calls)
   expect(columnsOf(wrapper)[0].width).toBeLessThanOrEqual(360)
+})
+
+test('editing a sampled value remeasures only its column and tracks formatter dependencies', async () => {
+  const suffix = ref('')
+  const formatName = vi.fn((value: unknown) => String(value) + suffix.value)
+  const formatCode = vi.fn((value: unknown) => String(value))
+  const data = ref([{ id: 1, name: '短', code: 'A' }])
+  const render = () => '单元格'
+  const wrapper = mount(C_Table<DataRecord>, {
+    props: {
+      config,
+      data,
+      columns: [
+        {
+          key: 'name',
+          title: '名称',
+          formatter: { type: 'enum', fn: formatName },
+          render,
+        },
+        {
+          key: 'code',
+          title: '代码',
+          formatter: { type: 'enum', fn: formatCode },
+          render,
+        },
+      ],
+    },
+  })
+  await flushPromises()
+  formatName.mockClear()
+  formatCode.mockClear()
+  data.value[0].name = '较长的客户名称'.repeat(2)
+  await nextTick()
+  const widthAfterEdit = columnsOf(wrapper)[1].width
+  expect(widthAfterEdit).toBeGreaterThan(100)
+  expect(formatName).toHaveBeenCalledTimes(1)
+  expect(formatCode).not.toHaveBeenCalled()
+
+  suffix.value = '新增可读名称'.repeat(4)
+  await nextTick()
+  expect(columnsOf(wrapper)[1].width).toBeGreaterThan(widthAfterEdit)
+  expect(formatName).toHaveBeenCalledTimes(2)
+  expect(formatCode).not.toHaveBeenCalled()
+
+  data.value = [{ id: 2, name: '短', code: '更长的编码'.repeat(8) }]
+  await nextTick()
+  expect(columnsOf(wrapper)[2].width).toBeGreaterThan(100)
+  expect(formatCode).toHaveBeenCalledTimes(1)
 })
 
 test('resizable columns cannot shrink below their header text and controls', async () => {

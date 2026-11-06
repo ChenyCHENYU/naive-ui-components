@@ -28,8 +28,10 @@ export type TableRowKey<T extends object = DataRecord> =
 export interface TableRowKeyIssue<T extends object = DataRecord> {
   type: 'missing' | 'duplicate' | 'error'
   row: T
+  /** Zero-based source order, using depth-first order for tree rows. */
   index: number
   key?: DataTableRowKey
+  /** Index of the first occurrence in the same source order. */
   firstIndex?: number
   cause?: unknown
 }

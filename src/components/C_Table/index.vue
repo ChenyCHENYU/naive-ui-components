@@ -487,35 +487,36 @@
     ],
   }))
 
+  const rowKeyValidationEnabled = computed(
+    () => effectiveConfig.value.validateRowKeys !== false
+  )
+  const rowKeyValidationChildrenKey = computed(() =>
+    resolved.value.treeEnabled ? resolved.value.treeChildrenKey : undefined
+  )
   let lastRowKeyIssueSignature = ''
   watch(
     () =>
-      effectiveConfig.value.validateRowKeys === false
-        ? []
-        : normalizedData.value.map(row => {
-            try {
-              return resolvedRowKey(row)
-            } catch {
-              return undefined
-            }
-          }),
-    () => {
-      if (effectiveConfig.value.validateRowKeys === false) {
-        lastRowKeyIssueSignature = ''
-        return
-      }
-      const issues = validateTableRowKeys(normalizedData.value, resolvedRowKey)
+      rowKeyValidationEnabled.value
+        ? validateTableRowKeys(
+            normalizedData.value,
+            resolvedRowKey,
+            rowKeyValidationChildrenKey.value
+          )
+        : [],
+    issues => {
       if (issues.length === 0) {
         lastRowKeyIssueSignature = ''
         return
       }
-      const signature = issues
-        .map(issue =>
-          [issue.type, issue.index, issue.firstIndex, String(issue.key)].join(
-            ':'
-          )
-        )
-        .join('|')
+      const signature = JSON.stringify(
+        issues.map(({ type, index, firstIndex, key }) => [
+          type,
+          index,
+          firstIndex,
+          typeof key,
+          String(key),
+        ])
+      )
       if (signature === lastRowKeyIssueSignature) return
       lastRowKeyIssueSignature = signature
       feedback.warning(t('table.invalidRowKeys', { count: issues.length }))
@@ -582,9 +583,15 @@
     )
   })
 
+  const columnFontRevision = ref(0)
+  const refreshColumnFonts = () => {
+    columnFontRevision.value++
+  }
+  let columnFontSet: FontFaceSet | undefined
   const columnState = useTableColumns({
     rawColumns: effectiveColumns,
     data: normalizedData,
+    fontRevision: columnFontRevision,
     getFont: (header = false) => {
       const root = tableWrapperRef.value
       const target = header
@@ -1214,6 +1221,8 @@
     if (crudRef) crudRef.value = publicApi
     if (tableWrapperRef.value) {
       void rowDragState.initRowDrag(tableWrapperRef.value)
+      columnFontSet = tableWrapperRef.value.ownerDocument.fonts
+      columnFontSet?.addEventListener('loadingdone', refreshColumnFonts)
     }
   })
 
@@ -1262,6 +1271,7 @@
   )
 
   onBeforeUnmount(() => {
+    columnFontSet?.removeEventListener('loadingdone', refreshColumnFonts)
     columnState.flushColumnWidths()
     if (modalCloseTimer) clearTimeout(modalCloseTimer)
     destroyColumnDrag()

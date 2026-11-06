@@ -33,7 +33,7 @@
 | Selective loading       | 60 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.30.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.30.1**. See the [changelog](./CHANGELOG.md) for release details.
 
 Search fields, form fields, and actions can be generated from reactive configuration. Compact density applies consistently across search and data entry, including validation, async options, and dialogs. The application owns dictionaries and permissions, supplying ordinary options and column definitions to components.
 
@@ -164,7 +164,7 @@ export default defineConfig({
 
 The resolver uses component subpaths by default. `importStyle` defaults to `false`, so enable automatic CSS explicitly. Both `true` and `'full'` load full component styles. `'base'` excludes built-in rich-text editor styles for `C_Form` / `C_Table`; other components retain full styles. Choose base styles only when not using built-in rich-text fields.
 
-Each component CSS entry includes styles for its composed components. Manual imports can use `C_Form/base.css` and `C_Table/base.css`; full styles also have `full.css` aliases. Load heavy editors, flows, maps and media with their business routes. See [import strategies](./docs/guides/usage.en.md#import-strategies) for details and global registration examples.
+Each component CSS entry loads its composed styles and shared design tokens automatically. Manual imports can use `C_Form/base.css` and `C_Table/base.css`; full styles also have `full.css` aliases. Load heavy editors, flows, maps and media with their business routes. See [import strategies](./docs/guides/usage.en.md#import-strategies) for details and global registration examples.
 
 Minimal consumer builds reduced initial JS gzip by 36.1% for the base form and 34.6% for the display table, including Vue and Naive UI. See the [measurement and automated budgets](./docs/performance-0.15.0.md) (Chinese) for scope and limitations.
 

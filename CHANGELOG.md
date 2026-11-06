@@ -1,5 +1,14 @@
 # @robot-admin/naive-ui-components
 
+## 0.30.1
+
+### Patch Changes
+
+- `C_DataPicker` 保留等价受控值下的选择草稿，确认过的候选名称不会被迟到的旧回显覆盖。
+- `C_Table` 补齐树表子行键诊断，减少宽表自动列宽测量的重复读取。
+- `C_FormSearch` 跨选中值变化复用同一批下拉选项。`C_Form` 在字段配置变更时预处理规则、衍生值与异步选项的联动。
+- 独立样式入口共享全局设计变量，原导入路径和全量样式保持兼容。选择器增加首次打开的 JavaScript 体积门槛。
+
 ## 0.30.0
 
 ### Minor Changes

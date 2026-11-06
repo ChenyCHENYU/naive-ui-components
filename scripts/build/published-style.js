@@ -2,7 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse } from 'postcss'
 
-/** 发布 CSS 的显式共享边界；base 入口保持独立展开，完整入口保留原有依赖能力。 */
+export const SHARED_TOKENS_FILE = 'shared-tokens.css'
+
+/** 完整入口共享组件样式，base 入口仍内联所需组件样式。 */
 export const SHARED_COMPONENT_STYLES = Object.freeze({
   C_Form: { imports: ['C_Editor.css'], external: ['C_Editor'] },
   C_Table: { imports: ['C_Form.css'], external: ['C_Form'] },
@@ -12,12 +14,11 @@ export const SHARED_COMPONENT_STYLES = Object.freeze({
 })
 
 /** 原生相对 @import 由浏览器或消费侧构建器解析，不物理复制同一依赖样式。 */
-export function createComponentStyleEntry(name, globalStyle, resolveStyles) {
+export function createComponentStyleEntry(name, resolveStyles) {
   const shared = SHARED_COMPONENT_STYLES[name]
-  const imports = shared?.imports.map(entry => `@import "./${entry}";`) ?? []
+  const imports = shared?.imports ?? [SHARED_TOKENS_FILE]
   return [
-    ...imports,
-    ...(shared ? [] : [globalStyle]),
+    ...imports.map(entry => `@import "./${entry}";`),
     ...resolveStyles(new Set(shared?.external ?? [])),
   ]
     .filter(Boolean)

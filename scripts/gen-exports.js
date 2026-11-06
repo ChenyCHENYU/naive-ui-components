@@ -6,6 +6,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { SHARED_TOKENS_FILE } from './build/published-style.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -48,7 +49,12 @@ pkg.exports = {
   './C_Table/full.css': './dist/C_Table.css',
 }
 
-pkg.sideEffects = ['dist/style.css', 'dist/C_*.css', 'dist/C_*.base.css']
+pkg.sideEffects = [
+  'dist/style.css',
+  `dist/${SHARED_TOKENS_FILE}`,
+  'dist/C_*.css',
+  'dist/C_*.base.css',
+]
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 console.log(

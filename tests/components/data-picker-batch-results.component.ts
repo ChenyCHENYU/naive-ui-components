@@ -403,6 +403,72 @@ describe('C_DataPicker远程选择会话', () => {
     }
   })
 
+  test.each([false, true])(
+    '确认后的候选名称优先于旧回显（回显在确认后到达：%s）',
+    async late => {
+      const labels = deferred<readonly Row[]>()
+      const candidate = { ...allRows[1]!, name: '最新客户名称' }
+      const wrapper = mount(C_DataPicker<Row>, {
+        props: {
+          source: {
+            ...createSource(),
+            request: async () => ({ rows: [candidate], total: 1 }),
+            resolve: () => labels.promise,
+          },
+          columns,
+          modelValue: [1],
+          multiple: true,
+          presentation: 'inline',
+        },
+      })
+      try {
+        if (!late) labels.resolve([allRows[1]!])
+        await wrapper.get('.c-data-picker__open').trigger('click')
+        await flushPromises()
+        await button(wrapper, '确定').trigger('click')
+        expect(wrapper.emitted('select')).toEqual([[[candidate]]])
+        if (late) labels.resolve([allRows[1]!])
+        await flushPromises()
+        expect(wrapper.get('.c-data-picker__open').text()).toBe(candidate.name)
+        await wrapper.setProps({ modelValue: [] })
+        await wrapper.setProps({ modelValue: [1] })
+        await flushPromises()
+        expect(wrapper.get('.c-data-picker__open').text()).toBe(
+          allRows[1]!.name
+        )
+      } finally {
+        wrapper.unmount()
+      }
+    }
+  )
+
+  test('等价受控值保留选择草稿，实际变化取消草稿', async () => {
+    const source = createSource()
+    const wrapper = mount(C_DataPicker<Row>, {
+      props: { source, columns, modelValue: [0], multiple: true },
+    })
+    try {
+      const trigger = wrapper.get('.c-data-picker__open')
+      await trigger.trigger('click')
+      await flushPromises()
+      const table = wrapper.getComponent(C_Table)
+        .vm as unknown as TableInstance<Row>
+      table.selectRow('r1')
+      await flushPromises()
+      await wrapper.setProps({ modelValue: [0] })
+      expect(wrapper.findAllComponents(NTag).map(tag => tag.text())).toEqual([
+        '客户零',
+        '客户一',
+      ])
+      expect(source.request).toHaveBeenCalledTimes(1)
+      await wrapper.setProps({ modelValue: [2] })
+      expect(wrapper.findComponent(C_Table).exists()).toBe(false)
+      expect(wrapper.emitted('select')).toBeUndefined()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   test('勾选当前页时无需清除再恢复表格选择', async () => {
     const wrapper = mount(C_DataPicker<Row>, {
       props: { source: createSource(), columns, multiple: true },

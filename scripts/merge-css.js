@@ -6,6 +6,7 @@
  *
  * 最终产物:
  *   dist/style.css          — 全量样式（一行导入全部）
+ *   dist/shared-tokens.css  — 按需样式共用的主题变量
  *   dist/C_Table.css         — 组件独立样式（按需导入）
  *   dist/C_Form.css          — ...
  */
@@ -15,7 +16,10 @@ import { fileURLToPath } from 'url'
 import { getRelativeCssAssets, LEAFLET_IMAGE_FILES } from './leaflet-assets.js'
 import { assertComponentStyleBoundary } from './build/style-boundary.js'
 import { readVendorStyles } from './build/vendor-style-boundary.js'
-import { createComponentStyleEntry } from './build/published-style.js'
+import {
+  createComponentStyleEntry,
+  SHARED_TOKENS_FILE,
+} from './build/published-style.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -26,13 +30,14 @@ const componentNames = fs
   .filter(entry => entry.isDirectory() && entry.name.startsWith('C_'))
   .map(entry => entry.name)
   .sort()
-const stableCssEntries = new Set(
-  componentNames.flatMap(componentName => [
+const stableCssEntries = new Set([
+  SHARED_TOKENS_FILE,
+  ...componentNames.flatMap(componentName => [
     `${componentName}.css`,
     `${componentName}.base.css`,
     `${componentName}.full.css`,
-  ])
-)
+  ]),
+])
 
 // 1. 使用构建器记录的源模块归属，chunk 名称变化不会丢失组件样式。
 const styleManifestFile = path.join(distDir, 'component-styles.json')
@@ -166,24 +171,17 @@ const resolveComponentStyles = (
   return parts
 }
 
-// 2. 读取全局 SCSS 编译产物
+// 2. 独立入口共享 tokens。全量入口仍内联，支持单文件加载。
 const globalScssFile = path.join(distDir, 'global-scss.css')
-const globalScss = fs.existsSync(globalScssFile)
-  ? fs.readFileSync(globalScssFile, 'utf-8')
-  : ''
+const globalScss = fs.readFileSync(globalScssFile, 'utf-8')
+fs.writeFileSync(path.join(distDir, SHARED_TOKENS_FILE), globalScss)
 
-// 3. 为所有公共组件生成稳定 CSS 入口；无样式组件生成空入口，保证 resolver 可用。
+// 3. 所有公共组件均保留稳定 CSS 入口，包括没有专属样式的组件。
 for (const componentName of componentNames) {
-  const content = createComponentStyleEntry(
-    componentName,
-    globalScss,
-    visited =>
-      resolveComponentStyles(componentName, fullStyleDependencies, visited)
+  const content = createComponentStyleEntry(componentName, visited =>
+    resolveComponentStyles(componentName, fullStyleDependencies, visited)
   )
-  fs.writeFileSync(
-    path.join(distDir, `${componentName}.css`),
-    content || `/* ${componentName} has no component-specific styles. */\n`
-  )
+  fs.writeFileSync(path.join(distDir, `${componentName}.css`), content)
 }
 
 // Form and Table historically bundle transitive editor styles. Keep that
@@ -191,7 +189,7 @@ for (const componentName of componentNames) {
 // render custom fields/editors and already own those styles.
 for (const componentName of ['C_Form', 'C_Table']) {
   const baseContent = [
-    globalScss,
+    `@import "./${SHARED_TOKENS_FILE}";`,
     ...resolveComponentStyles(componentName, baseStyleDependencies),
   ]
     .filter(Boolean)

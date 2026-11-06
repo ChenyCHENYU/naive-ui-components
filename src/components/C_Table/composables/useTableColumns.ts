@@ -297,6 +297,7 @@ export interface UseTableColumnsOptions {
   /** 只对已加载数据做有界抽样；外部独立使用此 hook 时可省略。 */
   data?: ComputedRef<readonly DataRecord[]>
   getFont?: (header?: boolean) => string
+  fontRevision?: Readonly<Ref<number>>
   /** 默认列宽 */
   columnWidth: number
   /** 区分使用侧显式统一列宽与内部默认值，不把默认值强加给弹性业务列。 */
@@ -478,7 +479,6 @@ export function useTableColumns(
     const col = column as ColumnWithKey
     const colKey = col.key ?? ''
     const value = rowData[colKey]
-    const key = rowKey(rowData)
     const checker = editModeChecker.value
 
     if (checker.isNonEditable(column)) {
@@ -491,6 +491,7 @@ export function useTableColumns(
       )
     }
 
+    const key = rowKey(rowData)
     if (
       checker.isRowEditMode() &&
       tableManager.editStates.rowEdit.isEditingRow(key)
@@ -530,20 +531,18 @@ export function useTableColumns(
   /* ================= 列映射 ================= */
 
   const measure = createColumnMeasurer()
-  const headerWidth = (column: TableColumn) =>
+  const headerWidth = (column: TableColumn, font: string) =>
     Math.ceil(
-      measure(
-        column.title ?? String(column.key ?? ''),
-        options.getFont?.(true) ?? '600 13px sans-serif'
-      ) +
+      measure(column.title ?? String(column.key ?? ''), font) +
         (column.sorter ? 20 : 0) +
         (column.filter ? 28 : 0) +
-        28
+        (column.type === 'index' ? 16 : 28)
     )
-  const contentWidth = (column: TableColumn): number => {
-    const font = options.getFont?.() ?? '13px sans-serif'
-    const display = column
-    let width = headerWidth(column) - 28
+  const measureContentWidth = (column: TableColumn, font: string): number => {
+    const { formatter, status } = column
+    const key = String(column.key)
+    const formatterConfig = formatter ? config.value.formatterConfig : undefined
+    let width = 0
     const rows = options.data?.value ?? []
     const count = Math.min(rows.length, 100)
     for (let i = 0; i < count; i++) {
@@ -551,20 +550,14 @@ export function useTableColumns(
         rows[
           count === 1 ? 0 : Math.floor((i * (rows.length - 1)) / (count - 1))
         ]
-      const value = row[String(column.key)]
-      let label = display.formatter
-        ? applyFormatter(
-            value,
-            row,
-            display.formatter,
-            config.value.formatterConfig
-          )
+      const value = row[key]
+      let label = formatter
+        ? applyFormatter(value, row, formatter, formatterConfig)
         : String(value ?? '')
-      if (column.status)
-        label = resolveColumnStatus(value, label, column.status).label
+      if (status) label = resolveColumnStatus(value, label, status).label
       width = Math.max(
         width,
-        measure(label.slice(0, 128), font) + (column.status ? 16 : 0)
+        measure(label.slice(0, 128), font) + (status ? 16 : 0)
       )
     }
     const min = column.minWidth ?? 80
@@ -574,29 +567,48 @@ export function useTableColumns(
     )
   }
 
-  const getColWidth = (col: TableColumn): number | string => {
-    if (col.type === 'selection' || col.type === 'expand')
-      return col.width ?? 40
-    const width =
-      col.width ??
-      (col.type === 'index'
-        ? 50
-        : options.columnWidthExplicit || col.autoWidth === false
-          ? (options.columnWidth ?? 180)
-          : contentWidth(col))
-    // 表头完整展示优先，声明宽度和内容上限不能压缩标题。
-    return typeof width === 'number' ? Math.max(width, headerWidth(col)) : width
+  const contentWidths = new WeakMap<
+    TableColumn,
+    { font: string; revision: number | undefined; width: ComputedRef<number> }
+  >()
+  const contentWidth = (
+    column: TableColumn,
+    font: string,
+    revision: number | undefined
+  ): number => {
+    let cached = contentWidths.get(column)
+    if (cached?.font !== font || cached.revision !== revision) {
+      // 让 Vue 跟踪每列实际读到的采样值和格式化依赖，换列定义或字体时重新测量。
+      cached = {
+        font,
+        revision,
+        width: computed(() => measureContentWidth(column, font)),
+      }
+      contentWidths.set(column, cached)
+    }
+    return cached.width.value
   }
 
+  // 表头完整展示优先，声明宽度和内容上限不能压缩标题。
+  const widthWithHeader = (width: number | string, floor: number) =>
+    typeof width === 'number' ? Math.max(width, floor) : width
+
   /** 序号列 */
-  const mapIndexColumn = (column: TableColumn): DataTableColumn => {
+  const mapIndexColumn = (
+    column: TableColumn,
+    getHeaderFloor: (column: TableColumn) => number
+  ): DataTableColumn => {
     const col = column as ColumnWithKey
+    const title = col.title ?? options.rowNumberTitle?.() ?? '序号'
     return {
       ...col,
       type: undefined,
       key: '_index',
-      title: col.title ?? options.rowNumberTitle?.() ?? '序号',
-      width: getColWidth(column),
+      title,
+      width: widthWithHeader(
+        col.width ?? 50,
+        getHeaderFloor({ ...col, title })
+      ),
       className: [col.className, 'c-table-index-column']
         .filter(Boolean)
         .join(' '),
@@ -609,29 +621,28 @@ export function useTableColumns(
   }
 
   /** 普通数据列 */
-  const mapRegularColumn = (column: TableColumn): DataTableColumn => {
+  const mapRegularColumn = (
+    column: TableColumn,
+    floor: number,
+    getContentWidth: (column: TableColumn) => number
+  ): DataTableColumn => {
     const col = column as ColumnWithKey
-    const effectiveColumn = column
-    const automatic =
-      col.width === undefined &&
-      !options.columnWidthExplicit &&
-      col.autoWidth !== false
+    const autoWidth = !options.columnWidthExplicit && col.autoWidth !== false
+    const automatic = col.width === undefined && autoWidth
+    const width =
+      col.width ??
+      (autoWidth ? getContentWidth(column) : (options.columnWidth ?? 180))
     const base: Record<string, unknown> = {
       ...col,
-      width: getColWidth(column),
-      minWidth: Math.max(
-        col.minWidth ?? (automatic ? 80 : 0),
-        headerWidth(col)
-      ),
+      width: widthWithHeader(width, floor),
+      minWidth: Math.max(col.minWidth ?? (automatic ? 80 : 0), floor),
       maxWidth:
-        col.maxWidth == null
-          ? undefined
-          : Math.max(col.maxWidth, headerWidth(col)),
+        col.maxWidth == null ? undefined : Math.max(col.maxWidth, floor),
       ellipsis: col.ellipsis ?? (automatic ? { tooltip: true } : undefined),
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
       render: (rowData: DataRecord, rowIndex: number) =>
-        renderCell(effectiveColumn, rowData, rowIndex),
+        renderCell(column, rowData, rowIndex),
     }
 
     if (column.fixed) base.fixed = column.fixed
@@ -646,7 +657,28 @@ export function useTableColumns(
 
   /* ================= 计算列 ================= */
 
-  const computedColumns = computed((): DataTableColumn[] => {
+  const columnLayout = computed(() => {
+    let headerFont: string | undefined
+    let bodyFont: string | undefined
+    let hasHeaderFloor = false
+    // Web 字体加载完后，CSS 字体声明可能不变，实际字宽会变化。
+    const fontRevision = options.fontRevision?.value
+    const getHeaderFloor = (column: TableColumn) => {
+      headerFont ??= options.getFont?.(true) ?? '600 13px sans-serif'
+      const floor = headerWidth(column, headerFont)
+      if (
+        !column.type &&
+        typeof column.width === 'number' &&
+        floor > column.width
+      )
+        hasHeaderFloor = true
+      return floor
+    }
+    const getContentWidth = (column: TableColumn) => {
+      bodyFont ??= options.getFont?.() ?? '13px sans-serif'
+      return contentWidth(column, bodyFont, fontRevision)
+    }
+
     let cols: DataTableColumn[] = reactiveColumns.value
       .filter(c => {
         const col = c as ColumnWithKey
@@ -654,12 +686,12 @@ export function useTableColumns(
       })
       .map(c => {
         const col = c as ColumnWithKey
-        if (c.type === 'index') return mapIndexColumn(c)
+        if (c.type === 'index') return mapIndexColumn(c, getHeaderFloor)
         // 原生辅助列保持自己的渲染和宽度，不套用业务数据列的 180px。
         if (c.type === 'selection' || c.type === 'expand') {
-          return { ...col, width: getColWidth(c) } as DataTableColumn
+          return { ...col, width: col.width ?? 40 } as DataTableColumn
         }
-        return mapRegularColumn(c)
+        return mapRegularColumn(c, getHeaderFloor(c), getContentWidth)
       }) as DataTableColumn[]
 
     if (
@@ -673,7 +705,7 @@ export function useTableColumns(
       cols.splice(
         index < 0 ? cols.length : index,
         0,
-        mapIndexColumn({ type: 'index' })
+        mapIndexColumn({ type: 'index' }, getHeaderFloor)
       )
     }
 
@@ -696,25 +728,25 @@ export function useTableColumns(
       const actionsMeta = reactiveColumns.value.find(
         c => (c as ColumnWithKey).key === '_actions'
       )
+      const title = actionsMeta?.title ?? '操作'
+      const width = actionsMeta?.width ?? 180
+      const floor = getHeaderFloor({
+        ...actionsMeta,
+        key: '_actions',
+        title,
+        width,
+      })
       cols.push({
         ...actionsMeta,
         type: undefined,
         key: '_actions',
-        title: (actionsMeta as ColumnWithKey)?.title ?? '操作',
-        width: getColWidth({
-          ...actionsMeta,
-          key: '_actions',
-          title: actionsMeta?.title ?? '操作',
-          width: actionsMeta?.width ?? 180,
-        }),
-        minWidth: Math.max(
-          actionsMeta?.minWidth ?? 0,
-          headerWidth(actionsMeta ?? { key: '_actions', title: '操作' })
-        ),
+        title,
+        width: widthWithHeader(width, floor),
+        minWidth: Math.max(actionsMeta?.minWidth ?? 0, floor),
         maxWidth:
           actionsMeta?.maxWidth == null
             ? undefined
-            : Math.max(actionsMeta.maxWidth, headerWidth(actionsMeta)),
+            : Math.max(actionsMeta.maxWidth, floor),
         className: [actionsMeta?.className, 'c-table-actions-column']
           .filter(Boolean)
           .join(' '),
@@ -725,15 +757,17 @@ export function useTableColumns(
       })
     }
 
-    return cols
+    return { columns: cols, hasHeaderFloor }
   })
+  const computedColumns = computed(() => columnLayout.value.columns)
 
   /* ================= 横向滚动 ================= */
 
   const computedScrollX = computed(() => {
     if (options.scrollX !== undefined) return options.scrollX
 
-    const hasFixed = computedColumns.value.some(col => col.fixed)
+    const { columns, hasHeaderFloor } = columnLayout.value
+    const hasFixed = columns.some(col => col.fixed)
     const hasAutomatic = reactiveColumns.value.some(
       col =>
         !col.type &&
@@ -741,16 +775,10 @@ export function useTableColumns(
         !options.columnWidthExplicit &&
         col.autoWidth !== false
     )
-    const hasHeaderFloor = reactiveColumns.value.some(
-      col =>
-        !col.type &&
-        typeof col.width === 'number' &&
-        headerWidth(col) > col.width
-    )
     if (!hasFixed && !hasAutomatic && !hasHeaderFloor) return undefined
 
     // 使用最终可见列：包含实际选择/展开/序号/操作列，不再额外猜测 200px。
-    return computedColumns.value.reduce((sum, col) => {
+    return columns.reduce((sum, col) => {
       const { width } = col
       const pixels =
         typeof width === 'number'

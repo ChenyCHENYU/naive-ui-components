@@ -15,6 +15,7 @@ interface OptionInput {
 type NativeValue = string | number
 type OptionValue = NativeValue | boolean
 const rawOptionValue = Symbol('c-option-value')
+const booleanTokenPrefix = '__c_option_boolean_'
 
 /** 无布尔值的普通选项无需创建编码映射。 */
 export function needsOptionValueBinding(
@@ -28,25 +29,9 @@ export function needsOptionValueBinding(
   )
 }
 
-/** 原生选项控件不接受 boolean；仅编码 boolean，数字与字符串保持原样。 */
-export function createOptionValueBinding(
-  list: readonly OptionInput[] | undefined,
-  modelValue: unknown
-) {
-  const values = list?.map(
-    option => option.value ?? option.label ?? option.labelDefault
-  )
-  const modelValues = Array.isArray(modelValue) ? modelValue : [modelValue]
-  const occupied = new Set([...(values ?? []), ...modelValues])
-  const booleans = new Map<boolean, string>()
-  for (const value of [false, true]) {
-    let token = `__c_option_boolean_${value}__`
-    while (occupied.has(token)) token += '_'
-    booleans.set(value, token)
-    occupied.add(token)
-  }
+function createOptionValueCodec(falseToken: string, trueToken: string) {
   const encode = (value: unknown): NativeValue | null => {
-    if (typeof value === 'boolean') return booleans.get(value)!
+    if (typeof value === 'boolean') return value ? trueToken : falseToken
     return typeof value === 'string' || typeof value === 'number' ? value : null
   }
   const decode = (value: NativeValue, option?: unknown): OptionValue => {
@@ -62,27 +47,16 @@ export function createOptionValueBinding(
       }
       return value
     }
-    if (value === booleans.get(false)) return false
-    if (value === booleans.get(true)) return true
+    if (value === falseToken) return false
+    if (value === trueToken) return true
     return value
   }
   return {
-    options: list?.map((option, index) => ({
-      ...option,
-      label: option.label ?? option.labelDefault ?? '',
-      value: encode(values![index]) ?? undefined,
-      [rawOptionValue]: values![index],
-    })),
-    value: Array.isArray(modelValue)
-      ? modelValue
-          .map(encode)
-          .filter((value): value is NativeValue => value !== null)
-      : encode(modelValue),
-    fallbackOption: (value: NativeValue) => ({
-      value,
-      label: String(decode(value)),
-      [rawOptionValue]: decode(value),
-    }),
+    encode,
+    fallbackOption: (value: NativeValue) => {
+      const original = decode(value)
+      return { value, label: String(original), [rawOptionValue]: original }
+    },
     decode: (value: NativeValue | NativeValue[] | null, selected?: unknown) =>
       Array.isArray(value)
         ? value.map((entry, index) =>
@@ -92,4 +66,82 @@ export function createOptionValueBinding(
           ? null
           : decode(value, selected),
   }
+}
+
+/** 把选项与选中值分开绑定，选中值变化时复用原生选项。 */
+export function createOptionValueBinder(
+  list: readonly OptionInput[] | undefined
+) {
+  const occupied = new Set<string>()
+  let hasBooleanOptions = false
+  const options = list?.map(option => {
+    const value = option.value ?? option.label ?? option.labelDefault
+    if (typeof value === 'string' && value.startsWith(booleanTokenPrefix))
+      occupied.add(value)
+    if (typeof value === 'boolean') hasBooleanOptions = true
+    return {
+      ...option,
+      label: option.label ?? option.labelDefault ?? '',
+      value:
+        typeof value === 'string' || typeof value === 'number'
+          ? value
+          : undefined,
+      [rawOptionValue]: value,
+    }
+  })
+  const tokenFor = (value: boolean, selected?: ReadonlySet<unknown>) => {
+    let token = `${booleanTokenPrefix}${value}__`
+    while (occupied.has(token) || selected?.has(token)) token += '_'
+    return token
+  }
+  const defaultFalseToken = tokenFor(false)
+  const defaultTrueToken = tokenFor(true)
+
+  const bindTokens = (falseToken: string, trueToken: string) => {
+    const codec = createOptionValueCodec(falseToken, trueToken)
+    const nativeOptions = hasBooleanOptions
+      ? options?.map(option => {
+          const original = option[rawOptionValue]
+          return typeof original === 'boolean'
+            ? { ...option, value: original ? trueToken : falseToken }
+            : option
+        })
+      : options
+    return { falseToken, trueToken, codec, nativeOptions }
+  }
+  let binding: ReturnType<typeof bindTokens> | undefined
+
+  return (modelValue: unknown) => {
+    const selected = new Set(
+      Array.isArray(modelValue) ? modelValue : [modelValue]
+    )
+    const falseToken = selected.has(defaultFalseToken)
+      ? tokenFor(false, selected)
+      : defaultFalseToken
+    const trueToken = selected.has(defaultTrueToken)
+      ? tokenFor(true, selected)
+      : defaultTrueToken
+    // 自由输入或外部模型碰巧使用内部编码时，重新给布尔值选一个编码。
+    if (binding?.falseToken !== falseToken || binding.trueToken !== trueToken)
+      binding = bindTokens(falseToken, trueToken)
+    const { encode, decode, fallbackOption } = binding.codec
+    return {
+      options: binding.nativeOptions,
+      value: Array.isArray(modelValue)
+        ? modelValue
+            .map(encode)
+            .filter((value): value is NativeValue => value !== null)
+        : encode(modelValue),
+      fallbackOption,
+      decode,
+    }
+  }
+}
+
+/** 原生选项控件不接受 boolean；仅编码 boolean，数字与字符串保持原样。 */
+export function createOptionValueBinding(
+  list: readonly OptionInput[] | undefined,
+  modelValue: unknown
+) {
+  return createOptionValueBinder(list)(modelValue)
 }

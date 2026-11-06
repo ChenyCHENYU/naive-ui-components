@@ -8,8 +8,12 @@
 import { describe, expect, test } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { NDataTable } from 'naive-ui'
+import { nextTick, ref } from 'vue'
 import C_Table from '../../src/components/C_Table/index.vue'
-import type { TableInstance } from '../../src/components/C_Table/types'
+import type {
+  DataRecord,
+  TableInstance,
+} from '../../src/components/C_Table/types'
 
 const props = {
   data: [
@@ -94,5 +98,39 @@ describe('表格公开契约', () => {
     expect(wrapper.text()).toContain('加载失败')
     expect(wrapper.classes()).toContain('fixed-table')
     expect(wrapper.findComponent(NDataTable).exists()).toBe(false)
+  })
+
+  test('树形校验包含跨分支重复键，并响应子节点数据更新', async () => {
+    const data = ref([
+      { id: 1, steps: [{ id: 2, name: '一号炉次' }] },
+      { id: 3, steps: [{ id: 2, name: '二号炉次' }] },
+    ])
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        ...props,
+        data,
+        config: { ...props.config, tree: { childrenKey: 'steps' } },
+      },
+    })
+    expect(wrapper.emitted('row-key-error')).toEqual([
+      [
+        [
+          {
+            type: 'duplicate',
+            key: 2,
+            index: 3,
+            firstIndex: 1,
+            row: data.value[1].steps[0],
+          },
+        ],
+      ],
+    ])
+
+    data.value[1].steps[0].id = 4
+    await nextTick()
+    expect(wrapper.emitted('row-key-error')).toHaveLength(1)
+    data.value[1].steps[0].id = 2
+    await nextTick()
+    expect(wrapper.emitted('row-key-error')).toHaveLength(2)
   })
 })

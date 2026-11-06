@@ -70,6 +70,7 @@ export async function checkSharedStyleConsumer(directory = packageRoot) {
       '.c-form-actions[',
       '.w-e-text-container',
       '.leaflet-container',
+      '--c-primary:',
     ]) {
       assert(
         css.includes(selector),

@@ -54,6 +54,7 @@ const cases = [
       "{ columns: [{ key: 'id', title: 'ID' }], source: { rowKey: 'id', label: row => String(row.id), request: async () => ({ rows: [], total: 0 }) } }",
     budget: 165 * 1024,
     cssBudget: 15 * 1024,
+    firstOpen: { module: /\/C_Table\d+\.js$/, budget: 105 * 1024 },
   },
   {
     name: 'C_FormModal',
@@ -66,12 +67,45 @@ const cases = [
   },
 ]
 
-// Inspect actual emitted static imports. Dynamic chunks are deliberately excluded
-// from the initial graph, but still built so invalid lazy imports fail this check.
+// Measure initial transfer and, where specified, the first deferred interaction.
 const forbiddenInitial =
   /(?:node_modules\/(?:@wangeditor[^/]*|@wangeditor-next|xlsx|html2canvas|print-js|mammoth)\/|\/(?:C_Editor\d*\.(?:js|vue)|xlsx\d*\.(?:js|cjs))$)/
 const deferredNaiveFields =
   /\/naive-ui\/(?:es|lib)\/(?:date-picker|time-picker|slider|rate|cascader|color-picker|upload)\//
+
+function visitStaticImports(byName, seen, filename) {
+  const chunk = byName.get(filename)
+  if (!chunk || seen.has(filename)) return
+  seen.add(filename)
+  chunk.imports.forEach(name => visitStaticImports(byName, seen, name))
+}
+
+function measureFirstOpen(byName, initial, { module }) {
+  const hasModule = name =>
+    Object.keys(byName.get(name).modules).some(id =>
+      module.test(id.replaceAll('\\', '/'))
+    )
+  if ([...initial].some(hasModule)) return null
+
+  const firstOpen = new Set()
+  for (const name of initial) {
+    for (const imported of byName.get(name).dynamicImports) {
+      const reachable = new Set(initial)
+      visitStaticImports(byName, reachable, imported)
+      const extra = [...reachable].filter(name => !initial.has(name))
+      if (extra.some(hasModule)) extra.forEach(name => firstOpen.add(name))
+    }
+  }
+  if (!firstOpen.size) return null
+  return {
+    chunks: firstOpen.size,
+    bytes: [...firstOpen].reduce(
+      (sum, name) => sum + gzipSync(byName.get(name).code).length,
+      0
+    ),
+  }
+}
+
 const failures = []
 for (const scenario of cases) {
   const entry = `virtual:consumer-size-${scenario.component}`
@@ -106,13 +140,9 @@ for (const scenario of cases) {
   const chunks = outputs.filter(output => output.type === 'chunk')
   const byName = new Map(chunks.map(chunk => [chunk.fileName, chunk]))
   const initial = new Set()
-  const visit = filename => {
-    const chunk = byName.get(filename)
-    if (!chunk || initial.has(filename)) return
-    initial.add(filename)
-    chunk.imports.forEach(visit)
-  }
-  chunks.filter(chunk => chunk.isEntry).forEach(chunk => visit(chunk.fileName))
+  chunks
+    .filter(chunk => chunk.isEntry)
+    .forEach(chunk => visitStaticImports(byName, initial, chunk.fileName))
   const initialChunks = chunks.filter(chunk => initial.has(chunk.fileName))
   const gzipBytes = initialChunks.reduce(
     (sum, chunk) => sum + gzipSync(chunk.code).length,
@@ -128,6 +158,20 @@ for (const scenario of cases) {
     )
   if (gzipBytes > scenario.budget) {
     failures.push(`${scenario.name}: initial JS exceeds budget`)
+  }
+  if (scenario.firstOpen) {
+    const measured = measureFirstOpen(byName, initial, scenario.firstOpen)
+    if (!measured) {
+      failures.push(
+        `${scenario.name}: deferred table missing or bundled eagerly`
+      )
+    } else {
+      if (measured.bytes > scenario.firstOpen.budget)
+        failures.push(`${scenario.name}: first-open JS exceeds budget`)
+      console.log(
+        `${scenario.name}: first-open JS gzip ${(measured.bytes / 1024).toFixed(1)} KiB / ${scenario.firstOpen.budget / 1024} KiB; ${measured.chunks} chunks`
+      )
+    }
   }
   if (scenario.cssBudget) {
     const cssBytes = outputs

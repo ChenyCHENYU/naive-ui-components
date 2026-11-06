@@ -330,7 +330,7 @@
   import { useSearchState } from './composables/useSearchState'
   import { normalizeSearchFieldValue, isSearchFieldLocked } from './fieldValue'
   import { resolveSearchDateInput } from './dateRange'
-  import { createSearchSelectBinding } from './select'
+  import { createOptionValueBinder } from '../../core/options'
   import { useSearchLayout } from './composables/useSearchLayout'
   import SearchCustomField, {
     type SearchControlContext,
@@ -440,7 +440,7 @@
     return undefined
   }
 
-  type SelectBinding = ReturnType<typeof createSearchSelectBinding>
+  type SelectBinding = ReturnType<ReturnType<typeof createOptionValueBinder>>
   const selectBindings = new WeakMap<
     SearchFormItem<T>,
     ComputedRef<SelectBinding>
@@ -448,10 +448,12 @@
   const selectBinding = (item: SearchFormItem<T>): SelectBinding => {
     let binding = selectBindings.get(item)
     if (!binding) {
-      // 字段各自订阅选项和当前值，更新一个条件不重建其他下拉的选项。
+      // 分别订阅选项来源和当前值，选中项变化时复用同一份原生选项。
+      const bindOptions = computed(() =>
+        createOptionValueBinder(fieldOptions(item))
+      )
       binding = computed(() =>
-        createSearchSelectBinding(
-          fieldOptions(item),
+        bindOptions.value(
           (formParams.value as Record<string, unknown>)[item.prop]
         )
       )

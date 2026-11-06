@@ -103,6 +103,26 @@ export function useFormState(
   const optionsByField = computed(
     () => new Map(options.value.map(item => [item.prop, item]))
   )
+  // 只在 schema 变化时分组。动态规则和衍生值仍读取当前完整模型。
+  const fieldEffects = computed(() => {
+    const derived: FormOption[] = []
+    const rules: FormOption[] = []
+    const dependent: Array<{ item: FormOption; paths: string[] }> = []
+    for (const item of options.value) {
+      if (item.valueWhen) derived.push(item)
+      if (item.rulesWhen || item.crossFieldValidator) rules.push(item)
+      if (item.asyncOptions && item.dependsOn) {
+        const dependencies = Array.isArray(item.dependsOn)
+          ? item.dependsOn
+          : [item.dependsOn]
+        dependent.push({
+          item,
+          paths: dependencies.map(field => parseDataPath(field).join('.')),
+        })
+      }
+    }
+    return { derived, rules, dependent }
+  })
   const asyncOptionsCache = ref<Record<string, OptionItem[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncErrorMap = ref<Record<string, unknown>>({})
@@ -238,9 +258,7 @@ export function useFormState(
   }
 
   function refreshDynamicRules(): void {
-    options.value.forEach(item => {
-      if (item.rulesWhen || item.crossFieldValidator) syncRulesForField(item)
-    })
+    fieldEffects.value.rules.forEach(syncRulesForField)
   }
 
   function cleanupRemovedFields(nextProps: Set<string>): void {
@@ -422,7 +440,7 @@ export function useFormState(
   }
 
   function applyValueWhen(): string[] {
-    const derivedItems = options.value.filter(item => item.valueWhen)
+    const derivedItems = fieldEffects.value.derived
     const changedFields = new Set<string>()
     if (derivedItems.length === 0) return []
 
@@ -453,23 +471,23 @@ export function useFormState(
     return [...changedFields]
   }
 
-  function dependentAsyncItems(fields: readonly string[]): FormOption[] {
+  function reloadDependentOptions(fields: readonly string[]): void {
+    const { dependent } = fieldEffects.value
+    if (!fields.length || !dependent.length) return
     const changedFields = fields.map(field => parseDataPath(field).join('.'))
-    return options.value.filter(item => {
-      if (!item.asyncOptions || !item.dependsOn) return false
-      const dependencies = Array.isArray(item.dependsOn)
-        ? item.dependsOn
-        : [item.dependsOn]
-      return dependencies.some(field => {
-        const dependency = parseDataPath(field).join('.')
-        return changedFields.some(
-          changed =>
-            changed === dependency ||
-            changed.startsWith(`${dependency}.`) ||
-            dependency.startsWith(`${changed}.`)
+    for (const { item, paths } of dependent) {
+      if (
+        paths.some(dependency =>
+          changedFields.some(
+            changed =>
+              changed === dependency ||
+              changed.startsWith(`${dependency}.`) ||
+              dependency.startsWith(`${changed}.`)
+          )
         )
-      })
-    })
+      )
+        scheduleAsyncOptions(item, 'dependency')
+    }
   }
 
   function handleFieldsChanged(
@@ -478,9 +496,7 @@ export function useFormState(
   ): void {
     const changedFields = [...new Set([...fields, ...applyValueWhen()])]
     refreshDynamicRules()
-    dependentAsyncItems(changedFields).forEach(item => {
-      scheduleAsyncOptions(item, 'dependency')
-    })
+    reloadDependentOptions(changedFields)
 
     if (shouldValidate && config.value.validateOnChange) {
       void nextTick(() => {
