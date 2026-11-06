@@ -92,7 +92,7 @@ export function useSearchState<T extends object = SearchFormParams>(
     () => availableFields.value.length > foldThreshold.value
   )
 
-  const hiddenActiveCount = computed(() => {
+  const hiddenActiveFields = computed(() => {
     const visible = new Set(visibleFields.value.map(field => field.prop))
     return fields.value.filter(
       field =>
@@ -101,8 +101,9 @@ export function useSearchState<T extends object = SearchFormParams>(
         !isSearchValueEmpty(
           (formParams.value as Record<string, unknown>)[field.prop]
         )
-    ).length
+    )
   })
+  const hiddenActiveCount = computed(() => hiddenActiveFields.value.length)
 
   const initialize = () => {
     const values = formParams.value as Record<string, unknown>
@@ -340,6 +341,7 @@ export function useSearchState<T extends object = SearchFormParams>(
     formParams,
     appliedParams,
     hasUnappliedChanges,
+    hiddenActiveFields,
     hiddenActiveCount,
     expanded,
     searching,

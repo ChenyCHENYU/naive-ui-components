@@ -227,8 +227,63 @@
           <NSpace
             class="form-search-action-buttons"
             justify="end"
+            align="center"
             :size="density ? densityTokens.gap : 8"
           >
+            <NPopover
+              v-if="hiddenActiveCount"
+              v-model:show="hiddenConditionsOpen"
+              trigger="click"
+              placement="bottom-end"
+              :show-arrow="false"
+            >
+              <template #trigger>
+                <NButton
+                  class="form-search-hidden-trigger"
+                  tertiary
+                  :size="resolvedSize"
+                  :aria-label="`查看隐藏条件（${hiddenActiveCount} 项）`"
+                  :aria-expanded="hiddenConditionsOpen"
+                  :aria-controls="
+                    hiddenConditionsOpen ? hiddenConditionsId : undefined
+                  "
+                  @keydown.esc="closeHiddenConditions"
+                >
+                  <template #icon>
+                    <span
+                      class="i-mdi:filter-variant w-4 h-4"
+                      aria-hidden="true"
+                    />
+                  </template>
+                  隐藏 {{ hiddenActiveCount }} 项
+                </NButton>
+              </template>
+              <div
+                :id="hiddenConditionsId"
+                class="form-search-hidden-panel"
+                role="region"
+                aria-label="隐藏条件"
+              >
+                <strong>隐藏条件</strong>
+                <p>隐藏只影响显示，已填写的值会保留。</p>
+                <ul>
+                  <li
+                    v-for="field in hiddenActiveFields"
+                    :key="field.prop"
+                  >
+                    <span>{{ field.label || '未命名条件' }}</span>
+                    <small>{{
+                      field.fixed
+                        ? '固定'
+                        : field.show === false
+                          ? '隐藏'
+                          : '已折叠'
+                    }}</small>
+                  </li>
+                </ul>
+              </div>
+            </NPopover>
+
             <NTooltip trigger="hover">
               <template #trigger>
                 <NButton
@@ -295,11 +350,10 @@
             />
           </NSpace>
           <span
-            v-if="hiddenActiveCount"
             class="form-search-hidden-count"
             role="status"
           >
-            {{ hiddenActiveCount }} 项隐藏条件生效
+            {{ hiddenActiveCount ? `${hiddenActiveCount} 项隐藏条件生效` : '' }}
           </span>
         </NFormItem>
       </div>
@@ -312,6 +366,8 @@
     computed,
     defineAsyncComponent,
     mergeProps,
+    ref,
+    useId,
     watch,
     readonly,
     type ComputedRef,
@@ -331,6 +387,7 @@
     NSelect,
     NSpace,
     NButton,
+    NPopover,
     NTooltip,
     NIcon,
   } from 'naive-ui'
@@ -396,6 +453,7 @@
     formParams,
     appliedParams,
     hasUnappliedChanges,
+    hiddenActiveFields,
     hiddenActiveCount,
     expanded,
     searching,
@@ -421,6 +479,16 @@
       maxItems: props.config?.historyMaxItems,
     }),
   })
+  const hiddenConditionsId = `form-search-hidden-${useId()}`
+  const hiddenConditionsOpen = ref(false)
+  watch(hiddenActiveCount, count => {
+    if (!count) hiddenConditionsOpen.value = false
+  })
+  const closeHiddenConditions = (event: KeyboardEvent) => {
+    if (!hiddenConditionsOpen.value) return
+    event.stopPropagation()
+    hiddenConditionsOpen.value = false
+  }
 
   const gridLayout = computed(() => props.config?.layout === 'grid')
   // Existing custom fields can already claim their own slot by prop or name.

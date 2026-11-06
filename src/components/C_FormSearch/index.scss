@@ -39,14 +39,12 @@
 }
 
 .form-search .form-search-hidden-count {
-  color: var(--n-label-text-color, var(--n-text-color));
-  font-size: 12px;
-  line-height: 1.35;
-  // Feedback can wrap beneath the controls without widening their action rail.
-  width: 0;
-  min-width: 100%;
-  text-align: end;
-  overflow-wrap: anywhere;
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .form-search-actions {
@@ -54,12 +52,6 @@
   width: max-content;
   max-width: 100%;
   margin-inline-start: auto;
-
-  :deep(.n-form-item-blank) {
-    flex-direction: column;
-    align-items: end;
-    gap: 2px;
-  }
 }
 
 .form-search-action-buttons {
@@ -69,18 +61,50 @@
     flex: none;
     width: var(--n-height);
     padding: 0;
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
 
     :deep(.n-button__icon) {
       margin: 0;
     }
+  }
+
+  .form-search-hidden-trigger {
+    padding-inline: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
+.form-search-hidden-panel {
+  min-inline-size: min(10rem, calc(100vw - 2rem));
+  max-inline-size: min(16rem, calc(100vw - 2rem));
+  font-size: 13px;
+
+  p {
+    margin-block: 4px 8px;
+    font-size: 12px;
+  }
+
+  ul {
+    max-block-size: min(16rem, 55vh);
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding-block: 4px;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    flex: none;
+    font-size: 11px;
+    opacity: 0.75;
   }
 }
 

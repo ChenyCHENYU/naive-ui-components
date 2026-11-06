@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.31.1
+
+### Patch Changes
+
+- `C_FormSearch` 将隐藏条件计数和搜索按钮放在同一操作行。计数可查看生效条件名称，窄屏随操作区换行，不再把提示文字挤成多行。
+
 ## 0.31.0
 
 ### Minor Changes

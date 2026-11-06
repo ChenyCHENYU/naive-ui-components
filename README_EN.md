@@ -33,7 +33,7 @@
 | Selective loading       | 61 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.31.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.31.1**. See the [changelog](./CHANGELOG.md) for release details.
 
 Use `C_Select` for standalone selections and freeform tags. Multiple selections in forms and search share the compact tag summary. Date and time fields can bind directly to formatted API strings. See the [composition examples](./docs/guides/data-workflows.md#多选标签和日期时间) (Chinese).
 

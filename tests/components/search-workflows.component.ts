@@ -537,19 +537,40 @@ test('controlled options preserve boolean codes and refresh without replacing th
 
 test('folded and hidden active conditions remain counted, including zero and false', async () => {
   const wrapper = mount(Search, {
+    global: { stubs: { teleport: true } },
     props: {
       modelValue: { keyword: '', zero: 0, enabled: false, hidden: 'scope' },
       formItemList: [
         { type: 'input', prop: 'keyword' },
-        { type: 'number', prop: 'zero' },
-        { type: 'select', prop: 'enabled' },
-        { type: 'input', prop: 'hidden', show: false, fixed: true },
+        { type: 'number', prop: 'zero', label: '库存' },
+        { type: 'select', prop: 'enabled', label: '启用状态' },
+        {
+          type: 'input',
+          prop: 'hidden',
+          label: '业务范围',
+          show: false,
+          fixed: true,
+        },
       ],
       config: { foldThreshold: 1 },
     },
   })
   expect(wrapper.vm.hiddenActiveCount).toBe(3)
   expect(wrapper.get('[role="status"]').text()).toContain('3 项隐藏条件生效')
+  const trigger = wrapper.get('button[aria-label="查看隐藏条件（3 项）"]')
+  expect(trigger.attributes('type')).toBe('button')
+  await trigger.trigger('click')
+  expect(trigger.attributes('aria-expanded')).toBe('true')
+  const panel = wrapper.get('[role="region"][aria-label="隐藏条件"]')
+  expect(panel.attributes('id')).toBe(trigger.attributes('aria-controls'))
+  expect(panel.findAll('li').map(row => row.text())).toEqual([
+    '库存已折叠',
+    '启用状态已折叠',
+    '业务范围固定',
+  ])
+  expect(panel.text()).not.toContain('scope')
+  await trigger.trigger('keydown', { key: 'Escape' })
+  expect(trigger.attributes('aria-expanded')).toBe('false')
   wrapper.vm.changeFoldState()
   await nextTick()
   expect(wrapper.vm.hiddenActiveCount).toBe(1)
@@ -624,8 +645,10 @@ test('grid layout responds to the panel container and clamps spans without remou
   const { uid } = wrapper.getComponent(NInput).vm.$
   await resize(900)
   expect(fields.attributes('style')).toContain('repeat(4, minmax(0, 1fr))')
-  await actions.get('[aria-expanded="false"]').trigger('click')
-  expect(actions.find('[aria-expanded="true"]').exists()).toBe(true)
+  await actions.get('[aria-label="展开搜索条件"]').trigger('click')
+  expect(
+    actions.get('[aria-label="收起搜索条件"]').attributes('aria-expanded')
+  ).toBe('true')
   expect(fields.element.nextElementSibling).toBe(actions.element)
   expect(
     wrapper.findAll('.form-search-item-box')[1].attributes('style')
