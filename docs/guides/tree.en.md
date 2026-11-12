@@ -2,6 +2,56 @@
 
 `checkable`, `multiple`, `cascade`, `checkStrategy`, `selectable`, `disabled`, `virtualScroll`, `accordion` and `expandOnClick` are optional direct props. Omitted values retain `treeProps` and existing defaults; explicit false wins. All remaining native features stay in `treeProps`. A virtual tree needs a definite height. Change the native `themeOverrides.nodeHeight`, rather than adding row margins that disagree with virtual measurements.
 
+## Stateful node presentation and organization trees
+
+The existing `prefix/label/suffix` slots and native renderers receive `{ option, selected, checked, expanded, isLeaf, loading }`, with the business node inferred from `data`. `expanded` follows the effective keys, including native local-filter updates; a controlled parent that rejects expansion keeps it false. `isLeaf` honors the explicit native field first, then the configured children/getChildren. `loading` covers the current node's valid native `onLoad` or `searchSource.load` attempt, rather than the whole search request.
+
+The original three-field `TreeRenderContext` remains constructible. Use the exported `TreeNodeRenderContext<Node>` only when separately declaring a callback that needs the additional states.
+
+```vue
+<C_Tree
+  :data="departments"
+  mode="org"
+  key-field="code"
+  label-field="title"
+  children-field="items"
+  type-field="category"
+  :icon-config="{
+    resolve: ({ option, expanded, selected }) =>
+      option.category === 'department'
+        ? {
+            name: expanded ? 'mdi:folder-open-outline' : 'mdi:domain',
+            color: selected ? '#2080f0' : undefined,
+          }
+        : undefined,
+  }"
+  :actions="[
+    {
+      key: 'edit',
+      text: 'Edit',
+      icon: 'mdi:pencil',
+      disabled: node => !node.editable,
+      loading: node => savingIds.has(node.code),
+    },
+  ]"
+>
+  <template #label="{ option, loading }">
+    <span :aria-busy="loading">{{ option.title }}</span>
+    <NTag v-if="option.memberCount != null" size="small">
+      {{ option.memberCount }} members
+    </NTag>
+  </template>
+</C_Tree>
+```
+
+`org` presets department/user/manager icons and add/edit actions. `typeField` defaults to `type`. Use `iconConfig.resolve` for stateful icons without replacing the prefix slot. It returns a string, a narrow `{ name, size?, color? }` descriptor, `null` to hide, or `undefined` to fall back to the existing `iconField` (default `icon`) → `typeMap` → `default` priority. Missing size/color use the existing size 16 and type color mapping. The renderer reuses `C_Icon`; no new icon dependency is introduced.
+
+Rendering priority remains slot → native renderer → native node `prefix()/suffix()` → wrapper default. Native node functions are still called without arguments. A custom suffix replaces preset actions; a custom label keeps default prefix icons. The icon resolver runs only within the default prefix path.
+
+Action `disabled/loading` each accept a boolean or `(node) => boolean`. Global, native node and per-action disabling all apply; loading shows busy feedback and blocks repeated dispatch. Confirmation rechecks current show/disabled/loading. Replacing the node, rebuilding a remote projection or changing source scope invalidates an old confirmation even when keys are reused. Reactive properties of the same node are read again. The component emits events; callers own the asynchronous request and maintain `loading` for its full duration.
+
+Compose member counts, positions and tags in the label or existing `statusConfigs`, and avatars in the prefix slot. Keep content within the unchanged single-line height; multiline cards need a nonvirtual tree or an appropriate fixed native nodeHeight. Use `C_Tree` for hierarchical selection/management and the separate `C_OrgChart` for connected organization cards; their layout and state engines remain independent.
+
 ## Remote search over a partially loaded tree
 
 Pass an optional `searchSource` when matches may be outside the loaded subtree:

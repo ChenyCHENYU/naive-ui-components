@@ -7,7 +7,7 @@
 import { test, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { h } from 'vue'
-import OrgChart from '../../src/components/C_OrgChart/index.vue'
+import { C_OrgChart as OrgChart } from '../../src/components/C_OrgChart'
 import FilePreview from '../../src/components/C_FilePreview/index.vue'
 import Upload from '../../src/components/C_Upload/index.vue'
 import type {

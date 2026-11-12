@@ -177,6 +177,8 @@ function checkRenderedConsumer() {
     ['/C_Form', 'C_Form'],
     ['/C_Table', 'C_Table'],
     ['/C_Menu', 'C_Menu'],
+    ['/C_Tree', 'C_Tree'],
+    ['/C_OrgChart', 'C_OrgChart'],
     ['/config', 'COMPONENT_LOCALE_KEY'],
   ]
   const imports = entries
@@ -201,7 +203,9 @@ function checkRenderedConsumer() {
     const app = createSSRApp({ render: () => h('main', [
       h(C_Form, { modelValue: { name: 'Form Ada' }, options: [{ type: 'input', prop: 'name', label: 'Name' }] }, { action: ({ model }) => h('span', { 'data-consumer-form-model': 'true' }, model.name) }),
       h(C_Table, { data: [{ id: 1, name: 'Table Ada' }], columns: [{ key: 'name', title: 'Name' }] }),
-      h(C_Menu, { options: [{ key: 0, label: 'Zero' }], modelValue: 0 })
+      h(C_Menu, { options: [{ key: 0, label: 'Zero' }], modelValue: 0 }),
+      h(C_Tree, { data: [{ code: 0, title: 'Tree Ada', kind: 'department' }], keyField: 'code', labelField: 'title', typeField: 'kind', mode: 'org', showToolbar: false }),
+      h(C_OrgChart, { data: { code: 0, title: 'Org Ada', members: [{ code: 1, title: 'Org Child' }] }, keyField: 'code', labelField: 'title', childrenField: 'members', expandedKeys: [0], selectedKey: 0 }, { node: ({ node, key, isSelected }) => h('span', { 'data-org-key': String(key), 'data-org-selected': String(isSelected) }, node.title) })
     ]) });
     const { collect } = setupCssrSsr(app);
     app.provide(COMPONENT_LOCALE_KEY, { locale: 'en-US' });
@@ -210,6 +214,9 @@ function checkRenderedConsumer() {
     assert.ok(html.includes('<span data-consumer-form-model="true">Form Ada</span>'), 'Form action slot must receive its model');
     assert.ok(html.includes('n-data-table') && html.includes('Table Ada'), 'Table must render its own record');
     assert.ok(html.includes('n-menu') && html.includes('Zero'), 'Menu must render numeric-key options');
+    assert.ok(html.includes('c-tree') && html.includes('Tree Ada'), 'Tree must render mapped business fields');
+    assert.ok(html.includes('Org Ada') && html.includes('Org Child'), 'OrgChart must preserve mapped nodes in recursive slots');
+    assert.ok(html.includes('data-org-key="0" data-org-selected="true"'), 'OrgChart must preserve numeric zero selection');
   `,
   ])
 }
@@ -263,6 +270,7 @@ async function checkLegacyBrowserBundle() {
       'C_Form',
       'C_FormSearch',
       'C_Tree',
+      'C_OrgChart',
       'C_Table',
     ].map(name => `${pkg.name}/${name}`)
   )
@@ -342,6 +350,7 @@ async function checkLegacyBrowserBundle() {
     '.c-option-status',
     '.c-data-picker',
     '.c-tree',
+    '.c-orgchart',
   ]) {
     assert.ok(
       css.includes(selector),
@@ -349,7 +358,7 @@ async function checkLegacyBrowserBundle() {
     )
   }
   console.log(
-    'Legacy peer Vite browser bundle passed: C_Select/C_AutoComplete/C_DataPicker/C_Form/C_FormSearch/C_Tree/C_Table and their public CSS; browser interactions are not exercised by this build.'
+    'Legacy peer Vite browser bundle passed: C_Select/C_AutoComplete/C_DataPicker/C_Form/C_FormSearch/C_Tree/C_OrgChart/C_Table and their public CSS; browser interactions are not exercised by this build.'
   )
 }
 

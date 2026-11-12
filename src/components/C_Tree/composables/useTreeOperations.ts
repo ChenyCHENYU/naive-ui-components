@@ -2,7 +2,6 @@ import { useComponentLocale } from '../../../config'
 import {
   ref,
   computed,
-  h,
   watch,
   getCurrentScope,
   onScopeDispose,
@@ -11,17 +10,11 @@ import {
   nextTick,
   type Ref,
 } from 'vue'
-import {
-  NTag,
-  NButton,
-  NPopconfirm,
-  type TreeInst,
-  type TreeProps as NaiveTreeProps,
-} from 'naive-ui'
-import C_Icon from '../../C_Icon/index.vue'
+import { type TreeInst, type TreeProps as NaiveTreeProps } from 'naive-ui'
 import { presetConfigs } from '../data'
 import { indexTreeNodes } from '../treeKeys'
 import { useTreeSearch } from './useTreeSearch'
+import { useTreeNodeRendering } from './useTreeNodeRendering'
 import { treeSearchKey } from '../searchProjection'
 import { resolveComponentDensity } from '../../../core/density'
 import type {
@@ -34,6 +27,7 @@ import type {
   TreeKey,
   TreeUpdateMeta,
   TreeRenderContext,
+  TreeNodeRenderContext,
   TreeSlots,
 } from '../types'
 
@@ -160,6 +154,16 @@ export function useTreeOperations<T extends object = TreeNodeData>(
       getChildren
     )
   )
+  // 远程投影可能复制节点；原始身份索引只随来源/字段变化重算，不在逐行渲染中遍历。
+  const originalNodes = computed(
+    () =>
+      indexTreeNodes(
+        props.data,
+        keyField.value,
+        childrenField.value,
+        native.value.getChildren
+      ).nodes
+  )
   const defaultExpandAll = () =>
     props.defaultExpandAll ?? native.value.defaultExpandAll ?? false
   const retainExpandAll = ref(defaultExpandAll())
@@ -278,121 +282,58 @@ export function useTreeOperations<T extends object = TreeNodeData>(
   const selectedNode = computed(
     () => index.value.nodes.get(selectedKeys.value[0]) ?? null
   )
-  const renderPrefix = (info: TreeRenderContext<T>) => {
-    if (slots.prefix) return slots.prefix(info)
-    if (native.value.renderPrefix) return native.value.renderPrefix(info)
-    const prefix: unknown = Reflect.get(info.option, 'prefix')
-    if (typeof prefix === 'function') return prefix()
-    const node = info.option
-    const config = mergedConfig.value.iconConfig
-    const nodeType: unknown = Reflect.get(node, 'type')
-    const type = typeof nodeType === 'string' ? nodeType : ''
-    const icon: unknown = Reflect.get(node, props.iconField ?? 'icon')
-    return h(C_Icon, {
-      name:
-        typeof icon === 'string'
-          ? icon
-          : (config.typeMap[type] ?? config.default),
-      size: 16,
-      color: config.colorMap[type] ?? 'currentColor',
-      class: 'c-tree-node-icon',
-    })
+  const expandedKeySet = computed(() => new Set(expandedKeys.value))
+  const actionRevision = ref(0)
+  watch(
+    [
+      () => props.searchSource?.scope,
+      () => props.searchSource?.request,
+      keyField,
+      childrenField,
+    ],
+    () => {
+      actionRevision.value++
+    },
+    { flush: 'sync' }
+  )
+  const renderContext = (
+    info: TreeRenderContext<T>
+  ): TreeNodeRenderContext<T> => {
+    const key = treeSearchKey(info.option, keyField.value)
+    const explicitLeaf: unknown = Reflect.get(info.option, 'isLeaf')
+    const original = toRaw(originalLoadNode(info.option))
+    return {
+      ...info,
+      expanded: expandedKeySet.value.has(key),
+      // 与原生 treemate 一致：显式 isLeaf 优先，否则依据有效 children/getChildren。
+      isLeaf:
+        explicitLeaf === undefined
+          ? !getChildren(info.option)
+          : Boolean(explicitLeaf),
+      loading:
+        search.active.value &&
+        (search.loadingKeys.value.has(key) ||
+          nativeLoadingNodes.value.has(original)),
+    }
   }
-  const renderLabel = (info: TreeRenderContext<T>) => {
-    if (slots.label) return slots.label(info)
-    if (native.value.renderLabel) return native.value.renderLabel(info)
-    const text = String(Reflect.get(info.option, labelField.value) ?? '')
-    return h('span', { class: 'c-tree-node-label' }, [
-      h('span', { class: 'c-tree-node-title', title: text }, text),
-      ...(props.statusConfigs ?? []).flatMap(config => {
-        const value: unknown = Reflect.get(info.option, config.field)
-        const status =
-          typeof value === 'number' || typeof value === 'string'
-            ? config.values[value]
-            : undefined
-        return status?.text
-          ? [
-              h(
-                NTag,
-                {
-                  type: status.type,
-                  size: 'small',
-                  class: 'c-tree-node-status',
-                },
-                { default: () => status.text }
-              ),
-            ]
-          : []
-      }),
-    ])
-  }
-  const handleNodeAction = (action: string, node: T) => {
-    if (action === 'add') emit('add', node)
-    else emit('node-action', action, node)
-  }
-  const renderNodeSuffix = (info: TreeRenderContext<T>) => {
-    if (slots.suffix) return slots.suffix(info)
-    if (native.value.renderSuffix) return native.value.renderSuffix(info)
-    const suffix: unknown = Reflect.get(info.option, 'suffix')
-    if (typeof suffix === 'function') return suffix()
-    const node = info.option
-    const actions = mergedConfig.value.actions.filter(
-      action => !action.show || action.show(node)
-    )
-    if (!actions.length) return null
-    return h(
-      'span',
-      {
-        class: 'tree-actions',
-        onClick: (event: Event) => event.stopPropagation(),
-      },
-      actions.map(action => {
-        const button = (confirm: boolean) =>
-          h(
-            NButton,
-            {
-              size: 'tiny',
-              type: action.type ?? 'default',
-              quaternary: true,
-              disabled: Boolean(
-                native.value.disabled ||
-                Reflect.get(node, native.value.disabledField ?? 'disabled')
-              ),
-              'aria-label': action.text || action.key,
-              title: action.text,
-              onClick: (event: Event) => {
-                event.stopPropagation()
-                if (!confirm) handleNodeAction(action.key, node)
-              },
-            },
-            { icon: () => h(C_Icon, { name: action.icon, size: 14 }) }
-          )
-        return action.confirm
-          ? h(
-              NPopconfirm,
-              { onPositiveClick: () => handleNodeAction(action.key, node) },
-              { trigger: () => button(true), default: () => action.confirm }
-            )
-          : button(false)
-      })
-    )
-  }
-  const renderSuffix = (info: TreeRenderContext<T>) => {
-    const content = renderNodeSuffix(info)
-    const key: unknown = Reflect.get(info.option, keyField.value)
-    if (typeof key !== 'string' && typeof key !== 'number') return content
-    if (!search.loadingKeys.value.has(key)) return content
-    return h('span', { class: 'c-tree-suffix' }, [
-      h('span', {
-        class: 'c-tree-node-loading',
-        role: 'status',
-        'aria-label': t('tree.loadingChildren'),
-      }),
-      content,
-    ])
-  }
+  const { renderPrefix, renderLabel, renderSuffix } = useTreeNodeRendering({
+    props,
+    native,
+    config: mergedConfig,
+    labelField,
+    actionRevision,
+    slots,
+    context: renderContext,
+    currentNode: node =>
+      index.value.nodes.get(treeSearchKey(node, keyField.value)),
+    onAction: (action, node) => {
+      if (action === 'add') emit('add', node)
+      else emit('node-action', action, node)
+    },
+    loadingLabel: () => t('tree.loadingChildren'),
+  })
   let active = true
-  let loadRevision = 0
+  const loadRevision = ref(0)
   const collapsedLoads = new Map<TreeKey, number>()
   const invalidateNodeLoad = (key: TreeKey) =>
     collapsedLoads.set(key, (collapsedLoads.get(key) ?? 0) + 1)
@@ -409,11 +350,12 @@ export function useTreeOperations<T extends object = TreeNodeData>(
     [
       () => props.searchSource?.request,
       () => props.searchSource?.scope,
+      () => props.searchSource?.load,
       () => props.data,
     ],
-    () => {
-      if (props.searchSource) {
-        loadRevision++
+    (_current, previous) => {
+      if (props.searchSource || previous?.[0]) {
+        loadRevision.value++
         collapsedLoads.clear()
       }
     },
@@ -421,14 +363,35 @@ export function useTreeOperations<T extends object = TreeNodeData>(
   )
   type PendingLoad = { revision: number; promise: Promise<unknown> }
   const pendingLoads = new WeakMap<T, PendingLoad>()
+  const nativeLoadingEntries = new Map<T, PendingLoad>()
+  const nativeLoading = shallowRef<ReadonlyMap<T, PendingLoad>>(new Map())
+  const nativeLoadingNodes = computed(
+    () =>
+      new Set(
+        [...nativeLoading.value]
+          .filter(([, pending]) => pending.revision === loadRevision.value)
+          .map(([node]) => node)
+      )
+  )
+  const refreshNativeLoading = (node: T, pending?: PendingLoad) => {
+    // onLoad 可能由原生 watchEffect 调用；只写快照，不能把该 effect 订阅到加载集合。
+    if (pending) nativeLoadingEntries.set(node, pending)
+    else nativeLoadingEntries.delete(node)
+    nativeLoading.value = new Map(nativeLoadingEntries)
+  }
   if (getCurrentScope())
     onScopeDispose(() => {
       active = false
     })
   watch(
-    () => native.value.onLoad,
+    [
+      () => native.value.onLoad,
+      keyField,
+      childrenField,
+      () => native.value.getChildren,
+    ],
     () => {
-      loadRevision++
+      loadRevision.value++
     },
     { flush: 'sync' }
   )
@@ -441,12 +404,7 @@ export function useTreeOperations<T extends object = TreeNodeData>(
   }
   const originalLoadNode = (node: T) =>
     props.searchSource
-      ? (indexTreeNodes(
-          props.data,
-          keyField.value,
-          childrenField.value,
-          native.value.getChildren
-        ).nodes.get(treeSearchKey(node, keyField.value)) ?? node)
+      ? (originalNodes.value.get(treeSearchKey(node, keyField.value)) ?? node)
       : node
   const acceptNativeChildren = (node: T, result: unknown) => {
     if (!props.searchSource || result === false) return
@@ -459,14 +417,14 @@ export function useTreeOperations<T extends object = TreeNodeData>(
   const canLoad = (load: unknown) =>
     active && search.active.value && native.value.onLoad === load
   const retainLoadExpansion = (node: T) => {
-    const revision = loadRevision
+    const revision = loadRevision.value
     const key = treeSearchKey(node, keyField.value)
     const collapsed = collapsedLoads.get(key)
     const expanded = expandedKeys.value.includes(key)
     return () =>
       active &&
       search.active.value &&
-      loadRevision === revision &&
+      loadRevision.value === revision &&
       collapsedLoads.get(key) === collapsed &&
       (!props.searchSource || expandedKeys.value.includes(key) === expanded) &&
       index.value.nodes.has(key)
@@ -487,7 +445,7 @@ export function useTreeOperations<T extends object = TreeNodeData>(
       if (!canLoad(load)) return false
       const original = originalLoadNode(node)
       const rawNode = toRaw(original)
-      const revision = loadRevision
+      const revision = loadRevision.value
       const mayExpand = retainLoadExpansion(node)
       const pending = pendingLoads.get(rawNode)
       if (pending?.revision === revision) {
@@ -499,10 +457,11 @@ export function useTreeOperations<T extends object = TreeNodeData>(
       }
       let request: PendingLoad | undefined
       const isCurrent = () =>
-        active && loadRevision === revision && search.active.value
+        active && loadRevision.value === revision && search.active.value
       try {
         request = { revision, promise: Promise.resolve(load(original)) }
         pendingLoads.set(rawNode, request)
+        refreshNativeLoading(rawNode, request)
         const result = await request.promise
         if (isCurrent()) acceptNativeChildren(original, result)
         return isCurrent() && mayExpand() ? result : false
@@ -510,7 +469,10 @@ export function useTreeOperations<T extends object = TreeNodeData>(
         if (isCurrent()) reportLoadError(error, node, rawNode)
         return false
       } finally {
-        if (pendingLoads.get(rawNode) === request) pendingLoads.delete(rawNode)
+        if (pendingLoads.get(rawNode) === request) {
+          pendingLoads.delete(rawNode)
+          refreshNativeLoading(rawNode)
+        }
       }
     }
   })
@@ -595,7 +557,7 @@ export function useTreeOperations<T extends object = TreeNodeData>(
     retainExpandAll.value = true
   }
   const collapseAll = () => {
-    loadRevision++
+    loadRevision.value++
     handleExpandedKeysChange([], [], { node: null, action: 'collapse' })
   }
   const handleAdd = () => emit('add')

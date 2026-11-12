@@ -37,12 +37,23 @@ export interface ActionConfig<T extends object = TreeNodeData> {
   icon: string
   type?: ButtonType
   show?: (node: T) => boolean
+  disabled?: boolean | ((node: T) => boolean)
+  loading?: boolean | ((node: T) => boolean)
   confirm?: string
 }
-export interface IconConfig {
+export interface TreeNodeIcon {
+  name: string
+  size?: number | string
+  color?: string
+}
+export interface IconConfig<T extends object = TreeNodeData> {
   default?: string
   typeMap?: Record<string, string>
   colorMap?: Record<string, string>
+  /** null 隐藏图标；undefined 继续使用 iconField/typeMap/default。 */
+  resolve?: (
+    context: TreeNodeRenderContext<T>
+  ) => string | TreeNodeIcon | null | undefined
 }
 
 /** 路径按根节点到命中节点排列；路径不代表各级的完整子项列表。 */
@@ -106,9 +117,9 @@ export type TreeNativeProps<T extends object = TreeNodeData> = Omit<
   filter?: (pattern: string, node: T) => boolean
   onLoad?: (node: T) => Promise<unknown>
   getChildren?: (node: T) => unknown
-  renderLabel?: (context: TreeRenderContext<T>) => VNodeChild
-  renderPrefix?: (context: TreeRenderContext<T>) => VNodeChild
-  renderSuffix?: (context: TreeRenderContext<T>) => VNodeChild
+  renderLabel?: (context: TreeNodeRenderContext<T>) => VNodeChild
+  renderPrefix?: (context: TreeNodeRenderContext<T>) => VNodeChild
+  renderSuffix?: (context: TreeNodeRenderContext<T>) => VNodeChild
   renderSwitcherIcon?: (context: {
     expanded: boolean
     selected: boolean
@@ -157,6 +168,14 @@ export interface TreeRenderContext<T extends object = TreeOption> {
   option: T
   checked: boolean
   selected: boolean
+}
+/** 包装层提供的节点状态；旧 TreeRenderContext 的三字段构造继续兼容。 */
+export interface TreeNodeRenderContext<
+  T extends object = TreeOption,
+> extends TreeRenderContext<T> {
+  expanded: boolean
+  isLeaf: boolean
+  loading: boolean
 }
 export interface TreeUpdateMeta<
   T extends object = TreeOption,
@@ -210,7 +229,8 @@ export interface TreeProps<T extends object = TreeNodeData> {
   addText?: string
   refreshable?: boolean
   iconField?: string
-  iconConfig?: IconConfig
+  typeField?: string
+  iconConfig?: IconConfig<T>
   statusConfigs?: StatusConfig[]
   actions?: ActionConfig<T>[]
   defaultExpandAll?: boolean
@@ -274,8 +294,8 @@ export interface TreeEmits<T extends object = TreeNodeData> {
 }
 export interface TreeSlots<T extends object = TreeOption> {
   'toolbar-actions'?: () => VNodeChild
-  label?: (context: TreeRenderContext<T>) => VNodeChild
-  prefix?: (context: TreeRenderContext<T>) => VNodeChild
-  suffix?: (context: TreeRenderContext<T>) => VNodeChild
+  label?: (context: TreeNodeRenderContext<T>) => VNodeChild
+  prefix?: (context: TreeNodeRenderContext<T>) => VNodeChild
+  suffix?: (context: TreeNodeRenderContext<T>) => VNodeChild
   empty?: () => VNodeChild
 }

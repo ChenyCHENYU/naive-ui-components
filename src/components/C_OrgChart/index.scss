@@ -1,27 +1,27 @@
-/* C_OrgChart 组织架构图组件样式 */
-
+/* 所有主题变量限定在组件根内，不给宿主写全局 token。 */
 .c-orgchart {
-  --c-orgchart-line-color: #d1d5db;
-  --c-orgchart-line-width: 2px;
-  --c-orgchart-node-spacing: 24px;
-  --c-orgchart-level-spacing: 48px;
-  --c-orgchart-node-bg: var(--card-color, #ffffff);
-  --c-orgchart-node-border: var(--border-color, #e5e7eb);
-  --c-orgchart-node-shadow: rgba(0, 0, 0, 0.06);
-  --c-orgchart-node-hover-shadow: rgba(0, 0, 0, 0.12);
-  --c-orgchart-label-color: var(--text-color-1, #262626);
-  --c-orgchart-subtitle-color: var(--text-color-3, #999999);
-  --c-orgchart-toggle-bg: var(--card-color, #ffffff);
-  --c-orgchart-toggle-color: var(--text-color-2, #666666);
+  // 保留原有覆盖入口，Naive 主题仅提供回退值。
+  --c-orgchart-line-color: var(--c-orgchart-theme-border);
+  --c-orgchart-node-bg: var(--c-orgchart-theme-card);
+  --c-orgchart-node-border: var(--c-orgchart-theme-border);
+  --c-orgchart-label-color: var(--c-orgchart-theme-text);
+  --c-orgchart-subtitle-color: var(--c-orgchart-theme-text-tertiary);
+  --c-orgchart-toggle-bg: var(--c-orgchart-node-bg);
+  --c-orgchart-toggle-color: var(--c-orgchart-theme-text-secondary);
+  --c-orgchart-controls-bg: var(--c-orgchart-node-bg);
+  --c-orgchart-node-shadow: rgb(0 0 0 / 6%);
+  --c-orgchart-node-hover-shadow: rgb(0 0 0 / 12%);
+  --c-orgchart-controls-shadow: rgb(0 0 0 / 10%);
+  --c-orgchart-primary: var(--c-orgchart-theme-primary);
+  --c-orgchart-font-family: var(--c-orgchart-theme-font-family);
   --c-orgchart-avatar-size: 36px;
-  --c-orgchart-controls-bg: var(--card-color, #ffffff);
-  --c-orgchart-controls-shadow: rgba(0, 0, 0, 0.1);
 
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 300px;
   overflow: hidden;
+  font-family: var(--c-orgchart-font-family);
   cursor: grab;
   user-select: none;
 
@@ -31,185 +31,102 @@
 }
 
 .c-orgchart__viewport {
-  display: inline-flex;
+  display: flex;
   justify-content: center;
+  box-sizing: border-box;
   width: 100%;
   padding: 32px;
-  transition: transform 0.15s ease;
 }
 
-/* ─── 节点包裹器（垂直布局） ─── */
-.c-orgchart--vertical .c-orgchart__node-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.c-orgchart--vertical .c-orgchart__children {
-  display: flex;
-  justify-content: center;
-  padding-top: var(--c-orgchart-level-spacing);
-  gap: var(--c-orgchart-node-spacing);
+.c-orgchart__content {
   position: relative;
+  flex-shrink: 0;
+  width: max-content;
+}
 
-  /* 垂直连线：父→子 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: var(--c-orgchart-line-width);
-    height: calc(var(--c-orgchart-level-spacing) / 2);
-    background: var(--c-orgchart-line-color);
-    transform: translateX(-50%);
+.c-orgchart__connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: var(--c-orgchart-line-color);
+  stroke-width: var(--c-orgchart-line-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.c-orgchart--vertical {
+  .c-orgchart__node-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
-
-  /* 横连线：兄弟节点 */
-  > .c-orgchart__node-wrapper {
-    position: relative;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: calc(var(--c-orgchart-level-spacing) / -2);
-      left: 50%;
-      width: var(--c-orgchart-line-width);
-      height: calc(var(--c-orgchart-level-spacing) / 2);
-      background: var(--c-orgchart-line-color);
-      transform: translateX(-50%);
-    }
-  }
-
-  /* 兄弟之间的水平线 */
-  > .c-orgchart__node-wrapper:not(:only-child) {
-    &::after {
-      content: '';
-      position: absolute;
-      top: calc(var(--c-orgchart-level-spacing) / -2);
-      height: var(--c-orgchart-line-width);
-      background: var(--c-orgchart-line-color);
-    }
-
-    &:first-child::after {
-      left: 50%;
-      right: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-    }
-
-    &:last-child::after {
-      left: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-      right: 50%;
-    }
-
-    &:not(:first-child):not(:last-child)::after {
-      left: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-      right: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-    }
+  .c-orgchart__children {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--c-orgchart-level-spacing);
+    gap: var(--c-orgchart-node-spacing);
   }
 }
 
-/* ─── 水平布局 ─── */
-.c-orgchart--horizontal .c-orgchart__node-wrapper {
-  display: flex;
-  align-items: center;
-}
-
-.c-orgchart--horizontal .c-orgchart__children {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding-left: var(--c-orgchart-level-spacing);
-  gap: var(--c-orgchart-node-spacing);
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    height: var(--c-orgchart-line-width);
-    width: calc(var(--c-orgchart-level-spacing) / 2);
-    background: var(--c-orgchart-line-color);
-    transform: translateY(-50%);
+.c-orgchart--horizontal {
+  .c-orgchart__node-wrapper {
+    display: flex;
+    align-items: center;
   }
-
-  > .c-orgchart__node-wrapper {
-    position: relative;
-
-    &::before {
-      content: '';
-      position: absolute;
-      left: calc(var(--c-orgchart-level-spacing) / -2);
-      top: 50%;
-      width: calc(var(--c-orgchart-level-spacing) / 2);
-      height: var(--c-orgchart-line-width);
-      background: var(--c-orgchart-line-color);
-      transform: translateY(-50%);
-    }
-  }
-
-  > .c-orgchart__node-wrapper:not(:only-child) {
-    &::after {
-      content: '';
-      position: absolute;
-      left: calc(var(--c-orgchart-level-spacing) / -2);
-      width: var(--c-orgchart-line-width);
-      background: var(--c-orgchart-line-color);
-    }
-
-    &:first-child::after {
-      top: 50%;
-      bottom: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-    }
-
-    &:last-child::after {
-      top: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-      bottom: 50%;
-    }
-
-    &:not(:first-child):not(:last-child)::after {
-      top: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-      bottom: calc(-1 * var(--c-orgchart-node-spacing) / 2);
-    }
+  .c-orgchart__children {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: var(--c-orgchart-level-spacing);
+    gap: var(--c-orgchart-node-spacing);
   }
 }
 
-/* ─── 圆角连线 ─── */
-.c-orgchart--line-rounded {
-  .c-orgchart__children::before,
-  .c-orgchart__node-wrapper::before,
-  .c-orgchart__node-wrapper::after {
-    border-radius: 4px;
-  }
-}
-
-/* ─── 节点卡片 ─── */
 .c-orgchart__node {
   position: relative;
+  flex-shrink: 0;
   background: var(--c-orgchart-node-bg);
   border: 1px solid var(--c-orgchart-node-border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px 16px;
   cursor: pointer;
   box-shadow: 0 2px 8px var(--c-orgchart-node-shadow);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   white-space: nowrap;
 
   &:hover {
+    border-color: color-mix(
+      in srgb,
+      var(--c-orgchart-primary) 45%,
+      var(--c-orgchart-node-border)
+    );
     box-shadow: 0 4px 16px var(--c-orgchart-node-hover-shadow);
-    transform: translateY(-2px);
   }
 }
 
-.c-orgchart__node--leaf {
-  opacity: 0.9;
+.c-orgchart__node--selected {
+  border-color: var(--c-orgchart-primary);
+  background: color-mix(
+    in srgb,
+    var(--c-orgchart-primary) 9%,
+    var(--c-orgchart-node-bg)
+  );
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--c-orgchart-primary) 12%, transparent);
 }
 
 .c-orgchart__node-select:focus-visible {
-  outline: 2px solid var(--c-primary, #2080f0);
-  outline-offset: 3px;
+  outline: 2px solid var(--c-orgchart-primary);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
-/* ─── 默认节点布局 ─── */
 .c-orgchart__node-default {
   display: flex;
   align-items: center;
@@ -235,19 +152,16 @@
   flex-direction: column;
   gap: 2px;
 }
-
 .c-orgchart__label {
   font-size: 14px;
   font-weight: 600;
   color: var(--c-orgchart-label-color);
 }
-
 .c-orgchart__subtitle {
   font-size: 12px;
   color: var(--c-orgchart-subtitle-color);
 }
 
-/* ─── 折叠按钮 ─── */
 .c-orgchart__toggle {
   position: absolute;
   bottom: -12px;
@@ -266,10 +180,10 @@
   align-items: center;
   justify-content: center;
   z-index: 1;
-  transition: background 0.2s ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--c-orgchart-node-border) 20%, var(--c-orgchart-toggle-bg));
+    border-color: var(--c-orgchart-primary);
+    color: var(--c-orgchart-primary);
   }
 }
 
@@ -281,7 +195,6 @@
   transform: translateY(-50%);
 }
 
-/* ─── 缩放控制 ─── */
 .c-orgchart__controls {
   position: absolute;
   bottom: 16px;
@@ -290,7 +203,8 @@
   align-items: center;
   gap: 4px;
   background: var(--c-orgchart-controls-bg);
-  border-radius: 8px;
+  border: 1px solid var(--c-orgchart-node-border);
+  border-radius: 10px;
   padding: 4px;
   box-shadow: 0 2px 8px var(--c-orgchart-controls-shadow);
   z-index: 10;
@@ -308,10 +222,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--c-orgchart-node-border) 30%, transparent);
+    background: color-mix(in srgb, var(--c-orgchart-primary) 9%, transparent);
   }
 }
 

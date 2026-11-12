@@ -13,6 +13,24 @@ const cases = [
     budget: 85 * 1024,
   },
   {
+    name: 'C_Tree',
+    component: 'C_Tree',
+    css: 'C_Tree.css',
+    props: "{ data: [{ id: 0, name: 'Team' }], mode: 'org' }",
+    budget: 135 * 1024,
+    cssBudget: 3 * 1024,
+    forbiddenComponents: /\/C_OrgChart\d*\.js$/,
+  },
+  {
+    name: 'C_OrgChart',
+    component: 'C_OrgChart',
+    css: 'C_OrgChart.css',
+    props: "{ data: { id: 0, label: 'Company' } }",
+    budget: 45 * 1024,
+    cssBudget: 3 * 1024,
+    forbiddenComponents: /\/C_Tree\d*\.js$/,
+  },
+  {
     name: 'C_Form/base',
     component: 'C_Form',
     css: 'C_Form.base.css',
@@ -169,6 +187,7 @@ for (const scenario of cases) {
     .filter(
       filename =>
         forbiddenInitial.test(filename) ||
+        scenario.forbiddenComponents?.test(filename) ||
         (scenario.lazyFields && deferredNaiveFields.test(filename))
     )
   if (gzipBytes > scenario.budget) {

@@ -1,9 +1,10 @@
-import type { TreeMode, TreeProps, ActionConfig } from './types'
+import type { TreeMode, TreeProps, ActionConfig, IconConfig } from './types'
 
 export const presetConfigs: Record<
   TreeMode,
-  Partial<Omit<TreeProps, 'data' | 'treeProps' | 'actions'>> & {
-    actions?: Omit<ActionConfig, 'show'>[]
+  Partial<Omit<TreeProps, 'data' | 'treeProps' | 'actions' | 'iconConfig'>> & {
+    iconConfig?: Omit<IconConfig, 'resolve'>
+    actions?: Omit<ActionConfig, 'show' | 'disabled' | 'loading'>[]
   }
 > = {
   menu: {

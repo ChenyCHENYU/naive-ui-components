@@ -3,6 +3,8 @@ export type {
   TreeKey,
   TreeNativeProps,
   TreeRenderContext,
+  TreeNodeRenderContext,
+  TreeNodeIcon,
   TreeUpdateMeta,
   TreeSlots,
   TreeSearchSource,

@@ -80,7 +80,59 @@
 </C_Tree>
 ```
 
-`label/prefix/suffix` 插槽优先于 `treeProps.renderLabel/renderPrefix/renderSuffix`，最后使用包装层默认渲染。原生节点的 `prefix/suffix` 函数也会保留。上下文信息是官方的 `{ option, selected, checked }`。状态标签和预设按钮属于默认渲染，自定义插槽可完全接管。
+`label/prefix/suffix` 插槽优先于 `treeProps.renderLabel/renderPrefix/renderSuffix`，再使用节点自身的 `prefix()/suffix()`，最后使用包装层默认渲染。节点函数继续按原生协议无参数调用。状态标签和预设按钮属于默认渲染，自定义插槽可完全接管；例如自定义 suffix 会替换预设按钮，自定义 label 不影响默认前缀图标。
+
+## 状态图标与组织树展示
+
+已有插槽和三个 renderer 统一提供 `{ option, selected, checked, expanded, isLeaf, loading }`，业务节点类型从 `data` 推导，不需要类型断言。`expanded` 跟随实际生效的展开 keys，受控父组件拒绝展开建议时仍为 false；本地过滤产生的展开也沿用原生更新协议。`isLeaf` 遵循原生语义：节点显式字段优先，否则使用有效的 `children/getChildren`。`loading` 表示当前节点的有效子项加载，涵盖 `treeProps.onLoad` 和 `searchSource.load`，不等同于整树搜索请求状态。
+
+旧的 `TreeRenderContext` 保持三个字段，已有手工构造及回调类型继续可用；需要单独声明完整状态时使用导出的 `TreeNodeRenderContext<Node>`。
+
+```vue
+<C_Tree
+  :data="departments"
+  mode="org"
+  key-field="code"
+  label-field="title"
+  children-field="items"
+  type-field="category"
+  :icon-config="{
+    resolve: ({ option, expanded, selected }) =>
+      option.category === 'department'
+        ? {
+            name: expanded ? 'mdi:folder-open-outline' : 'mdi:domain',
+            color: selected ? '#2080f0' : undefined,
+          }
+        : undefined,
+  }"
+  :actions="[
+    {
+      key: 'edit',
+      text: '编辑',
+      icon: 'mdi:pencil',
+      disabled: node => !node.editable,
+      loading: node => savingIds.has(node.code),
+    },
+  ]"
+>
+  <template #label="{ option, loading }">
+    <span :aria-busy="loading">{{ option.title }}</span>
+    <NTag v-if="option.memberCount != null" size="small">
+      {{ option.memberCount }} 人
+    </NTag>
+  </template>
+</C_Tree>
+```
+
+`mode="org"` 提供 department/user/manager 图标与新增下级、编辑操作；`typeField` 默认仍为 `type`，可映射业务分类字段。只需要状态图标时配置 `iconConfig.resolve`，无需接管 prefix 插槽。返回值规则：
+
+- 字符串：图标名称；`{ name, size?, color? }`：名称及可选尺寸、颜色，复用 `C_Icon`，默认尺寸仍为 16。
+- `undefined`：完整回退旧的 `iconField`（默认 `icon`）→ `typeMap` → `default`；`colorMap` 仍按类型生效。描述符省略颜色/尺寸时同样使用旧默认。
+- `null`：明确隐藏默认前缀图标。解析器仅在默认前缀路径运行，不抢占插槽、原生 renderer 或节点自身的 prefix 函数。
+
+`actions[].disabled/loading` 均支持布尔值或 `(node) => boolean`。全树禁用、节点的原生 disabledField、操作禁用和忙碌状态共同约束按钮；忙碌时显示等待并阻止重复操作。弹层确认时重新检查最新 show/disabled/loading，节点被替换、远程投影重建或来源 scope 改变后，旧确认不能操作复用相同 key 的另一个节点。同一响应式节点属性更新仍按最新值判断。组件只发出一次事件，不接管异步业务；使用侧通过 `loading` 维护实际请求周期。
+
+部门人数、岗位、状态可通过 label 和已有 `statusConfigs` 组合；头像使用 prefix 插槽。自定义内容应保持在现有单行高度内；多行卡片需选择非虚拟树或明确设置合适的固定 nodeHeight。树状选择/管理使用 `C_Tree`，连线卡片式组织架构图使用独立 `C_OrgChart`，不混合两套布局和状态引擎。
 
 ## 异步加载：保持官方协议和数据所有权
 
