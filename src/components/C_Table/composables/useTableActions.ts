@@ -238,12 +238,18 @@ export function useTableActions<T extends object = DataRecord>(
       ]
     }
 
+    if (tableManager.editStates.rowEdit.canEditRow?.(rowKeyValue) === false)
+      return []
     return [
       createButton('mdi:pencil-outline', t('common.edit'), 'warning', () =>
         tableManager.editStates.rowEdit.startEditRow(rowKeyValue)
       ),
     ]
   }
+
+  const canOpenEdit = (row: T) =>
+    isValidApiFunction(actions.value?.edit) ||
+    tableManager.editStates.modalEdit.canEditRow?.(rowKey(row)) !== false
 
   /* 渲染基础操作按钮 */
   const renderBasicActions = (row: T, index: number) => {
@@ -263,6 +269,7 @@ export function useTableActions<T extends object = DataRecord>(
 
     if (
       isActionEnabled('edit') &&
+      canOpenEdit(row) &&
       (config.value.editMode === 'modal' ||
         isValidApiFunction(actions.value?.edit))
     ) {

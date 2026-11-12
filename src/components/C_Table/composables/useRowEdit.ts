@@ -7,9 +7,11 @@
 import { getCurrentScope, onScopeDispose, ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, TableColumn } from '../types'
+import { flattenTableColumns } from '../helpers'
 import { cloneData } from '../../../utils/data'
 import {
-  isEditableDataColumn,
+  isTableColumnEditable,
+  constrainTableEdit,
   resolveTableColumnRules,
   validateTableRule,
 } from './tableValidation'
@@ -75,6 +77,18 @@ export function useRowEdit(options: RowEditOptions) {
     return currentData.find(row => options.rowKey(row) === rowKey)
   }
 
+  const canEditRow = (key: DataTableRowKey) => {
+    const row = findRowData(key)
+    if (!row) return false
+    const columns = flattenTableColumns(options.columns?.() ?? [])
+    return (
+      !columns.length ||
+      columns.some(column =>
+        isTableColumnEditable(column, row, options.data().indexOf(row))
+      )
+    )
+  }
+
   /**
    * 开始编辑指定行，将原始数据复制到编辑缓存中
    */
@@ -82,6 +96,7 @@ export function useRowEdit(options: RowEditOptions) {
     const rowData = findRowData(rowKey)
     if (!rowData || isSaving.value) return false
 
+    if (!canEditRow(rowKey)) return false
     revision++
     editingRowKey.value = rowKey
     editingData.value = { [String(rowKey)]: cloneData(rowData) }
@@ -122,8 +137,17 @@ export function useRowEdit(options: RowEditOptions) {
     expectedKey: DataTableRowKey
   ): Promise<boolean> => {
     const expectedRevision = revision
-    const tasks = (options.columns?.() || [])
-      .filter(isEditableDataColumn)
+    const original = findRowData(expectedKey)
+    const tasks = flattenTableColumns(options.columns?.() || [])
+      .filter(
+        column =>
+          original &&
+          isTableColumnEditable(
+            column,
+            original,
+            options.data().indexOf(original)
+          )
+      )
       .map(async col => {
         const key = String(col.key)
         if (!key) return null
@@ -156,27 +180,51 @@ export function useRowEdit(options: RowEditOptions) {
     return snapshot ? validateSnapshot(cloneData(snapshot), key) : true
   }
 
+  const captureSave = (key: DataTableRowKey) => {
+    const snapshot = editingData.value[String(key)]
+    const original = findRowData(key)
+    if (!snapshot || !original) return
+    const updatedData = constrainTableEdit(
+      options.columns?.() ?? [],
+      original,
+      cloneData(snapshot),
+      options.data().indexOf(original)
+    )
+    return { original, updatedData }
+  }
+
+  const ownsSave = (
+    rows: DataRecord[],
+    index: number,
+    original: DataRecord | null | undefined,
+    expected: number
+  ) => revision === expected && index >= 0 && rows[index] === original
+
   /** Lock identity and payload before the first async validation step. */
   const saveEditRow = async () => {
     const key = editingRowKey.value
     if (key === null || isSaving.value) return
-    const snapshot = editingData.value[String(key)]
-    if (!snapshot) return
-    const updatedData = cloneData(snapshot)
+    const captured = captureSave(key)
+    if (!captured) return
+    const { original, updatedData } = captured
     const expectedRevision = revision
-    const original = findRowData(key)
     isSaving.value = true
     try {
       if (!(await validateSnapshot(updatedData, key))) return
-      if (revision !== expectedRevision) return
       const currentData = options.data()
       const rowIndex = currentData.findIndex(row => options.rowKey(row) === key)
-      if (rowIndex === -1 || currentData[rowIndex] !== original) return
-      await options.onSave?.(updatedData, rowIndex, key)
+      if (!ownsSave(currentData, rowIndex, original, expectedRevision)) return
+      const constrained = constrainTableEdit(
+        options.columns?.() ?? [],
+        currentData[rowIndex],
+        updatedData,
+        rowIndex
+      )
+      await options.onSave?.(constrained, rowIndex, key)
       if (revision !== expectedRevision) return
       editingRowKey.value = null
       editingData.value = {}
-      return { updatedData, rowIndex }
+      return { updatedData: constrained, rowIndex }
     } finally {
       isSaving.value = false
     }
@@ -200,6 +248,20 @@ export function useRowEdit(options: RowEditOptions) {
   ) => {
     const rowData = getEditingRowData(rowKey)
     if (!rowData || isSaving.value) return
+    const original = findRowData(rowKey)
+    const column = flattenTableColumns(options.columns?.() ?? []).find(
+      item => String(item.key) === field
+    )
+    if (
+      column &&
+      (!original ||
+        !isTableColumnEditable(
+          column,
+          original,
+          options.data().indexOf(original)
+        ))
+    )
+      return
     revision++
     rowData[field] = cloneData(value)
   }
@@ -210,6 +272,7 @@ export function useRowEdit(options: RowEditOptions) {
     isSaving,
     isEditingRow,
     startEditRow,
+    canEditRow,
     cancelEditRow,
     saveEditRow,
     validateRow,

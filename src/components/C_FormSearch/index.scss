@@ -315,3 +315,10 @@
     width: 0;
   }
 }
+
+// 层级字段使用相同宽度与状态反馈，不影响表单其他控件的布局。
+.form-search-hierarchy {
+  width: var(--c-search-control-width);
+  max-width: 100%;
+  min-width: 0;
+}

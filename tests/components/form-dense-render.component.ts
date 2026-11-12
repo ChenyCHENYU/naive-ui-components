@@ -69,24 +69,29 @@ test.each(['form', 'modal'] as const)(
         provide: { [FORM_RENDERER_REGISTRY_KEY as symbol]: registry },
       },
     })
-    await flushPromises()
-    const controls =
-      mode === 'modal'
-        ? wrapper.findComponent(C_Form).findAll('input')
-        : wrapper.findAll('input')
-    expect(controls).toHaveLength(400)
-    const last = controls[399].element
-    renders.clear()
-    controls[0].element.focus()
-    await controls[0].setValue('单字段更新')
-    await flushPromises()
-    expect(renders.get('f0')).toBeGreaterThan(0)
-    expect(renders.get('f0')).toBeLessThanOrEqual(2)
-    expect([...renders.keys()]).toEqual(['f0'])
-    expect(document.querySelectorAll('input')[399]).toBe(last)
-    // 弹窗焦点陷阱需要真实布局，交由浏览器夹具验证。
-    if (mode === 'form')
-      expect(document.activeElement).toBe(controls[0].element)
-    wrapper.unmount()
-  }
+    try {
+      await flushPromises()
+      const controls =
+        mode === 'modal'
+          ? wrapper.findComponent(C_Form).findAll('input')
+          : wrapper.findAll('input')
+      expect(controls).toHaveLength(400)
+      const last = controls[399].element
+      renders.clear()
+      controls[0].element.focus()
+      await controls[0].setValue('单字段更新')
+      await flushPromises()
+      expect(renders.get('f0')).toBeGreaterThan(0)
+      expect(renders.get('f0')).toBeLessThanOrEqual(2)
+      expect([...renders.keys()]).toEqual(['f0'])
+      expect(document.querySelectorAll('input')[399]).toBe(last)
+      // 弹窗焦点陷阱需要真实布局，交由浏览器夹具验证。
+      if (mode === 'form')
+        expect(document.activeElement).toBe(controls[0].element)
+    } finally {
+      wrapper.unmount()
+    }
+  },
+  // 400 个真实控件的挂载受并行 worker 调度影响；性能契约由上方渲染次数及 DOM 断言保证。
+  15_000
 )

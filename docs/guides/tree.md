@@ -15,7 +15,7 @@
 />
 ```
 
-默认字段仍是 `id`、`name`、`children`，已有调用不需要改数据。`data` 接受普通业务对象数组，不要求业务 interface 添加字符串索引签名或强制转型。身份、标题和子级字段由 `keyField/labelField/childrenField` 映射；事件与方法继续提供原生节点上下文，不会为了适配复制或修改输入数据。`density="default | compact | comfortable"` 与表单、搜索表单、表格使用同一协议；对应树节点高度为 34/28/40px，工具栏控件使用 medium/small/large。
+默认字段仍是 `id`、`name`、`children`，已有调用不需要改数据。`data` 接受普通业务对象数组，不要求业务 interface 添加字符串索引签名或强制转型。身份、标题和子级字段由 `keyField/labelField/childrenField` 映射；普通模式直接消费原生节点，显式远程搜索模式使用下方说明的隔离投影，不修改传入数据。`density="default | compact | comfortable"` 与表单、搜索表单、表格使用同一协议；对应树节点高度为 34/28/40px，工具栏控件使用 medium/small/large。
 
 主题颜色来自 `NConfigProvider`。长标题省略并保留原生 title；操作在悬停和键盘聚焦时显示，在触屏/窄屏始终显示。工具栏按容器宽度换行，不需要为左树右表侧栏写固定搜索宽度。
 
@@ -155,3 +155,82 @@ onBeforeUnmount(invalidateLoads)
 - [官方异步加载示例](https://github.com/tusen-ai/naive-ui/blob/main/src/tree/demos/zhCN/async.vue)
 
 `wl-ui-produce` 目前是 Element Plus 技术栈，其本地 `C_Tree` 提供 Tab、搜索、节点插槽和选中高亮。截至本次只读检索未发现 `src/views` 对该本地树的直接调用，不能据此宣称真实业务已完成迁移。标签切换仍由应用的 `NTab`/`C_Tabs` 组合，后端树权限、全量搜索与数据请求保留在页面逻辑中。
+
+## 常用能力直接配置
+
+```vue
+<C_Tree
+  :data="departments"
+  checkable
+  cascade
+  check-strategy="child"
+  virtual-scroll
+  :addable="false"
+  :tree-props="{ keyboard: true, allowDrop: canDrop }"
+/>
+```
+
+`checkable/multiple/cascade/checkStrategy/selectable/disabled/virtualScroll/accordion/expandOnClick` 可直接配置。未提供时保留 `treeProps` 值及原有默认行为；显式 `false` 仍优先。其他能力继续使用 `treeProps`，不重复定义一套原生树协议。虚拟树需要可计算的容器高度；节点高度只通过 `themeOverrides.nodeHeight` 调整，不给行增加额外 margin，避免测量与滚动位置不一致。
+
+## 懒树远程搜索与路径定位
+
+当根数据只加载了少量层级，本地 `filter` 无法找到尚未加载的节点。此时可选传 `searchSource`，由服务返回每个命中节点的完整祖先路径，组件负责补入、展开、定位和请求竞态。
+
+```ts
+import type { TreeSearchSource } from '@robot-admin/naive-ui-components/C_Tree'
+
+interface Department {
+  id: number
+  name: string
+  isLeaf?: boolean
+  children?: Department[]
+}
+
+const roots: Department[] = [{ id: 0, name: '总部', isLeaf: false }]
+const searchSource: TreeSearchSource<Department> = {
+  scope: 'company-1',
+  request: ({ search, signal, limit }) =>
+    departmentApi.searchPaths({ search, limit, signal }),
+  resolve: (key, signal) => departmentApi.resolvePath(key, signal),
+  load: (node, { signal }) => departmentApi.loadChildren(node.id, signal),
+}
+```
+
+```vue
+<C_Tree
+  ref="tree"
+  v-model:selected-keys="selected"
+  :data="roots"
+  :search-source="searchSource"
+  :addable="false"
+  @search-error="reportSearchFailure"
+  @load-error="reportBranchFailure"
+/>
+```
+
+来源协议：
+
+- `request({search, signal, limit})` 返回 `readonly Department[][]`，每条数组按根→祖先→命中节点排列。例如 `[[总部, 研发部, 前端组], [总部, 质量部]]`；空结果返回 `[]`。后端负责权限、模糊匹配和排序，组件不再用本地字符串规则过滤这些结果。
+- `resolve(key, signal)` 可选，返回单条完整路径或 `null`。`tree.locate(key)` 先查已加载树，未知时才调用 resolve；不因一个未知受控 key 自动发请求。
+- `load(node, {signal})` 可选，返回节点的**完整直接子项**。路径补入只表示部分子项，不能当成完整分支。程序定位只展开已知路径，不批量加载所有祖先分支；用户后续展开部分分支时才补齐。`load` 存在时接管新来源模式，未配置时仍可用既有 `treeProps.onLoad`。
+- `debounce=250`、`minChars=1`、`limit=100`。输入低于门槛或清空即取消搜索；limit 上限 1000，每条路径最多 256 层，重复命中、路径循环、键冲突和无效响应会拒绝并触发 `search-error`。键仍只接受字符串/有限数字，`0` 有效。
+- `scope`、来源函数、字段映射或根 `data` 数组替换时，取消旧搜索/定位/分支请求并清除远程覆盖层。源内闭包的身份条件改变时同步更新 scope，避免旧公司路径进入新上下文。卸载和 KeepAlive 停用同样取消；激活后重新查询当前关键词。
+
+远程搜索仅在组件实例内保存隔离视图，不修改 `data`、路径节点或返回数组。自定义 `keyField/labelField/childrenField/getChildren` 继续有效。清空关键词移除匹配列表，保留最近定位的路径及已完整加载分支，便于继续查看选中节点；换源/根数据会清掉这些覆盖。失败保留原始树，可使用状态区“重试”。来源不支持 AbortSignal 时，迟到结果也不会提交。
+
+方法与反馈：
+
+- `locate(key)`、`locateMatch(index)`、`nextMatch()`、`previousMatch()` 均返回 `Promise<boolean>`；前后跳转循环定位当前命中，空结果返回 false。搜索框 Enter/Shift+Enter 定位下一项/上一项，输入法组合期间不触发。
+- 定位会请求展开祖先，并在允许选择时选择节点；disabled/selectable 约束继续生效。受控 selected/expanded 仍由父组件决定是否接受更新，组件不越权写入。
+- `retrySearch()` 立即重试当前查询；`searchLoading/searchError/searchMatchCount/searchMatchIndex` 提供状态，索引未定位时为 -1。
+- 搜索期间显示加载状态、失败与重试；分支补全显示行内加载指示。未知远程键不代表已经有授权；勾选未完全加载树的服务端计算仍需按官方 `allowCheckingNotLoaded/checkStrategy` 语义约定，不自动宣称勾选整棵后端树。
+
+旧的 `treeProps.onLoad` 仍由调用方拥有其请求和写入。新来源的 AbortSignal 只能取消遵循该信号的来源函数，无法阻止旧 onLoad 闭包直接写业务数据；旧模式继续使用前文的代次保护。
+
+## 官方能力与兼容依据
+
+本轮核对了 [Naive UI 官方 Tree API](https://github.com/tusen-ai/naive-ui/blob/main/src/tree/demos/zhCN/index.demo-entry.md) 和 [Tree 实现](https://github.com/tusen-ai/naive-ui/blob/main/src/tree/src/Tree.tsx)。复选策略、半选、拖动约束、键盘、原生懒加载和虚拟列表继续交给官方实现；新增部分集中于跨请求的路径编排。
+
+社区 [虚拟节点行高反馈 #7529](https://github.com/tusen-ai/naive-ui/issues/7529) 是核验滚动尺寸的依据，不把问题描述当作当前安装版本必然存在的缺陷。项目仍应使用与虚拟测量一致的节点高度，并单独验收自定义多行内容。
+
+搜索成功后会一次性展开命中祖先并滚动到首项，仅做预览，不自动选择或触发业务 `node-select`；使用前后按钮或 Enter 后才定位并选择。加载期间调用 `collapseAll()`、折叠单节点或外部受控折叠，迟到子项可以缓存，但不会重新展开；一个节点的折叠不影响兄弟节点的有效加载。既有 onLoad 的在途请求按原始业务节点去重，搜索投影更新不会重复调用它。

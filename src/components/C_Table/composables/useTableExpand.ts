@@ -24,7 +24,7 @@ import type {
   ChildSelectionState,
   DataRecord,
 } from '../types'
-import { flattenTableRows } from '../helpers'
+import { flattenTableRows, mapTableColumnLeaves } from '../helpers'
 import { useComponentLocale } from '../../../config'
 
 /* ================= 核心状态管理 ================= */
@@ -669,8 +669,8 @@ const useRenderer = <T extends object, C>(
   }
 
   const getTableColumns = (originalColumns: TableColumn<T>[]): unknown[] => {
-    return originalColumns.map(column => {
-      if ((column as any).type === 'selection' && options.enableSelection) {
+    return mapTableColumnLeaves(originalColumns, (column): TableColumn<T> => {
+      if (column.type === 'selection' && options.enableSelection) {
         const disabled = 'disabled' in column ? column.disabled : undefined
         const multiple = 'multiple' in column ? column.multiple : undefined
         return {
@@ -683,7 +683,7 @@ const useRenderer = <T extends object, C>(
       }
 
       if (
-        (column as any).type === 'expand' &&
+        column.type === 'expand' &&
         (options.onLoadData || options.renderContent)
       ) {
         return {

@@ -63,7 +63,9 @@ const totalSize = files.reduce(
 // 两个发布 CSS 入口恢复约 109 KiB 主题样式，另留序列化保护代码的有限空间。
 // 0.31.4 的交互修复与 Node 20 入口兼容使双格式产物增加约 3 KiB。
 // 0.32 新增远程候选、建议输入与实体选择工作流及声明约 91 KiB，新增限额 100 KiB。
-const totalLimit = 4 * 1024 * 1024 + 328 * 1024
+// 0.33 的树路径/字段设置/分组编辑增加约 75 KiB 双格式运行时与声明；只调整物理产物总量。
+// 每个公开入口的首屏/按需加载预算保持不变，由 check:consumer-size 独立约束。
+const totalLimit = 4 * 1024 * 1024 + 408 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

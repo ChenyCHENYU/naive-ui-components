@@ -3,6 +3,7 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
+import { flattenTableColumns } from '../helpers'
 import type { DataRecord, TableColumn, ColumnWithKey } from '../types'
 import { applyFormatter, type FormatterConfig } from './useTableGlobalConfig'
 
@@ -38,10 +39,11 @@ function getExportColumns(
   columns: TableColumn[],
   columnKeys?: string[]
 ): ColumnWithKey[] {
-  return (columns as ColumnWithKey[]).filter(col => {
+  return (
+    flattenTableColumns(columns, !columnKeys?.length) as ColumnWithKey[]
+  ).filter(col => {
     if (typeof col.key !== 'string' || col.key.startsWith('_')) return false
-    if ((col as any).type === 'selection' || (col as any).type === 'expand')
-      return false
+    if (col.type === 'selection' || col.type === 'expand') return false
     if (columnKeys?.length) return columnKeys.includes(col.key as string)
     return col.visible !== false
   })

@@ -1,3 +1,4 @@
+import { isTableColumnEditable } from './tableValidation'
 /*
  * @Description: 表格配置构建 — 从 config 单一入口合并为内部统一配置对象
  * @Migration: naive-ui-components 组件库迁移版本
@@ -683,8 +684,12 @@ export function resolveConfig(config: TableConfig = {}): ResolvedConfig {
 /* ================= 编辑模式检查器 ================= */
 
 export const createEditModeChecker = (config: ResolvedConfig) => ({
-  isNonEditable: (column: TableColumn) =>
-    !config.editable || column.editable === false || config.editMode === 'none',
+  isNonEditable: (column: TableColumn, row?: DataRecord, index = 0) =>
+    !config.editable ||
+    config.editMode === 'none' ||
+    (row
+      ? !isTableColumnEditable(column, row, index)
+      : column.editable === false),
   isRowEditMode: () => ['row', 'both'].includes(config.editMode),
   isCellEditMode: () => ['cell', 'both'].includes(config.editMode),
 })

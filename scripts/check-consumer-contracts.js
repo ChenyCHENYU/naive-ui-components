@@ -262,6 +262,8 @@ async function checkLegacyBrowserBundle() {
       'C_DataPicker',
       'C_Form',
       'C_FormSearch',
+      'C_Tree',
+      'C_Table',
     ].map(name => `${pkg.name}/${name}`)
   )
   const resolvedEntries = new Set()
@@ -339,6 +341,7 @@ async function checkLegacyBrowserBundle() {
     '.c-auto-complete',
     '.c-option-status',
     '.c-data-picker',
+    '.c-tree',
   ]) {
     assert.ok(
       css.includes(selector),
@@ -346,7 +349,7 @@ async function checkLegacyBrowserBundle() {
     )
   }
   console.log(
-    'Legacy peer Vite browser bundle passed: C_Select/C_AutoComplete/C_DataPicker/C_Form/C_FormSearch and their public CSS; browser interactions are not exercised by this build.'
+    'Legacy peer Vite browser bundle passed: C_Select/C_AutoComplete/C_DataPicker/C_Form/C_FormSearch/C_Tree/C_Table and their public CSS; browser interactions are not exercised by this build.'
   )
 }
 

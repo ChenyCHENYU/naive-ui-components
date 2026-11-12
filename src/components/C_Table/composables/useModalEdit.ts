@@ -6,12 +6,15 @@
 
 import { computed, ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
-import type { DataRecord } from '../types'
+import { flattenTableColumns } from '../helpers'
+import { constrainTableEdit, isTableColumnEditable } from './tableValidation'
+import type { TableColumn, DataRecord } from '../types'
 import { cloneData } from '../../../utils/data'
 
 export interface ModalEditOptions<T extends object = DataRecord> {
   data: () => T[]
   rowKey: (row: T) => DataTableRowKey
+  columns?: () => TableColumn<T>[]
   onSave?: (
     editingData: T,
     rowIndex: number,
@@ -52,6 +55,17 @@ export function useModalEdit<T extends object = DataRecord>(
     return true
   }
 
+  const canEditRow = (key: DataTableRowKey) => {
+    const rows = options.data()
+    const index = rows.findIndex(row => options.rowKey(row) === key)
+    if (index < 0) return false
+    const columns = flattenTableColumns(options.columns?.() ?? [])
+    return (
+      !columns.length ||
+      columns.some(column => isTableColumnEditable(column, rows[index], index))
+    )
+  }
+
   const startEdit = (rowKey: DataTableRowKey, sourceData?: T) => {
     if (isSaving.value) return false
     const currentData = options.data()
@@ -61,6 +75,7 @@ export function useModalEdit<T extends object = DataRecord>(
       row => options.rowKey(row) === rowKey
     )
     if (rowIndex === -1) return false
+    if (!canEditRow(rowKey)) return false
 
     revision++
     editingRowKey.value = rowKey
@@ -76,7 +91,12 @@ export function useModalEdit<T extends object = DataRecord>(
 
     const originalKey = editingRowKey.value
     const expectedRevision = revision
-    const dataToSave = cloneData(formData ?? editingData.value)
+    const dataToSave = constrainTableEdit(
+      options.columns?.() ?? [],
+      options.data()[currentIndex],
+      cloneData(formData ?? editingData.value),
+      currentIndex
+    )
     isSaving.value = true
     try {
       await options.onSave?.(dataToSave, currentIndex, originalKey)
@@ -113,7 +133,14 @@ export function useModalEdit<T extends object = DataRecord>(
 
   const updateEditingData = (data: T) => {
     if (isSaving.value) return false
-    editingData.value = cloneData(data)
+    const index = editingRowIndex.value
+    if (index < 0) return false
+    editingData.value = constrainTableEdit(
+      options.columns?.() ?? [],
+      options.data()[index],
+      cloneData(data),
+      index
+    )
     return true
   }
 
@@ -129,7 +156,9 @@ export function useModalEdit<T extends object = DataRecord>(
     editingData,
     editingRowKey,
     editingRowIndex,
+    originalData: computed(() => options.data()[editingRowIndex.value]),
     startEdit,
+    canEditRow,
     saveEdit,
     cancelEdit,
     updateEditingData,

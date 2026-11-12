@@ -89,6 +89,8 @@ export interface RouteMeta {
 export interface TagItem {
   /** 路由路径 */
   path: string
+  /** 具体访问地址（含 query/hash）；身份仍按 path 去重。旧记录可省略。 */
+  fullPath?: string
   /** 显示标题（已翻译） */
   title: string
   /** 原始标题（未翻译，用于语言切换后重新翻译） */

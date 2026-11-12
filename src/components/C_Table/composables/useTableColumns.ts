@@ -19,12 +19,7 @@ import {
   createColumnMeasurer,
   resolveColumnStatus,
 } from '../columnPresentation'
-import type {
-  TableColumn,
-  DataRecord,
-  ColumnWithKey,
-  EditProps,
-} from '../types'
+import type { TableColumn, DataRecord, ColumnWithKey } from '../types'
 import type { ResolvedConfig } from './useTableConfig'
 import {
   getColumnPreferences,
@@ -33,14 +28,10 @@ import {
   type ColumnPreferences,
 } from '../components/ColumnSettings/persistence'
 import { applyFormatter } from './useTableGlobalConfig'
-import { EDIT_COMPONENTS } from '../data'
-import { bindTemporalField } from '../../../core/temporalField'
+import { renderEditComponent } from '../editRenderer'
+export { renderEditComponent } from '../editRenderer'
+import { flattenTableColumns, mapTableColumnLeaves } from '../helpers'
 import C_Icon from '../../C_Icon/index.vue'
-import {
-  createOptionValueBinding,
-  needsOptionValueBinding,
-} from '../../../core/options'
-import { shouldSummarizeSelectTags } from '../../../core/selectPresentation'
 
 /* ================= 内部辅助类型 ================= */
 
@@ -83,88 +74,6 @@ interface TableManagerRef {
 }
 
 /* ================= 渲染工具函数 ================= */
-
-interface EditComponentContext {
-  size?: 'small' | 'medium' | 'large'
-  busy?: boolean
-}
-
-function resolveEditProps(
-  column: TableColumn,
-  value: unknown,
-  onUpdate: (value: unknown) => void,
-  context: EditComponentContext
-) {
-  const col = column as ColumnWithKey
-  const { valueMode, ...editProps } = column.editProps ?? {}
-  const props = {
-    value,
-    'onUpdate:value': onUpdate,
-    placeholder: `请输入${col.title ?? ''}`,
-    style: { width: '100%' },
-    ...(context.size ? { size: context.size } : {}),
-    ...editProps,
-    ...(context.busy ? { disabled: true } : {}),
-  }
-  if (column.editType === 'date' && valueMode === 'formatted') {
-    const { value, 'onUpdate:value': update, ...nativeProps } = props
-    return {
-      ...nativeProps,
-      ...bindTemporalField({ mode: 'formatted', value }, update),
-    }
-  }
-  return column.editType === 'select' ? resolveSelectEditProps(props) : props
-}
-
-function resolveSelectEditProps<
-  T extends EditProps & {
-    value: unknown
-    'onUpdate:value': (value: unknown) => void
-  },
->(props: T) {
-  const selectProps = shouldSummarizeSelectTags(
-    props.multiple,
-    props.maxTagCount
-  )
-    ? { ...props, maxTagCount: 1, class: 'c-select--bounded' }
-    : props
-  if (!needsOptionValueBinding(props.options, props.value)) return selectProps
-  const binding = createOptionValueBinding(props.options, props.value)
-  const update = props['onUpdate:value']
-  return {
-    ...selectProps,
-    value: binding.value,
-    options: binding.options,
-    fallbackOption: props.fallbackOption ?? binding.fallbackOption,
-    'onUpdate:value': (
-      next: Parameters<typeof binding.decode>[0],
-      selected?: unknown
-    ) => update(binding.decode(next, selected)),
-  }
-}
-
-/**
- * 渲染编辑组件（行编辑/单元格编辑通用）
- */
-export function renderEditComponent(
-  column: TableColumn,
-  value: unknown,
-  onUpdate: (val: unknown) => void,
-  rowData: DataRecord = {},
-  rowIndex = 0,
-  size?: EditComponentContext['size'] | EditComponentContext,
-  busy = false
-): VNodeChild {
-  if (column.editRender)
-    return column.editRender(value, rowData, rowIndex, { onUpdate })
-
-  const context = typeof size === 'object' ? size : { size, busy }
-  const componentProps = resolveEditProps(column, value, onUpdate, context)
-
-  const Component =
-    EDIT_COMPONENTS[column.editType || 'input'] || EDIT_COMPONENTS.input
-  return h(Component, componentProps)
-}
 
 /**
  * 渲染只读单元格
@@ -340,7 +249,11 @@ export interface UseTableColumnsOptions {
   actionsRenderer: (row: DataRecord, index: number) => VNodeChild
   /** 编辑模式检查器 */
   editModeChecker: ComputedRef<{
-    isNonEditable: (column: TableColumn) => boolean
+    isNonEditable: (
+      column: TableColumn,
+      row?: DataRecord,
+      index?: number
+    ) => boolean
     isRowEditMode: () => boolean
     isCellEditMode: () => boolean
   }>
@@ -457,7 +370,9 @@ export function useTableColumns(
       // An empty loading schema can be temporary. A committed schema drops deleted keys.
       flushColumnWidths(key)
       const current = preferences.value
-      const keys = new Set(columns.map(column => column.key))
+      const keys = new Set(
+        flattenTableColumns(columns).map(column => column.key)
+      )
       if (showActionsColumn.value) keys.add('_actions')
       const order = current.order?.filter(columnKey => keys.has(columnKey))
       const kept = current.columns.filter(column => keys.has(column.key))
@@ -528,7 +443,7 @@ export function useTableColumns(
     const value = rowData[colKey]
     const checker = editModeChecker.value
 
-    if (checker.isNonEditable(column)) {
+    if (checker.isNonEditable(column, rowData, rowIndex)) {
       return renderDisplayCell(
         column,
         rowData,
@@ -737,25 +652,28 @@ export function useTableColumns(
       return contentWidth(column, bodyFont, fontRevision)
     }
 
-    let cols: DataTableColumn[] = reactiveColumns.value
-      .filter(c => {
-        const col = c as ColumnWithKey
-        return col.visible !== false && col.key !== '_actions'
-      })
-      .map(c => {
-        const col = c as ColumnWithKey
-        if (c.type === 'index') return mapIndexColumn(c, getHeaderFloor)
-        // 原生辅助列保持自己的渲染和宽度，不套用业务数据列的 180px。
-        if (c.type === 'selection' || c.type === 'expand') {
-          return { ...col, width: col.width ?? 40 } as DataTableColumn
+    const mapColumns = (columns: TableColumn[]): DataTableColumn[] =>
+      columns.flatMap(c => {
+        if (c.visible === false || c.key === '_actions') return []
+        if (c.type === 'group') {
+          const children = mapColumns(c.children)
+          return children.length
+            ? [{ ...c, type: undefined, children } as DataTableColumn]
+            : []
         }
-        return mapRegularColumn(c, getHeaderFloor(c), getContentWidth)
-      }) as DataTableColumn[]
+        const col = c as ColumnWithKey
+        if (c.type === 'index') return [mapIndexColumn(c, getHeaderFloor)]
+        // 功能列保留显式宽度，分组不参与数据列宽估算。
+        if (c.type === 'selection' || c.type === 'expand')
+          return [{ ...col, width: col.width ?? 40 } as DataTableColumn]
+        return [mapRegularColumn(c, getHeaderFloor(c), getContentWidth)]
+      })
+    let cols = mapColumns(reactiveColumns.value)
 
     if (
       options.rowNumber?.value &&
       rawColumns.value.length &&
-      !rawColumns.value.some(
+      !flattenTableColumns(rawColumns.value).some(
         column => column.type === 'index' || column.key === '_index'
       )
     ) {
@@ -825,15 +743,17 @@ export function useTableColumns(
     if (options.scrollX !== undefined) return options.scrollX
 
     const { columns, hasHeaderFloor, hasAutomatic } = columnLayout.value
-    const hasFixed = columns.some(col => col.fixed)
+    const leaves = flattenTableColumns(columns)
+    const hasFixed =
+      columns.some(col => col.fixed) || leaves.some(col => col.fixed)
     const hasSizedUtility =
-      columns.some(isUtilityColumn) &&
-      columns.every(col => columnPixels(col) !== undefined)
+      leaves.some(isUtilityColumn) &&
+      leaves.every(col => columnPixels(col) !== undefined)
     if (!hasFixed && !hasAutomatic && !hasHeaderFloor && !hasSizedUtility)
       return undefined
 
     // 使用最终可见列：包含实际选择/展开/序号/操作列，不再额外猜测 200px。
-    return columns.reduce(
+    return leaves.reduce(
       (sum, col) =>
         sum +
         (columnPixels(col) ??
@@ -847,10 +767,11 @@ export function useTableColumns(
   const nativeLayout = computed(() => {
     const { columns, flexibleKey } = columnLayout.value
     const width = computedScrollX.value
+    const leaves = flattenTableColumns(columns)
     if (
       typeof width !== 'number' ||
-      !columns.some(isUtilityColumn) ||
-      columns.some(col => columnPixels(col) === undefined)
+      !leaves.some(isUtilityColumn) ||
+      leaves.some(col => columnPixels(col) === undefined)
     )
       return { columns }
 
@@ -860,7 +781,7 @@ export function useTableColumns(
         width: options.scrollX === undefined ? width : undefined,
       }
     return {
-      columns: columns.map(col =>
+      columns: mapTableColumnLeaves(columns, col =>
         'key' in col && col.key === flexibleKey
           ? {
               ...col,

@@ -7,6 +7,8 @@ export interface SerializeSearchOptions {
   omitEmpty?: boolean
   /** active 只提交当前配置中可用的字段与固定条件，忽略未配置值和 show: false 的非固定条件。 */
   scope?: 'all' | 'active'
+  /** 字段设置启用后可传当前键；只在 active 范围生效，固定条件不排除。 */
+  visibleFields?: readonly string[]
 }
 
 function validateTargets<T extends object>(
@@ -65,7 +67,11 @@ export function serializeSearch<T extends object = SearchFormParams>(
   const included = fields.filter(
     field =>
       field.type !== 'spacer' &&
-      (!activeOnly || field.show !== false || field.fixed)
+      (!activeOnly ||
+        field.fixed ||
+        (field.show !== false &&
+          (!options.visibleFields ||
+            options.visibleFields.includes(field.prop))))
   )
   validateTargets(included)
   const output: Record<string, unknown> = activeOnly

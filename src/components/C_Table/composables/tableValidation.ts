@@ -1,6 +1,7 @@
 import type { RuleItem, ValidateError } from 'async-validator'
 import type { FormItemRule } from 'naive-ui'
 import type { DataRecord, NormalTableColumn, TableColumn } from '../types'
+import { flattenTableColumns } from '../helpers'
 import { createRequiredFormRule } from '../../C_Form/utils/formValidation'
 
 /** 功能列不参与编辑和表单转换，数字字段键与普通业务列保持一致。 */
@@ -13,6 +14,41 @@ export function isEditableDataColumn<T extends object>(
     column.key !== '_actions' &&
     String(column.key ?? '').trim().length > 0
   )
+}
+
+/** 行规则以当前源行决定权限；抛错保持失败，不能将异常当成允许编辑。 */
+export function isTableColumnEditable<T extends object>(
+  column: TableColumn<T>,
+  row: T,
+  index = 0
+): boolean {
+  return (
+    isEditableDataColumn(column) &&
+    (typeof column.editable !== 'function' || column.editable(row, index))
+  )
+}
+
+/** 保存前恢复当下不可编字段，外部状态变化不会提交已经失效的草稿。 */
+export function constrainTableEdit<T extends object>(
+  columns: TableColumn<T>[],
+  source: T,
+  draft: T,
+  index = 0
+): T {
+  const leaves = flattenTableColumns(columns)
+  const guarded = leaves.some(column => typeof column.editable === 'function')
+  // 行谓词启用后，未声明的元数据也以最新源行为准，避免旧草稿回写解锁状态。
+  const result = guarded ? { ...source } : { ...draft }
+  for (const column of leaves) {
+    if (column.type || column.key === '_actions' || column.key == null) continue
+    const key = column.key as keyof T
+    if (!isTableColumnEditable(column, source, index)) {
+      if (Object.prototype.hasOwnProperty.call(source, key))
+        result[key] = source[key]
+      else delete result[key]
+    } else if (guarded) result[key] = draft[key]
+  }
+  return result
 }
 
 /** 三种编辑模式共用列规则，复用表单的必填语义且不修改业务配置。 */

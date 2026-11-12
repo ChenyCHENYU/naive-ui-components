@@ -10,6 +10,42 @@ interface OptionInput {
   label?: string
   labelDefault?: string
   disabled?: boolean
+  type?: unknown
+  children?: unknown
+}
+
+/** 只有原生 group 节点递归；业务记录自身的 children 字段不改变选项身份。 */
+function groupChildren(
+  option: OptionInput
+): readonly OptionInput[] | undefined {
+  return option.type === 'group' && Array.isArray(option.children)
+    ? option.children
+    : undefined
+}
+
+/** 组选项不参与值绑定，只返回原始叶项，保留业务记录身份。 */
+export function flattenOptionItems<T extends OptionInput>(
+  list: readonly T[]
+): T[] {
+  const leaves: T[] = []
+  const visit = (items: readonly T[]) => {
+    for (const option of items) {
+      const children = groupChildren(option)
+      if (children) visit(children as readonly T[])
+      else leaves.push(option)
+    }
+  }
+  visit(list)
+  return leaves
+}
+
+function hasBooleanOption(list: readonly OptionInput[]): boolean {
+  return list.some(option => {
+    const children = groupChildren(option)
+    return children
+      ? hasBooleanOption(children)
+      : typeof option.value === 'boolean'
+  })
 }
 
 type NativeValue = string | number
@@ -25,7 +61,7 @@ export function needsOptionValueBinding(
   const values = Array.isArray(value) ? value : [value]
   return (
     values.some(item => typeof item === 'boolean') ||
-    list?.some(option => typeof option.value === 'boolean') === true
+    (list && hasBooleanOption(list)) === true
   )
 }
 
@@ -83,27 +119,44 @@ function createOptionValueCodec(falseToken: string, trueToken: string) {
   }
 }
 
+function mapOption(option: OptionInput) {
+  const value = option.value ?? option.label ?? option.labelDefault
+  return {
+    ...option,
+    label: option.label ?? option.labelDefault ?? '',
+    value:
+      typeof value === 'string' || typeof value === 'number'
+        ? value
+        : undefined,
+    [rawOptionValue]: value,
+  }
+}
+
+/** 提前收集所有叶项与占用编码，分组标题不作为业务值。 */
+function prepareOptions(list: readonly OptionInput[] | undefined) {
+  const occupied = new Set<string>()
+  let hasBooleanOptions = false
+  const leaves = list ? flattenOptionItems(list) : []
+  const mapped = new Map<
+    OptionInput,
+    { label: string; value: NativeValue | undefined; [rawOptionValue]: unknown }
+  >()
+  for (const option of leaves) {
+    const mappedOption = mapOption(option)
+    const value = mappedOption[rawOptionValue]
+    if (typeof value === 'string' && value.startsWith(booleanTokenPrefix))
+      occupied.add(value)
+    if (typeof value === 'boolean') hasBooleanOptions = true
+    mapped.set(option, mappedOption)
+  }
+  return { occupied, hasBooleanOptions, mapped }
+}
+
 /** 把选项与选中值分开绑定，选中值变化时复用原生选项。 */
 export function createOptionValueBinder(
   list: readonly OptionInput[] | undefined
 ) {
-  const occupied = new Set<string>()
-  let hasBooleanOptions = false
-  const options = list?.map(option => {
-    const value = option.value ?? option.label ?? option.labelDefault
-    if (typeof value === 'string' && value.startsWith(booleanTokenPrefix))
-      occupied.add(value)
-    if (typeof value === 'boolean') hasBooleanOptions = true
-    return {
-      ...option,
-      label: option.label ?? option.labelDefault ?? '',
-      value:
-        typeof value === 'string' || typeof value === 'number'
-          ? value
-          : undefined,
-      [rawOptionValue]: value,
-    }
-  })
+  const { occupied, hasBooleanOptions, mapped } = prepareOptions(list)
   const tokenFor = (value: boolean, selected?: ReadonlySet<unknown>) => {
     let token = `${booleanTokenPrefix}${value}__`
     while (occupied.has(token) || selected?.has(token)) token += '_'
@@ -114,14 +167,28 @@ export function createOptionValueBinder(
 
   const bindTokens = (falseToken: string, trueToken: string) => {
     const codec = createOptionValueCodec(falseToken, trueToken)
-    const nativeOptions = hasBooleanOptions
-      ? options?.map(option => {
+    const mapOptions = (
+      entries: readonly OptionInput[]
+    ): Array<{ label: string; value?: NativeValue; children?: unknown }> =>
+      entries.map(entry => {
+        const children = groupChildren(entry)
+        if (children)
+          return {
+            ...entry,
+            value: undefined,
+            label: entry.label ?? entry.labelDefault ?? '',
+            children: mapOptions(children),
+          }
+        const option = mapped.get(entry)!
+        if (hasBooleanOptions) {
           const original = option[rawOptionValue]
           return typeof original === 'boolean'
             ? { ...option, value: original ? trueToken : falseToken }
             : option
-        })
-      : options
+        }
+        return option
+      })
+    const nativeOptions = list ? mapOptions(list) : undefined
     return { falseToken, trueToken, codec, nativeOptions }
   }
   let binding: ReturnType<typeof bindTokens> | undefined

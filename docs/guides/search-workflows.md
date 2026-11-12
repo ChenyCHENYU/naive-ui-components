@@ -262,3 +262,66 @@ const options = [{ prop: 'assigneeId', type: 'assignee', label: '经办人' }]
 覆盖仓库/货位联动、编码回显、分页候选、自由备注、快捷/完整实体选择、分类导航、数量限制和禁选行。页面还提供错误重试、记录失效、固定工厂切换、紧凑/默认密度及深浅色检查入口。`bun run check:search-workflows` 验证该使用示例的公开类型和生产构建。
 
 验收正式构建时，执行 `bun run check:search-workflows && bun run preview:search-workflows`，在 `http://127.0.0.1:4189` 操作；生产预览不会受到开发依赖预构建或热更新重载的影响。
+
+## 用户自选查询字段
+
+可选的字段设置只管理显示偏好，不改变条件值和原有 `onSearch` 载荷。默认关闭，旧页面保持原来的字段显示、折叠和重置方式。
+
+```vue
+<C_FormSearch
+  v-model="query"
+  :form-item-list="fields"
+  :config="{
+    fieldSettings: {
+      defaultVisibleKeys: ['keyword', 'department'],
+      lockedKeys: ['keyword'],
+      persistKey: 'orders:search-fields',
+      scope: companyId,
+    },
+  }"
+/>
+```
+
+- `fieldSettings: true` 显示设置入口，初始采用当前可见字段。高级配置的 `defaultVisibleKeys` 控制默认选择，`lockedKeys` 和 `fixed` 字段不能由用户隐藏。
+- 业务设置的 `show: false` 优先：即使存储、默认值或受控键包含该字段，也不会在设置面板或表单中重新显示。字段设置不是权限控制机制。
+- 只有显式 `persistKey` 才会存储键列表，按 `scope` 隔离；不存查询值。可选 `version` 默认为 1，版本不符、记录损坏或过期字段会安全回退/过滤。浏览器存储不可用不阻断搜索。
+- 可选 `v-model:visible-fields` 接管键列表。受控模式由调用方保存状态，组件不以本地偏好覆盖它；调用方需按自己的用户/公司上下文切换受控值。
+- 隐藏字段的旧值保留，并计入已有隐藏条件提示。搜索与重置继续遵循原有规则，不偷偷删除查询上下文或转换回调载荷。
+
+如果请求只应包含当前启用的字段，可显式使用已有的 `active` 序列化范围，并传入当前显示键。固定条件始终保留，`scope: 'all'` 不受此选项影响：
+
+```ts
+const visibleFields = ref(['keyword', 'department'])
+const config = {
+  fieldSettings: true,
+  onSearch: (values: Query) =>
+    fetchRows(
+      serializeSearch(values, fields, {
+        scope: 'active',
+        visibleFields: visibleFields.value,
+      })
+    ),
+}
+```
+
+在模板使用 `v-model:visible-fields="visibleFields"`；不需要受控状态的页面直接省略此绑定。组件公开实例也可读取 `visibleFields`。设置面板的“恢复默认字段”仅恢复显示偏好，不触发查询或清空草稿。
+
+## 层级查询字段
+
+搜索表单提供 `treeSelect` 与 `cascader` 字段。它们复用 Naive 原生控件并按需加载；不提前加载完整 `C_Form`。`list` 或 `attrs.options` 提供树，`attrs` 保留原生字段映射、勾选策略和 `onLoad` 扩展，外部异步状态通过已有 `optionsState` 展示加载/失败/重试。
+
+```ts
+const fields: SearchFormItem<Query>[] = [
+  {
+    type: 'treeSelect',
+    prop: 'departmentIds',
+    attrs: { multiple: true },
+    list: departmentTree,
+  },
+  { type: 'cascader', prop: 'regionId', list: regionTree },
+]
+```
+
+`treeSelect` 默认节点键为 `key`，`cascader` 默认节点值为 `value`；自定义字段名通过原生 `attrs` 声明。单选模型是 `string | number | null`，多选是键数组，清空/重置保持对应形状。数字键 `0` 不会被当作空值。只读/禁用/固定字段继续使用相同的受控更新边界，尺寸继承搜索密度。
+
+这里使用 Naive 的叶键/勾选键模型，**不把一个单选路径数组猜成多选值，也不兼容 Element Plus 的 `emitPath` 协议**。请求需要祖先路径时，由项目在显式 `query.serialize` 中映射；不要为了适配一个后台修改所有页面的模型。

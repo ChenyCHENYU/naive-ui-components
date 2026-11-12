@@ -48,10 +48,12 @@ export function mergeSearchPreset<T extends object>(
 }
 
 const isMultiple = (field: SearchValueField): boolean =>
-  field.type === 'select' && field.attrs?.multiple === true
+  ['select', 'treeSelect', 'cascader'].includes(field.type) &&
+  field.attrs?.multiple === true
 
 const preservesClearedValue = (field: SearchValueField): boolean =>
-  ['select', 'number'].includes(field.type) && field.attrs?.clearable === false
+  ['select', 'treeSelect', 'cascader', 'number'].includes(field.type) &&
+  field.attrs?.clearable === false
 
 /** 与控件渲染和历史选择共用防写边界，不能由 v-bind 的事件绕过。 */
 export function isSearchFieldLocked(field: SearchValueField): boolean {

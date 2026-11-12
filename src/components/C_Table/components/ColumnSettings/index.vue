@@ -200,6 +200,7 @@
   import C_Icon from '../../../C_Icon/index.vue'
   import type { TableColumn } from '../../types'
   import { getFixedOptions, isSpecialColumn } from './data'
+  import { flattenTableColumns } from '../../helpers'
   import { cloneTableColumns } from './persistence'
 
   defineOptions({ name: 'ColumnSettings' })
@@ -226,7 +227,7 @@
   watch(
     () => props.columns,
     columns => {
-      localColumns.value = cloneTableColumns(columns)
+      localColumns.value = cloneTableColumns(flattenTableColumns(columns))
       enableResizable.value = localColumns.value.some(
         col => col.resizable === true
       )
@@ -323,7 +324,30 @@
 
   /* ================= 拖拽排序 ================= */
 
+  const parentByKey = computed(() => {
+    const owners = new Map<string | number, TableColumn[]>()
+    const visit = (columns: TableColumn[]) => {
+      for (const column of columns) {
+        if (column.type === 'group') visit(column.children)
+        else if (column.key != null) owners.set(column.key, columns)
+      }
+    }
+    visit(props.columns)
+    return owners
+  })
+
+  // 分组结构由调用方定义，列设置只允许同一组内排序。
   const moveColumn = (fromIndex: number, toIndex: number) => {
+    const from = filteredColumns.value[fromIndex]
+    const to = filteredColumns.value[toIndex]
+    if (
+      !from ||
+      !to ||
+      from.key == null ||
+      to.key == null ||
+      parentByKey.value.get(from.key) !== parentByKey.value.get(to.key)
+    )
+      return
     const originalFromIndex = findOriginalIndex(fromIndex)
     const originalToIndex = findOriginalIndex(toIndex)
     if (originalFromIndex !== -1 && originalToIndex !== -1) {

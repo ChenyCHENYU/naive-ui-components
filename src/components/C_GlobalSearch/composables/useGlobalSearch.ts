@@ -77,7 +77,20 @@ export function useGlobalSearch(
 
   const filteredMenuItems = computed(() => {
     if (!searchValue.value.trim()) return []
-    return searchMenuIndex(menuIndex.value, searchValue.value)
+    const index = menuIndex.value
+    const { search, matchMode } = getOptions()
+    if (!search) return searchMenuIndex(index, searchValue.value, matchMode)
+    // 自定义排序/模糊算法只负责匹配，不能把旧权限范围外的菜单重新带入结果。
+    const seen = new Set<string>()
+    return search(
+      searchValue.value,
+      index.entries.map(entry => entry.item)
+    ).flatMap(item => {
+      const current = index.byKey.get(item.key)
+      if (!current || seen.has(item.key)) return []
+      seen.add(item.key)
+      return [current]
+    })
   })
 
   const visibleHistory = computed(() => {
@@ -121,8 +134,17 @@ export function useGlobalSearch(
     search: string
   ): Array<{ text: string; matched: boolean }> => {
     if (!search) return [{ text, matched: false }]
+    const terms =
+      getOptions().matchMode === 'tokens'
+        ? search
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .sort((a, b) => b.length - a.length)
+        : [search]
+    if (!terms.length) return [{ text, matched: false }]
     const regex = new RegExp(
-      `(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+      `(${terms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
       'gi'
     )
     return text
@@ -130,7 +152,9 @@ export function useGlobalSearch(
       .filter(Boolean)
       .map(part => ({
         text: part,
-        matched: part.toLocaleLowerCase() === search.toLocaleLowerCase(),
+        matched: terms.some(
+          term => part.toLocaleLowerCase() === term.toLocaleLowerCase()
+        ),
       }))
   }
 

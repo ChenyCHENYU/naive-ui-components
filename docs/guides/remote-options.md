@@ -91,3 +91,27 @@
   />
 </template>
 ```
+
+## 本地分组选项
+
+`C_Select` 接受原生组/叶结构；业务值仍只来自叶项。`0`、`false` 和普通字符串维持原类型，`select` 返回原始叶记录，多选按选中值顺序返回。组本身不参与提交，不使用组标题代替值。
+
+```vue
+<C_Select
+  v-model="enabled"
+  :options="[
+    {
+      type: 'group',
+      label: '系统状态',
+      children: [
+        { label: '启用', value: true, code: 'enabled' },
+        { label: '停用', value: false, code: 'disabled' },
+      ],
+    },
+  ]"
+/>
+```
+
+公开类型为 `SelectOptionNode<V>`（组/叶联合）、`SelectOptionGroup<V>` 和原有 `SelectOptionItem<V>`。原来的平坦数组保持兼容。组内叶项的编码、回显和 `select` 走同一链，调用方不需要自己展平或编码布尔值。业务记录上普通的 `children` 属性只有在 `type: 'group'` 时才被解释为分组，原记录不会被改写。
+
+远程 `source` 继续返回平坦实体页，保留已有分页/取消/回显所有权；本地组不会触发另一套远程分组请求。需要服务端分组时先明确分页边界，不把当前页面临时分组误当全量目录。

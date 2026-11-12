@@ -80,7 +80,11 @@
   } from 'vue-router'
   import { C_Icon } from '../C_Icon'
   import type { TagItem } from '../_shared/public'
-  import { useTagsView, type UseTagsViewOptions } from './useTagsView'
+  import {
+    useTagsView,
+    getTagLocation,
+    type UseTagsViewOptions,
+  } from './useTagsView'
   import type { ContextMenuLabels } from './types'
 
   defineOptions({ name: 'C_TagsView' })
@@ -171,6 +175,7 @@
       : (route.meta.title as string) || 'Unnamed Page'
     return {
       path: route.path,
+      fullPath: route.fullPath,
       originalTitle,
       title: formatLabel(originalTitle),
       icon: isHome ? props.homeIcon : (route.meta.icon as string),
@@ -220,8 +225,9 @@
   // ====== Actions ======
 
   const navigateToTag = (tag: TagItem) => {
-    if (tag.path !== route.path) {
-      void router.push(tag.path).catch(() => undefined)
+    const location = getTagLocation(tag)
+    if (location !== route.fullPath) {
+      void router.push(location).catch(() => undefined)
     }
     scrollToTag(tag.path)
   }
@@ -249,7 +255,9 @@
     const version = ++closeVersion
     const shouldNavigate =
       forceNavigate || !remaining.some(tag => tag.path === route.path)
-    if (shouldNavigate && !(await navigateForClose(fallbackPath))) return false
+    const fallbackTag = remaining.find(tag => tag.path === fallbackPath)
+    const location = fallbackTag ? getTagLocation(fallbackTag) : fallbackPath
+    if (shouldNavigate && !(await navigateForClose(location))) return false
     if (disposed || version !== closeVersion) return false
     // 导航成功才提交关闭结果。重定向可能落到其他页面，保留该页的活动标签。
     const active =
@@ -362,12 +370,12 @@
 
   // ====== 路由自动跟踪 ======
   watch(
-    () => route.path,
-    (newPath: string) => {
+    () => route.fullPath,
+    () => {
       tags.addTag(createCurrentTag())
 
-      tags.setActiveTag(newPath)
-      scrollToTag(newPath)
+      tags.setActiveTag(route.path)
+      scrollToTag(route.path)
     },
     { immediate: true }
   )

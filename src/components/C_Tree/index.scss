@@ -58,6 +58,24 @@
     scrollbar-width: thin;
   }
 
+  .c-tree-search-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-inline: var(--c-tree-padding);
+    font-size: 12px;
+    color: var(--c-tree-text-secondary);
+    flex-shrink: 0;
+  }
+
+  .c-tree-search-navigation {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   &--virtual {
     .c-tree-container {
       overflow: hidden;
@@ -100,6 +118,21 @@
     transition: opacity 0.15s ease;
   }
 
+  :deep(.c-tree-suffix) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  :deep(.c-tree-node-loading) {
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: c-tree-spin 0.8s linear infinite;
+  }
+
   :deep(.n-tree-node:hover .tree-actions),
   :deep(.n-tree-node:focus-within .tree-actions),
   :deep(.tree-actions:focus-within) {
@@ -116,5 +149,14 @@
 @media (prefers-reduced-motion: reduce) {
   .c-tree :deep(.tree-actions) {
     transition: none;
+  }
+  .c-tree :deep(.c-tree-node-loading) {
+    animation: none;
+  }
+}
+
+@keyframes c-tree-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

@@ -46,6 +46,7 @@ export type {
   SearchFormItem,
   SearchFormParams,
   SearchConfig,
+  SearchFieldSettings,
   FormSearchEmits,
   FormSearchProps,
   FormSearchExpose,

@@ -232,6 +232,7 @@
         :key="formKey"
         v-model="localEditingData"
         :options="formOptions"
+        :renderers="formRenderers"
         :config="{
           layout: 'grid',
           density: resolved.density,
@@ -344,7 +345,7 @@
     useCrossPageSelection,
   } from './composables/useCrossPageSelection'
   import { exportTableData } from './composables/useTableExport'
-  import { generateFormOptions } from './data'
+  import { generateFormOptions, generateFormRenderers } from './data'
   import ColumnSettings from './components/ColumnSettings/index.vue'
   import C_Icon from '../C_Icon/index.vue'
   import C_ActionBar from '../C_ActionBar/index.vue'
@@ -355,6 +356,7 @@
   import { C_Loading } from '../C_Loading'
   import {
     collectTreeBranchKeys,
+    flattenTableColumns,
     validateTableRowKeys,
     getTableRowDragKey,
   } from './helpers'
@@ -896,7 +898,10 @@
 
   const tableWrapperRef = ref<HTMLElement>()
   const columnByKey = computed(
-    () => new Map(reactiveColumns.value.map(item => [item.key, item]))
+    () =>
+      new Map(
+        flattenTableColumns(reactiveColumns.value).map(item => [item.key, item])
+      )
   )
   let sortableInstance: Sortable | null = null
   let columnDragVersion = 0
@@ -919,7 +924,11 @@
       const headerRow = tableWrapperRef.value.querySelector(
         '.n-data-table-thead tr'
       )
-      if (!headerRow) return
+      if (
+        !headerRow ||
+        reactiveColumns.value.some(column => column.type === 'group')
+      )
+        return
       const rawColumn = (column: (typeof computedColumns.value)[number]) => {
         if (!column || column.type || column.key === '_actions') return
         const source = columnByKey.value.get(column.key)
@@ -1063,8 +1072,21 @@
       `edit-form-${tableManager.editStates.modalEdit.editingRowKey.value ?? 'new'}`
   )
 
+  const formRenderers = computed(() =>
+    generateFormRenderers(
+      effectiveColumns.value,
+      () => localEditingData.value,
+      () => tableManager.editStates.modalEdit.editingRowIndex.value
+    )
+  )
+
   const formOptions = computed(() =>
-    generateFormOptions(effectiveColumns.value, () => localEditingData.value)
+    generateFormOptions(
+      effectiveColumns.value,
+      () => localEditingData.value,
+      () => tableManager.editStates.modalEdit.originalData.value,
+      () => tableManager.editStates.modalEdit.editingRowIndex.value
+    )
   )
 
   watch(
@@ -1160,7 +1182,11 @@
     }
   )
   const getSchemaColumnKeys = (columns: TableColumn[]) =>
-    new Set(columns.flatMap(column => (column.key == null ? [] : [column.key])))
+    new Set(
+      flattenTableColumns(columns).flatMap(column =>
+        column.key == null ? [] : [column.key]
+      )
+    )
   let schemaColumnKeys = getSchemaColumnKeys(effectiveColumns.value)
   watch(effectiveColumns, columns => {
     if (!columns.length) return
@@ -1170,7 +1196,7 @@
     if (removed.size) viewport.discardColumns(removed)
     if (!nativeResizedWidths.size) return
     const displayed = new Map(
-      computedColumns.value.flatMap(column =>
+      flattenTableColumns(computedColumns.value).flatMap(column =>
         'key' in column ? [[column.key, column] as const] : []
       )
     )
@@ -1295,7 +1321,8 @@
       resolved.value.enableColumnDrag
         ? JSON.stringify([
             nativeTableVersion.value,
-            computedColumns.value.map(column => [
+            reactiveColumns.value.some(column => column.type === 'group'),
+            flattenTableColumns(computedColumns.value).map(column => [
               'key' in column ? column.key : undefined,
               column.type,
             ]),

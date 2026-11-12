@@ -44,6 +44,24 @@ export interface IconConfig {
   typeMap?: Record<string, string>
   colorMap?: Record<string, string>
 }
+
+/** 路径按根节点到命中节点排列；路径不代表各级的完整子项列表。 */
+export interface TreeSearchSource<T extends object = TreeNodeData> {
+  request: (context: {
+    search: string
+    signal: AbortSignal
+    limit: number
+  }) => Promise<readonly (readonly T[])[]>
+  /** 根据唯一键恢复一个尚未加载的节点及其祖先。 */
+  resolve?: (key: TreeKey, signal: AbortSignal) => Promise<readonly T[] | null>
+  /** 返回该节点的完整直接子项；与搜索补入的部分路径严格区分。 */
+  load?: (node: T, context: { signal: AbortSignal }) => Promise<readonly T[]>
+  debounce?: number
+  minChars?: number
+  limit?: number
+  /** 身份或业务范围改变时取消旧请求并丢弃远程覆盖层。 */
+  scope?: string | number
+}
 type MaybeArray<T> = T | T[]
 type TreeUpdateHandler<T extends object, A extends TreeUpdateMeta['action']> = (
   keys: TreeKey[],
@@ -174,6 +192,17 @@ export interface TreeProps<T extends object = TreeNodeData> {
   searchPattern?: string
   searchable?: boolean
   searchPlaceholder?: string
+  searchSource?: TreeSearchSource<T>
+  /** 常用原生能力可直接配置；未传时继续使用 treeProps 和原生默认值。 */
+  checkable?: boolean
+  multiple?: boolean
+  cascade?: boolean
+  checkStrategy?: NaiveTreeProps['checkStrategy']
+  selectable?: boolean
+  disabled?: boolean
+  virtualScroll?: boolean
+  accordion?: boolean
+  expandOnClick?: boolean
   draggable?: boolean
   showLine?: boolean
   showToolbar?: boolean
@@ -203,6 +232,16 @@ export interface TreeExpose<T extends object = TreeNodeData> {
   getCheckedData: () => { keys: TreeKey[]; options: Array<T | null> }
   getIndeterminateData: () => { keys: TreeKey[]; options: Array<T | null> }
   scrollTo: TreeInst['scrollTo']
+  /** 展开已知路径，或经 searchSource.resolve 恢复未知节点。 */
+  locate: (key: TreeKey) => Promise<boolean>
+  locateMatch: (index: number) => Promise<boolean>
+  nextMatch: () => Promise<boolean>
+  previousMatch: () => Promise<boolean>
+  retrySearch: () => Promise<void>
+  searchLoading: boolean
+  searchError: unknown
+  searchMatchCount: number
+  searchMatchIndex: number
   /** Vue 公开实例会解包顶层 Ref；这些属性直接读取数组。 */
   expandedKeys: TreeKey[]
   selectedKeys: TreeKey[]
@@ -229,6 +268,7 @@ export interface TreeEmits<T extends object = TreeNodeData> {
   'node-action': [action: string, node: T]
   'node-drop': [info: DropInfo<T>]
   'load-error': [error: unknown, node: T]
+  'search-error': [error: unknown]
   add: [parentNode?: T]
   refresh: []
 }

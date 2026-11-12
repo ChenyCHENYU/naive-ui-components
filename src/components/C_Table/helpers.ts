@@ -151,3 +151,37 @@ export function collectTreeBranchKeys<T extends object>(
 
   return [...keys]
 }
+
+/** 组列没有业务值；所有状态和数据操作复用同一叶列遍历。 */
+export function flattenTableColumns<C extends object>(
+  columns: readonly C[],
+  visibleOnly = false
+): C[] {
+  const result: C[] = []
+  const visited = new WeakSet<object>()
+  const visit = (items: readonly C[]) => {
+    for (const column of items) {
+      if (visited.has(column)) continue
+      visited.add(column)
+      const record = column as Record<string, unknown>
+      if (visibleOnly && record.visible === false) continue
+      if (Array.isArray(record.children)) visit(record.children as C[])
+      else result.push(column)
+    }
+  }
+  visit(columns)
+  return result
+}
+
+/** 映射叶列时保留分组边界，不修改使用侧配置。 */
+export function mapTableColumnLeaves<C extends object>(
+  columns: readonly C[],
+  map: (column: C) => C
+): C[] {
+  return columns.map(column => {
+    const { children } = column as Record<string, unknown>
+    return Array.isArray(children)
+      ? { ...column, children: mapTableColumnLeaves(children as C[], map) }
+      : map(column)
+  })
+}

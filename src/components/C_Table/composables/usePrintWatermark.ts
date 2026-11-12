@@ -6,6 +6,8 @@
 
 import { ref, nextTick } from 'vue'
 import { useComponentFeedback } from '../../../config'
+import { notifyObserver } from '../../../core/observer'
+import { createPrintDocument } from './printDocument'
 
 /* ================= 类型定义 ================= */
 
@@ -50,6 +52,8 @@ export interface PrintConfig {
   onLoadingStart?: () => void
   onLoadingEnd?: () => void
   onPrintDialogClose?: () => void
+  /** 打印引擎失败通知；失败仍会拒绝当前 Promise。 */
+  onError?: (error: Error) => void
 }
 
 export interface PrintWatermarkOptions {
@@ -81,9 +85,7 @@ const DEFAULT_CAPTURE: Required<Omit<CaptureConfig, 'dpi'>> = {
   useCORS: true,
 }
 
-const DEFAULT_PRINT: Required<
-  Omit<PrintConfig, 'onPrintDialogOpen' | 'onError'>
-> = {
+const DEFAULT_PRINT: Required<Omit<PrintConfig, 'onError'>> = {
   orientation: 'portrait',
   paperSize: 'A4',
   margin: '10mm 10mm 0 10mm',
@@ -303,28 +305,34 @@ async function printImage(
     throw new Error('打印功能仅支持浏览器环境')
   }
   const finalConfig = { ...DEFAULT_PRINT, ...config }
-  const { default: printJS } = await import('print-js')
-
-  return new Promise<void>((resolve, reject) => {
-    try {
-      finalConfig.onLoadingStart?.()
+  const printDocument = createPrintDocument(
+    imageDataURL,
+    config,
+    DEFAULT_PRINT.style
+  )
+  try {
+    const { default: printJS } = await import('print-js')
+    return await new Promise<void>((resolve, reject) => {
+      notifyObserver(() => finalConfig.onLoadingStart?.())
 
       printJS({
-        printable: imageDataURL,
-        type: 'image',
-        style: finalConfig.style,
+        ...printDocument,
         showModal: finalConfig.showModal,
         modalMessage: finalConfig.modalMessage,
-        onLoadingEnd: finalConfig.onLoadingEnd,
+        onLoadingEnd: () => notifyObserver(() => finalConfig.onLoadingEnd?.()),
+        onError: reject,
         onPrintDialogClose: () => {
-          finalConfig.onPrintDialogClose?.()
+          notifyObserver(() => finalConfig.onPrintDialogClose?.())
           resolve()
         },
       })
-    } catch (error) {
-      reject(error)
-    }
-  })
+    })
+  } catch (error) {
+    // 统一模块加载、同步抛错与异步失败；Promise 的一次结算避免重复错误通知。
+    const cause = error instanceof Error ? error : new Error(String(error))
+    notifyObserver(() => finalConfig.onError?.(cause))
+    throw cause
+  }
 }
 
 /* ================= 合并打印辅助函数 ================= */

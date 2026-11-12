@@ -6,6 +6,8 @@ export type SearchFieldType =
   | 'input'
   | 'autocomplete'
   | 'select'
+  | 'treeSelect'
+  | 'cascader'
   | 'number'
   | 'number-range'
   | 'date'
@@ -88,8 +90,16 @@ interface SearchFormItemBase {
   rules?: FormItemRule[]
 }
 
+type FieldOption<V> = Omit<SearchOptionItem, 'value'> & {
+  value: Extract<V, SearchOptionValue>
+}
 type FieldOptions<V> = Array<
-  Omit<SearchOptionItem, 'value'> & { value: Extract<V, SearchOptionValue> }
+  | FieldOption<V>
+  | {
+      type: 'group'
+      label: string
+      children: readonly FieldOption<V>[]
+    }
 >
 type FieldAttributes = Record<string, unknown>
 type SearchFieldSource<T extends object> =
@@ -137,6 +147,30 @@ type TypedSearchControl<V> =
   | (TypedSingleDate<V> & { list?: never })
   | (TypedDateRange<V> & { list?: never })
   | { type: 'custom'; defaultValue: V; list?: never }
+  | (NonNullable<V> extends readonly (infer Item)[]
+      ? [] extends NonNullable<V>
+        ? [Item] extends [string | number]
+          ? {
+              type: 'treeSelect' | 'cascader'
+              attrs: FieldAttributes & { multiple: true }
+              list?: SearchOptionItem[]
+            }
+          : never
+        : never
+      : NonNullable<V> extends string | number
+        ? null extends V
+          ? {
+              type: 'treeSelect' | 'cascader'
+              attrs?: FieldAttributes & { multiple?: false }
+              list?: SearchOptionItem[]
+            }
+          : {
+              type: 'treeSelect' | 'cascader'
+              attrs: FieldAttributes & { multiple?: false; clearable: false }
+              defaultValue: NonNullable<V>
+              list?: SearchOptionItem[]
+            }
+        : never)
   | (NonNullable<V> extends readonly (infer Item)[]
       ? [] extends NonNullable<V>
         ? {
@@ -187,6 +221,8 @@ export interface SearchFormParams {
 }
 
 export interface SearchConfig<T extends object = SearchFormParams> {
+  /** 默认关闭；只控制业务允许显示的字段，不改变搜索载荷。 */
+  fieldSettings?: boolean | SearchFieldSettings<Extract<keyof T, string>>
   /** 与 C_Form、C_Table 统一的布局密度，显式 size 和字段 attrs.size 优先。 */
   density?: ComponentDensity
   /** inline 保持原有接入；grid 按实际容器宽度重排，columns 为最大列数。 */
@@ -207,6 +243,15 @@ export interface SearchConfig<T extends object = SearchFormParams> {
   onSearch?: (params: T) => boolean | void | Promise<unknown>
 }
 
+export interface SearchFieldSettings<K extends string = string> {
+  defaultVisibleKeys?: readonly K[]
+  lockedKeys?: readonly K[]
+  /** 只有显式配置时存储，按 scope 隔离；不保存条件值。 */
+  persistKey?: string
+  scope?: string | number
+  version?: string | number
+}
+
 export interface FormSearchRuntimeProps<T extends object = SearchFormParams> {
   bordered?: boolean
   formItemList: SearchFormItem<NoInfer<T>>[]
@@ -216,6 +261,7 @@ export interface FormSearchRuntimeProps<T extends object = SearchFormParams> {
   formSearchInputHistoryString?: string
   size?: 'small' | 'medium' | 'large'
   loading?: boolean
+  visibleFields?: readonly Extract<keyof T, string>[]
   config?: SearchConfig<NoInfer<T>>
 }
 
@@ -229,6 +275,7 @@ export type FormSearchProps<T extends object = SearchFormParams> = Omit<
     : { modelValue: T; formParams?: T } | { modelValue?: T; formParams: T })
 
 export interface FormSearchEmits<T extends object = SearchFormParams> {
+  'update:visibleFields': [keys: Extract<keyof T, string>[]]
   search: [params: T]
   reset: [params: T]
   'change-params': [params: T]
@@ -237,6 +284,7 @@ export interface FormSearchEmits<T extends object = SearchFormParams> {
 }
 /** 公开实例的顶层 Ref 已由 Vue 解包。 */
 export interface FormSearchExpose<T extends object = SearchFormParams> {
+  visibleFields: Extract<keyof T, string>[]
   formRef: FormInst | null
   formParams: T
   /** 仅成功的 onSearch 更新；没有执行时为 null，重置草稿不伪造查询成功。 */

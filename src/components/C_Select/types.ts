@@ -12,6 +12,16 @@ export interface SelectOptionItem<V extends SelectValue = SelectValue> {
   [key: string]: unknown
 }
 
+/** 原生分组仅组织选项；组本身没有可提交的业务值。 */
+export interface SelectOptionGroup<V extends SelectValue = SelectValue> {
+  type: 'group'
+  label: string
+  key?: string | number
+  children: readonly SelectOptionItem<V>[]
+}
+export type SelectOptionNode<V extends SelectValue = SelectValue> =
+  SelectOptionItem<V> | SelectOptionGroup<V>
+
 export type SelectModelValue<
   V extends SelectValue,
   M extends boolean,
@@ -28,7 +38,7 @@ export interface SelectProps<
   F extends object = Record<string, unknown>,
 > {
   modelValue?: SelectModelValue<V, NoInfer<M>, NoInfer<T>> | null
-  options?: readonly SelectOptionItem<V>[]
+  options?: readonly SelectOptionNode<V>[]
   source?: OptionSource<R, V, F>
   density?: ComponentDensity
   locale?: ComponentLocale

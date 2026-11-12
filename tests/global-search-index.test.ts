@@ -234,3 +234,58 @@ describe('global search keyboard selection', () => {
     expect(search.showDialog.value).toBe(false)
   })
 })
+
+describe('optional global search strategies', () => {
+  test('token mode normalizes input and matches ancestor titles/aliases with stable label ranking', () => {
+    const items: SearchMenuItem[] = [
+      {
+        key: '/sale/order',
+        label: '国内订单',
+        breadcrumb: '销售管理',
+        keywords: ['xsdd'],
+      },
+      { key: '/archive', label: '销售 订单 归档' },
+      { key: '/other', label: '订单' },
+    ]
+    const index = createMenuSearchIndex(items)
+    expect(searchMenuIndex(index, '  ＸＳＤＤ　', 'tokens')).toEqual([items[0]])
+    expect(searchMenuIndex(index, '销售 国内', 'tokens')).toEqual([items[0]])
+    expect(searchMenuIndex(index, '  订单  ', 'tokens')).toEqual([
+      items[2],
+      items[0],
+      items[1],
+    ])
+    expect(searchMenuIndex(index, 'xsdd')).toEqual([])
+  })
+
+  test('custom strategies cannot restore stale entries and reactive aliases rebuild the index', () => {
+    const menus = ref<SearchMenuItem[]>([
+      { key: '/public', label: 'Public', keywords: ['initial'] },
+    ])
+    const search = mountSearch({
+      menuItems: () => menus.value,
+      search: (_query, items) => [
+        { key: '/removed', label: 'Private' },
+        { key: '/public', label: 'Stale label' },
+        ...items,
+      ],
+    })
+    search.searchValue.value = 'anything'
+    expect(search.filteredMenuItems.value).toEqual([menus.value[0]])
+    expect(search.filteredMenuItems.value[0]).toBe(menus.value[0])
+    const tokens = mountSearch({
+      menuItems: () => menus.value,
+      matchMode: 'tokens',
+    })
+    tokens.searchValue.value = 'revised'
+    expect(tokens.filteredMenuItems.value).toEqual([])
+    menus.value[0].keywords = ['revised']
+    expect(tokens.filteredMenuItems.value).toEqual([menus.value[0]])
+    expect(
+      tokens
+        .highlightMatch('Sales order', 'Sales order')
+        .filter(part => part.matched)
+        .map(part => part.text)
+    ).toEqual(['Sales', 'order'])
+  })
+})

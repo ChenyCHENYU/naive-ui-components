@@ -1,3 +1,4 @@
+import { flattenTableColumns, mapTableColumnLeaves } from '../../helpers'
 import type { TableColumn } from '../../types'
 
 type ColumnKey = string | number
@@ -27,7 +28,7 @@ const isFixed = (fixed: unknown): fixed is ColumnPreference['fixed'] =>
 
 /** Settings mutate column fields locally, never the caller's column objects. */
 export const cloneTableColumns = (columns: TableColumn[]): TableColumn[] =>
-  columns.map(column => ({ ...column }))
+  mapTableColumnLeaves(columns, column => ({ ...column }))
 
 /** Treat browser storage as untrusted input; only restore recognized column fields. */
 export const parseColumnPreferences = (raw: string): ColumnPreferences => {
@@ -77,6 +78,14 @@ export const mergeColumnPreferences = (
   if (!settings.length && !order?.length) return columns
   const preferences = new Map(settings.map(setting => [setting.key, setting]))
   const merged = columns.map(column => {
+    if (column.type === 'group')
+      return {
+        ...column,
+        children: mergeColumnPreferences(column.children, {
+          columns: settings,
+          order,
+        }),
+      }
     if (!isColumnKey(column.key)) return column
     const preference = preferences.get(column.key)
     if (!preference) return column
@@ -107,6 +116,8 @@ export const getColumnPreferences = (
   defaults: TableColumn[],
   columns: TableColumn[]
 ): ColumnPreferences => {
+  defaults = flattenTableColumns(defaults)
+  columns = flattenTableColumns(columns)
   const keyedDefaults = new Map(defaults.map(column => [column.key, column]))
   const order = columns.map(column => column.key).filter(isColumnKey)
   const originalOrder = defaults.map(column => column.key).filter(isColumnKey)

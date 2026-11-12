@@ -21,7 +21,11 @@ import { useCellEdit } from './useCellEdit'
 import { useModalEdit } from './useModalEdit'
 import { useTableExpand } from './useTableExpand'
 import { useDynamicRows, type DynamicRowsOptions } from './useDynamicRow'
-import { flattenTableRows, replaceTableRow } from '../helpers'
+import {
+  flattenTableColumns,
+  flattenTableRows,
+  replaceTableRow,
+} from '../helpers'
 import {
   useComponentFeedback,
   useComponentLocale,
@@ -284,6 +288,7 @@ export function useTableManager(params: TableManagerParams) {
 
     const modalEdit = useModalEdit({
       data: editingData,
+      columns: params.columns,
       rowKey,
       onSave: (row, index, key) =>
         eventHandlers.onSave(row, index, undefined, key),
@@ -403,6 +408,25 @@ export function useTableManager(params: TableManagerParams) {
   watch(
     [() => getConfig().editable, () => getConfig().editMode],
     invalidateEdits,
+    { flush: 'sync' }
+  )
+  const editColumnKeys = () =>
+    new Set(
+      flattenTableColumns(params.columns?.() ?? []).flatMap(column =>
+        column.type || column.key == null || column.key === '_actions'
+          ? []
+          : [column.key]
+      )
+    )
+  let previousEditKeys = editColumnKeys()
+  watch(
+    editColumnKeys,
+    keys => {
+      const removed = [...previousEditKeys].some(key => !keys.has(key))
+      previousEditKeys = keys
+      // 仅移除业务叶键结束会话；改宽度、新增列、重排及组标签不丢弃草稿。
+      if (removed) invalidateEdits()
+    },
     { flush: 'sync' }
   )
   if (getCurrentScope()) onScopeDispose(invalidateEdits)

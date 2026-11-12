@@ -45,6 +45,7 @@ export type EditType =
   | 'switch'
   | 'email'
   | 'mobile'
+  | 'autocomplete'
 export type ButtonType =
   'default' | 'primary' | 'info' | 'success' | 'warning' | 'error'
 export type ParentChildLinkMode = 'strict' | 'loose'
@@ -123,9 +124,11 @@ export interface SimpleTableActions<T extends object = DataRecord> {
 export interface TableActionsManager<T extends object = DataRecord> {
   editStates: {
     modalEdit: {
+      canEditRow?: (rowKey: DataTableRowKey) => boolean
       startEdit: (rowKey: DataTableRowKey, sourceData?: T) => boolean | void
     }
     rowEdit: {
+      canEditRow?: (rowKey: DataTableRowKey) => boolean
       isEditingRow: (rowKey: DataTableRowKey) => boolean
       startEditRow: (rowKey: DataTableRowKey) => boolean | void
       cancelEditRow: () => void | Promise<void>
@@ -206,7 +209,29 @@ export type SelectOption = Omit<BaseOption, 'value'> & {
 }
 
 /* ================= 编辑相关类型 ================= */
-export interface EditProps {
+export interface EditProps<T extends object = DataRecord> {
+  /** 复用字段来源；行工厂只负责派生业务过滤条件。 */
+  source?:
+    | import('../../core/optionSource').OptionSource<
+        object,
+        import('../../core/optionSource').OptionValue,
+        object
+      >
+    | ((
+        row: Readonly<T>,
+        index: number
+      ) => import('../../core/optionSource').OptionSource<
+        object,
+        import('../../core/optionSource').OptionValue,
+        object
+      >)
+  onSelect?: (
+    record: object | object[] | null,
+    row: Readonly<T>,
+    index: number
+  ) => void
+  precision?: number
+  parse?: import('naive-ui').InputNumberProps['parse']
   min?: number
   max?: number
   step?: number
@@ -221,7 +246,7 @@ export interface EditProps {
   tag?: boolean
   maxTagCount?: import('naive-ui').SelectProps['maxTagCount']
   rules?: FormItemRule[]
-  format?: string
+  format?: string | import('naive-ui').InputNumberProps['format']
   valueFormat?: string
   /** 日期编辑的模型值类型，默认使用时间戳。 */
   valueMode?: 'timestamp' | 'formatted'
@@ -245,15 +270,19 @@ interface BaseTableColumn<T extends object = DataRecord> extends Omit<
   key?: DataTableRowKey
   title?: string
   visible?: boolean
-  editable?: boolean
+  editable?: boolean | ((row: T, index: number) => boolean)
   required?: boolean
   editType?: EditType
-  editProps?: EditProps
+  editProps?: EditProps<T>
   editRender?: (
     value: unknown,
     rowData: T,
     rowIndex: number,
-    context: { onUpdate: (value: unknown) => void }
+    context: {
+      onUpdate: (value: unknown) => void
+      disabled?: boolean
+      size?: 'small' | 'medium' | 'large'
+    }
   ) => VNodeChild
   render?: (rowData: T, rowIndex: number) => VNodeChild
   /** 声明式格式化器（优先级低于 render） */
@@ -272,6 +301,7 @@ export interface NormalTableColumn<
   T extends object = DataRecord,
 > extends BaseTableColumn<T> {
   type?: never
+  children?: never
   key: Extract<keyof T, DataTableRowKey> | DataTableRowKey
   title: string
 }
@@ -281,6 +311,7 @@ export interface BuiltInTableColumn<
 > extends BaseTableColumn<T> {
   /** 内置列类型：无需 key / title */
   type: 'selection' | 'expand' | 'index'
+  children?: never
   /** 原生选择列禁用判定；与 config.selection.rowCheckable 一起生效。 */
   disabled?: (row: T) => boolean
   /** 原生选择列是否多选；maxSelection=1 时仍使用单选。 */
@@ -291,14 +322,28 @@ export interface BuiltInTableColumn<
   renderExpand?: (rowData: T, rowIndex: number) => VNodeChild
 }
 
+export interface GroupTableColumn<
+  T extends object = DataRecord,
+> extends BaseTableColumn<T> {
+  type: 'group'
+  title: string
+  children: TableColumn<T>[]
+  editable?: never
+  editType?: never
+  editProps?: never
+}
+
 export type TableColumn<T extends object = DataRecord> =
-  NormalTableColumn<T> | BuiltInTableColumn<T>
+  NormalTableColumn<T> | BuiltInTableColumn<T> | GroupTableColumn<T>
 
 export type StrictTableColumn<T extends object> =
   | (Omit<NormalTableColumn<T>, 'key'> & {
       key: Extract<keyof T, string> | '_actions'
     })
   | BuiltInTableColumn<T>
+  | (Omit<GroupTableColumn<T>, 'children'> & {
+      children: StrictTableColumn<T>[]
+    })
 
 /* ================= 选择和展开功能类型 ================= */
 export interface ChildSelectionState {

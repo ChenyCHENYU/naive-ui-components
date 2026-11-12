@@ -7,8 +7,13 @@
 import { getCurrentScope, onScopeDispose, ref } from 'vue'
 import type { DataTableRowKey } from 'naive-ui'
 import type { DataRecord, TableColumn } from '../types'
+import { flattenTableColumns } from '../helpers'
 import { cloneData } from '../../../utils/data'
-import { resolveTableColumnRules, validateTableRule } from './tableValidation'
+import {
+  isTableColumnEditable,
+  resolveTableColumnRules,
+  validateTableRule,
+} from './tableValidation'
 
 /**
  * 单元格编辑配置选项
@@ -84,6 +89,8 @@ export function useCellEdit(options: CellEditOptions) {
     const rowData = findRowData(rowKey)
     if (!rowData || !columnKey || isSaving.value) return false
 
+    if (!canEditCell(columnKey, rowData, options.data().indexOf(rowData)))
+      return false
     revision++
     editingCell.value = { rowKey, columnKey }
     editingData.value = {
@@ -97,7 +104,14 @@ export function useCellEdit(options: CellEditOptions) {
    * 校验当前编辑单元格
    */
   const findColumn = (columnKey: string) =>
-    (options.columns?.() ?? []).find(column => String(column.key) === columnKey)
+    flattenTableColumns(options.columns?.() ?? []).find(
+      column => String(column.key) === columnKey
+    )
+
+  const canEditCell = (key: string, row: DataRecord, index: number) => {
+    const column = findColumn(key)
+    return column ? isTableColumnEditable(column, row, index) : !options.columns
+  }
 
   const validateCell = async (): Promise<boolean> => {
     const expectedRevision = revision
@@ -106,7 +120,13 @@ export function useCellEdit(options: CellEditOptions) {
     if (rowKey === null || columnKey === null) return true
 
     const col = findColumn(columnKey)
-    if (!col) return true
+    if (!col) return !options.columns
+    const original = findRowData(rowKey)
+    if (
+      !original ||
+      !isTableColumnEditable(col, original, options.data().indexOf(original))
+    )
+      return false
 
     const cellKey = createCellKey(rowKey, columnKey)
     const value = editingData.value[cellKey]
@@ -127,6 +147,13 @@ export function useCellEdit(options: CellEditOptions) {
     return true
   }
 
+  const ownsSave = (
+    rows: DataRecord[],
+    index: number,
+    original: DataRecord | null | undefined,
+    expected: number
+  ) => revision === expected && index >= 0 && rows[index] === original
+
   /**
    * 保存当前编辑的单元格，调用保存回调并清理编辑状态
    */
@@ -140,12 +167,12 @@ export function useCellEdit(options: CellEditOptions) {
     isSaving.value = true
     try {
       if (!(await validateCell())) return
-      if (revision !== expectedRevision) return
       const currentData = options.data()
       const rowIndex = currentData.findIndex(
         row => options.rowKey(row) === rowKey
       )
-      if (rowIndex === -1 || currentData[rowIndex] !== original) return
+      if (!ownsSave(currentData, rowIndex, original, expectedRevision)) return
+      if (!canEditCell(columnKey, currentData[rowIndex], rowIndex)) return
       const updatedData = { ...currentData[rowIndex], [columnKey]: newValue }
       await options.onSave?.(
         cloneData(updatedData),
@@ -191,6 +218,12 @@ export function useCellEdit(options: CellEditOptions) {
     value: unknown
   ) => {
     if (!isEditingCell(rowKey, columnKey) || isSaving.value) return
+    const source = findRowData(rowKey)
+    if (
+      !source ||
+      !canEditCell(columnKey, source, options.data().indexOf(source))
+    )
+      return
     revision++
     editingData.value[createCellKey(rowKey, columnKey)] = cloneData(value)
   }

@@ -18,6 +18,8 @@ export type {
   TableRowKeyIssue,
   StrictTableColumn,
   NormalTableColumn,
+  GroupTableColumn,
+  EditProps,
   BuiltInTableColumn,
   CustomAction,
   InlineTableAction,
@@ -81,7 +83,12 @@ export {
   usePrintWatermark,
   printPresets,
 } from './composables/usePrintWatermark'
-export type { PrintWatermarkOptions } from './composables/usePrintWatermark'
+export type {
+  PrintWatermarkOptions,
+  PrintConfig as TablePrintConfig,
+  CaptureConfig as TableCaptureConfig,
+  WatermarkConfig as TableWatermarkConfig,
+} from './composables/usePrintWatermark'
 
 /* ================= 新功能导出 ================= */
 export {
@@ -121,3 +128,9 @@ export type {
 } from './composables/useTableQuery'
 
 export type { ColumnStatus } from './columnPresentation'
+
+export {
+  createTableSelectEditor,
+  createTableAutoCompleteEditor,
+} from './editors'
+export type { TableEditorContext } from './editors'

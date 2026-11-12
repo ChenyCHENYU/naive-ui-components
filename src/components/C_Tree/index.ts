@@ -5,6 +5,7 @@ export type {
   TreeRenderContext,
   TreeUpdateMeta,
   TreeSlots,
+  TreeSearchSource,
   TreeMode,
   StatusType,
   ButtonType,

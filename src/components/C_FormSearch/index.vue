@@ -175,6 +175,44 @@
               </template>
             </NSelect>
 
+            <div
+              v-if="item.type === 'treeSelect' || item.type === 'cascader'"
+              class="form-search-hierarchy"
+            >
+              <component
+                :is="item.type === 'treeSelect' ? NTreeSelect : NCascader"
+                v-bind="item.attrs"
+                :value="hierarchyValue(item.prop)"
+                :options="fieldOptions(item)"
+                :placeholder="item.placeholder"
+                :clearable="item.attrs?.clearable !== false"
+                :size="fieldSize(item)"
+                :disabled="fieldDisabled(item) || fieldReadonly(item)"
+                :loading="
+                  item.optionsState?.loading === true ||
+                  item.attrs?.loading === true
+                "
+                :status="selectStatus(item)"
+                @update:value="
+                  (value: unknown) => setFieldValue(item.prop, value)
+                "
+              />
+              <div
+                v-if="item.optionsState?.error != null"
+                class="form-search-option-error"
+                role="alert"
+              >
+                {{ t('options.failed') }}
+                <NButton
+                  v-if="item.optionsState.retry"
+                  text
+                  size="small"
+                  @click="retryOptions(item)"
+                  >{{ t('common.retry') }}</NButton
+                >
+              </div>
+            </div>
+
             <NInputNumber
               v-if="item.type === 'number'"
               v-bind="item.attrs"
@@ -255,6 +293,15 @@
             align="center"
             :size="density ? densityTokens.gap : 8"
           >
+            <SearchFieldSettingsControl
+              v-if="fieldSettings.enabled.value"
+              :fields="fieldSettings.choices.value"
+              :value="fieldSettings.keys.value"
+              :size="resolvedSize"
+              :locale="config?.locale"
+              @update="fieldSettings.update"
+              @reset="fieldSettings.reset"
+            />
             <NPopover
               v-if="hiddenActiveCount"
               v-model:show="hiddenConditionsOpen"
@@ -400,6 +447,7 @@
     type Ref,
     type VNodeChild,
   } from 'vue'
+  import { useComponentLocale } from '../../config'
   import { resolveComponentDensity } from '../../core/density'
   import { shouldSummarizeSelectTags } from '../../core/selectPresentation'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
@@ -428,6 +476,7 @@
   import { C_Select, C_AutoComplete } from '../../internal/sourceControls'
   import type { OptionSource, OptionValue } from '../../core/optionSource'
   import { useSearchLayout } from './composables/useSearchLayout'
+  import { useSearchFieldSettings } from './composables/useSearchFieldSettings'
   import SearchCustomField, {
     type SearchControlContext,
   } from './SearchCustomField'
@@ -446,6 +495,15 @@
   const NTimePicker = defineAsyncComponent(
     () => import('../../internal/naive-fields/time-picker')
   )
+  const NTreeSelect = defineAsyncComponent(
+    () => import('../../internal/naive-fields/tree-select')
+  )
+  const NCascader = defineAsyncComponent(
+    () => import('../../internal/naive-fields/cascader')
+  )
+  const SearchFieldSettingsControl = defineAsyncComponent(
+    () => import('./SearchFieldSettings.vue')
+  )
 
   defineOptions({ name: 'C_FormSearch' })
 
@@ -457,6 +515,7 @@
   })
 
   const emits = defineEmits<FormSearchEmits<T>>()
+  const { t } = useComponentLocale(() => props.config?.locale)
   const globalFormConfig = useFormGlobalConfig()
   // 搜索只继承密度，不继承业务表单的布局、尺寸、禁用或提交回调。
   const density = computed(
@@ -475,6 +534,10 @@
         density.value === 'compact' ? '208px' : undefined,
     }
   })
+
+  const fieldSettings = useSearchFieldSettings(props, keys =>
+    emits('update:visibleFields', keys)
+  )
 
   const {
     formRef,
@@ -497,7 +560,7 @@
     syncFields,
     syncModel,
   } = useSearchState(emits, {
-    formItemList: props.formItemList,
+    formItemList: fieldSettings.fields.value,
     formParams: props.modelValue ?? props.formParams,
     config: () => props.config,
     loading: () => props.loading,
@@ -548,6 +611,17 @@
       return item.attrs.options as SearchOptionItem[]
     if (item.list !== undefined) return item.list
     return undefined
+  }
+  const hierarchyValue = (
+    field: string
+  ): string | number | Array<string | number> | null => {
+    const value = (formParams.value as Record<string, unknown>)[field]
+    if (Array.isArray(value))
+      return value.filter(
+        (entry): entry is string | number =>
+          typeof entry === 'string' || typeof entry === 'number'
+      )
+    return typeof value === 'string' || typeof value === 'number' ? value : null
   }
   const selectTagPresentation = (item: SearchFormItem<T>) =>
     shouldSummarizeSelectTags(item.attrs?.multiple, item.attrs?.maxTagCount)
@@ -721,10 +795,11 @@
     }
   }
 
-  watch(() => props.formItemList, syncFields, { deep: true })
+  watch(fieldSettings.fields, syncFields, { deep: true })
   watch(() => props.modelValue ?? props.formParams, syncModel, { deep: true })
 
   defineExpose({
+    visibleFields: fieldSettings.keys,
     formRef,
     formParams,
     appliedParams,

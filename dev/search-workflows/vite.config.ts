@@ -21,6 +21,12 @@ export default defineConfig({
   },
   server: { host: '127.0.0.1', port: 4188, strictPort: true },
   build: {
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        contracts: fileURLToPath(new URL('./contracts.html', import.meta.url)),
+      },
+    },
     outDir: '../../node_modules/.cache/search-workflows',
     emptyOutDir: true,
   },

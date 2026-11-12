@@ -1,0 +1,67 @@
+.contract-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+.contract-card h2 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.contract-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0 0 18px;
+}
+.contract-heading {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.contract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.contract-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.contract-output {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.contract-footer {
+  padding: 12px 0 24px;
+  font-size: 13px;
+}
+.contract-footer a {
+  color: var(--accent);
+}
+@media (max-width: 720px) {
+  .contract-heading {
+    display: block;
+  }
+  .contract-actions {
+    margin-bottom: 16px;
+  }
+  .contract-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .contract-card {
+    padding: 18px;
+  }
+}

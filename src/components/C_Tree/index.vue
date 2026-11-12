@@ -6,6 +6,7 @@
       { 'c-tree--virtual': treeBindings.virtualScroll },
     ]"
     :style="themeStyle"
+    :aria-busy="search.loading.value || search.loadingKeys.value.size > 0"
   >
     <div
       v-if="showToolbar"
@@ -20,6 +21,8 @@
           :input-props="{ 'aria-label': t('tree.search') }"
           clearable
           class="search-input"
+          :disabled="Boolean(searchSource && (disabled ?? treeProps?.disabled))"
+          @keydown="handleSearchKeydown"
         >
           <template #prefix
             ><C_Icon
@@ -71,6 +74,62 @@
         </slot>
       </div>
     </div>
+    <div
+      v-if="
+        searchSource &&
+        currentSearchPattern.trim() &&
+        !(disabled ?? treeProps?.disabled)
+      "
+      class="c-tree-search-status"
+      role="status"
+      aria-live="polite"
+    >
+      <span v-if="search.loading.value">{{ t('tree.searchLoading') }}</span>
+      <template v-else-if="search.error.value">
+        <span>{{ t('tree.searchFailed') }}</span>
+        <NButton
+          text
+          size="small"
+          @click="search.run"
+          >{{ t('common.retry') }}</NButton
+        >
+      </template>
+      <span v-else-if="!search.ready.value">{{
+        t('options.minChars', { count: search.minChars.value })
+      }}</span>
+      <template v-else>
+        <span v-if="!search.matches.value.length">{{
+          t('tree.searchEmpty')
+        }}</span>
+        <span v-else-if="search.matchIndex.value < 0">{{
+          t('tree.searchCount', { total: search.matches.value.length })
+        }}</span>
+        <span v-else>{{
+          t('tree.searchResults', {
+            current: search.matchIndex.value + 1,
+            total: search.matches.value.length,
+          })
+        }}</span>
+        <div class="c-tree-search-navigation">
+          <NButton
+            text
+            size="small"
+            :disabled="!search.matches.value.length"
+            :aria-label="t('tree.searchPrevious')"
+            @click="search.previousMatch"
+            >{{ t('tree.searchPrevious') }}</NButton
+          >
+          <NButton
+            text
+            size="small"
+            :disabled="!search.matches.value.length"
+            :aria-label="t('tree.searchNext')"
+            @click="search.nextMatch"
+            >{{ t('tree.searchNext') }}</NButton
+          >
+        </div>
+      </template>
+    </div>
     <div class="c-tree-container">
       <NTree
         ref="treeRef"
@@ -107,6 +166,14 @@
     showToolbar: true,
     addable: true,
     refreshable: true,
+    checkable: undefined,
+    multiple: undefined,
+    cascade: undefined,
+    selectable: undefined,
+    disabled: undefined,
+    virtualScroll: undefined,
+    accordion: undefined,
+    expandOnClick: undefined,
   })
   const emit = defineEmits<TreeEmits<T>>()
   const slots = defineSlots<TreeSlots<T>>()
@@ -115,9 +182,11 @@
     '--c-tree-border': theme.value.borderColor,
     '--c-tree-surface': theme.value.actionColor,
     '--c-tree-radius': theme.value.borderRadius,
+    '--c-tree-text-secondary': theme.value.textColor2,
   }))
   const {
     currentSearchPattern,
+    search,
     isAllExpanded,
     treeBindings,
     treeRef,
@@ -127,6 +196,12 @@
     handleRefresh,
     expose,
   } = useTreeOperations(props, emit, slots)
+  const handleSearchKeydown = (event: KeyboardEvent) => {
+    if (!props.searchSource || event.key !== 'Enter' || event.isComposing)
+      return
+    event.preventDefault()
+    void (event.shiftKey ? search.previousMatch() : search.nextMatch())
+  }
   defineExpose(expose)
 </script>
 

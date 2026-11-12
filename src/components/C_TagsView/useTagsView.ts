@@ -12,15 +12,27 @@ const STORAGE_KEY_DEFAULT = '__tags_view_list__'
 
 type StoredTag = Record<string, unknown> & { path: string; title: string }
 
+const isLocalPath = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.startsWith('/') &&
+  !value.startsWith('//') &&
+  !value.includes('\\') &&
+  !Array.from(value).some(character => character.charCodeAt(0) < 32)
+
+/** 存储中的完整地址只能属于该标签路径，损坏或跨站地址回退到原有 path。 */
+export function getTagLocation(
+  tag: Pick<TagItem, 'path' | 'fullPath'>
+): string {
+  return isLocalPath(tag.fullPath) &&
+    tag.fullPath.split(/[?#]/, 1)[0] === tag.path
+    ? tag.fullPath
+    : tag.path
+}
+
 const isStoredTag = (value: unknown): value is StoredTag => {
   if (!value || typeof value !== 'object') return false
   const tag = value as Record<string, unknown>
-  return (
-    typeof tag.path === 'string' &&
-    tag.path.startsWith('/') &&
-    !tag.path.startsWith('//') &&
-    typeof tag.title === 'string'
-  )
+  return isLocalPath(tag.path) && typeof tag.title === 'string'
 }
 
 const safeStoredMeta = (value: unknown): TagItem['meta'] | undefined => {
@@ -45,6 +57,11 @@ export function parseStoredTags(raw: string | null): TagItem[] {
       return [
         {
           path: item.path,
+          ...(typeof item.fullPath === 'string' &&
+          getTagLocation({ path: item.path, fullPath: item.fullPath }) ===
+            item.fullPath
+            ? { fullPath: item.fullPath }
+            : {}),
           title: item.title,
           originalTitle:
             typeof item.originalTitle === 'string'
@@ -127,6 +144,7 @@ export function useTagsView(options: UseTagsViewOptions = {}) {
       tagsViewList.value.push(tag)
     } else {
       const existing = tagsViewList.value[existingIndex]
+      if (tag.fullPath !== undefined) existing.fullPath = getTagLocation(tag)
       if (existing.title !== tag.title || !existing.originalTitle) {
         existing.title = tag.title
         existing.originalTitle = tag.originalTitle || existing.originalTitle

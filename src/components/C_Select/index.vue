@@ -72,7 +72,10 @@
 >
   import { computed, useSlots, useTemplateRef, watch } from 'vue'
   import { NSelect, type SelectInst } from 'naive-ui'
-  import { createOptionValueBinder } from '../../core/options'
+  import {
+    createOptionValueBinder,
+    flattenOptionItems,
+  } from '../../core/options'
   import { shouldSummarizeSelectTags } from '../../core/selectPresentation'
   import type {
     SelectModelValue,
@@ -137,6 +140,14 @@
   const bindOptions = computed(() =>
     createOptionValueBinder(resolvedOptions.value)
   )
+  const localRows = computed(() => {
+    const rows = props.options ? flattenOptionItems(props.options) : []
+    const index = new Map<V, SelectOptionItem<V>>()
+    // 本地重复值沿用原先 find 的首项语义；远程实体身份仍由 source 单独校验。
+    for (const row of rows)
+      if ('value' in row && !index.has(row.value)) index.set(row.value, row)
+    return index
+  })
   function updateShow(show: boolean) {
     if (show && !blocked.value) remote.open()
     else remote.close()
@@ -164,7 +175,7 @@
     const rows = values.flatMap(value => {
       const row = props.source
         ? remote.rowFor(value)
-        : props.options?.find(option => option.value === value)
+        : localRows.value.get(value)
       return row ? [row as R] : []
     })
     remote.retain(values)

@@ -1,48 +1,17 @@
-/*
- * @Description: 表格配置中心 — 编辑组件映射、表单生成、显示值处理
- * @Migration: naive-ui-components 组件库迁移版本
- */
-
-import { defineAsyncComponent, h, type Component } from 'vue'
-import {
-  NInput,
-  NInputNumber,
-  NSwitch,
-  NSelect,
-  type InputProps,
-  type DatePickerProps,
-} from 'naive-ui'
+/** 表格弹窗配置：复用既有 Form 局部 renderer 和同一套列编辑契约。 */
+import { createVNode, Fragment } from 'vue'
+import type { FormRenderer } from '../C_Form/composables/useFormRenderer'
 import type { ComponentType, FormOption } from '../C_Form/types'
+import { flattenTableColumns } from './helpers'
+import { renderEditComponent } from './editRenderer'
 import {
   isEditableDataColumn,
+  isTableColumnEditable,
   resolveTableColumnRules,
 } from './composables/tableValidation'
 import type { TableColumn, EditType, DataRecord } from './types'
 
-const NDatePicker = defineAsyncComponent(
-  () => import('../../internal/naive-fields/date-picker')
-)
-
-/* ================= 编辑组件映射 ================= */
-
-export const EDIT_COMPONENTS: Record<EditType, Component> = {
-  number: NInputNumber,
-  switch: NSwitch,
-  input: NInput,
-  email: NInput,
-  mobile: NInput,
-  date: (props: DatePickerProps) =>
-    h(NDatePicker, {
-      ...props,
-      type: 'date',
-      format: props.format ?? 'yyyy-MM-dd',
-    }),
-  select: NSelect,
-  textarea: (props: InputProps) =>
-    h(NInput, { ...props, type: 'textarea', rows: 3 }),
-}
-
-/* ================= 表单选项生成 ================= */
+export { EDIT_COMPONENTS } from './editComponents'
 
 const EDIT_TO_FORM_TYPE: Partial<Record<EditType, ComponentType>> = {
   number: 'inputNumber',
@@ -51,31 +20,109 @@ const EDIT_TO_FORM_TYPE: Partial<Record<EditType, ComponentType>> = {
   select: 'select',
   switch: 'switch',
 }
+const editorKey = (column: TableColumn) =>
+  `__c-table-edit:${String(column.key)}`
+const usesSharedEditor = (column: TableColumn) =>
+  Boolean(
+    column.editProps?.source ||
+    column.editProps?.onSelect ||
+    column.editRender ||
+    column.editType === 'autocomplete'
+  )
+const formType = (column: TableColumn) =>
+  usesSharedEditor(column)
+    ? editorKey(column)
+    : (EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input')
 
-/**
- * 根据可编辑列配置自动生成表单选项（用于编辑弹窗）
- */
+function editAttrs(column: TableColumn) {
+  const attrs = { ...column.editProps }
+  delete attrs.rules
+  delete attrs.valueMode
+  return attrs
+}
+
+function modalPermission(
+  column: TableColumn,
+  getSource: (() => DataRecord) | undefined,
+  getOriginal: (() => DataRecord | undefined) | undefined,
+  index: number
+) {
+  if (typeof column.editable !== 'function') return column.editable !== false
+  // 弹窗尚未打开时没有业务行，不能用空模型执行用户的深层行谓词。
+  const row = getOriginal ? getOriginal() : getSource?.()
+  return row ? isTableColumnEditable(column, row, index) : false
+}
+
+/** 生成弹窗字段时保持旧静态控件入口，只有来源/自定义编辑器使用局部 renderer。 */
 export const generateFormOptions = (
   columns: TableColumn[],
-  getSource?: () => DataRecord
+  getSource?: () => DataRecord,
+  getOriginal?: () => DataRecord | undefined,
+  getIndex: () => number = () => 0
 ): FormOption[] =>
-  columns.filter(isEditableDataColumn).map(column => {
-    const attrs = { ...column.editProps }
-    const { valueMode } = attrs
-    delete attrs.rules
-    delete attrs.valueMode
-    return {
-      prop: String(column.key),
-      label: column.title || String(column.key),
-      type: EDIT_TO_FORM_TYPE[column.editType ?? 'input'] ?? 'input',
-      valueMode,
-      ...(Array.isArray(column.editProps?.options)
-        ? { children: column.editProps.options.map(option => ({ ...option })) }
-        : {}),
-      placeholder: column.editProps?.placeholder ?? `请输入${column.title}`,
-      rules: resolveTableColumnRules(column, getSource),
-      attrs,
-      layout: { span: 1 },
-      show: true,
-    }
-  })
+  flattenTableColumns(columns)
+    .filter(isEditableDataColumn)
+    .map(column => {
+      const attrs = editAttrs(column)
+      const allowed = modalPermission(
+        column,
+        getSource,
+        getOriginal,
+        getIndex()
+      )
+      return {
+        prop: String(column.key),
+        label: column.title || String(column.key),
+        type: formType(column),
+        valueMode: column.editProps?.valueMode,
+        ...(Array.isArray(attrs.options)
+          ? { children: attrs.options.map(option => ({ ...option })) }
+          : {}),
+        placeholder: attrs.placeholder ?? `请输入${column.title}`,
+        rules: allowed ? resolveTableColumnRules(column, getSource) : [],
+        disabled: !allowed || attrs.disabled,
+        attrs,
+        layout: { span: 1 },
+        show: true,
+      }
+    })
+
+function controlSize(size: unknown) {
+  return size === 'small' || size === 'medium' || size === 'large'
+    ? size
+    : undefined
+}
+
+/** 弹窗经 Form 的现有局部 renderer 入口复用同一个编辑器，不注册全局状态。 */
+export function generateFormRenderers(
+  columns: TableColumn[],
+  getSource: () => DataRecord,
+  getIndex: () => number
+): Record<string, FormRenderer> {
+  return Object.fromEntries(
+    flattenTableColumns(columns)
+      .filter(usesSharedEditor)
+      .map(column => [
+        editorKey(column),
+        (field =>
+          createVNode(Fragment, null, [
+            renderEditComponent(
+              column,
+              field.value,
+              value => {
+                const update = field['onUpdate:value']
+                if (Array.isArray(update))
+                  update.forEach(handler => handler(value))
+                else update?.(value)
+              },
+              getSource(),
+              getIndex(),
+              {
+                busy: field.disabled === true || field.readonly === true,
+                size: controlSize(field.size),
+              }
+            ),
+          ])) satisfies FormRenderer,
+      ])
+  )
+}
