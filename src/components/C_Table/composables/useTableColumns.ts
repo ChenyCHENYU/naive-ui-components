@@ -356,6 +356,7 @@ export interface UseTableColumnsReturn {
   showSettingsPanel: Ref<boolean>
   computedColumns: ComputedRef<DataTableColumn[]>
   computedScrollX: ComputedRef<number | string | undefined>
+  nativeLayout: ComputedRef<{ columns: DataTableColumn[]; width?: number }>
   handleColumnChange: (columns: TableColumn[]) => void
   resetColumnPreferences: () => void
   rememberColumnWidth: (key: DataTableRowKey, width: number) => void
@@ -363,6 +364,24 @@ export interface UseTableColumnsReturn {
 }
 
 /* ================= 主函数 ================= */
+
+const isUtilityColumn = (column: DataTableColumn) =>
+  column.type === 'selection' ||
+  column.type === 'expand' ||
+  column.key === '_index' ||
+  column.key === '_radio_selection' ||
+  column.key === '_actions'
+
+const columnPixels = (column: DataTableColumn): number | undefined => {
+  const { width } = column
+  const pixels =
+    typeof width === 'number'
+      ? width
+      : typeof width === 'string' && /^\s*\d+(?:\.\d+)?(?:px)?\s*$/.test(width)
+        ? Number.parseFloat(width)
+        : NaN
+  return Number.isFinite(pixels) && pixels >= 0 ? pixels : undefined
+}
 
 /**
  * 表格列处理引擎
@@ -689,6 +708,8 @@ export function useTableColumns(
     let headerFont: string | undefined
     let bodyFont: string | undefined
     let hasHeaderFloor = false
+    let hasAutomatic = false
+    let flexibleKey: DataTableRowKey | undefined
     // Web 字体加载完后，CSS 字体声明可能不变，实际字宽会变化。
     const fontRevision = options.fontRevision?.value
     const getHeaderFloor = (column: TableColumn) => {
@@ -703,6 +724,15 @@ export function useTableColumns(
       return floor
     }
     const getContentWidth = (column: TableColumn) => {
+      hasAutomatic = true
+      const col = column as ColumnWithKey
+      if (
+        flexibleKey === undefined &&
+        !col.fixed &&
+        col.maxWidth === undefined &&
+        !isUtilityColumn(col as DataTableColumn)
+      )
+        flexibleKey = col.key
       bodyFont ??= options.getFont?.() ?? '13px sans-serif'
       return contentWidth(column, bodyFont, fontRevision)
     }
@@ -785,7 +815,7 @@ export function useTableColumns(
       })
     }
 
-    return { columns: cols, hasHeaderFloor }
+    return { columns: cols, hasHeaderFloor, hasAutomatic, flexibleKey }
   })
   const computedColumns = computed(() => columnLayout.value.columns)
 
@@ -794,31 +824,52 @@ export function useTableColumns(
   const computedScrollX = computed(() => {
     if (options.scrollX !== undefined) return options.scrollX
 
-    const { columns, hasHeaderFloor } = columnLayout.value
+    const { columns, hasHeaderFloor, hasAutomatic } = columnLayout.value
     const hasFixed = columns.some(col => col.fixed)
-    const hasAutomatic = reactiveColumns.value.some(
-      col =>
-        !col.type &&
-        col.width === undefined &&
-        !options.columnWidthExplicit &&
-        col.autoWidth !== false
-    )
-    if (!hasFixed && !hasAutomatic && !hasHeaderFloor) return undefined
+    const hasSizedUtility =
+      columns.some(isUtilityColumn) &&
+      columns.every(col => columnPixels(col) !== undefined)
+    if (!hasFixed && !hasAutomatic && !hasHeaderFloor && !hasSizedUtility)
+      return undefined
 
     // 使用最终可见列：包含实际选择/展开/序号/操作列，不再额外猜测 200px。
-    return columns.reduce((sum, col) => {
-      const { width } = col
-      const pixels =
-        typeof width === 'number'
-          ? width
-          : typeof width === 'string' &&
-              /^\s*\d+(?:\.\d+)?(?:px)?\s*$/.test(width)
-            ? Number.parseFloat(width)
-            : typeof col.minWidth === 'number'
-              ? col.minWidth
-              : 180
-      return sum + pixels
-    }, 0)
+    return columns.reduce(
+      (sum, col) =>
+        sum +
+        (columnPixels(col) ??
+          (typeof col.minWidth === 'number' ? col.minWidth : 180)),
+      0
+    )
+  })
+
+  // 保留原有测宽与偏好，原生布局只让一列未锁定的自动业务列吸收余量。
+  // 没有弹性业务列时按总列宽呈现，避免选择、展开、序号列被原生表格拉宽。
+  const nativeLayout = computed(() => {
+    const { columns, flexibleKey } = columnLayout.value
+    const width = computedScrollX.value
+    if (
+      typeof width !== 'number' ||
+      !columns.some(isUtilityColumn) ||
+      columns.some(col => columnPixels(col) === undefined)
+    )
+      return { columns }
+
+    if (flexibleKey === undefined)
+      return {
+        columns,
+        width: options.scrollX === undefined ? width : undefined,
+      }
+    return {
+      columns: columns.map(col =>
+        'key' in col && col.key === flexibleKey
+          ? {
+              ...col,
+              width: undefined,
+              minWidth: columnPixels(col),
+            }
+          : col
+      ),
+    }
   })
 
   /* ================= 列设置变更 ================= */
@@ -880,6 +931,7 @@ export function useTableColumns(
     showSettingsPanel,
     computedColumns,
     computedScrollX,
+    nativeLayout,
     handleColumnChange,
     resetColumnPreferences,
     rememberColumnWidth,

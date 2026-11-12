@@ -17,6 +17,111 @@ const finalColumns = (wrapper: VueWrapper) =>
   >[]
 
 describe('table column layout contracts', () => {
+  test('numeric scrollX keeps its public canvas size without stretching utility columns', async () => {
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        data,
+        columns: [
+          { type: 'selection' },
+          { type: 'expand', renderExpand: row => h('div', String(row.name)) },
+          { type: 'index' },
+          { key: 'name', title: 'Name', minWidth: 150 },
+        ],
+        config: { ...baseConfig, selection: true, display: { scrollX: 600 } },
+      },
+    })
+    await flushPromises()
+    expect(finalColumns(wrapper).map(column => column.width)).toEqual([
+      40,
+      40,
+      50,
+      undefined,
+    ])
+    expect(finalColumns(wrapper)[3].minWidth).toBe(150)
+    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(600)
+    await wrapper.setProps({
+      columns: [{ key: 'name', title: 'Name', width: 150 }],
+    })
+    expect(finalColumns(wrapper).map(column => column.width)).toEqual([50, 150])
+    expect(wrapper.attributes('style')).toContain(
+      '--c-table-native-width: 100%'
+    )
+  })
+
+  test('keeps utility widths while only an unlocked automatic business column absorbs spare space', async () => {
+    const columns: TableColumn[] = [
+      { key: 'hidden', title: 'Hidden', visible: false },
+      { type: 'selection' },
+      { type: 'expand', renderExpand: row => h('div', String(row.name)) },
+      { type: 'index' },
+      { key: 'id', title: 'ID', width: 120 },
+      { key: 'capped', title: 'Capped', minWidth: 90, maxWidth: 120 },
+      { key: 'name', title: 'Name', minWidth: 150 },
+      { key: 'other', title: 'Other', minWidth: 100 },
+    ]
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: { data, columns, config: { ...baseConfig, selection: true } },
+    })
+    await flushPromises()
+    const result = finalColumns(wrapper)
+    expect(result.map(column => column.width)).toEqual([
+      40,
+      40,
+      50,
+      120,
+      90,
+      undefined,
+      100,
+    ])
+    expect(result[5].minWidth).toBe(150)
+    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(590)
+    expect(columns[6].width).toBeUndefined()
+    expect(wrapper.attributes('style')).toContain(
+      '--c-table-native-width: 100%'
+    )
+  })
+
+  test('keeps all explicit and restored widths instead of stretching utility columns', async () => {
+    const key = 'utility-width-restore'
+    localStorage.setItem(
+      `c_table_cols_${key}`,
+      JSON.stringify([{ key: 'name', width: 150 }])
+    )
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        data,
+        columns: [
+          { key: 'id', title: 'ID', width: 120 },
+          { key: 'name', title: 'Name' },
+        ],
+        config: { ...baseConfig, persistKey: key },
+      },
+    })
+    try {
+      await flushPromises()
+      expect(finalColumns(wrapper).map(column => column.width)).toEqual([
+        50, 120, 150,
+      ])
+      expect(wrapper.attributes('style')).toContain(
+        '--c-table-native-width: 320px'
+      )
+      await wrapper.setProps({
+        columns: [
+          { key: 'id', title: 'ID', width: 120 },
+          { key: 'name', title: 'Name', width: '25%' },
+        ],
+        config: baseConfig,
+      })
+      expect(finalColumns(wrapper)[2].width).toBe('25%')
+      expect(wrapper.attributes('style')).toContain(
+        '--c-table-native-width: 100%'
+      )
+    } finally {
+      wrapper.unmount()
+      localStorage.removeItem(`c_table_cols_${key}`)
+    }
+  })
+
   test('uses compact auxiliary defaults independently of the business column default', async () => {
     const wrapper = mount(C_Table<DataRecord>, {
       props: {

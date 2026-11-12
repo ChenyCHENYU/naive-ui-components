@@ -135,6 +135,11 @@
   overflow-x: auto !important;
 }
 
+// 每个表格根节点都重置变量，展开的子表不会继承父表宽度。
+.c-table-wrapper :deep(.n-data-table-table) {
+  width: var(--c-table-native-width, 100%);
+}
+
 // 分页组件样式
 .pagination-wrapper {
   margin-top: var(--c-table-gap, 16px);
@@ -242,10 +247,10 @@
 
 // ================= 7. 单元格编辑状态样式 =================
 
-// 编辑容器 - 确保水平布局不换行
-.cell-editing-container,
+// 宽列同排，窄列将操作组换到下一行，保留输入框的有效宽度。
 :deep(.cell-editing-container) {
   display: flex !important;
+  flex-wrap: wrap;
   align-items: center !important;
   width: 100% !important;
   min-height: var(--c-table-cell-min-height, 36px) !important;
@@ -257,15 +262,11 @@
   gap: 8px !important;
 }
 
-// 编辑输入区域 - 占据剩余空间
-.cell-editing-input,
+// 动态编辑节点位于组件根后代；深度选择器同时覆盖普通和自带 scope 的输入。
 :deep(.cell-editing-input) {
-  flex: 1 !important;
+  flex: 1 0 6rem !important;
   min-width: 0 !important;
-}
-
-// 深度选择器处理输入框样式
-:deep(.cell-editing-input) {
+  max-width: 100%;
   .n-input {
     border: none !important;
     box-shadow: none !important;
@@ -297,7 +298,6 @@
 }
 
 // 编辑操作按钮容器
-.cell-editing-actions,
 :deep(.cell-editing-actions) {
   display: flex !important;
   flex-shrink: 0 !important;
@@ -311,7 +311,6 @@
 }
 
 // 编辑操作按钮
-.cell-action-btn,
 :deep(.cell-action-btn) {
   display: flex !important;
   align-items: center !important;
@@ -473,18 +472,15 @@
 
 // 小屏幕下的单元格编辑优化
 @media (max-width: 768px) {
-  .cell-editing-container,
   :deep(.cell-editing-container) {
     gap: 6px !important;
   }
 
-  .cell-editing-actions,
   :deep(.cell-editing-actions) {
     gap: 3px !important;
     padding: 2px !important;
   }
 
-  .cell-action-btn,
   :deep(.cell-action-btn) {
     width: 18px !important;
     height: 18px !important;

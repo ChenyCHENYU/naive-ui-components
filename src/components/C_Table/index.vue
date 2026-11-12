@@ -22,6 +22,10 @@
       resolved.density && `c-table-wrapper--${resolved.density}`,
     ]"
     :aria-busy="normalizedLoading"
+    :style="{
+      '--c-table-native-width':
+        nativeLayout.width === undefined ? '100%' : `${nativeLayout.width}px`,
+    }"
   >
     <!-- 动态行工具栏 -->
     <component
@@ -152,7 +156,7 @@
         onUnstableColumnResize: onNativeColumnResize,
       }"
       :flex-height="flexHeight"
-      :columns="computedColumns"
+      :columns="nativeLayout.columns"
       :data="viewport.tableData.value"
       :pagination="viewport.nativePagination.value"
       :remote="viewport.tableRemote.value"
@@ -1026,6 +1030,20 @@
     tableLayout:
       computedScrollX.value !== undefined ? ('fixed' as const) : undefined,
   }))
+
+  const nativeLayout = computed(() =>
+    attrs.tableLayout !== undefined || attrs['table-layout'] !== undefined
+      ? { columns: computedColumns.value }
+      : props.virtualScrollX
+        ? {
+            columns: computedColumns.value,
+            width:
+              typeof computedScrollX.value === 'number'
+                ? computedScrollX.value
+                : undefined,
+          }
+        : columnState.nativeLayout.value
+  )
 
   /* ================= 编辑弹窗 ================= */
 

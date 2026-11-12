@@ -9,11 +9,15 @@ import type {
 } from '../../src/components/C_Table/types'
 
 const config = { toolbar: { show: false }, pagination: false as const }
+// 原生弹性列以 minWidth 保留同一份内容测宽，其余列仍使用数值 width。
 const columnsOf = (wrapper: VueWrapper) =>
-  wrapper.getComponent(NDataTable).props('columns') as Array<{
-    key: string
-    width: number
-  }>
+  (
+    wrapper.getComponent(NDataTable).props('columns') as Array<{
+      key: string
+      width: number
+      minWidth: number
+    }>
+  ).map(column => ({ ...column, width: column.width ?? column.minWidth }))
 
 test('content widths use displayed labels, bound long content and preserve explicit widths', async () => {
   const wrapper = mount(C_Table<DataRecord>, {

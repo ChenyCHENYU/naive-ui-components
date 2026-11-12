@@ -33,7 +33,7 @@
 | Selective loading       | 61 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.31.4**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.31.5**. See the [changelog](./CHANGELOG.md) for release details.
 
 Use `C_Select` for standalone selections and freeform tags. Multiple selections in forms and search share the compact tag summary. Date and time fields can bind directly to formatted API strings. See the [composition examples](./docs/guides/data-workflows.md#多选标签和日期时间) (Chinese).
 
@@ -48,6 +48,8 @@ Set `searchOnReset: true` to run both search and reset through `onSearch`. Use `
 ## Capability map
 
 `C_Table` retains the native Naive UI empty state, including provider theme, locale and `componentOptions.DataTable.renderEmpty`. Use `#empty` to replace the content of one table.
+
+In narrow `C_Table` cells, edit actions wrap so the input stays visible. Utility columns retain compact widths; an ordinary automatic column absorbs spare space. Explicit widths and saved width preferences remain effective.
 
 `C_Table` shows row numbers and a pager by default and centers all cells, including numbers. Use `:row-number="false"` and `:pagination="false"` to disable the automatic index and pager respectively. Bind server-provided columns and rows directly as shown in the [usage guide](./docs/guides/usage.en.md).
 
