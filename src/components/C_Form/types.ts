@@ -1,4 +1,5 @@
 import type { OptionsState } from '../../core/options'
+import type { OptionSource, OptionValue } from '../../core/optionSource'
 export type { OptionsState } from '../../core/options'
 /*
  * @Author: ChenYu ycyplus@gmail.com
@@ -159,6 +160,7 @@ export type ComponentType =
   | 'textarea'
   | 'inputNumber'
   | 'select'
+  | 'autocomplete'
   | 'checkbox'
   | 'radio'
   | 'switch'
@@ -432,6 +434,10 @@ interface FormOptionBase<T extends object> {
   valueMode?: 'timestamp' | 'formatted'
   /** 外部受控选项状态；仅呈现，不触发或订阅外部数据源。 */
   optionsState?: OptionsState
+  /** select/autocomplete 共用远程来源，可按当前模型派生依赖条件。 */
+  source?:
+    | OptionSource<object, OptionValue, object>
+    | ((model: Readonly<T>) => OptionSource<object, OptionValue, object>)
   children?: OptionItem[]
   show?: boolean
   layout?: ItemLayoutConfig

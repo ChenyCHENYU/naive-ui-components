@@ -81,7 +81,7 @@ export function resolveSearchResetValue(
 ): unknown {
   if (field.fixed) return cloneData(currentValue)
   if (field.defaultValue !== undefined) return cloneData(field.defaultValue)
-  if (field.type === 'input') return ''
+  if (field.type === 'input' || field.type === 'autocomplete') return ''
   if (isMultiple(field)) return []
   // 未配置默认值的旧动态表单仍可关闭清空，重置时保留其当前有效值。
   if (preservesClearedValue(field)) return cloneData(currentValue)
@@ -95,7 +95,7 @@ export function normalizeSearchFieldValue(
   currentValue: unknown
 ): unknown {
   if (value !== null && value !== undefined) return value
-  if (field.type === 'input') return ''
+  if (field.type === 'input' || field.type === 'autocomplete') return ''
   if (isMultiple(field)) return []
   if (preservesClearedValue(field))
     return resolveSearchResetValue(field, currentValue)

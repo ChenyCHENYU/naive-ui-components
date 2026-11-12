@@ -95,8 +95,32 @@
               </div>
             </div>
 
+            <C_AutoComplete
+              v-if="item.type === 'autocomplete'"
+              v-bind="item.attrs"
+              :model-value="inputValue(item.prop)"
+              :source="fieldSource(item)"
+              :placeholder="item.placeholder"
+              :size="fieldSize(item)"
+              :disabled="fieldDisabled(item)"
+              :readonly="fieldReadonly(item)"
+              @update:model-value="value => setFieldValue(item.prop, value)"
+            />
+
+            <C_Select
+              v-if="item.type === 'select' && item.source"
+              v-bind="item.attrs"
+              :model-value="sourceValue(item.prop)"
+              :source="fieldSource(item)"
+              :placeholder="item.placeholder || '请选择'"
+              :clearable="item.attrs?.clearable !== false"
+              :size="fieldSize(item)"
+              :disabled="fieldDisabled(item) || fieldReadonly(item)"
+              @update:model-value="value => setFieldValue(item.prop, value)"
+            />
+
             <NSelect
-              v-if="item.type === 'select'"
+              v-if="item.type === 'select' && !item.source"
               v-bind="selectTagPresentation(item)"
               :value="selectBinding(item).value"
               @update:value="
@@ -400,6 +424,9 @@
     resolveSingleTemporalInput,
   } from '../../core/temporalField'
   import { createOptionValueBinder } from '../../core/options'
+  import type { SelectModelValue, SelectValue } from '../C_Select/types'
+  import { C_Select, C_AutoComplete } from '../../internal/sourceControls'
+  import type { OptionSource, OptionValue } from '../../core/optionSource'
   import { useSearchLayout } from './composables/useSearchLayout'
   import SearchCustomField, {
     type SearchControlContext,
@@ -561,6 +588,21 @@
   const inputValue = (field: string): string | null => {
     const value = (formParams.value as Record<string, unknown>)[field]
     return typeof value === 'string' ? value : null
+  }
+  const sourceValue = (field: string) =>
+    (
+      formParams.value as Record<
+        string,
+        SelectModelValue<SelectValue, boolean, boolean>
+      >
+    )[field]
+  const fieldSource = (item: SearchFormItem<T>) => {
+    // 泛型模型与旧动态模型在同一渲染出口汇合，来源的行类型由组件或字段助手保留。
+    const source = item.source as
+      | OptionSource<object, OptionValue, object>
+      | ((model: Readonly<T>) => OptionSource<object, OptionValue, object>)
+      | undefined
+    return typeof source === 'function' ? source(formParams.value) : source
   }
 
   const setSelectValue = (

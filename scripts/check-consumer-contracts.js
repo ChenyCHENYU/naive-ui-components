@@ -11,6 +11,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 // 联网矩阵使用独立安装；默认快速检查继续复用本地已验证依赖。
 const freshProfile = process.argv[2]
+const legacyPeers = freshProfile === 'minimum'
+const runtimeFormats = legacyPeers ? ['cjs'] : ['esm', 'cjs']
 const peerProfiles = {
   minimum: {
     vue: '3.5.3',
@@ -165,12 +167,25 @@ function checkRuntime(entries, blockPeers = false) {
         `if (!require('${pkg.name}${subpath}').${name}) throw new Error('${name} missing');`
     )
     .join('\n')
-  runNode(['--input-type=module', '-e', esm], blockPeers)
+  if (!legacyPeers) runNode(['--input-type=module', '-e', esm], blockPeers)
   runNode(['-e', cjs], blockPeers)
 }
 
 /** 用实际 peer 组合渲染常用组件，覆盖只有导入检查无法发现的运行时不兼容。 */
 function checkRenderedConsumer() {
+  const entries = [
+    ['/C_Form', 'C_Form'],
+    ['/C_Table', 'C_Table'],
+    ['/C_Menu', 'C_Menu'],
+    ['/config', 'COMPONENT_LOCALE_KEY'],
+  ]
+  const imports = entries
+    .map(([subpath, name]) =>
+      legacyPeers
+        ? `const { ${name} } = require('${pkg.name}${subpath}');`
+        : `import { ${name} } from '${pkg.name}${subpath}';`
+    )
+    .join('\n')
   runNode([
     '--input-type=module',
     '-e',
@@ -179,11 +194,8 @@ function checkRenderedConsumer() {
     import { createRequire } from 'node:module';
     import { createSSRApp, h } from 'vue';
     import { renderToString } from 'vue/server-renderer';
-    import { C_Form } from '${pkg.name}/C_Form';
-    import { C_Table } from '${pkg.name}/C_Table';
-    import { C_Menu } from '${pkg.name}/C_Menu';
-    import { COMPONENT_LOCALE_KEY } from '${pkg.name}/config';
     const require = createRequire(import.meta.url);
+    ${imports}
     const naiveRequire = createRequire(require.resolve('naive-ui'));
     const { setup: setupCssrSsr } = naiveRequire('@css-render/vue3-ssr');
     const app = createSSRApp({ render: () => h('main', [
@@ -215,7 +227,7 @@ function checkBundledSpreadsheet() {
     import { renderToString } from 'vue/server-renderer';
     const require = createRequire(import.meta.url);
     assert.throws(() => require.resolve('xlsx'), { code: 'MODULE_NOT_FOUND' });
-    for (const format of ['esm', 'cjs']) {
+    for (const format of ${JSON.stringify(runtimeFormats)}) {
       const { useFilePreview } = format === 'esm'
         ? await import('${pkg.name}/C_FilePreview')
         : require('${pkg.name}/C_FilePreview');
@@ -236,7 +248,105 @@ function checkBundledSpreadsheet() {
   `,
   ])
   console.log(
-    'Bundled SheetJS: ESM/CJS public XLSX parsing passed without an installed xlsx package.'
+    `Bundled SheetJS: ${runtimeFormats.join('/').toUpperCase()} public XLSX parsing passed without an installed xlsx package.`
+  )
+}
+
+/** Build public browser entries with the physically installed legacy peers, never repository aliases. */
+async function checkLegacyBrowserBundle() {
+  const { build } = await import('vite')
+  const entries = new Set(
+    [
+      'C_Select',
+      'C_AutoComplete',
+      'C_DataPicker',
+      'C_Form',
+      'C_FormSearch',
+    ].map(name => `${pkg.name}/${name}`)
+  )
+  const resolvedEntries = new Set()
+  const packageRoot = fs.realpathSync(installedPackage).replaceAll('\\', '/')
+  const result = await build({
+    root: consumer,
+    configFile: false,
+    logLevel: 'silent',
+    plugins: [
+      {
+        name: 'packed-legacy-browser-entries',
+        enforce: 'pre',
+        async resolveId(specifier, importer) {
+          if (!entries.has(specifier)) return
+          const resolved = await this.resolve(specifier, importer, {
+            skipSelf: true,
+          })
+          assert.ok(
+            resolved && !resolved.external,
+            `${specifier} must be bundled`
+          )
+          assert.ok(
+            fs
+              .realpathSync(resolved.id)
+              .replaceAll('\\', '/')
+              .startsWith(packageRoot + '/dist/'),
+            `${specifier} must resolve to the unpacked tarball`
+          )
+          resolvedEntries.add(specifier)
+          return resolved
+        },
+      },
+    ],
+    build: {
+      target: 'es2022',
+      outDir: path.join(consumer, 'browser-dist'),
+      reportCompressedSize: false,
+      rolldownOptions: {
+        input: path.join(consumer, 'legacy-browser.mjs'),
+        output: { format: 'es' },
+      },
+    },
+  })
+  const outputs = (Array.isArray(result) ? result : [result]).flatMap(
+    output => output.output
+  )
+  const chunks = outputs.filter(output => output.type === 'chunk')
+  const moduleIds = chunks
+    .flatMap(chunk => Object.keys(chunk.modules))
+    .map(id => id.replaceAll('\\', '/'))
+  const naiveRoot = fs
+    .realpathSync(path.join(modules, 'naive-ui'))
+    .replaceAll('\\', '/')
+  for (const entry of entries)
+    assert.ok(
+      resolvedEntries.has(entry),
+      `${entry} must participate in the browser bundle`
+    )
+  assert.ok(
+    moduleIds.some(id => id.startsWith(naiveRoot + '/es/')),
+    'Browser bundle must use the independently installed Naive UI ESM modules'
+  )
+  assert.ok(
+    chunks.some(chunk => chunk.isEntry),
+    'Browser bundle must emit an executable entry'
+  )
+  const css = outputs
+    .filter(
+      output => output.type === 'asset' && output.fileName.endsWith('.css')
+    )
+    .map(output => String(output.source))
+    .join('\n')
+  for (const selector of [
+    '.c-select',
+    '.c-auto-complete',
+    '.c-option-status',
+    '.c-data-picker',
+  ]) {
+    assert.ok(
+      css.includes(selector),
+      `Published browser styles missing ${selector}`
+    )
+  }
+  console.log(
+    'Legacy peer Vite browser bundle passed: C_Select/C_AutoComplete/C_DataPicker/C_Form/C_FormSearch and their public CSS; browser interactions are not exercised by this build.'
   )
 }
 
@@ -373,6 +483,10 @@ try {
       name => `${name}@${installedRequire(`${name}/package.json`).version}`
     )
     console.log(`Fresh ${freshProfile} peers: ${versions.join(', ')}`)
+    if (legacyPeers)
+      console.log(
+        'Minimum profile: legacy peer bundle/types + CJS SSR; native Node ESM unsupported.'
+      )
   } else {
     fs.mkdirSync(installedPackage, { recursive: true })
     run('tar', ['-xzf', packed, '-C', installedPackage, '--strip-components=1'])
@@ -405,6 +519,7 @@ try {
     ['/resolver', 'RobotNaiveUiResolver'],
   ])
   if (freshProfile) checkRenderedConsumer()
+  if (legacyPeers) await checkLegacyBrowserBundle()
 
   for (const peer of optionalPeers) {
     fs.rmSync(path.join(modules, ...peer.split('/')), {
@@ -433,7 +548,7 @@ try {
     true
   )
   console.log(
-    `Packed consumer contracts passed: ESM/CJS, Node16/NodeNext, and component subpaths without ${optionalPeers.join('/')}.`
+    `Packed consumer contracts passed: ${runtimeFormats.join('/').toUpperCase()} component runtime, ESM/CJS declarations under Node16/NodeNext, and component subpaths without ${optionalPeers.join('/')}.`
   )
   console.log(
     freshProfile
@@ -445,7 +560,22 @@ try {
   console.error(
     `Consumer verification failed; diagnostic files retained at ${temporary}`
   )
-  throw error
+  const diagnostic = String(
+    error.stderr || error.stdout || error.stack || error
+  )
+  fs.writeFileSync(path.join(temporary, 'failure.log'), diagnostic)
+  console.error(
+    diagnostic
+      .split('\n')
+      .slice(-18)
+      .map(line =>
+        line.length > 500
+          ? `${line.slice(0, 500)}… [long line truncated]`
+          : line
+      )
+      .join('\n')
+  )
+  process.exitCode = 1
 } finally {
   if (passed) fs.rmSync(temporary, { recursive: true, force: true })
 }

@@ -16,6 +16,7 @@ import {
 import { C_Code } from './components/C_Code'
 import { C_Icon } from './components/C_Icon'
 import { C_Select } from './components/C_Select'
+import { C_AutoComplete } from './components/C_AutoComplete'
 import { C_Loading } from './components/C_Loading'
 import { C_PageLoading } from './components/C_PageLoading'
 import { C_Upload } from './components/C_Upload'
@@ -132,6 +133,7 @@ const components: Record<string, Component> = {
   C_Time,
   C_FormSearch,
   C_Select,
+  C_AutoComplete,
   C_Tree,
   C_QRCode,
   C_ImageCropper,
@@ -196,6 +198,7 @@ export * from './components/C_CollapsePanel'
 export * from './components/C_Time'
 export * from './components/C_FormSearch'
 export * from './components/C_Select'
+export * from './components/C_AutoComplete'
 export * from './components/C_Tree'
 export * from './components/C_QRCode'
 export * from './components/C_ImageCropper'

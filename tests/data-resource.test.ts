@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { effectScope, nextTick, ref, watch } from 'vue'
+import { effectScope, nextTick, ref, shallowRef, watch } from 'vue'
 import { useDataResource } from '../src/composables/useDataResource'
 
 function deferred<T>() {
@@ -251,5 +251,66 @@ describe('dependent data ownership', () => {
     await nextTick()
     expect(resource.data.value).toBeUndefined()
     expect(await resource.reload()).toBe(false)
+  })
+  test('equivalent derived keys preserve the active request while explicit reload still refreshes', async () => {
+    const mode = ref<'quick' | 'modal'>('quick')
+    const keys = { quick: 'entity:0', modal: 'entity:0' }
+    const pending = deferred<string[]>()
+    const signals: AbortSignal[] = []
+    const resource = useDataResource({
+      key: () => keys[mode.value],
+      load: ({ signal }) => {
+        signals.push(signal)
+        return signals.length === 1
+          ? pending.promise
+          : Promise.resolve(['refreshed'])
+      },
+    })
+    mode.value = 'modal'
+    expect(signals).toHaveLength(1)
+    expect(signals[0].aborted).toBe(false)
+    pending.resolve(['initial'])
+    await pending.promise
+    await nextTick()
+    expect(resource.data.value).toEqual(['initial'])
+    mode.value = 'quick'
+    expect(signals).toHaveLength(1)
+    expect(await resource.reload()).toBe(true)
+    expect(signals).toHaveLength(2)
+    expect(resource.data.value).toEqual(['refreshed'])
+    resource.dispose()
+  })
+  test('a stable local source does not reset on irrelevant dependencies, but true replacement still owns the same key', async () => {
+    const mode = ref<'quick' | 'modal'>('quick')
+    const source = shallowRef<string[] | undefined>(['local'])
+    const snapshots: Array<string[] | undefined> = []
+    let calls = 0
+    const resource = useDataResource({
+      key: 'entity:0',
+      source: () => ({ quick: source.value, modal: source.value })[mode.value],
+      load: async () => {
+        calls++
+        return ['remote']
+      },
+    })
+    const stop = watch(resource.data, value => snapshots.push(value), {
+      flush: 'sync',
+    })
+    mode.value = 'modal'
+    expect(snapshots).toEqual([])
+    const replacement = ['replacement']
+    source.value = replacement
+    expect(resource.data.value).toBe(replacement)
+    expect(calls).toBe(0)
+    source.value = undefined
+    await nextTick()
+    expect(resource.data.value).toEqual(['remote'])
+    expect(calls).toBe(1)
+    source.value = []
+    expect(resource.data.value).toEqual([])
+    expect(resource.status.value).toBe('empty')
+    expect(calls).toBe(1)
+    stop()
+    resource.dispose()
   })
 })

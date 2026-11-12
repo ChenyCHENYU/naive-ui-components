@@ -67,7 +67,8 @@
 | `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | -                    |
 | `C_FormModal`     | 数据驱动的新增/编辑表单弹窗                       | -                    |
 | `C_FormSearch`    | 搜索表单                                          | -                    |
-| `C_Select`        | 单选、多选和自由标签输入                          | -                    |
+| `C_Select`        | 单选、多选、自由标签与远程分页候选                | -                    |
+| `C_AutoComplete`  | 自由文本建议、远程候选与完整记录选择事件          | -                    |
 | `C_CollapsePanel` | 折叠面板                                          | -                    |
 | `C_SplitPane`     | 分割面板                                          | -                    |
 | `C_Draggable`     | 拖拽排序                                          | `vue-draggable-plus` |

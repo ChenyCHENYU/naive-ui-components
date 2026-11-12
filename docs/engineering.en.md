@@ -8,7 +8,7 @@
 
 ```
 bun run build
-  ├── 1. tsdown          → Multi-entry bundling (55 components ESM/CJS/DTS)
+  ├── 1. tsdown          → Multi-entry bundling (62 components ESM/CJS/DTS)
   ├── 2. sass CLI        → Compile the shared-variable entry → global-scss.css
   ├── 3. merge-css.js    → Merge Vue-compiled SFC CSS + global variables → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
@@ -40,6 +40,16 @@ dist/
 ├── style.css                             # Merged full styles
 └── [chunk].js                            # Shared code chunks
 ```
+
+## Consumer environment matrix
+
+| Profile                                        | Coverage                                                    | Native Node ESM                                                         |
+| ---------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `minimum`: Vue 3.5.3 / Naive UI 2.35.0         | Clean install, browser bundle, ESM/CJS types and CJS SSR    | Legacy Naive CommonJS distribution does not expose native named imports |
+| Locally verified: Vue 3.5.42 / Naive UI 2.45.3 | Full checks, production browser interaction and ESM/CJS SSR | Verified with Node 20.20.2                                              |
+| `latest`                                       | Clean install and strict native ESM/CJS SSR checks          | Reported by each run                                                    |
+
+Both declaration formats remain checked with minimum peers. Browser bundling does not mean that the full interactive browser suite ran against old dependencies; interaction checks use the locally verified profile. The peer range remains available to browser and CJS consumers, with explicit coverage in CI names and logs.
 
 ## Development
 

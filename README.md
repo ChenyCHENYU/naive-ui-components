@@ -4,7 +4,7 @@
 
 <div align="center">
   <p><strong>把重复的业务交互，沉淀为可组合的组件。</strong></p>
-  <p>Vue 3 · Naive UI · TypeScript · 61 个业务组件</p>
+  <p>Vue 3 · Naive UI · TypeScript · 62 个业务组件</p>
   <p>
     <a href="https://www.npmjs.com/package/@robot-admin/naive-ui-components"><img src="https://img.shields.io/npm/v/@robot-admin/naive-ui-components?style=flat-square&amp;color=249D70&amp;labelColor=183C2E" alt="npm version"></a>
     <a href="./package.json"><img src="https://img.shields.io/badge/Vue-3.5+-249D70?style=flat-square&amp;logo=vue.js&amp;logoColor=white&amp;labelColor=183C2E" alt="Vue 3.5+"></a>
@@ -30,14 +30,16 @@
 | -------- | ------------------------------------------------------------------------------------------------------ |
 | 配置驱动 | 表单字段、表格列、操作按钮与弹窗通过类型化配置组合；表单提供 8 种布局                                  |
 | 类型贯通 | 字段路径、列定义、事件与实例方法配套类型；提供 `defineFormOptions`、`useCForm`、`useTableQuery` 等助手 |
-| 按需消费 | 61 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
+| 按需消费 | 62 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.31.5**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.32.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 搜索条件、录入字段和操作按钮可以由响应式配置生成。筛选和编辑共享紧凑密度，支持校验、异步选项和业务弹窗。后端字典或权限由项目接入，表单和搜索消费普通选项，表格消费普通列配置。
 
 `C_Select` 支持独立单选、多选与自由标签。表单和搜索多选共用紧凑标签摘要，日期时间字段可直接读写接口字符串。见[多选与日期时间用法](./docs/guides/data-workflows.md#多选标签和日期时间)。
+
+远程选项、自由文本建议和多列实体选择分别使用 `C_Select`、`C_AutoComplete`、`C_DataPicker`，共享请求契约；表单与搜索字段可直接配置 `source`。见[搜索与选择用法](./docs/guides/search-workflows.md#远程选项与自由文本建议)及[产销场景核对](./docs/search-selection-coverage.md)。
 
 列表按场景组合 `C_FormSearch`、`C_ActionBar`、`C_FormModal` 和 `C_DataPicker`。同一套表单与搜索可搭配 `C_Table` 或 MachTable，各自使用原生表格配置和分页。见[组合用法](./docs/guides/data-workflows.md#搜索表单与弹窗组合)、[表单密度](./docs/guides/form-density.md)和[运行时性能](./docs/guides/runtime-performance.md)。
 
@@ -64,7 +66,7 @@
 | 工作空间   | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | 菜单、场景切换、多标签导航、全局搜索                     |
 | 通用交互   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | 登录、人机验证、功能引导、页面切换反馈                   |
 
-查看 [全部 61 个组件与依赖](./docs/components.md)，或在 [Robot Admin](https://robotadmin.cn) 中体验组件场景。Cron 预览只计算时间，公式只进行本地试算；生产人机验证需接入服务端校验，详见[使用指南](./docs/guides/usage.md)。
+查看 [全部 62 个组件与依赖](./docs/components.md)，或在 [Robot Admin](https://robotadmin.cn) 中体验组件场景。Cron 预览只计算时间，公式只进行本地试算；生产人机验证需接入服务端校验，详见[使用指南](./docs/guides/usage.md)。
 
 ## 快速开始
 
@@ -76,6 +78,8 @@
 bun add @robot-admin/naive-ui-components
 bun add vue@^3.5.3 naive-ui@^2.35.0
 ```
+
+最低组合覆盖浏览器打包、类型与 CJS SSR；原生 Node ESM SSR 的已验证配置使用 Naive UI 2.45.3。旧版分发格式的边界见[消费环境矩阵](./docs/engineering.md#消费环境矩阵)。
 
 也可使用项目现有的 npm 或 pnpm。仅在对应场景安装可选 peer：
 
@@ -179,7 +183,7 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 | 文档                                                     | 内容                                                             |
 | -------------------------------------------------------- | ---------------------------------------------------------------- |
 | [架构与隔离](./docs/architecture.md)                     | 依赖边界、实例所有权与独立 Element Plus 演进路线                 |
-| [组件目录](./docs/components.md)                         | 61 个组件、外部依赖与各组件的使用边界                            |
+| [组件目录](./docs/components.md)                         | 62 个组件、外部依赖与各组件的使用边界                            |
 | [使用指南](./docs/guides/usage.md)                       | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
 | [密度与多表工作台](./docs/guides/table-density.md)       | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
 | [大列表与异步任务](./docs/guides/runtime-performance.md) | 自动窗口化、聊天滚动、搜索索引、字幕与图片任务                   |

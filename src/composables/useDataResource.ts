@@ -144,12 +144,12 @@ export function useDataResource<K extends string | number, T>(
     abort()
   }
   if (getCurrentScope()) onScopeDispose(dispose)
+  const watchedKey = computed(() => toValue(options.key))
+  const watchedSource = computed(() =>
+    options.source === undefined ? undefined : toValue(options.source)
+  )
   stop = watch(
-    () =>
-      [
-        toValue(options.key),
-        options.source === undefined ? undefined : toValue(options.source),
-      ] as const,
+    [watchedKey, watchedSource],
     () => {
       const version = abortRequest()
       if (resetState(version)) void reload()

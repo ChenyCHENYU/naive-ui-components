@@ -1,4 +1,10 @@
 /** 无 UI 的值语义入口；不加载 Vue、Naive UI 或请求库。 */
+export type {
+  OptionRequest,
+  OptionPage,
+  OptionValue,
+  OptionSource,
+} from './core/optionSource'
 export { createNumberCodec } from './core/numberCodec'
 export type { NumberCodecOptions, ValueCodec } from './core/numberCodec'
 export { collectValidationIssues } from './core/validation'

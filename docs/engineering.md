@@ -8,7 +8,7 @@
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（55 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（62 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
   ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -41,6 +41,16 @@ dist/
 ├── images/                               # Leaflet Marker/图层控件资源
 └── [chunk].js                            # 共享代码块
 ```
+
+## 消费环境矩阵
+
+| 配置                                     | 检查范围                                    | 原生 Node ESM                            |
+| ---------------------------------------- | ------------------------------------------- | ---------------------------------------- |
+| `minimum`：Vue 3.5.3 / Naive UI 2.35.0   | 干净安装、浏览器打包、ESM/CJS 类型、CJS SSR | 旧 Naive CommonJS 分发不支持原生命名导入 |
+| 本地已验证：Vue 3.5.42 / Naive UI 2.45.3 | 完整检查、生产浏览器交互、ESM/CJS SSR       | 已验证 Node 20.20.2                      |
+| `latest`                                 | 干净安装并严格检查原生 ESM/CJS SSR          | 以当次工具结果为准                       |
+
+两种类型格式都在最低组合检查。`minimum` 的浏览器打包通过不代表对旧依赖执行了整套浏览器交互验收；本轮交互验收使用上表的本地组合。原生 ESM 的区别来自上游分发格式，保留浏览器与 CJS 用户的现有 peer 范围。CI 任务名和检查输出明确标识覆盖范围。
 
 ## 开发
 

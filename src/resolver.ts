@@ -35,6 +35,7 @@ export const componentNames = [
   'C_ActionBar',
   'C_AntV',
   'C_AudioPlayer',
+  'C_AutoComplete',
   'C_AvatarGroup',
   'C_Barcode',
   'C_BatchResult',

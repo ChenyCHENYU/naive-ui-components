@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "noEmit": true, "types": ["node"] },
+  "files": ["../../node_modules/vite/client.d.ts"],
+  "include": ["./*.ts", "./*.vue"],
+  "exclude": []
+}

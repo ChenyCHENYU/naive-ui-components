@@ -18,6 +18,7 @@ import type { LayoutType } from './types'
 import DefaultLayout from './layouts/Default/index.vue'
 import InlineLayout from './layouts/Inline/index.vue'
 import GridLayout from './layouts/Grid/index.vue'
+import { C_Select, C_AutoComplete } from '../../internal/sourceControls'
 
 export const SYNCHRONOUS_FORM_LAYOUTS: readonly LayoutType[] = [
   'default',
@@ -39,6 +40,8 @@ export const FORM_COMPONENTS: ComponentMap = {
   NButton,
   NSpace,
   NTooltip,
+  C_Select,
+  C_AutoComplete,
   NSlider: defineAsyncComponent(
     () => import('../../internal/naive-fields/slider')
   ),

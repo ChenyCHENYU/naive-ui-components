@@ -42,6 +42,7 @@ export type { FormValidationRule, RuleSpec } from './utils/formValidation'
 
 export { defineFormConfig, defineFormOptions, useCForm } from './helpers'
 export type { UseCFormOptions, UseCFormReturn } from './helpers'
+export { createSelectField, createAutoCompleteField } from './fieldRenderers'
 
 /* 导出 Composables */
 export {

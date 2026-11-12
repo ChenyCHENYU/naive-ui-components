@@ -1,6 +1,6 @@
 # 远程实体选择器
 
-`C_DataPicker` 用于客户、订单、人员、物料等需要分页查询和多列辨认的选择场景。它复用 `C_Table` 和资源生命周期，支持独立弹窗和表单内嵌两种展示。
+`C_DataPicker` 用于客户、订单、人员、物料等需要分页查询和多列辨认的选择场景。它复用 `C_Table` 和资源生命周期，支持独立弹窗、表单内嵌和快捷浮层三种展示。
 
 ```vue
 <script setup lang="ts">
@@ -126,3 +126,39 @@ const options = [
 ```
 
 例如将 `organization` 放进 `initialFilters`，使用一个 `fixed` 字段显示它，或让它只随查询提交。服务端鉴权和组织隔离仍由应用请求层负责。`submit` 启动加载并回到第一页，`loading` 和错误提示由选择器管理。内嵌在 `C_Form` 内时，`#query` 使用普通输入或选择控件，避免嵌套原生表单。`#trigger` 可用 `{ open, disabled, opened, display }` 替换默认触发器。
+
+## 快捷选择、分类与选择约束
+
+```vue
+<C_DataPicker
+  v-model="selectedIds"
+  :source="materials"
+  :columns="columns"
+  presentation="popover"
+  multiple
+  :max-selection="3"
+  :row-checkable="row => row.availableStock > 0"
+  :fixed-filters="{ factory: currentFactory }"
+  :navigation="{ field: 'category', options: categoryNodes, title: '物料分类' }"
+  :history="{
+    storageKey: 'materials',
+    scope: `${userId}:${currentFactory}`,
+    favorites: true,
+  }"
+  @select="applyMaterials"
+/>
+```
+
+- `presentation="popover"` 提供关键字输入与分页候选表；“完整选择”进入完整弹窗，沿用同份选择草稿。多选仍需要确认，关闭和取消不会偷偷提交。
+- `rowCheckable(row)` 集中声明当前可选性，表格勾选、跨页选择、历史与收藏均受约束；`maxSelection` 限制多选总量，单选始终至多一项。
+- `fixedFilters` 在初值、查询提交和分类筛选后合并，固定值始终优先。深层上下文改变会取消旧列表、回显和选择校验，关闭旧会话并丢弃草稿。它比可编辑的 `initialValues` 更适合固定工厂、仓库等查询上下文。
+- `navigation` 直接配置树节点和筛选字段，切换分类回到第一页。复杂分类区可改用 `#navigation="{ filters, submit, loading }"`，不需要复制选择器请求与选择状态。
+- 启用选择约束或快捷/历史入口且提供 `resolve` 时，确认前重新取回所选实体并检查可选性；失败保留草稿并呈现重试提示。普通旧模态模式继续保留尚未解析的初始编码，避免破坏既有回显行为。
+
+### 历史与收藏
+
+只有显式传入 `history` 且同时存在非空 `storageKey`、非空 `scope` 和 `source.resolve` 才会持久化。`scope` 由应用提供当前用户和业务范围；组件不会读取登录信息或用接口 URL 猜测隔离边界。固定筛选条件也进入存储隔离范围。`resolve` 应与 `request` 遵守同一业务范围；应用在来源适配器中传入当前组织/工厂，组件不从任意实体字段推测权限或归属。
+
+本地只保存值与展示名称，不保存完整实体；`maxItems` 默认 10、上限 50，单条展示名最多 200 字符。最近使用在成功确认后更新；收藏为可选操作。选择历史/收藏时必须重新 `resolve` 并检查当前 `rowCheckable`，请求失败或数据失效不会拿旧实体快照冒充可用结果。浏览器存储不可用时不影响正常选择。
+
+应用负责真实接口的权限校验、去重业务规则和关联字段回填。可复用的选择、分页和请求生命周期在包内；物料、客户、订单等业务字段不进入组件实现。

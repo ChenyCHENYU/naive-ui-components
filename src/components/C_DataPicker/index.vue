@@ -1,51 +1,9 @@
 <template>
   <div class="c-data-picker">
-    <slot
-      name="trigger"
-      :open="open"
-      :disabled="disabled || readonly"
-      :opened="opened"
-      :display="display"
-    >
-      <div class="c-data-picker__trigger">
-        <NButton
-          class="c-data-picker__open"
-          :size="density.size"
-          :disabled="disabled"
-          :aria-readonly="readonly"
-          :aria-expanded="inline ? opened : undefined"
-          :aria-controls="inline && opened ? panelId : undefined"
-          :title="display"
-          @click="toggle"
-        >
-          <span :class="{ 'c-data-picker__placeholder': !display }">{{
-            display || resolvedPlaceholder
-          }}</span>
-          <span
-            class="i-mdi:magnify w-4 h-4 shrink-0"
-            aria-hidden="true"
-          />
-        </NButton>
-        <NButton
-          v-if="
-            clearable &&
-            modelValue != null &&
-            (!Array.isArray(modelValue) || modelValue.length)
-          "
-          class="c-data-picker__clear"
-          :size="density.size"
-          :disabled="disabled || readonly"
-          :aria-label="t('picker.clear')"
-          @click="clear"
-        >
-          <template #icon
-            ><span
-              class="i-mdi:close w-4 h-4"
-              aria-hidden="true"
-          /></template>
-        </NButton>
-      </div>
-    </slot>
+    <component
+      :is="renderTrigger"
+      v-if="!popover || fullModal"
+    />
     <span
       v-if="labels.status.value === 'error'"
       class="c-data-picker__label-error"
@@ -65,148 +23,46 @@
       </NButton></span
     >
     <component
-      :is="inline ? NCard : NModal"
       v-if="!inline || opened"
+      :is="surfaceComponent"
       v-bind="surfaceProps"
     >
-      <div
-        ref="panelContent"
-        class="c-data-picker__content"
-        :tabindex="inline ? -1 : undefined"
+      <template
+        v-if="popover && !fullModal"
+        #trigger
+        ><component :is="renderTrigger"
+      /></template>
+      <PickerPanel
+        v-if="opened"
+        ref="panelRef"
+        :state="state"
+        :options="props"
+        :density-value="resolvedDensity"
+        :inline="inline || (popover && !fullModal)"
+        :popup="popover && !fullModal"
+        :panel-id="panelId"
+        @confirm="commit"
+        @dismiss="dismiss"
+        @keydown="panelKeydown"
       >
-        <slot
-          v-if="opened"
-          name="query"
-          :initial-values="initialValues"
-          :submit="submitFilters"
-          :loading="list.loading.value"
-        >
-          <component
-            :is="inline ? 'div' : 'form'"
-            class="c-data-picker__search"
-            @submit.stop.prevent="query"
-          >
-            <NInput
-              v-model:value="searchDraft"
-              :size="density.size"
-              :placeholder="t('picker.searchPlaceholder')"
-              :input-props="{ 'aria-label': t('picker.searchLabel') }"
-              @keydown.enter="searchOnEnter"
-              clearable
-            />
-            <NButton
-              :attr-type="inline ? 'button' : 'submit'"
-              :size="density.size"
-              :loading="list.loading.value"
-              type="primary"
-              @click="inline && query()"
-            >
-              <template #icon
-                ><span
-                  class="i-mdi:magnify w-4 h-4"
-                  aria-hidden="true"
-              /></template>
-              {{ t('picker.search') }}
-            </NButton>
-          </component>
-        </slot>
-        <div
-          v-if="list.status.value === 'error'"
-          class="c-data-picker__error"
-          role="alert"
-        >
-          {{ t('picker.loadFailed') }}
-          <NButton
-            :size="density.size"
-            @click="list.reload"
-          >
-            <template #icon
-              ><span
-                class="i-mdi:refresh w-4 h-4"
-                aria-hidden="true"
-            /></template>
-            {{ t('common.retry') }}
-          </NButton>
-        </div>
-        <C_Table
-          v-else-if="opened"
-          ref="tableRef"
-          :data="rows"
-          :columns="columns"
-          :row-key="source.rowKey"
-          :loading="list.loading.value"
-          :config="tableConfig"
-          @selection-change="selectPage"
-        />
-        <div class="c-data-picker__result-bar">
-          <div
-            class="c-data-picker__selection"
-            aria-live="polite"
-          >
-            <span v-if="total !== null">{{
-              t('picker.total', { count: total })
-            }}</span>
-            <span>{{ t('picker.selected', { count: selectedCount }) }}</span>
-            <NTag
-              v-for="item in selected"
-              :key="`${typeof item.value}:${item.value}`"
-              size="small"
-              closable
-              :title="item.label"
-              @close="remove(item.value)"
-              >{{ item.label }}</NTag
-            >
-            <span v-if="selectedCount > 30">{{
-              t('picker.moreSelected', { count: selectedCount - 30 })
-            }}</span>
-          </div>
-          <nav
-            v-if="total !== null && total > pageSize"
-            class="c-data-picker__pagination"
-            :aria-label="t('picker.pagination')"
-          >
-            <NPagination
-              v-model:page="page"
-              :page-size="pageSize"
-              :item-count="total"
-              :page-slot="5"
-              :size="density.size"
-            />
-          </nav>
-        </div>
-      </div>
-      <template #action>
-        <div class="c-data-picker__actions">
-          <NButton
-            :size="density.size"
-            @click="dismiss"
-          >
-            <template #icon
-              ><span
-                class="i-mdi:close w-4 h-4"
-                aria-hidden="true"
-            /></template>
-            {{ t('common.cancel') }}
-          </NButton>
-          <NButton
-            type="primary"
-            :size="density.size"
-            :disabled="!canConfirm"
-            @click="commit"
-          >
-            <template #icon
-              ><span
-                class="i-mdi:check w-4 h-4"
-                aria-hidden="true"
-            /></template>
-            {{ t('common.confirm') }}
-          </NButton>
-        </div>
-      </template>
+        <template
+          v-if="$slots.query"
+          #query="context"
+          ><slot
+            name="query"
+            v-bind="context"
+        /></template>
+        <template
+          v-if="$slots.navigation"
+          #navigation="context"
+          ><slot
+            name="navigation"
+            v-bind="context"
+        /></template>
+      </PickerPanel>
     </component>
   </div>
 </template>
-
 <script
   setup
   lang="ts"
@@ -214,26 +70,28 @@
 >
   import {
     computed,
-    defineAsyncComponent,
     h,
     nextTick,
+    onScopeDispose,
     shallowRef,
     useId,
+    watch,
+    type Component,
   } from 'vue'
-  import { NButton, NCard, NInput, NModal, NPagination, NTag } from 'naive-ui'
+  import { NButton, NCard, NInput, NModal, NPopover } from 'naive-ui'
   import type { TableInstance } from '../C_Table/types'
   import { resolveComponentDensity } from '../../core/density'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
   import { useComponentLocale } from '../../composables/useComponentLocale'
   import type { DataPickerProps, DataPickerEmits } from './types'
   import { useDataPicker } from './data'
-
+  import PickerPanel from './PickerPanel.vue'
   defineOptions({ name: 'C_DataPicker' })
   const props = withDefaults(defineProps<DataPickerProps<T, TFilters>>(), {
     pageSize: 20,
   })
   const emit = defineEmits<DataPickerEmits<T>>()
-  defineSlots<{
+  const slots = defineSlots<{
     trigger?(props: {
       open: () => void
       disabled: boolean
@@ -245,131 +103,268 @@
       submit: (filters: TFilters) => void
       loading: boolean
     }): unknown
+    navigation?(props: {
+      filters: Readonly<TFilters> | undefined
+      submit: (filters: TFilters) => void
+      loading: boolean
+    }): unknown
   }>()
   const tableRef = shallowRef<TableInstance<T> | null>(null)
-  const panelContent = shallowRef<HTMLElement | null>(null)
+  const panelRef = shallowRef<{ focus: () => void } | null>(null)
+  const triggerRoot = shallowRef<HTMLElement | null>(null)
   const panelId = useId()
   const inline = computed(() => props.presentation === 'inline')
-  let opener: HTMLElement | null = null
+  const popover = computed(() => props.presentation === 'popover')
+  const blocked = computed(() => props.disabled || props.readonly)
+  const fullModal = shallowRef(false)
+  const surfaceComponent = computed<Component>(() =>
+    popover.value && !fullModal.value ? NPopover : inline.value ? NCard : NModal
+  )
   const globalFormConfig = useFormGlobalConfig()
   const resolvedDensity = computed(
     () => props.density ?? globalFormConfig.density ?? 'compact'
   )
   const density = computed(() => resolveComponentDensity(resolvedDensity.value))
   const { t } = useComponentLocale(() => props.locale)
-  // 候选请求与表格代码在打开后并行加载；模块加载失败独立于接口重试。
-  const C_Table = defineAsyncComponent({
-    loader: () => import('../C_Table/index.vue'),
-    loadingComponent: () => h('div', { role: 'status' }, t('table.loading')),
-    errorComponent: () => h('div', { role: 'alert' }, t('picker.loadFailed')),
-  })
-  const resolvedTitle = computed(() => props.title ?? t('picker.title'))
-  const resolvedPlaceholder = computed(
-    () => props.placeholder ?? t('picker.placeholder')
+  const state = useDataPicker(
+    props,
+    emit,
+    tableRef,
+    () => resolvedDensity.value,
+    () => popover.value && !fullModal.value
   )
-  const {
-    opened,
-    open: startSession,
-    close,
-    confirm,
-    clear,
-    page,
-    pageSize,
-    searchDraft,
-    query,
-    submitFilters,
-    list,
-    labels,
-    rows,
-    total,
-    display,
-    selected,
-    selectedCount,
-    canConfirm,
-    columns,
-    tableConfig,
-    selectPage,
-    remove,
-  } = useDataPicker(props, emit, tableRef, () => resolvedDensity.value)
-
-  function open(event?: Event): void {
-    if (opened.value || props.disabled || props.readonly) return
-    if (inline.value)
-      opener = (event?.currentTarget ??
-        document.activeElement) as HTMLElement | null
-    startSession()
-    if (inline.value)
-      void nextTick(() => {
-        const content = panelContent.value
-        const firstField = content?.querySelector<HTMLInputElement>(
-          'input:not([type="hidden"])'
-        )
-        const target = firstField ?? content
-        target?.focus()
-      })
+  const { opened, close, confirm, clear, searchDraft, query, labels, display } =
+    state
+  let opener: HTMLElement | null = null
+  let suppressFocusOpen = false
+  let searchTimer: ReturnType<typeof setTimeout> | undefined
+  watch(opened, active => {
+    if (active) return
+    clearTimeout(searchTimer)
+    searchTimer = undefined
+    fullModal.value = false
+  })
+  onScopeDispose(() => clearTimeout(searchTimer))
+  function open(event?: Event) {
+    if (opened.value || blocked.value) return
+    opener = (event?.currentTarget ??
+      (typeof document === 'undefined'
+        ? null
+        : document.activeElement)) as HTMLElement | null
+    state.open()
+    if (inline.value) void nextTick(() => panelRef.value?.focus())
   }
-
-  function restoreFocus(): void {
-    const trigger = opener
-    opener = null
-    if (trigger?.isConnected) trigger.focus()
-  }
-
-  function dismiss(): void {
+  function dismiss() {
+    clearTimeout(searchTimer)
+    searchTimer = undefined
     close()
-    restoreFocus()
+    fullModal.value = false
+    const previous = opener
+    opener = null
+    void nextTick(() => {
+      const target = previous?.isConnected
+        ? previous
+        : triggerRoot.value?.querySelector<HTMLElement>('input, button')
+      suppressFocusOpen = true
+      target?.focus()
+      queueMicrotask(() => {
+        suppressFocusOpen = false
+      })
+    })
   }
-
-  function toggle(event: MouseEvent): void {
-    if (inline.value && opened.value) dismiss()
-    else open(event)
+  async function commit() {
+    await confirm()
+    if (!opened.value) dismiss()
   }
-
-  function commit(): void {
-    confirm()
-    if (!opened.value) restoreFocus()
+  function quickSearch(value: string) {
+    if (blocked.value) return
+    open()
+    searchDraft.value = value
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      searchTimer = undefined
+      if (opened.value && value.length >= state.searchOptions.value.minChars)
+        query()
+    }, state.searchOptions.value.debounce)
   }
-
-  function searchOnEnter(event: KeyboardEvent): void {
-    if (!inline.value || event.isComposing) return
-    event.preventDefault()
-    event.stopPropagation()
-    query()
+  function fullOpen() {
+    if (blocked.value) return
+    clearTimeout(searchTimer)
+    searchTimer = undefined
+    open()
+    if (searchDraft.value !== state.search.value) query()
+    fullModal.value = true
   }
+  function onQuickFocus() {
+    if (suppressFocusOpen) {
+      suppressFocusOpen = false
+      return
+    }
+    open()
+  }
+  function onQuickKey(event: KeyboardEvent) {
+    if (event.isComposing) return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      dismiss()
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      open()
+      void nextTick(() => panelRef.value?.focus())
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      event.stopPropagation()
+      clearTimeout(searchTimer)
+      searchTimer = undefined
+      open()
+      query()
+    }
+  }
+  const renderQuickInput = () =>
+    h(NInput, {
+      value: opened.value ? searchDraft.value : display.value,
+      placeholder: props.placeholder ?? t('picker.quickSearch'),
+      size: density.value.size,
+      disabled: props.disabled,
+      readonly: props.readonly,
+      inputProps: {
+        'aria-label': props.title ?? t('picker.title'),
+        'aria-expanded': opened.value,
+        'aria-controls': opened.value ? panelId : undefined,
+      },
+      'onUpdate:value': quickSearch,
+      onFocus: onQuickFocus,
+      onClick: () => open(),
+      onKeydown: onQuickKey,
+    })
+  const renderOpenButton = () =>
+    h(
+      NButton,
+      {
+        class: 'c-data-picker__open',
+        size: density.value.size,
+        disabled: props.disabled,
+        'aria-readonly': props.readonly,
+        'aria-expanded': inline.value ? opened.value : undefined,
+        'aria-controls': inline.value && opened.value ? panelId : undefined,
+        title: display.value,
+        onClick: (event: MouseEvent) =>
+          inline.value && opened.value ? dismiss() : open(event),
+      },
+      () => [
+        h(
+          'span',
+          {
+            class: !display.value ? 'c-data-picker__placeholder' : undefined,
+          },
+          display.value || (props.placeholder ?? t('picker.placeholder'))
+        ),
+        h('span', {
+          class: 'i-mdi:magnify w-4 h-4 shrink-0',
+          'aria-hidden': 'true',
+        }),
+      ]
+    )
 
-  function inlineKeydown(event: KeyboardEvent): void {
+  const renderTrigger = () => {
+    if (slots.trigger)
+      return slots.trigger({
+        open,
+        disabled: !!blocked.value,
+        opened: opened.value,
+        display: display.value,
+      })
+    const input = popover.value ? renderQuickInput() : renderOpenButton()
+    const nodes = [input]
+    if (popover.value)
+      nodes.push(
+        h(
+          NButton,
+          {
+            class: 'c-data-picker__more',
+            size: density.value.size,
+            disabled: blocked.value,
+            onClick: fullOpen,
+          },
+          () => t('picker.more')
+        )
+      )
+    if (
+      props.clearable &&
+      props.modelValue != null &&
+      (!Array.isArray(props.modelValue) || props.modelValue.length)
+    )
+      nodes.push(
+        h(
+          NButton,
+          {
+            class: 'c-data-picker__clear',
+            size: density.value.size,
+            disabled: blocked.value,
+            'aria-label': t('picker.clear'),
+            onClick: clear,
+          },
+          () =>
+            h('span', { class: 'i-mdi:close w-4 h-4', 'aria-hidden': 'true' })
+        )
+      )
+    return h(
+      'div',
+      { class: 'c-data-picker__trigger', ref: triggerRoot },
+      nodes
+    )
+  }
+  function panelKeydown(event: KeyboardEvent) {
     if (event.key !== 'Escape' || event.defaultPrevented) return
     event.preventDefault()
     event.stopPropagation()
     dismiss()
   }
-
-  const surfaceProps = computed(() =>
-    inline.value
-      ? {
-          id: panelId,
-          class: 'c-data-picker__inline',
-          role: 'region',
-          'aria-label': resolvedTitle.value,
-          title: resolvedTitle.value,
-          size: 'small' as const,
-          onKeydown: inlineKeydown,
-        }
-      : {
-          show: opened.value,
-          preset: 'card' as const,
-          class: 'c-data-picker__modal',
-          title: resolvedTitle.value,
-          'aria-label': resolvedTitle.value,
-          style: { width: 'min(960px, calc(100vw - 24px))' },
-          'onUpdate:show': (show: boolean) => {
-            if (!show) close()
-          },
-        }
-  )
-  defineExpose({ open, close })
+  const surfaceProps = computed(() => {
+    const title = props.title ?? t('picker.title')
+    if (popover.value && !fullModal.value)
+      return {
+        show: opened.value,
+        trigger: 'manual',
+        placement: 'bottom-start',
+        showArrow: false,
+        width: 640,
+        style: { maxWidth: 'calc(100vw - 24px)' },
+        onClickoutside: (event: MouseEvent) => {
+          if (
+            event.target instanceof Node &&
+            triggerRoot.value?.contains(event.target)
+          )
+            return
+          dismiss()
+        },
+        onKeydown: panelKeydown,
+      }
+    if (inline.value)
+      return {
+        id: panelId,
+        class: 'c-data-picker__inline',
+        role: 'region',
+        'aria-label': title,
+        title,
+        size: 'small',
+        onKeydown: panelKeydown,
+      }
+    return {
+      show: opened.value,
+      preset: 'card',
+      class: 'c-data-picker__modal',
+      title,
+      'aria-label': title,
+      style: { width: 'min(960px, calc(100vw - 24px))' },
+      'onUpdate:show': (show: boolean) => {
+        if (!show) dismiss()
+      },
+    }
+  })
+  defineExpose({ open, close: dismiss })
 </script>
-
 <style scoped lang="scss">
   @use './index.scss';
 </style>

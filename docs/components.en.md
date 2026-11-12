@@ -67,7 +67,8 @@ Image/calendar behavior notes: `C_ImageCropper` flips the actual source and rese
 | `C_Form`          | Dynamic form engine (Grid/Tabs/Steps/Card layout) | -                    |
 | `C_FormModal`     | Data-driven create/edit form modal                | -                    |
 | `C_FormSearch`    | Search form                                       | -                    |
-| `C_Select`        | Single and multiple selection with freeform tags  | -                    |
+| `C_Select`        | Single/multiple values, tags and remote paging    | -                    |
+| `C_AutoComplete`  | Free text with local or remote suggestions        | -                    |
 | `C_CollapsePanel` | Collapse panel                                    | -                    |
 | `C_SplitPane`     | Split pane                                        | -                    |
 | `C_Draggable`     | Drag & drop sorting                               | `vue-draggable-plus` |

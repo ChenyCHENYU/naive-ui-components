@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
-import { NInput, NGrid, NGridItem } from 'naive-ui'
+import { NInput, NGrid, NGridItem, NCard, NAlert } from 'naive-ui'
 import C_Form from '../../src/components/C_Form/index.vue'
 import C_FormModal from '../../src/components/C_FormModal/index.vue'
 import {
@@ -65,7 +65,7 @@ test.each(['form', 'modal'] as const)(
     const wrapper = mount(Host, {
       attachTo: document.body,
       global: {
-        components: { NGrid, NGridItem },
+        components: { NGrid, NGridItem, NCard, NAlert },
         provide: { [FORM_RENDERER_REGISTRY_KEY as symbol]: registry },
       },
     })

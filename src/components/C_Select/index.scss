@@ -1,3 +1,9 @@
+@use '../../styles/option-status';
+.c-select-field {
+  min-width: 0;
+  width: 100%;
+}
+
 .c-select {
   min-width: 0;
   max-width: 100%;

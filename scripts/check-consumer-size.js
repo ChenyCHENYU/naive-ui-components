@@ -39,6 +39,13 @@ const cases = [
     budget: 120 * 1024,
   },
   {
+    name: 'C_AutoComplete',
+    component: 'C_AutoComplete',
+    css: 'C_AutoComplete.css',
+    props: "{ modelValue: '', options: ['Ship as planned'] }",
+    budget: 120 * 1024,
+  },
+  {
     name: 'C_FormSearch',
     component: 'C_FormSearch',
     css: 'C_FormSearch.css',
@@ -79,7 +86,7 @@ const cases = [
 const forbiddenInitial =
   /(?:node_modules\/(?:@wangeditor[^/]*|@wangeditor-next|xlsx|html2canvas|print-js|mammoth)\/|\/(?:C_Editor\d*\.(?:js|vue)|xlsx\d*\.(?:js|cjs))$)/
 const deferredNaiveFields =
-  /\/naive-ui\/(?:es|lib)\/(?:date-picker|time-picker|slider|rate|cascader|tree-select|color-picker|upload)\//
+  /\/naive-ui\/(?:es|lib)\/(?:auto-complete|date-picker|time-picker|slider|rate|cascader|tree-select|color-picker|upload)\//
 
 function visitStaticImports(byName, seen, filename) {
   const chunk = byName.get(filename)

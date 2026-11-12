@@ -10,11 +10,16 @@ permissions:
 
 jobs:
   fresh-consumers:
+    name: ${{ matrix.peers }} consumers / ${{ matrix.runtime }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        peers: [minimum, latest]
+        include:
+          - peers: minimum
+            runtime: Bundler, types and CJS SSR
+          - peers: latest
+            runtime: Native ESM and CJS SSR
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

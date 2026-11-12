@@ -114,8 +114,14 @@ for (const styleEntry of [
 }
 
 const componentStyleContracts = {
+  'C_Select.css': ['.c-option-status'],
+  'C_AutoComplete.css': ['.c-auto-complete', '.c-option-status'],
+  'C_FormSearch.css': ['.c-auto-complete', '.c-option-status'],
+  'C_Form.base.css': ['.c-auto-complete', '.c-option-status'],
   'C_DataPicker.css': [
     '.c-data-picker[',
+    '.c-data-picker__navigation[',
+    '.c-tree[',
     '.c-table-wrapper[',
     '.c-form-actions[',
     '.c-icon[',

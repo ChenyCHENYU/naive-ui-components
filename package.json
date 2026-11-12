@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.31.5",
+  "version": "0.32.0",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "packageManager": "bun@1.4.2",
   "engines": {
@@ -134,7 +134,7 @@
     "check:quality": "node scripts/check-source-quality.js",
     "check:consumer-types": "vue-tsc --noEmit -p tests/consumer/tsconfig.json",
     "check:consumer-contracts": "node scripts/check-consumer-contracts.js",
-    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:vendor && bun run check:legacy && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-size && bun run check:consumer-types && bun run check:consumer-contracts",
+    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:vendor && bun run check:legacy && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-size && bun run check:consumer-types && bun run check:consumer-contracts && bun run check:search-workflows",
     "prepublishOnly": "bun run verify",
     "release": "changeset publish",
     "changeset": "changeset",
@@ -151,7 +151,10 @@
     "type-check:components": "vue-tsc --noEmit -p tests/components/tsconfig.json",
     "check:audit:raw": "bun audit --json",
     "check:vendor": "node scripts/check-vendored-dependencies.js",
-    "check:legacy": "bun scripts/check-legacy-usage.js tests/consumer/C_CurrentApi.vue --strict"
+    "check:legacy": "bun scripts/check-legacy-usage.js tests/consumer/C_CurrentApi.vue --strict",
+    "dev:search-workflows": "vite --config dev/search-workflows/vite.config.ts",
+    "preview:search-workflows": "vite preview --config dev/search-workflows/vite.config.ts --host 127.0.0.1 --port 4189 --strictPort",
+    "check:search-workflows": "vue-tsc --noEmit -p dev/search-workflows/tsconfig.json && vite build --config dev/search-workflows/vite.config.ts"
   },
   "peerDependencies": {
     "vue": "^3.5.3",

@@ -5,73 +5,30 @@
     margin-top: 8px;
     min-width: 0;
   }
-  &__content:focus {
-    outline: none;
-  }
-  &__trigger,
-  &__search,
-  &__actions,
-  &__selection {
+  &__trigger {
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  &__open {
+  :deep(.c-data-picker__open) {
     flex: 1;
     min-width: 0;
   }
-  &__open :deep(.n-button__content) {
+  :deep(.c-data-picker__open .n-button__content) {
     display: flex;
     gap: 12px;
     width: 100%;
     justify-content: space-between;
     overflow: hidden;
   }
-  &__open span:first-child {
+  :deep(.c-data-picker__open span:first-child) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &__placeholder {
+  :deep(.c-data-picker__placeholder) {
     opacity: 0.55;
   }
-  &__search {
-    margin-bottom: 12px;
-  }
-  &__result-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    margin-block-start: 10px;
-  }
-  &__pagination {
-    margin-inline-start: auto;
-    max-width: 100%;
-    :deep(.n-pagination) {
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-  }
-  &__selection {
-    flex-wrap: wrap;
-    min-width: 0;
-    max-width: 100%;
-    font-size: 12px;
-    :deep(.n-tag) {
-      max-width: 100%;
-    }
-    :deep(.n-tag__content) {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-  &__actions {
-    justify-content: flex-end;
-  }
-  &__error,
   &__label-error {
     font-size: 12px;
     color: var(--n-text-color);

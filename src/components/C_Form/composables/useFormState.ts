@@ -39,6 +39,7 @@ import {
 
 const DEFAULT_VALUES: Record<ComponentType, unknown> = {
   input: '',
+  autocomplete: '',
   textarea: '',
   editor: '',
   select: null,
@@ -333,13 +334,15 @@ export function useFormState(
   }
 
   function reconcileAsyncOptions(item: FormOption): void {
-    if (asyncOptionLoaders.get(item.prop) === item.asyncOptions) return
+    // 来源控件拥有查询状态，迁移字段时优先 source，避免旧 asyncOptions 重复请求。
+    const loader = item.source ? undefined : item.asyncOptions
+    if (asyncOptionLoaders.get(item.prop) === loader) return
     invalidateAsyncOptions(item.prop)
-    if (!item.asyncOptions) {
+    if (!loader) {
       asyncOptionLoaders.delete(item.prop)
       return
     }
-    asyncOptionLoaders.set(item.prop, item.asyncOptions)
+    asyncOptionLoaders.set(item.prop, loader)
     scheduleAsyncOptions(item, 'initialize')
   }
 

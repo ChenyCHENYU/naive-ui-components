@@ -3,6 +3,7 @@ import {
   computed,
   nextTick,
   onDeactivated,
+  onScopeDispose,
   shallowRef,
   watch,
   type Ref,
@@ -10,15 +11,17 @@ import {
 import type { DataTableRowKey } from 'naive-ui'
 import { useDataResource } from '../../composables/useDataResource'
 import type { TableInstance, TableConfig } from '../C_Table'
-import { validateTableRowKeys } from '../C_Table/helpers'
 import { cloneData, isDataEqual } from '../../utils/data'
 import type {
   DataPickerEmits,
   DataPickerProps,
   DataPickerRequest,
-  DataPickerSourceInput,
   DataPickerValue,
 } from './types'
+import { getPickerRowKey, getPickerValue, validatePickerPage } from './source'
+export { isPickerValue } from './source'
+import { usePickerHistory } from './usePickerHistory'
+import { usePickerResolver } from './usePickerResolver'
 import type { ComponentDensity } from '../../core/density'
 
 function normalizeValues(
@@ -26,77 +29,6 @@ function normalizeValues(
 ): DataPickerValue[] {
   if (value == null) return []
   return [...new Set(Array.isArray(value) ? value : [value as DataPickerValue])]
-}
-
-/** 保留原始编码类型，排除 NaN 和无穷大。 */
-export function isPickerValue(value: unknown): value is DataPickerValue {
-  return (
-    typeof value === 'string' ||
-    (typeof value === 'number' && Number.isFinite(value))
-  )
-}
-
-function getPickerRowKey<T extends object>(
-  source: Pick<DataPickerSourceInput<T>, 'rowKey'>,
-  row: T
-): DataPickerValue {
-  const key =
-    typeof source.rowKey === 'function'
-      ? source.rowKey(row)
-      : row[source.rowKey]
-  if (!isPickerValue(key))
-    throw new TypeError('[C_DataPicker] rowKey 必须为字符串或有限数值')
-  return key
-}
-
-function getPickerValue<T extends object>(
-  source: Pick<DataPickerSourceInput<T>, 'rowKey' | 'value'>,
-  row: T
-): DataPickerValue {
-  return source.value === undefined
-    ? getPickerRowKey(source, row)
-    : source.value(row)
-}
-
-function validatePickerBusinessValues<T extends object>(
-  source: Pick<DataPickerSourceInput<T>, 'value'>,
-  rows: readonly T[]
-): void {
-  // 默认业务值与行键相同，行键检查已验证类型、缺失与重复。
-  if (source.value === undefined) return
-  const values = new Set<DataPickerValue>()
-  for (const row of rows) {
-    const value = source.value(row)
-    if (!isPickerValue(value) || values.has(value))
-      throw new TypeError('[C_DataPicker] 业务值必须为唯一的字符串或有限数值')
-    values.add(value)
-  }
-}
-
-function validatePickerPage<T extends object>(
-  source: Pick<DataPickerSourceInput<T>, 'rowKey' | 'value'>,
-  result: { rows: T[]; total: number },
-  pageSize: number
-): void {
-  if (
-    !Array.isArray(result.rows) ||
-    !Number.isSafeInteger(result.total) ||
-    result.total < 0
-  ) {
-    throw new TypeError(
-      '[C_DataPicker] request 必须返回 rows 数组和非负安全整数 total'
-    )
-  }
-  if (result.rows.length > pageSize || result.rows.length > result.total) {
-    throw new TypeError('[C_DataPicker] rows 超过请求的分页或 total 范围')
-  }
-  if (
-    validateTableRowKeys(result.rows, row => getPickerRowKey(source, row))
-      .length
-  ) {
-    throw new TypeError('[C_DataPicker] rowKey 不得缺失或重复')
-  }
-  validatePickerBusinessValues(source, result.rows)
 }
 
 /** 只复用 C_Table 的公开选择 API，不依赖内部行索引或 DOM。 */
@@ -109,7 +41,8 @@ export function useDataPicker<T extends object, TFilters extends object>(
     ): void
   },
   table: Ref<TableInstance<T> | null>,
-  density: () => ComponentDensity
+  density: () => ComponentDensity,
+  quickMode: () => boolean = () => false
 ) {
   const opened = shallowRef(false)
   const queryState = shallowRef<{
@@ -126,6 +59,23 @@ export function useDataPicker<T extends object, TFilters extends object>(
   })
   const searchDraft = shallowRef('')
   const search = computed(() => queryState.value.search)
+  const searchOptions = computed(() => {
+    const { debounce, minChars } = props.source
+    return {
+      debounce:
+        debounce !== undefined &&
+        Number.isSafeInteger(debounce) &&
+        debounce >= 0
+          ? debounce
+          : 250,
+      minChars:
+        minChars !== undefined &&
+        Number.isSafeInteger(minChars) &&
+        minChars >= 0
+          ? minChars
+          : 0,
+    }
+  })
   const sourceVersion = shallowRef(0)
   const session = shallowRef(0)
   const draft = shallowRef(new Map<DataPickerValue, T | undefined>())
@@ -142,10 +92,35 @@ export function useDataPicker<T extends object, TFilters extends object>(
       : 20
   )
   const blocked = computed(() => props.disabled || props.readonly)
+  const maximum = computed(() => {
+    if (!props.multiple) return 1
+    const max = props.maxSelection
+    return max !== undefined && Number.isFinite(max) && max >= 1
+      ? Math.trunc(max)
+      : Infinity
+  })
+  const history = usePickerHistory(props)
+  const resolver = usePickerResolver(props)
+  const { pending: confirming, error: selectionError } = resolver
   let filterBaseline = cloneData(props.initialValues)
+  let fixedBaseline = cloneData(props.fixedFilters)
   let restoringSelection = false
   let selectionPage: { table: TableInstance<T>; rows: readonly T[] } | undefined
   const rowValue = (row: T) => getPickerValue(props.source, row)
+  const checkable = (row: T) => props.rowCheckable?.(row) !== false
+  const hasCapacity = (value: DataPickerValue) =>
+    !props.multiple ||
+    draft.value.has(value) ||
+    draft.value.size < maximum.value
+  const requestFilters = (filters: TFilters | undefined) =>
+    props.fixedFilters === undefined
+      ? cloneData(filters)
+      : { ...cloneData(filters), ...cloneData(props.fixedFilters) }
+  const invalidateSource = () => {
+    close()
+    committedRows.value = new Map()
+    sourceVersion.value++
+  }
 
   // 先失效会话，再由资源观察器读取新源，避免一次源替换发起两次回显请求。
   watch(
@@ -157,13 +132,19 @@ export function useDataPicker<T extends object, TFilters extends object>(
         props.source.rowKey,
         props.source.value,
       ] as const,
-    () => {
-      close()
-      committedRows.value = new Map()
-      sourceVersion.value++
-    },
+    invalidateSource,
     { flush: 'sync' }
   )
+  watch(
+    () => props.fixedFilters,
+    value => {
+      if (isDataEqual(fixedBaseline, value)) return
+      fixedBaseline = cloneData(value)
+      invalidateSource()
+    },
+    { deep: true, flush: 'sync' }
+  )
+  watch(() => props.history?.scope, invalidateSource, { flush: 'sync' })
   watch(
     () => props.initialValues,
     value => {
@@ -176,7 +157,10 @@ export function useDataPicker<T extends object, TFilters extends object>(
 
   const list = useDataResource({
     key: () =>
-      opened.value
+      opened.value &&
+      (!quickMode() ||
+        (searchDraft.value === search.value &&
+          searchDraft.value.length >= searchOptions.value.minChars))
         ? JSON.stringify([
             sourceVersion.value,
             session.value,
@@ -188,12 +172,13 @@ export function useDataPicker<T extends object, TFilters extends object>(
     load: async ({ signal }) => {
       const { source } = props
       const { filters } = queryState.value
+      const mergedFilters = requestFilters(filters)
       const query: DataPickerRequest<TFilters> = {
         page: page.value,
         pageSize: pageSize.value,
         search: search.value,
         signal,
-        ...(filters === undefined ? {} : { filters: cloneData(filters) }),
+        ...(mergedFilters === undefined ? {} : { filters: mergedFilters }),
       }
       const result = await source.request(query)
       validatePickerPage(source, result, query.pageSize)
@@ -249,7 +234,16 @@ export function useDataPicker<T extends object, TFilters extends object>(
   )
   const selectedCount = computed(() => draft.value.size)
   const canConfirm = computed(
-    () => !blocked.value && (!props.requireSelection || selectedCount.value > 0)
+    () =>
+      !blocked.value &&
+      !confirming.value &&
+      selectedCount.value <= maximum.value &&
+      (!props.requireSelection || selectedCount.value > 0) &&
+      (!props.rowCheckable ||
+        [...draft.value.keys()].every(value => {
+          const row = resolveDraftRow(value)
+          return row !== undefined && checkable(row)
+        }))
   )
   const selected = computed(() => {
     const visible: Array<{ value: DataPickerValue; label: string }> = []
@@ -272,7 +266,12 @@ export function useDataPicker<T extends object, TFilters extends object>(
     locale: props.locale,
     toolbar: { show: false },
     pagination: false,
-    selection: { enabled: true, maxSelection: props.multiple ? undefined : 1 },
+    selection: {
+      enabled: true,
+      maxSelection: Number.isFinite(maximum.value) ? maximum.value : undefined,
+      rowCheckable: row =>
+        !confirming.value && checkable(row) && hasCapacity(rowValue(row)),
+    },
     virtualScroll: { enabled: true, maxHeight: 360 },
   }))
 
@@ -281,10 +280,12 @@ export function useDataPicker<T extends object, TFilters extends object>(
     total.value = null
     draft.value = new Map()
     selectionPage = undefined
+    resolver.abort()
   }
 
   // 缓存页面切离时丢弃未确认会话，避免 Teleport 弹窗覆盖新页面。
   onDeactivated(close)
+  onScopeDispose(close)
 
   function open(): void {
     if (blocked.value || opened.value) return
@@ -292,7 +293,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
     queryState.value = {
       page: 1,
       search: '',
-      filters: cloneData(filterBaseline),
+      filters: requestFilters(filterBaseline),
       revision: 0,
     }
     searchDraft.value = ''
@@ -305,13 +306,40 @@ export function useDataPicker<T extends object, TFilters extends object>(
     return draft.value.get(value) ?? knownRow(value)
   }
 
-  function confirm(): void {
+  const confirmationRequired = computed(() =>
+    Boolean(
+      props.source.resolve &&
+      (props.rowCheckable ||
+        history.enabled.value ||
+        props.presentation === 'popover')
+    )
+  )
+
+  async function confirm(): Promise<void> {
     if (!canConfirm.value || !opened.value) return
     const chosen = [...draft.value.keys()]
+    const currentSession = session.value
+    const validate = confirmationRequired.value
+    const resolvedRows = validate ? await resolver.resolve(chosen) : undefined
+    if (validate && !resolvedRows) return
+    if (
+      !opened.value ||
+      session.value !== currentSession ||
+      chosen.length > maximum.value
+    )
+      return
+    completeSelection(chosen, resolvedRows)
+  }
+
+  function completeSelection(
+    chosen: DataPickerValue[],
+    resolvedRows?: Map<DataPickerValue, T>
+  ): void {
+    const { source } = props
     const committed = new Map<DataPickerValue, { row: T; fromPage: boolean }>()
     const resolved: T[] = []
     for (const value of chosen) {
-      const row = resolveDraftRow(value)
+      const row = resolvedRows?.get(value) ?? resolveDraftRow(value)
       if (!row) continue
       committed.set(value, {
         row,
@@ -322,6 +350,9 @@ export function useDataPicker<T extends object, TFilters extends object>(
       resolved.push(row)
     }
     committedRows.value = committed
+    history.remember(
+      resolved.map(row => ({ value: rowValue(row), label: source.label(row) }))
+    )
     close()
     emit('update:modelValue', props.multiple ? chosen : (chosen[0] ?? null))
     emit('select', resolved)
@@ -343,21 +374,47 @@ export function useDataPicker<T extends object, TFilters extends object>(
   }
 
   function selectPage(_keys: DataTableRowKey[], selectedRows: T[]): void {
-    if (restoringSelection || !opened.value || !currentSelectionTable()) return
-    const nextDraft = new Map<DataPickerValue, T | undefined>()
-    if (props.multiple) {
-      // 只替换当前页的选择，保留其他页的草稿。
-      const currentPage = new Set(rows.value.map(rowValue))
-      for (const [value, row] of draft.value) {
-        if (!currentPage.has(value)) nextDraft.set(value, row)
-      }
-    }
-    const next = props.multiple ? selectedRows : selectedRows.slice(-1)
-    for (const row of next) nextDraft.set(rowValue(row), row)
+    if (
+      restoringSelection ||
+      confirming.value ||
+      !opened.value ||
+      !currentSelectionTable()
+    )
+      return
+    const nextDraft = mergePageSelection(selectedRows)
     draft.value = nextDraft
+    const expected = rows.value.filter(row => nextDraft.has(rowValue(row)))
+    if (
+      selectedRows.length !== expected.length ||
+      selectedRows.some(row => !nextDraft.has(rowValue(row)))
+    )
+      void nextTick(restoreSelection)
+  }
+
+  function mergePageSelection(
+    selectedRows: T[]
+  ): Map<DataPickerValue, T | undefined> {
+    const currentPage = new Set(rows.value.map(rowValue))
+    const nextDraft = new Map(
+      props.multiple
+        ? [...draft.value].filter(([value]) => !currentPage.has(value))
+        : []
+    )
+    const available = new Map(
+      rows.value.map(row => [getPickerRowKey(props.source, row), row])
+    )
+    const next = props.multiple ? selectedRows : selectedRows.slice(-1)
+    for (const selectedRow of next) {
+      const row = available.get(getPickerRowKey(props.source, selectedRow))
+      if (!row || !checkable(row)) continue
+      if (nextDraft.size >= maximum.value) break
+      nextDraft.set(rowValue(row), row)
+    }
+    return nextDraft
   }
 
   function remove(value: DataPickerValue): void {
+    if (confirming.value) return
     const nextDraft = new Map(draft.value)
     if (!nextDraft.delete(value)) return
     draft.value = nextDraft
@@ -386,11 +443,12 @@ export function useDataPicker<T extends object, TFilters extends object>(
         if (draft.value.has(value)) {
           if (draft.value.get(value) !== row)
             (nextDraft ??= new Map(draft.value)).set(value, row)
-          currentTable.selectRow(
-            props.source.value === undefined
-              ? value
-              : getPickerRowKey(props.source, row)
-          )
+          if (checkable(row))
+            currentTable.selectRow(
+              props.source.value === undefined
+                ? value
+                : getPickerRowKey(props.source, row)
+            )
         }
       }
       if (nextDraft) draft.value = nextDraft
@@ -404,7 +462,52 @@ export function useDataPicker<T extends object, TFilters extends object>(
   }
 
   function submitFilters(filters: TFilters): void {
-    applyQuery('', filters)
+    applyQuery('', requestFilters(filters))
+  }
+
+  function navigate(key: DataPickerValue | undefined): void {
+    const { navigation } = props
+    if (!navigation) return
+    // The caller names the business filter. Only that field is changed here.
+    const filters = { ...queryState.value.filters } as TFilters
+    if (key === undefined) Reflect.deleteProperty(filters, navigation.field)
+    else Reflect.set(filters, navigation.field, key)
+    applyQuery(searchDraft.value, requestFilters(filters))
+  }
+
+  async function chooseHistory(value: DataPickerValue): Promise<void> {
+    if (
+      blocked.value ||
+      !opened.value ||
+      !props.source.resolve ||
+      confirming.value
+    )
+      return
+    const rows = await resolver.resolve([value])
+    const row = rows?.get(value)
+    if (!row || !opened.value) return
+    if (!hasCapacity(value)) return
+    draft.value = props.multiple
+      ? new Map(draft.value).set(value, row)
+      : new Map([[value, row]])
+    restoreSelection()
+  }
+
+  function favoriteSelection(): void {
+    if (blocked.value || !canConfirm.value) return
+    const entries: Array<{ value: DataPickerValue; label: string }> = []
+    for (const value of draft.value.keys()) {
+      const row = resolveDraftRow(value)
+      if (row && checkable(row))
+        entries.push({ value, label: props.source.label(row) })
+    }
+    history.addFavorites(entries)
+  }
+
+  function removeFavorite(value: DataPickerValue): void {
+    if (blocked.value || confirming.value) return
+    const entry = history.favorites.value.find(item => item.value === value)
+    if (entry) history.toggleFavorite(entry)
   }
 
   function applyQuery(search: string, filters: TFilters | undefined): void {
@@ -465,6 +568,8 @@ export function useDataPicker<T extends object, TFilters extends object>(
     page,
     pageSize,
     searchDraft,
+    search,
+    searchOptions,
     query,
     submitFilters,
     list,
@@ -479,5 +584,26 @@ export function useDataPicker<T extends object, TFilters extends object>(
     tableConfig,
     selectPage,
     remove,
+    confirming,
+    selectionError,
+    history,
+    chooseHistory,
+    navigate,
+    favoriteSelection,
+    removeFavorite,
+    canFavorite: computed(
+      () =>
+        canConfirm.value &&
+        history.canAddFavorite.value &&
+        [...draft.value.keys()].some(
+          value =>
+            resolveDraftRow(value) !== undefined &&
+            !history.favorites.value.some(item => item.value === value)
+        )
+    ),
+    filters: computed(() => cloneData(queryState.value.filters)),
+    setTable: (instance: TableInstance<T> | null) => {
+      table.value = instance
+    },
   }
 }

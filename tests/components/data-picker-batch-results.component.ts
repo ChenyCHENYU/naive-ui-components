@@ -490,11 +490,18 @@ describe('C_DataPicker远程选择会话', () => {
   })
 
   test('表单适配器保留零值，字段内嵌选择后更新表单模型', async () => {
-    const model = ref({ customer: 0 })
+    const model = ref<{ customer: number | null; customerName: string }>({
+      customer: 0,
+      customerName: '',
+    })
     const renderer = createDataPickerField({
       source: createSource(),
       columns,
       title: '选择客户',
+      clearable: true,
+      onSelect: rows => {
+        model.value.customerName = rows[0]?.name ?? ''
+      },
     })
     const form = mount(
       defineComponent({
@@ -526,7 +533,11 @@ describe('C_DataPicker远程选择会话', () => {
       table.unselectRow('r0')
       table.selectRow('r1')
       await button(form, '确定').trigger('click')
-      expect(model.value).toEqual({ customer: 1 })
+      await flushPromises()
+      expect(model.value).toEqual({ customer: 1, customerName: '客户一' })
+      await form.get('.c-data-picker__clear').trigger('click')
+      await flushPromises()
+      expect(model.value).toEqual({ customer: null, customerName: '' })
     } finally {
       form.unmount()
     }

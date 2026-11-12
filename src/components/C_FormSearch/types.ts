@@ -1,8 +1,10 @@
 import type { OptionsState } from '../../core/options'
+import type { OptionSource, OptionValue } from '../../core/optionSource'
 export type { OptionsState } from '../../core/options'
 /** 搜索字段支持的控件类型 */
 export type SearchFieldType =
   | 'input'
+  | 'autocomplete'
   | 'select'
   | 'number'
   | 'number-range'
@@ -81,6 +83,8 @@ interface SearchFormItemBase {
   attrs?: Record<string, unknown>
   /** 外部受控选项状态；仅呈现，不触发或订阅外部数据源。 */
   optionsState?: OptionsState
+  /** select/autocomplete 共享来源，可通过当前查询模型派生联动条件。 */
+  source?: SearchFieldSource<SearchFormParams>
   rules?: FormItemRule[]
 }
 
@@ -88,6 +92,9 @@ type FieldOptions<V> = Array<
   Omit<SearchOptionItem, 'value'> & { value: Extract<V, SearchOptionValue> }
 >
 type FieldAttributes = Record<string, unknown>
+type SearchFieldSource<T extends object> =
+  | OptionSource<object, OptionValue, object>
+  | ((model: Readonly<T>) => OptionSource<object, OptionValue, object>)
 type SingleTemporalField = 'date' | 'month' | 'time'
 type TypedSingleDate<V> = null extends V
   ? number extends V
@@ -109,7 +116,9 @@ type TypedDateRange<V> = null extends V
   : never
 type TypedSearchControl<V> =
   | { type: 'spacer'; list?: never }
-  | (string extends V ? { type: 'input'; list?: never } : never)
+  | (string extends V
+      ? { type: 'input' | 'autocomplete'; list?: never }
+      : never)
   | (number extends V
       ? null extends V
         ? { type: 'number'; list?: never }
@@ -162,10 +171,11 @@ export type SearchFormItem<T extends object = SearchFormParams> = {
   : {
       [P in Extract<keyof T, string>]: Omit<
         SearchFormItemBase,
-        'type' | 'prop' | 'defaultValue' | 'list' | 'render'
+        'type' | 'prop' | 'defaultValue' | 'list' | 'render' | 'source'
       > & {
         prop: P
         defaultValue?: T[P]
+        source?: SearchFieldSource<T>
         render?: (context: SearchRenderContext<T, P>) => VNodeChild
       } & TypedSearchControl<T[P]>
     }[Extract<keyof T, string>])

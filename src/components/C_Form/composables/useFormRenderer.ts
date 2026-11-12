@@ -38,7 +38,7 @@ import { shouldSummarizeSelectTags } from '../../../core/selectPresentation'
 export type ComponentMap = Record<string, Component>
 
 export type RendererProps = Record<string, unknown> & {
-  'onUpdate:value'?: (value: unknown) => void
+  'onUpdate:value'?: (value: unknown, selected?: unknown) => void
 }
 
 export interface FormRendererContext {
@@ -136,6 +136,12 @@ function temporalProps(props: RendererProps, item: FormOption) {
   )
 }
 
+/** 来源控件使用 modelValue，保留字段原有的观察者和校验回写。 */
+function modelFieldProps(props: RendererProps) {
+  const { value, 'onUpdate:value': update, ...nativeProps } = props
+  return { ...nativeProps, modelValue: value, 'onUpdate:modelValue': update }
+}
+
 /* =================== 渲染器工厂 =================== */
 
 /** 根据组件映射表構建内置渲染器集合 */
@@ -158,7 +164,9 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
       h(C.NTreeSelect, { ...props, options: item.children }),
     colorPicker: props => h(C.NColorPicker, { ...props }),
 
-    select: props => h(C.NSelect, props),
+    select: (props, item) =>
+      item.source ? h(C.C_Select, modelFieldProps(props)) : h(C.NSelect, props),
+    autocomplete: props => h(C.C_AutoComplete, modelFieldProps(props)),
 
     checkbox: (baseProps, item) =>
       h(
@@ -294,6 +302,7 @@ const EMPTY_OPTIONS: OptionItem[] = []
 /** Rate 的 size 是数字、Upload 无 size；只向接受标准尺寸的控件补默认值。 */
 const SIZED_FIELD_TYPES = new Set([
   'input',
+  'autocomplete',
   'textarea',
   'inputNumber',
   'select',
@@ -469,8 +478,9 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
         value as Parameters<typeof binding.decode>[0],
         select ? selected : undefined
       )
-      if (Array.isArray(update)) update.forEach(handler => handler(decoded))
-      else update?.(decoded)
+      if (Array.isArray(update))
+        update.forEach(handler => handler(decoded, selected))
+      else update?.(decoded, selected)
     }
     item.children = binding.options as OptionItem[]
     if (select) {
@@ -546,6 +556,16 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     )
   }
 
+  /** 来源按当前模型取依赖条件，原生选项属性继续保留给非来源控件。 */
+  function applySourceProps(item: FormOption, props: RendererProps): void {
+    if (item.source) {
+      props.source =
+        typeof item.source === 'function' ? item.source(formModel) : item.source
+    }
+    if (item.type === 'select' && item.source) props.options = item.children
+    if (item.type === 'autocomplete') props.options ??= item.children
+  }
+
   const renderFormItem = (item: FormOption): VNode | null => {
     try {
       /* 对带选项的控件，合并异步/静态选项 */
@@ -566,10 +586,12 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
           getBaseProps(effectiveItem)
         ) as RendererProps
       )
+      applySourceProps(effectiveItem, baseProps)
 
       // 通用选项值只在内置控件边界转换，模型与提交值保持原始类型。
       if (
         ['select', 'checkbox', 'radio'].includes(item.type) &&
+        !item.source &&
         renderer === builtInRenderers[item.type]
       )
         applyOptionValues(baseProps, effectiveItem)

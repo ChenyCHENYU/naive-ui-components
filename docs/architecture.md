@@ -26,7 +26,9 @@
 - ESM 使用 `.d.ts`，CJS 使用 `.d.cts`；条件类型入口与相应 JavaScript 格式对应。
 - 公共可达声明同时检查 ESM / CJS，不能引用 `naive-ui/es/*` 或 `naive-ui/lib/*` 内部路径。
 
-消费者契约验证使用真实 tarball，覆盖 Node16 / NodeNext 的 ESM / CJS 类型、轻量配置入口的注入键一致性和缺失可选 peer 的子路径运行行为。默认检查复用本地安装；`bun run check:consumer-contracts minimum` / `latest` 在临时目录联网全新安装依赖并渲染表单、表格、原生数字键菜单。CI 分别运行两种组合。类型检查保留 `skipLibCheck`，不将第三方声明内部检查冒充业务消费验证。
+消费者契约验证使用真实 tarball，覆盖 Node16 / NodeNext 的 ESM / CJS 类型、轻量配置入口的注入键一致性和缺失可选 peer 的子路径运行行为。默认检查复用本地安装；`bun run check:consumer-contracts minimum` / `latest` 在临时目录联网全新安装。最低组合验证浏览器打包、类型与 CJS SSR；当前/最新组合继续严格检查原生 Node ESM 和 CJS SSR。CI 的任务名明确区分两条轨道。类型检查保留 `skipLibCheck`，不将第三方声明内部检查冒充业务消费验证。
+
+Naive UI 2.35 的 CommonJS 分发不提供 Node 原生 ESM 所需的命名导出，因此最低组合不支持该运行方式。原生 Node ESM SSR 已验证的配置为 Naive UI 2.45.3；这里不将它宣称为历史首次修复版本。Vite 等打包器接入和 CJS SSR 继续保留原有 peer 范围。
 
 `/config` 是独立公共配置入口，只包含注入键和协议类型，不引入呈现层。组件注册、样式与反馈适配仍由各自入口负责。
 

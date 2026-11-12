@@ -7,4 +7,7 @@ export type {
   DataPickerSourceInput,
   DataPickerProps,
   DataPickerEmits,
+  DataPickerNavigation,
+  DataPickerNavigationNode,
+  DataPickerHistoryOptions,
 } from './types'

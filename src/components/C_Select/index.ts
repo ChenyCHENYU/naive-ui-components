@@ -4,4 +4,12 @@ export type {
   SelectOptionItem,
   SelectProps,
   SelectValue,
+  SelectSelection,
 } from './types'
+
+export type {
+  OptionSource,
+  OptionRequest,
+  OptionPage,
+  OptionValue,
+} from '../../core/optionSource'

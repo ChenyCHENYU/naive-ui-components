@@ -1,0 +1,30 @@
+.c-option-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 2px;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  &--compact {
+    display: inline-flex;
+    padding: 0;
+    white-space: nowrap;
+  }
+  button {
+    border: 0;
+    padding: 0 2px;
+    background: transparent;
+    color: var(
+      --n-loading-color,
+      var(--n-caret-color, var(--c-primary, #18a058))
+    );
+    font: inherit;
+    cursor: pointer;
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+  }
+}

@@ -10,7 +10,8 @@ const budgets = {
   // 组件自身的 scoped 工具类与图标随包发布，免除宿主生成约束。
   // 0.14 的两个完整编辑工作区增加约 20 KB；预算仍约束全部组件及供应商样式。
   // 0.21.1 恢复先前丢失的 Markdown 六套主题，增加约 55 KiB。
-  'style.css': { min: 430 * 1024, max: 640 * 1024 },
+  // 0.32 的独立建议输入和选择面板状态增加少量样式，保留约 5 KiB 余量。
+  'style.css': { min: 430 * 1024, max: 648 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
   'C_Table.base.css': { min: 30 * 1024, max: 65 * 1024 },
@@ -61,7 +62,8 @@ const totalSize = files.reduce(
 // 独立入口仍受单独的首屏 gzip 预算约束，不能用总预算掩盖懒加载回退。
 // 两个发布 CSS 入口恢复约 109 KiB 主题样式，另留序列化保护代码的有限空间。
 // 0.31.4 的交互修复与 Node 20 入口兼容使双格式产物增加约 3 KiB。
-const totalLimit = 4 * 1024 * 1024 + 228 * 1024
+// 0.32 新增远程候选、建议输入与实体选择工作流及声明约 91 KiB，新增限额 100 KiB。
+const totalLimit = 4 * 1024 * 1024 + 328 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

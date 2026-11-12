@@ -1,19 +1,13 @@
 import type { TableColumn, TableRowKey } from '../C_Table/types'
 import type { ComponentDensity } from '../../core/density'
 import type { ComponentLocale } from '../../core/contracts'
+import type { OptionRequest, OptionPage } from '../../core/optionSource'
 
 export type DataPickerValue = string | number
 
-export interface DataPickerRequest<
+export type DataPickerRequest<
   TFilters extends object = Record<string, unknown>,
-> {
-  page: number
-  pageSize: number
-  search: string
-  signal: AbortSignal
-  /** Only present when a structured query is configured or submitted. */
-  filters?: Readonly<TFilters>
-}
+> = OptionRequest<TFilters>
 
 /** 接口、鉴权与实体映射只在应用中注册一次，组件不探测后端返回结构。 */
 export interface DataPickerSourceInput<
@@ -22,15 +16,37 @@ export interface DataPickerSourceInput<
 > {
   rowKey: TableRowKey<T>
   /** 提交值不同于行键时才需要指定。 */
-  value?: (row: T) => DataPickerValue
-  label: (row: T) => string
-  request: (
-    query: DataPickerRequest<TFilters>
-  ) => Promise<{ rows: T[]; total: number }>
-  resolve?: (
+  value?(row: T): DataPickerValue
+  label(row: T): string
+  request(query: DataPickerRequest<TFilters>): Promise<OptionPage<T>>
+  resolve?(
     values: readonly DataPickerValue[],
     signal: AbortSignal
-  ) => Promise<readonly T[]>
+  ): Promise<readonly T[]>
+  /** Quick search delay and minimum length, used by popover presentation. */
+  debounce?: number
+  minChars?: number
+}
+
+export interface DataPickerNavigationNode {
+  key: DataPickerValue
+  label: string
+  children?: DataPickerNavigationNode[]
+}
+
+export interface DataPickerNavigation<TFilters extends object> {
+  options: readonly DataPickerNavigationNode[]
+  field: Extract<keyof TFilters, string>
+  title?: string
+}
+
+export interface DataPickerHistoryOptions {
+  /** Distinguishes this entity source from other pickers. */
+  storageKey: string
+  /** Explicit user and business context. Empty scopes disable persistence. */
+  scope: string
+  maxItems?: number
+  favorites?: boolean
 }
 
 /** 显式映射的来源继续保证 value(row) 可直接调用。 */
@@ -60,9 +76,16 @@ export interface DataPickerProps<
   /** Prevent confirming an empty selection when the action needs a row. */
   requireSelection?: boolean
   /** Inline selection keeps the current page or dialog as the sole overlay. */
-  presentation?: 'modal' | 'inline'
+  presentation?: 'modal' | 'inline' | 'popover'
   /** Each session starts with these filters. A changed baseline invalidates the old session. */
   initialValues?: TFilters
+  /** Applied last to every request. A change invalidates pending work and drafts. */
+  fixedFilters?: TFilters
+  rowCheckable?: (row: T) => boolean
+  maxSelection?: number
+  navigation?: DataPickerNavigation<TFilters>
+  /** Requires source.resolve. Only values and labels are persisted. */
+  history?: DataPickerHistoryOptions
 }
 
 export interface DataPickerEmits<T extends object> {
