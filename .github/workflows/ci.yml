@@ -57,7 +57,8 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: bun add --dev --exact typescript@5.8.3 --ignore-scripts
       - run: bun run build
+      # Build with the library compiler; vary TypeScript only when consuming its declarations.
+      - run: bun add --dev --exact typescript@5.8.3 --ignore-scripts
       - run: bun run check:consumer-types
       - run: bun run check:consumer-contracts
