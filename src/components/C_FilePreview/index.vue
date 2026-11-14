@@ -7,7 +7,10 @@
 -->
 
 <template>
-  <div class="c-file-preview-wrapper">
+  <div
+    class="c-file-preview-wrapper"
+    :style="themeStyle"
+  >
     <!-- 文件信息卡片模式 -->
     <div
       v-if="props.show === undefined && !autoPreview && !inline"
@@ -132,6 +135,7 @@
       <div
         ref="modalContainer"
         class="modal-container"
+        :style="themeStyle"
       >
         <!-- 自定义头部 -->
         <div class="modal-header">
@@ -288,6 +292,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, ref, toRefs, watch } from 'vue'
   import { NButton, NEllipsis, NTag, NModal, NSpin, NResult } from 'naive-ui'
   import { formatFileSize } from './data'
@@ -299,6 +304,8 @@
   import { useFullscreen } from './composables/useFullscreen'
 
   defineOptions({ name: 'C_FilePreview' })
+
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<FilePreviewProps>(), {
     fileName: '未知文件',

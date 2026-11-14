@@ -17,7 +17,7 @@ import type {
 import { renderActionIcon } from '../../C_ActionBar/actionIcon'
 import { resolveActionPreset } from '../../C_ActionBar/presets'
 import { useActionTask } from '../../../composables/useActionTask'
-import { useComponentFeedback, useComponentLocale } from '../../../config'
+import { useComponentFeedback, useComponentLocale } from '../../../component-config'
 
 /** Request-core reports action failures as values rather than rejected promises. */
 const actionResultError = (result: unknown): unknown =>

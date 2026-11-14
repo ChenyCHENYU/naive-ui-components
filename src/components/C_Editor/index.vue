@@ -9,6 +9,7 @@
   <div
     :id="editorId ?? defaultEditorId"
     class="c-editor w-full"
+    :style="themeStyle"
     :class="{
       'editor-dark': isDark,
       'is-disabled': isDisabled,
@@ -31,6 +32,10 @@
 </template>
 
 <script setup lang="ts">
+  import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../composables/useComponentTheme'
   import {
     ref,
     computed,
@@ -80,7 +85,6 @@
     disabled: false,
     readonly: false,
     height: 240,
-    theme: 'light',
   })
 
   const emit = defineEmits<Emits>()
@@ -96,7 +100,9 @@
   const editorHtml = ref(props.modelValue)
   const editorContainer = ref<HTMLElement>()
 
-  const isDark = computed(() => props.theme === 'dark')
+  const colorMode = useComponentColorMode(() => props.theme)
+  const themeStyle = useComponentTheme(() => props.theme)
+  const isDark = computed(() => colorMode.value === 'dark')
   const isDisabled = computed(() => props.disabled || props.readonly)
   const editorStyle = computed<CSSProperties>(() => ({
     height: `${Math.max(80, props.height - 42)}px`,
@@ -282,96 +288,56 @@
 </script>
 
 <style scoped>
-  /* CSS 变量 — 支持外部主题覆盖 */
   .c-editor {
-    --c-editor-toolbar-bg: #ffffff;
-    --c-editor-toolbar-border: #e5e7eb;
-    --c-editor-menu-color: #333333;
-    --c-editor-menu-hover-bg: #f3f4f6;
-    --c-editor-menu-hover-color: #333333;
-    --c-editor-menu-active-bg: var(--c-primary, #2080f0);
-    --c-editor-menu-active-color: #ffffff;
-    --c-editor-container-bg: #ffffff;
-    --c-editor-container-border: #e5e7eb;
-    --c-editor-text-bg: #ffffff;
-    --c-editor-text-color: #333333;
-    --c-editor-text-focus-bg: #ffffff;
-    --c-editor-text-focus-color: #333333;
-    --c-editor-transition-duration: 0.3s;
-  }
-
-  /* 暗色主题 — 覆盖 CSS 变量 */
-  .editor-dark {
-    --c-editor-toolbar-bg: #1f2937;
-    --c-editor-toolbar-border: #374151;
-    --c-editor-menu-color: #e5e7eb;
-    --c-editor-menu-hover-bg: #374151;
-    --c-editor-menu-hover-color: #ffffff;
-    --c-editor-container-bg: #111827;
-    --c-editor-container-border: #374151;
-    --c-editor-text-bg: #303033;
-    --c-editor-text-color: #e5e7eb;
-    --c-editor-text-focus-bg: #111827;
-    --c-editor-text-focus-color: #e5e7eb;
-  }
-
-  .editor-dark :deep(.w-e-toolbar) {
-    background-color: var(--c-editor-toolbar-bg) !important;
-    border-color: var(--c-editor-toolbar-border) !important;
-  }
-
-  .editor-dark :deep(.w-e-toolbar .w-e-menu .w-e-menu-item) {
-    color: var(--c-editor-menu-color) !important;
-  }
-
-  .editor-dark :deep(.w-e-toolbar .w-e-menu .w-e-menu-item:hover) {
-    background-color: var(--c-editor-menu-hover-bg) !important;
-    color: var(--c-editor-menu-hover-color) !important;
-  }
-
-  .editor-dark :deep(.w-e-toolbar .w-e-menu .w-e-menu-item.w-e-active) {
-    background-color: var(--c-editor-menu-active-bg) !important;
-    color: var(--c-editor-menu-active-color) !important;
-  }
-
-  .editor-dark :deep(.w-e-text-container) {
-    background-color: var(--c-editor-container-bg) !important;
-    border-color: var(--c-editor-container-border) !important;
-  }
-
-  .editor-dark :deep(.w-e-text-container .w-e-text) {
-    background-color: var(--c-editor-text-bg) !important;
-    color: var(--c-editor-text-color) !important;
-  }
-
-  .editor-dark :deep(.w-e-text-container .w-e-text:focus) {
-    background-color: var(--c-editor-text-focus-bg) !important;
-    color: var(--c-editor-text-focus-color) !important;
-  }
-
-  :deep(.w-e-toolbar),
-  :deep(.w-e-text-container) {
-    max-width: 100% !important;
-    overflow-x: auto !important;
-    box-sizing: border-box !important;
-  }
-
-  :deep(.w-e-text) {
-    max-width: 100% !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-  }
-
-  :deep(.w-e-toolbar),
-  :deep(.w-e-text-container),
-  :deep(.w-e-text) {
+    /* 使用当前 SDK 的公开变量，菜单、图标、编辑内容及浮动工具共享同一主题。 */
+    --w-e-textarea-bg-color: var(--c-bg-card, var(--c-theme-bg-card));
+    --w-e-textarea-color: var(--c-text-1, var(--c-theme-text-1));
+    --w-e-textarea-border-color: var(--c-border, var(--c-theme-border));
+    --w-e-textarea-slight-border-color: var(--c-border, var(--c-theme-border));
+    --w-e-textarea-slight-color: var(--c-text-3, var(--c-theme-text-3));
+    --w-e-textarea-slight-bg-color: var(--c-bg-muted, var(--c-theme-bg-muted));
+    --w-e-textarea-selected-border-color: var(
+      --c-primary,
+      var(--c-theme-primary)
+    );
+    --w-e-textarea-handler-bg-color: var(--c-primary, var(--c-theme-primary));
+    --w-e-toolbar-color: var(--c-text-2, var(--c-theme-text-2));
+    --w-e-toolbar-bg-color: var(--c-bg-card, var(--c-theme-bg-card));
+    --w-e-toolbar-active-color: var(--c-primary, var(--c-theme-primary));
+    --w-e-toolbar-active-bg-color: var(--c-bg-active, var(--c-theme-bg-active));
+    --w-e-toolbar-disabled-color: var(--c-text-4, var(--c-theme-text-4));
+    --w-e-toolbar-border-color: var(--c-border, var(--c-theme-border));
+    --w-e-modal-button-bg-color: var(--c-bg-muted, var(--c-theme-bg-muted));
+    --w-e-modal-button-border-color: var(--c-border, var(--c-theme-border));
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--c-border, var(--c-theme-border));
+    border-radius: var(--c-radius, var(--c-theme-radius));
+    color: var(--c-text-1, var(--c-theme-text-1));
+    background: var(--c-bg-card, var(--c-theme-bg-card));
     transition:
-      background-color var(--c-editor-transition-duration) ease,
-      border-color var(--c-editor-transition-duration) ease,
-      color var(--c-editor-transition-duration) ease !important;
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
-
+  .c-editor__toolbar {
+    border-bottom: 1px solid var(--c-border, var(--c-theme-border));
+    border-radius: inherit;
+  }
+  .c-editor :deep(.w-e-toolbar),
+  .c-editor :deep(.w-e-text-container) {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .c-editor :deep([data-slate-editor]) {
+    overflow-wrap: anywhere;
+  }
   .editor-focused {
-    max-width: 100% !important;
+    border-color: var(--c-primary, var(--c-theme-primary));
+    box-shadow: 0 0 0 2px var(--c-focus-ring, var(--c-theme-focus-ring));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .c-editor {
+      transition: none;
+    }
   }
 </style>

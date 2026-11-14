@@ -5,7 +5,7 @@
  */
 
 import { ref, nextTick } from 'vue'
-import { useComponentFeedback } from '../../../config'
+import { useComponentFeedback } from '../../../component-config'
 import { notifyObserver } from '../../../core/observer'
 import { createPrintDocument } from './printDocument'
 

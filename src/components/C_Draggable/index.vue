@@ -8,6 +8,7 @@
 <template>
   <div
     class="c-draggable-wrapper"
+    :style="themeStyle"
     :class="wrapperClass"
   >
     <VueDraggable
@@ -69,6 +70,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = DraggableItem">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { readonly } from 'vue'
   import { VueDraggable } from 'vue-draggable-plus'
   import { useDraggableLayout } from './composables/useDraggableLayout'
@@ -80,6 +82,7 @@
   } from './types'
 
   defineOptions({ name: 'C_Draggable' })
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<DraggableProps<T>>(), {
     modelValue: () => [] as T[],

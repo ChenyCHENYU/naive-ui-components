@@ -10,7 +10,11 @@
     :show="visible"
     :disabled="locked"
     placement="bottom-start"
-    style="width: min(430px, calc(100vw - 24px)); box-sizing: border-box"
+    :style="{
+      ...themeStyle,
+      width: 'min(430px, calc(100vw - 24px))',
+      boxSizing: 'border-box',
+    }"
     trigger="click"
     :show-arrow="false"
     @update:show="updateVisible"
@@ -25,6 +29,7 @@
         <button
           type="button"
           class="city-selector-trigger"
+          :style="themeStyle"
           :aria-expanded="visible"
           :disabled="locked"
           aria-label="选择城市"
@@ -39,11 +44,12 @@
     <div
       ref="contentRef"
       class="city-selector-content"
+      :style="themeStyle"
     >
       <div class="city-selector-header">
         <NRadioGroup
           v-model:value="radioValue"
-          size="small"
+          :size="resolvedSize ?? 'small'"
         >
           <NRadioButton value="city">按城市</NRadioButton>
           <NRadioButton value="province">按省份</NRadioButton>
@@ -52,6 +58,7 @@
           v-model:value="searchValue"
           class="city-selector-search"
           :options="searchOptions"
+          :size="resolvedSize"
           filterable
           clearable
           placeholder="搜索城市"
@@ -151,6 +158,12 @@
     type SelectOption,
   } from 'naive-ui'
   import provinceData from './province.json'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentDensity } from '../../composables/useComponentDensity'
+  import {
+    resolveComponentDensity,
+    type ComponentDensity,
+  } from '../../core/density'
 
   defineOptions({ name: 'C_City' })
 
@@ -177,6 +190,8 @@
     showLetters?: boolean
     disabled?: boolean
     readonly?: boolean
+    size?: 'small' | 'medium' | 'large'
+    density?: ComponentDensity
   }
 
   interface Emits {
@@ -190,6 +205,17 @@
   })
 
   const emit = defineEmits<Emits>()
+  const componentTheme = useComponentTheme()
+  const density = useComponentDensity(() => props.density)
+  const resolvedSize = computed(
+    () =>
+      props.size ??
+      (density.value ? resolveComponentDensity(density.value).size : undefined)
+  )
+  const themeStyle = computed(() => ({
+    ...componentTheme.value,
+    '--c-city-height': `var(--c-control-height-${resolvedSize.value ?? 'medium'}, var(--c-theme-control-height-${resolvedSize.value ?? 'medium'}, 34px))`,
+  }))
 
   const visible = ref(false)
   const locked = computed(() => props.disabled || props.readonly)

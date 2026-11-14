@@ -44,10 +44,22 @@
 }
 
 .split-gutter {
-  --split-accent: var(--c-primary, var(--primary-color, #2080f0));
-  --split-surface: var(--c-bg-card, var(--card-color, #fff));
-  --split-border: var(--c-border, var(--border-color, #dfe3eb));
-  --split-text: var(--c-text-3, var(--text-color-3, #8b939e));
+  --split-accent: var(
+    --c-primary,
+    var(--c-theme-primary, var(--primary-color, #2080f0))
+  );
+  --split-surface: var(
+    --c-bg-card,
+    var(--c-theme-bg-card, var(--card-color, #fff))
+  );
+  --split-border: var(
+    --c-border,
+    var(--c-theme-border, var(--border-color, #dfe3eb))
+  );
+  --split-text: var(
+    --c-text-3,
+    var(--c-theme-text-3, var(--text-color-3, #8b939e))
+  );
   --split-handle-length: 80px;
   --split-handle-thickness: 16px;
   --split-button-size: 24px;

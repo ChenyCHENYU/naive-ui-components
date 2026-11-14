@@ -31,7 +31,7 @@ import {
   useComponentLocale,
   type ComponentFeedback,
   type ComponentLocale,
-} from '../../../config'
+} from '../../../component-config'
 
 /**
  * 表格管理器配置接口

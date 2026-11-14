@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-code-wrapper">
+  <div
+    class="c-code-wrapper"
+    :style="themeStyle"
+  >
     <!-- 代码标题栏 -->
     <div
       v-if="showHeader"
@@ -70,10 +73,11 @@
     <!-- 代码内容区域 -->
     <div class="c-code-content">
       <div class="code-wrapper">
-        <NCode
+        <CodeContent
           :code="code"
           :language="language"
           :hljs="hljs"
+          :native-provider="!highlightManager"
           :show-line-numbers="showLineNumbers"
           :word-wrap="wordWrap"
           :trim="trim"
@@ -128,7 +132,10 @@
       :bordered="false"
       style="width: 100vw; height: 100vh; margin: 0; padding: 0"
     >
-      <div class="fullscreen-content">
+      <div
+        class="fullscreen-content"
+        :style="themeStyle"
+      >
         <div class="fullscreen-header">
           <div class="fullscreen-title">
             <C_Icon
@@ -151,10 +158,11 @@
           </NButton>
         </div>
         <div class="fullscreen-body">
-          <NCode
+          <CodeContent
             :code="code"
             :language="language"
             :hljs="hljs"
+            :native-provider="!highlightManager"
             :show-line-numbers="showLineNumbers"
             :word-wrap="wordWrap"
             :trim="trim"
@@ -166,6 +174,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import {
     ref,
     shallowRef,
@@ -175,6 +184,7 @@
     onBeforeUnmount,
   } from 'vue'
   import type { HLJSApi } from 'highlight.js'
+  import CodeContent from './CodeContent.vue'
   import C_Icon from '../C_Icon/index.vue'
 
   // 注入能力保持可选；仅引入类型，不额外加载高亮运行时。
@@ -201,6 +211,8 @@
     maxHeight?: string | number
     autoLoadLanguage?: boolean
   }
+
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<Props>(), {
     code: '',

@@ -1,4 +1,4 @@
-import { useComponentLocale } from '../../../config'
+import { useComponentLocale } from '../../../component-config'
 /*
  * @Author: ChenYu ycyplus@gmail.com
  * @Date: 2026-02-27

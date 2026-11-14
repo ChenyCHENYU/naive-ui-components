@@ -31,6 +31,9 @@ export default defineConfig({
         peopleWorkflow: fileURLToPath(
           new URL('./people-workflow.html', import.meta.url)
         ),
+        visualStandards: fileURLToPath(
+          new URL('./visual-standards.html', import.meta.url)
+        ),
       },
     },
     outDir: '../../node_modules/.cache/search-workflows',

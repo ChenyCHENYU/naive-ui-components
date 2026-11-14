@@ -1,7 +1,8 @@
 <template>
   <div
     class="c-captcha-modern"
-    :data-theme="theme"
+    :data-theme="colorMode"
+    :style="themeStyle"
   >
     <div
       v-if="isAltchaProvider"
@@ -140,6 +141,10 @@
 
 <script setup lang="ts">
   import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../composables/useComponentTheme'
+  import {
     computed,
     defineAsyncComponent,
     nextTick,
@@ -150,7 +155,10 @@
     type Component,
   } from 'vue'
   import type { AltchaWidgetElement } from 'altcha/types/generic'
-  import { useComponentFeedback, useComponentLocale } from '../../config'
+  import {
+    useComponentFeedback,
+    useComponentLocale,
+  } from '../../component-config'
   import C_Icon from '../C_Icon/index.vue'
   import type {
     CaptchaEmits,
@@ -169,11 +177,12 @@
   const props = withDefaults(defineProps<CaptchaProps>(), {
     images: () => [],
     disabled: false,
-    theme: 'dark',
     provider: 'puzzle-captcha',
     verificationTimeout: 10_000,
     requireServerVerification: false,
   })
+  const colorMode = useComponentColorMode(() => props.theme)
+  const themeStyle = useComponentTheme(() => props.theme)
   const emit = defineEmits<CaptchaEmits>()
   const feedback = useComponentFeedback(() => props.feedback)
   const { t } = useComponentLocale(() => props.locale)
@@ -410,7 +419,7 @@
     altchaWidget = widget
     widget.addEventListener('verified', handleAltchaVerified)
     widget.addEventListener('statechange', handleAltchaStateChange)
-    widget.setAttribute('theme', props.theme)
+    widget.setAttribute('theme', colorMode.value)
     await widget.configure({
       auto: 'off',
       challenge: challengeUrl,
@@ -491,11 +500,13 @@
     if (isAltchaProvider.value) void loadAltcha()
   })
 
+  // 外观不是挑战身份；只更新 SDK 的主题属性，保留正在验证的 widget 与凭据。
+  watch(colorMode, mode => altchaWidget?.setAttribute('theme', mode))
+
   watch(
     () => [
       props.provider,
       props.challengeUrl,
-      props.theme,
       props.locale?.locale,
       props.verificationTimeout,
     ],

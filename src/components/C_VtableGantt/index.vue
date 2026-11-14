@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-vtable-gantt-wrapper">
+  <div
+    class="c-vtable-gantt-wrapper"
+    :style="themeStyle"
+  >
     <div
       v-if="showToolbar"
       class="gantt-toolbar"
@@ -58,6 +61,10 @@
 
 <script setup lang="ts" generic="T extends GanttTask = GanttTask">
   import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../composables/useComponentTheme'
+  import {
     ref,
     shallowRef,
     computed,
@@ -94,9 +101,10 @@
     title: '',
     showToolbar: true,
     showFullscreenButton: true,
-    theme: 'light',
   })
 
+  const colorMode = useComponentColorMode(() => props.theme)
+  const themeStyle = useComponentTheme(() => props.theme)
   const emit = defineEmits<GanttEmits<T>>()
 
   const ganttContainerRef = ref<HTMLDivElement>()
@@ -133,12 +141,18 @@
     }))
   }
 
-  const getThemeConfig = (isDark: boolean) => ({
-    underlayBackgroundColor: isDark ? '#1e1e1e' : '#ffffff',
-    timelineHeaderBg: isDark ? '#2d2d2d' : '#EEF1F5',
-    gridBg: isDark ? '#1e1e1e' : '#ffffff',
-    lineColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(128, 128, 128, 0.2)',
-    textColor: isDark ? '#ffffff' : '#000000',
+  const themeColor = (
+    name: 'bg-body' | 'bg-card' | 'bg-muted' | 'border' | 'text-1'
+  ) =>
+    String(
+      themeStyle.value[`--c-${name}`] ?? themeStyle.value[`--c-theme-${name}`]
+    )
+  const getThemeConfig = () => ({
+    underlayBackgroundColor: themeColor('bg-body'),
+    timelineHeaderBg: themeColor('bg-muted'),
+    gridBg: themeColor('bg-card'),
+    lineColor: themeColor('border'),
+    textColor: themeColor('text-1'),
   })
 
   const applyThemeToTimelineHeader = (
@@ -202,12 +216,12 @@
     config: Record<string, unknown>,
     records: GanttTask[]
   ) => {
-    const isDark = props.theme === 'dark'
+    const isDark = colorMode.value === 'dark'
     return buildGanttOptions(
       config,
       records,
       isDark ? themes.DARK : themes.DEFAULT,
-      getThemeConfig(isDark)
+      getThemeConfig()
     )
   }
 
@@ -361,9 +375,23 @@
   )
 
   watch(
-    () => [props.options, props.preset, props.theme],
+    () => [props.options, props.preset],
     () => void initGantt(),
     { deep: true, flush: 'post' }
+  )
+
+  watch(
+    themeStyle,
+    () => {
+      const instance = ganttInstance.value
+      if (!instance) return
+      // SDK 的公开 updateOption 会重新布局并可能定位标记线；换肤后恢复公开滚动坐标。
+      const { scrollTop, scrollLeft } = instance
+      updateOptions({})
+      instance.scrollTop = scrollTop
+      instance.scrollLeft = scrollLeft
+    },
+    { flush: 'post' }
   )
 
   onMounted(() => {

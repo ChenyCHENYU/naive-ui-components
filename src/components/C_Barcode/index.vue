@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-barcode">
+  <div
+    class="c-barcode"
+    :style="themeStyle"
+  >
     <div
       class="barcode-wrapper"
       :class="{ 'with-border': showBorder }"
@@ -26,10 +29,12 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, ref } from 'vue'
   import VueBarcode from '@chenfengyuan/vue-barcode'
 
   defineOptions({ name: 'C_Barcode' })
+  const themeStyle = useComponentTheme()
 
   interface Props {
     value: string

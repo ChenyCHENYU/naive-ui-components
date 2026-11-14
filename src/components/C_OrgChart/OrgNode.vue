@@ -99,7 +99,7 @@
 
 <script setup lang="ts" generic="T extends object">
   import { computed, onBeforeUnmount, onMounted, shallowRef } from 'vue'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import type { OrgChartKey, OrgChartSlots } from './types'
   import type { OrgChartEntry } from './tree'
 

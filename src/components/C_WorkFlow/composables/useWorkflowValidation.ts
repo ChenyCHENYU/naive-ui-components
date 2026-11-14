@@ -4,7 +4,7 @@
  */
 
 import { ref, onBeforeUnmount, type Ref } from 'vue'
-import { useComponentFeedback } from '../../../config'
+import { useComponentFeedback } from '../../../component-config'
 import type {
   WorkflowNode,
   WorkflowEdge,

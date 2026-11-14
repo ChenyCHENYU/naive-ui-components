@@ -10,7 +10,7 @@
     v-if="props.loading"
     class="c-skeleton"
     :class="[`c-skeleton--${animationType}`]"
-    :style="{ '--c-skeleton-radius': borderRadius }"
+    :style="[themeStyle, { '--c-skeleton-radius': borderRadius }]"
     role="status"
     :aria-label="t('skeleton.loading')"
   >
@@ -290,7 +290,8 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentLocale } from '../../component-config'
   import { computed } from 'vue'
   import type {
     SkeletonProps,
@@ -302,6 +303,7 @@
   } from './types'
 
   defineOptions({ name: 'C_Skeleton' })
+  const themeStyle = useComponentTheme()
 
   const { t } = useComponentLocale()
   const props = withDefaults(defineProps<SkeletonProps>(), {

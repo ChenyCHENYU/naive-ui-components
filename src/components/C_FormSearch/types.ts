@@ -298,6 +298,6 @@ export interface FormSearchExpose<T extends object = SearchFormParams> {
   changeFoldState: () => void
 }
 import type { FormInst, FormItemRule } from 'naive-ui'
-import type { ComponentFeedback, ComponentLocale } from '../../config'
+import type { ComponentFeedback, ComponentLocale } from '../../component-config'
 import type { ComponentDensity } from '../../core/density'
 import type { VNodeChild } from 'vue'

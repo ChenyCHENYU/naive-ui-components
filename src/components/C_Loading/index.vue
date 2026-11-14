@@ -144,7 +144,7 @@
 <script setup lang="ts">
   import { computed, useId } from 'vue'
   import { useThemeVars } from 'naive-ui'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import type { LoadingProps } from './types'
 
   defineOptions({ name: 'C_Loading' })

@@ -9,7 +9,7 @@ $collapse-radius: 8px;
   /* ── default 变体 ────────────────────────────── */
   &--default {
     .collapse-item {
-      border-bottom: 1px solid var(--c-border, #e1e4e8);
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border, #e1e4e8));
 
       &:last-child {
         border-bottom: none;
@@ -24,9 +24,9 @@ $collapse-radius: 8px;
     gap: 8px;
 
     .collapse-item {
-      border: 1px solid var(--c-border, #e1e4e8);
+      border: 1px solid var(--c-border, var(--c-theme-border, #e1e4e8));
       border-radius: $collapse-radius;
-      background: var(--c-bg-card, #fff);
+      background: var(--c-bg-card, var(--c-theme-bg-card, #fff));
       transition: box-shadow $collapse-transition;
 
       &--active {
@@ -34,7 +34,7 @@ $collapse-radius: 8px;
       }
 
       &:hover:not(.collapse-item--disabled) {
-        border-color: var(--c-primary, #409eff);
+        border-color: var(--c-primary, var(--c-theme-primary, #409eff));
       }
     }
   }
@@ -45,7 +45,7 @@ $collapse-radius: 8px;
       background: transparent;
 
       &:hover {
-        background: var(--c-bg-card, #fff);
+        background: var(--c-bg-card, var(--c-theme-bg-card, #fff));
       }
     }
 
@@ -57,7 +57,7 @@ $collapse-radius: 8px;
   /* ── bordered 修饰符 ─────────────────────────── */
   &--bordered {
     &.c-collapse-panel--default {
-      border: 1px solid var(--c-border, #e1e4e8);
+      border: 1px solid var(--c-border, var(--c-theme-border, #e1e4e8));
       border-radius: $collapse-radius;
 
       .collapse-item:first-child .collapse-item__header {
@@ -126,11 +126,11 @@ $collapse-radius: 8px;
   outline: none;
 
   &:hover:not([aria-disabled='true']) {
-    background: var(--c-bg-hover, rgba(0, 0, 0, 0.04));
+    background: var(--c-bg-hover, var(--c-theme-bg-hover, rgba(0, 0, 0, 0.04)));
   }
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary, #409eff);
+    outline: 2px solid var(--c-primary, var(--c-theme-primary, #409eff));
     outline-offset: -2px;
     border-radius: 4px;
   }
@@ -145,7 +145,7 @@ $collapse-radius: 8px;
   width: 20px;
   height: 20px;
   font-size: 16px;
-  color: var(--c-text-3, #999);
+  color: var(--c-text-3, var(--c-theme-text-3, #999));
   transition: transform $collapse-transition;
 
   &--expanded {
@@ -168,13 +168,13 @@ $collapse-radius: 8px;
 .collapse-item__icon {
   flex-shrink: 0;
   font-size: 18px;
-  color: var(--c-primary, #409eff);
+  color: var(--c-primary, var(--c-theme-primary, #409eff));
 }
 
 .collapse-item__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--c-text-1, #333);
+  color: var(--c-text-1, var(--c-theme-text-1, #333));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -182,7 +182,7 @@ $collapse-radius: 8px;
 
 .collapse-item__subtitle {
   font-size: 12px;
-  color: var(--c-text-4, #ccc);
+  color: var(--c-text-4, var(--c-theme-text-4, #ccc));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -207,5 +207,5 @@ $collapse-radius: 8px;
   padding: 0 16px 16px;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--c-text-2, #666);
+  color: var(--c-text-2, var(--c-theme-text-2, #666));
 }

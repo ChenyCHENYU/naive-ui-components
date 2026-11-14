@@ -10,21 +10,29 @@
   background: #000;
   border-radius: 8px;
   overflow: hidden;
-  outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--c-primary, var(--c-theme-primary));
+    outline-offset: 2px;
+  }
 
   /* 覆盖 xgplayer v3 默认红色主题（倍速/清晰度选中项改蓝） */
   :deep(.xgplayer .xg-options-list li:hover),
   :deep(.xgplayer .xg-options-list li.selected),
   :deep(.xgplayer-mobile .xg-options-list li.selected) {
-    color: #409eff !important;
+    color: var(--c-primary, var(--c-theme-primary)) !important;
   }
 
   :deep(.xgplayer xg-trigger .time-preview .xg-cur) {
-    color: #409eff !important;
+    color: var(--c-primary, var(--c-theme-primary)) !important;
   }
 
   :deep(.xgplayer .xgplayer-progress-btn.active::before) {
-    box-shadow: 0 0 3px rgba(64, 152, 255, 0.7) !important;
+    box-shadow: 0 0 3px
+      color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 70%,
+        transparent
+      ) !important;
   }
 
   &__container {

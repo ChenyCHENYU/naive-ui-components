@@ -11,7 +11,7 @@
 .dynamic-stats {
   margin-top: var(--c-form-row-gap, 16px);
   padding-top: 12px;
-  border-top: 1px solid var(--n-divider-color);
+  border-top: 1px solid var(--c-border, var(--c-theme-border, #e5e7eb));
 }
 
 .dynamic-item-wrapper {
@@ -19,10 +19,14 @@
 }
 
 .dynamic-item-wrapper.is-dynamic-field {
-  border: 1px dashed var(--n-color-primary);
-  border-radius: 6px;
+  border: 1px dashed var(--c-primary, var(--c-theme-primary, #2080f0));
+  border-radius: var(--c-radius, var(--c-theme-radius, 6px));
   padding: 8px;
-  background-color: var(--n-color-primary-suppl);
+  background-color: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary, #2080f0)) 7%,
+    transparent
+  );
 }
 
 .max-fields-config {
@@ -35,7 +39,7 @@
 .max-fields-config span {
   font-weight: 500;
   white-space: nowrap;
-  color: var(--n-text-color-2);
+  color: var(--c-text-2, var(--c-theme-text-2, #525252));
 }
 
 /* 响应式设计 */

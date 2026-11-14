@@ -1,5 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { NConfigProvider, darkTheme } from 'naive-ui'
+import { defineComponent, h, ref } from 'vue'
 import type { GanttConstructorOptions } from '@visactor/vtable-gantt'
 import GanttView from '../../src/components/C_VtableGantt/index.vue'
 
@@ -11,6 +13,8 @@ const state = vi.hoisted(() => ({
 }))
 class MockGantt {
   released = false
+  scrollTop = 0
+  scrollLeft = 0
   constructor(readonly options: GanttConstructorOptions) {
     state.attempts++
     if (state.fail) throw new Error('construction failed')
@@ -53,7 +57,7 @@ test('failed rebuild clears the released public reference and retry restores a f
   const old = state.instances[0]
   expect(wrapper.vm.ganttInstance).toBe(old)
   state.fail = true
-  await wrapper.setProps({ theme: 'dark' })
+  await wrapper.setProps({ preset: 'project' })
   await flushPromises()
   expect(old.released).toBe(true)
   expect(wrapper.vm.ganttInstance).toBeUndefined()
@@ -192,5 +196,61 @@ test('theme patches preserve real SDK theme header overrides across body and siz
   })
   expect(next.rowHeight).toBe(58)
   expect(original.bodyStyle?.color).not.toBe('#1234ab')
+  wrapper.unmount()
+})
+
+test('theme-only updates retain the engine, records and public scroll coordinates', async () => {
+  const records = [{ id: 'task', title: 'Task', start: '2026-11-14' }]
+  const wrapper = mount(GanttView, {
+    props: { data: records, showToolbar: false },
+  })
+  await vi.waitFor(() => expect(state.instances).toHaveLength(1))
+  const instance = state.instances[0]
+  instance.scrollTop = 128
+  instance.scrollLeft = 240
+  instance.updateOption.mockImplementation(() => {
+    instance.scrollTop = 0
+    instance.scrollLeft = 0
+  })
+  await wrapper.setProps({ theme: 'dark' })
+  await flushPromises()
+  expect(state.instances).toHaveLength(1)
+  expect(instance.released).toBe(false)
+  expect(instance.updateOption).toHaveBeenCalledOnce()
+  expect(instance.updateOption.mock.calls[0][0].records).toEqual(records)
+  expect(instance.scrollTop).toBe(128)
+  expect(instance.scrollLeft).toBe(240)
+  expect(wrapper.emitted('ganttCreated')).toHaveLength(1)
+})
+
+test('Provider theme changes update the same Gantt with current custom neutral colors', async () => {
+  const dark = ref(false)
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          {
+            theme: dark.value ? darkTheme : null,
+            themeOverrides: {
+              common: { cardColor: dark.value ? '#19242f' : '#fdfbfa' },
+            },
+          },
+          {
+            default: () => h(GanttView, { showToolbar: false }),
+          }
+        ),
+    })
+  )
+  await vi.waitFor(() => expect(state.instances).toHaveLength(1))
+  const instance = state.instances[0]
+  dark.value = true
+  await flushPromises()
+  expect(state.instances).toHaveLength(1)
+  expect(instance.updateOption).toHaveBeenCalledOnce()
+  expect(instance.updateOption.mock.calls[0][0].grid?.backgroundColor).toBe(
+    '#19242f'
+  )
+  expect(instance.released).toBe(false)
   wrapper.unmount()
 })

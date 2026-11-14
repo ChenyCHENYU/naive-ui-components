@@ -32,7 +32,10 @@
           <div class="config-section">
             <h4
               class="flex items-center gap-2 mb-4 text-base font-semibold"
-              :style="{ color: 'var(--n-text-color-1)' }"
+              :style="{
+                color:
+                  'var(--workflow-text, var(--c-text-1, var(--c-theme-text-1, #262626)))',
+              }"
             >
               <C_Icon
                 :name="selectionContent.icon"
@@ -72,7 +75,10 @@
             <div class="mt-4">
               <h5
                 class="mb-3 text-sm font-medium"
-                :style="{ color: 'var(--n-text-color-1)' }"
+                :style="{
+                  color:
+                    'var(--workflow-text, var(--c-text-1, var(--c-theme-text-1, #262626)))',
+                }"
               >
                 审批模式
               </h5>
@@ -90,7 +96,10 @@
                       <strong class="text-sm">{{ mode.label }}</strong>
                       <span
                         class="text-xs"
-                        :style="{ color: 'var(--n-text-color-3)' }"
+                        :style="{
+                          color:
+                            'var(--workflow-muted, var(--c-text-3, var(--c-theme-text-3, #64748b)))',
+                        }"
                         >{{ mode.desc }}</span
                       >
                     </div>
@@ -110,7 +119,10 @@
         <div class="config-section">
           <h4
             class="flex items-center gap-2 mb-4 text-base font-semibold"
-            :style="{ color: 'var(--n-text-color-1)' }"
+            :style="{
+              color:
+                'var(--workflow-text, var(--c-text-1, var(--c-theme-text-1, #262626)))',
+            }"
           >
             <C_Icon
               name="mdi:source-branch"
@@ -302,7 +314,7 @@
     createDefaultCondition,
   } from './data'
   import { isCompleteCondition } from './conditions'
-  import { useComponentFeedback } from '../../config'
+  import { useComponentFeedback } from '../../component-config'
   import { cloneData } from '../../utils/data'
 
   interface Props {

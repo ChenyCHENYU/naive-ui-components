@@ -21,7 +21,7 @@ import type {
   NodeChange,
   EdgeChange,
 } from '@vue-flow/core'
-import { useComponentFeedback } from '../../../config'
+import { useComponentFeedback } from '../../../component-config'
 import {
   hasBoundBranches,
   isWorkflowConnectionAllowed,

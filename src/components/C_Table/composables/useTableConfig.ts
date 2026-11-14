@@ -25,7 +25,7 @@ import type { RowDragConfig } from './useRowDrag'
 import type { CrossPageSelectionConfig } from './useCrossPageSelection'
 import type { ExportConfig } from './useTableExport'
 import type { FormatterConfig } from './useTableGlobalConfig'
-import type { ComponentFeedback, ComponentLocale } from '../../../config'
+import type { ComponentFeedback, ComponentLocale } from '../../../component-config'
 import type { ActionBarConfig, ActionItem } from '../../C_ActionBar/types'
 
 /* ================= CRUD 绑定类型 ================= */

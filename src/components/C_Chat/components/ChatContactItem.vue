@@ -52,7 +52,7 @@
   </button>
 </template>
 <script setup lang="ts">
-  import { useComponentLocale } from '../../../config'
+  import { useComponentLocale } from '../../../component-config'
   import type { ChatContact } from '../types'
   const { t } = useComponentLocale()
   defineProps<{ contact: ChatContact; active: boolean }>()
@@ -82,7 +82,7 @@
     &:hover {
       background: color-mix(
         in srgb,
-        var(--c-primary, var(--primary-color, #2080f0)) 6%,
+        var(--c-primary, var(--c-theme-primary, #2080f0)) 6%,
         transparent
       );
     }
@@ -90,7 +90,7 @@
     &.is-active {
       background: color-mix(
         in srgb,
-        var(--c-primary, var(--primary-color, #2080f0)) 12%,
+        var(--c-primary, var(--c-theme-primary, #2080f0)) 12%,
         transparent
       );
     }

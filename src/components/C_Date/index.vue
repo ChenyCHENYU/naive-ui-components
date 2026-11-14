@@ -15,7 +15,7 @@
       :disabled="disabled"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
-      :size="size"
+      :size="resolvedSize"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
@@ -30,7 +30,7 @@
       :disabled="disabled"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
-      :size="size"
+      :size="resolvedSize"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
@@ -46,7 +46,7 @@
       :disabled="disabled"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
-      :size="size"
+      :size="resolvedSize"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
@@ -62,7 +62,7 @@
       :disabled="disabled"
       :value-format="resolvedValueFormat"
       :readonly="readonly"
-      :size="size"
+      :size="resolvedSize"
       :format="format"
       :clearable="clearable"
       v-bind="$attrs"
@@ -80,7 +80,7 @@
           @update:formatted-value="updateSmartStart"
           type="date"
           :placeholder="startPlaceholder || '请选择开始日期'"
-          v-bind="{ size, format, clearable, ...startDateProps }"
+          v-bind="{ size: resolvedSize, format, clearable, ...startDateProps }"
           :disabled="disabled || startDateProps.disabled === true"
           :readonly="readonly || startDateProps.readonly === true"
           :is-date-disabled="smartStartDisabledDate"
@@ -92,7 +92,7 @@
           @update:formatted-value="updateSmartEnd"
           type="date"
           :placeholder="endPlaceholder || '请选择结束日期'"
-          v-bind="{ size, format, clearable, ...endDateProps }"
+          v-bind="{ size: resolvedSize, format, clearable, ...endDateProps }"
           :disabled="endDateDisabled || endDateProps.disabled === true"
           :readonly="readonly || endDateProps.readonly === true"
           :is-date-disabled="endDisabledDate"
@@ -105,6 +105,8 @@
 
 <script lang="ts" setup generic="M extends DatePickerMode | undefined = 'date'">
   import { ref, watch, computed, useAttrs } from 'vue'
+  import { useComponentDensity } from '../../composables/useComponentDensity'
+  import { resolveComponentDensity } from '../../core/density'
   import { NDatePicker } from 'naive-ui'
   import { parseLocalTime } from '../../utils/localTime'
   import { localDayStart } from './dateUtils'
@@ -139,6 +141,13 @@
 
   const emits = defineEmits<DateEmits<M>>()
   const attrs = useAttrs()
+  const density = useComponentDensity()
+  // 未设置区域密度时保留 undefined，让 Naive Form 继续决定控件尺寸。
+  const resolvedSize = computed(
+    () =>
+      props.size ??
+      (density.value ? resolveComponentDensity(density.value).size : undefined)
+  )
   const mode = computed(() => props.mode ?? 'date')
 
   /** 模式分支确定值形状；类型转换仅留在包的事件桥接边界。 */

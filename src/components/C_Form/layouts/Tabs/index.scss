@@ -25,7 +25,7 @@
 .tab-header {
   margin-bottom: var(--c-form-row-gap, 16px);
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--n-border-color);
+  border-bottom: 1px solid var(--c-border, var(--c-theme-border, #e5e7eb));
 }
 
 .tab-description {
@@ -46,7 +46,7 @@
 .tabs-actions {
   margin-top: var(--c-form-row-gap, 16px);
   padding-top: 12px;
-  border-top: 1px solid var(--n-border-color);
+  border-top: 1px solid var(--c-border, var(--c-theme-border, #e5e7eb));
 }
 
 /* 响应式设计 */

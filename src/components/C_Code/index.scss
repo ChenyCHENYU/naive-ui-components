@@ -1,12 +1,24 @@
-.c-code-wrapper {
-  --c-code-copy-bg: rgba(255, 255, 255, 0.9);
+.c-code-wrapper,
+.fullscreen-content {
+  --c-code-copy-bg: color-mix(
+    in srgb,
+    var(--c-bg-surface, var(--c-theme-bg-surface)) 90%,
+    transparent
+  );
   --c-code-copy-shadow: rgba(0, 0, 0, 0.1);
-  --c-code-loading-bg: rgba(255, 255, 255, 0.8);
-  --c-code-fullscreen-bg: var(--n-color-modal, white);
-  border: 1px solid var(--n-border-color);
-  border-radius: var(--n-border-radius);
+  --c-code-loading-bg: color-mix(
+    in srgb,
+    var(--c-bg-card, var(--c-theme-bg-card)) 85%,
+    transparent
+  );
+  --c-code-fullscreen-bg: var(--c-bg-card, var(--c-theme-bg-card));
+}
+
+.c-code-wrapper {
+  border: 1px solid var(--c-border, var(--c-theme-border));
+  border-radius: var(--c-radius, var(--c-theme-radius));
   overflow: hidden;
-  background: transparent;
+  background: var(--c-bg-card, var(--c-theme-bg-card));
 }
 
 .c-code-header {
@@ -14,8 +26,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  background-color: var(--n-color-modal);
-  border-bottom: 1px solid var(--n-border-color);
+  background-color: var(--c-bg-card, var(--c-theme-bg-card));
+  border-bottom: 1px solid var(--c-border, var(--c-theme-border));
 
   @media (max-width: 768px) {
     padding: 6px 12px;
@@ -27,7 +39,7 @@
   align-items: center;
   font-size: 14px;
   font-weight: 500;
-  color: var(--n-text-color);
+  color: var(--c-text-1, var(--c-theme-text-1));
 
   @media (max-width: 768px) {
     font-size: 13px;
@@ -74,7 +86,7 @@
 .copy-floating {
   background: var(--c-code-copy-bg);
   backdrop-filter: blur(4px);
-  border: 1px solid var(--n-border-color);
+  border: 1px solid var(--c-border, var(--c-theme-border));
   box-shadow: 0 2px 8px var(--c-code-copy-shadow);
 }
 
@@ -89,7 +101,7 @@
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: var(--n-text-color);
+  color: var(--c-text-1, var(--c-theme-text-1));
 }
 
 // 全屏样式
@@ -98,7 +110,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--n-color-modal);
+  background: var(--c-bg-card, var(--c-theme-bg-card));
 }
 
 .fullscreen-header {
@@ -106,7 +118,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--n-border-color);
+  border-bottom: 1px solid var(--c-border, var(--c-theme-border));
   font-size: 16px;
   font-weight: 500;
   flex-shrink: 0;
@@ -128,15 +140,8 @@
   background-color: var(--c-code-fullscreen-bg);
 }
 
-// NCode 样式覆盖
+// 高亮与纯文本共用内容容器；只覆盖组件表面，不重写 Naive 内部变量。
 :deep(.n-code) {
-  background: transparent !important;
-  border: none !important;
+  background: transparent;
   margin: 0;
-  overflow: auto !important;
-
-  .hljs {
-    background: transparent !important;
-    padding: 16px !important;
-  }
 }

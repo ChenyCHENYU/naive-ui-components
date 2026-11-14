@@ -10,22 +10,32 @@
   position: relative;
 
   :deep(.md-editor) {
+    /* SDK 正式变量覆盖编辑面板的工具栏和预览。 */
+    --md-color: var(--c-text-1, var(--c-theme-text-1));
+    --md-hover-color: var(--c-primary, var(--c-theme-primary));
+    --md-bk-color: var(--c-bg-card, var(--c-theme-bg-card));
+    --md-bk-color-outstand: var(--c-bg-muted, var(--c-theme-bg-muted));
+    --md-bk-hover-color: var(--c-bg-hover, var(--c-theme-bg-hover));
+    --md-border-color: var(--c-border, var(--c-theme-border));
+    --md-border-hover-color: var(--c-primary, var(--c-theme-primary));
+    --md-border-active-color: var(--c-primary, var(--c-theme-primary));
+
     border-radius: 6px;
-    border: 1px solid var(--c-border);
-    background-color: var(--c-bg-card);
+    border: 1px solid var(--c-border, var(--c-theme-border));
+    background-color: var(--c-bg-card, var(--c-theme-bg-card));
 
     &:hover {
-      border-color: var(--c-primary);
+      border-color: var(--c-primary, var(--c-theme-primary));
     }
 
     &:focus-within {
-      border-color: var(--c-primary);
-      box-shadow: 0 0 0 2px var(--c-primary-opacity, rgba(24, 160, 88, 0.2));
+      border-color: var(--c-primary, var(--c-theme-primary));
+      box-shadow: 0 0 0 2px var(--c-focus-ring, var(--c-theme-focus-ring));
     }
 
     /* 禁用状态样式 */
     &.md-editor-disabled {
-      background-color: var(--c-bg-disabled, #fafafc);
+      background-color: var(--c-bg-muted, var(--c-theme-bg-muted));
       cursor: not-allowed;
 
       .md-editor-input {
@@ -34,36 +44,36 @@
     }
 
     .md-editor-toolbar-wrapper {
-      background-color: var(--c-bg-card);
-      border-bottom: 1px solid var(--c-border);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     .md-editor-input-wrapper {
-      background-color: var(--c-bg-card);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
     }
 
     .md-editor-input {
-      background-color: var(--c-bg-card);
-      color: var(--c-text-1);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
+      color: var(--c-text-1, var(--c-theme-text-1));
 
       textarea {
-        color: var(--c-text-1);
-        caret-color: var(--c-text-1);
+        color: var(--c-text-1, var(--c-theme-text-1));
+        caret-color: var(--c-text-1, var(--c-theme-text-1));
       }
     }
 
     .md-editor-preview-wrapper {
-      background-color: var(--c-bg-card);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
     }
 
     .md-editor-preview {
-      background-color: var(--c-bg-card);
-      color: var(--c-text-1);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
 
     .md-editor-catalog-editor {
-      background-color: var(--c-bg-card);
-      border-left: 1px solid var(--c-border);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
+      border-left: 1px solid var(--c-border, var(--c-theme-border));
     }
   }
 
@@ -72,7 +82,7 @@
 
     .md-editor-catalog-editor {
       border-inline-start: 0;
-      border-inline-end: 1px solid var(--c-border);
+      border-inline-end: 1px solid var(--c-border, var(--c-theme-border));
     }
   }
 
@@ -114,7 +124,7 @@
       }
 
       .md-editor-divider {
-        background-color: var(--c-border);
+        background-color: var(--c-border, var(--c-theme-border));
       }
 
       .md-editor-input,
@@ -145,14 +155,14 @@
     bottom: 8px;
     right: 12px;
     font-size: 12px;
-    color: var(--c-text-4);
-    background: var(--c-bg-card);
+    color: var(--c-text-4, var(--c-theme-text-4));
+    background: var(--c-bg-card, var(--c-theme-bg-card));
     padding: 2px 6px;
     border-radius: 4px;
     z-index: 10;
 
     &.exceed {
-      color: var(--c-error);
+      color: var(--c-error, var(--c-theme-error));
     }
   }
 }

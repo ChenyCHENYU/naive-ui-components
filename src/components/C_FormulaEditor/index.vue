@@ -8,6 +8,7 @@
   <section
     class="c-formula"
     :style="{
+      ...themeStyle,
       height:
         typeof options.height === 'number'
           ? `${options.height}px`
@@ -137,6 +138,7 @@
   </section>
 </template>
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { ref, watch } from 'vue'
   import { NButton, NTag } from 'naive-ui'
   import type {
@@ -151,6 +153,8 @@
   import VirtualKeyboard from './components/VirtualKeyboard.vue'
   import FormulaPreview from './components/FormulaPreview.vue'
   defineOptions({ name: 'C_FormulaEditor' })
+  const themeStyle = useComponentTheme()
+
   const props = withDefaults(defineProps<FormulaEditorProps>(), {
     disabled: false,
     showPreview: true,

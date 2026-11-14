@@ -6,7 +6,10 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-signature">
+  <div
+    class="c-signature"
+    :style="themeStyle"
+  >
     <div
       v-if="showToolbar"
       class="signature-toolbar"
@@ -157,6 +160,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import {
     ref,
     shallowRef,
@@ -189,6 +193,7 @@
   } from './types'
 
   defineOptions({ name: 'C_Signature' })
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<SignatureProps>(), {
     width: '100%',

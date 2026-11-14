@@ -15,11 +15,11 @@
     max-width: 100%;
 
     &.with-border {
-      border: 1px dashed #e0e0e0;
+      border: 1px dashed var(--c-border, var(--c-theme-border, #e0e0e0));
     }
 
     &:hover {
-      border-color: var(--c-primary, #409eff);
+      border-color: var(--c-primary, var(--c-theme-primary, #409eff));
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
@@ -33,7 +33,7 @@
 
   .barcode-label {
     font-size: 14px;
-    color: #666;
+    color: var(--c-text-2, var(--c-theme-text-2, #525252));
     text-align: center;
     font-weight: 500;
     word-break: break-all;

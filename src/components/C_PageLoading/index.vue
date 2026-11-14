@@ -103,7 +103,7 @@
 
 <script setup lang="ts">
   import { useThemeVars } from 'naive-ui'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import type { PageLoadingProps } from './types'
 
   defineOptions({ name: 'C_PageLoading' })

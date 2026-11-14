@@ -64,7 +64,7 @@
       font-weight: 600;
       font-size: 13px;
       margin-bottom: 10px;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
 
     &__cards {
@@ -76,17 +76,17 @@
     &__card {
       appearance: none;
       font: inherit;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
       background: transparent;
       text-align: left;
       padding: 10px 12px;
       border-radius: 8px;
-      border: 1px solid var(--c-border);
+      border: 1px solid var(--c-border, var(--c-theme-border));
       cursor: pointer;
       transition: all var(--c-transition, 0.2s ease);
 
       &:focus-visible {
-        outline: 2px solid var(--c-primary);
+        outline: 2px solid var(--c-primary, var(--c-theme-primary));
         outline-offset: 2px;
       }
 
@@ -96,13 +96,21 @@
       }
 
       &:hover {
-        border-color: var(--c-primary);
-        background: color-mix(in srgb, var(--c-primary) 4%, transparent);
+        border-color: var(--c-primary, var(--c-theme-primary));
+        background: color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 4%,
+          transparent
+        );
       }
 
       &--active {
-        border-color: var(--c-primary);
-        background: color-mix(in srgb, var(--c-primary) 8%, transparent);
+        border-color: var(--c-primary, var(--c-theme-primary));
+        background: color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 8%,
+          transparent
+        );
       }
     }
 
@@ -115,13 +123,13 @@
     &__card-description {
       margin-top: 4px;
       font-size: 11px;
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
     }
 
     &__card-expr {
       font-family: 'Courier New', Courier, monospace;
       font-size: 11px;
-      color: var(--c-text-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
       margin-top: 2px;
     }
   }

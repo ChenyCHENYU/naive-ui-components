@@ -1,5 +1,8 @@
 <template>
-  <div class="er-layout">
+  <div
+    class="er-layout"
+    :style="componentTheme"
+  >
     <!-- 工具栏 -->
     <div
       class="toolbar"
@@ -101,6 +104,7 @@
 
     <!-- 表编辑器 -->
     <ERTableEditor
+      :style="componentTheme"
       :show="showEditor"
       v-model:editing-table="editingTable"
       @update:show="showEditor = $event"
@@ -117,6 +121,10 @@
   import { NSpace, NButton, NDropdown, NAlert } from 'naive-ui'
   import { Node, Graph, Cell, Edge } from '@antv/x6'
   import { useGraphBase } from '../../composables/useGraphBase'
+  import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../../../composables/useComponentTheme'
   import { useGraphExport } from '../../composables/useGraphExport'
   import { bindReadonlyGuard } from '../../composables/readonlyGraph'
   import { cloneData } from '../../../../utils/data'
@@ -143,7 +151,9 @@
 
   // ==================== Composables ====================
   const containerRef = ref<HTMLDivElement>()
-  const isDark = computed(() => props.theme === 'dark')
+  const componentTheme = useComponentTheme(() => props.theme)
+  const colorMode = useComponentColorMode(() => props.theme)
+  const isDark = computed(() => colorMode.value === 'dark')
   const { graph, initGraph, centerContent, zoomToFit, scheduleZoomToFit } =
     useGraphBase(containerRef, isDark)
   const { exportOptions, handleExport } = useGraphExport(graph, 'er-diagram')
@@ -178,7 +188,11 @@
             text: truncateText(field.type, 10),
             title: field.type,
           },
-          portBody: { fill: field.isPrimaryKey ? '#FFF7E6' : '#EFF4FF' },
+          portBody: {
+            fill: field.isPrimaryKey
+              ? 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))'
+              : 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))',
+          },
         },
       }
     }) || []
@@ -226,8 +240,16 @@
           { tagName: 'text', selector: 'label' },
         ],
         attrs: {
-          rect: { strokeWidth: 1, stroke: '#5F95FF', fill: '#5F95FF' },
-          label: { fontWeight: 'bold', fill: '#ffffff', fontSize: 12 },
+          rect: {
+            strokeWidth: 1,
+            stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+            fill: 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))',
+          },
+          label: {
+            fontWeight: 'bold',
+            fill: 'var(--c-text-1, var(--c-theme-text-1, #262626))',
+            fontSize: 12,
+          },
         },
         ports: {
           groups: {
@@ -242,8 +264,8 @@
                   width: 200,
                   height: 24,
                   strokeWidth: 1,
-                  stroke: '#5F95FF',
-                  fill: '#EFF4FF',
+                  stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+                  fill: 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))',
                   magnet: true,
                 },
                 portNameLabel: {
@@ -260,7 +282,7 @@
                   refY: 6,
                   fontSize: 9,
                   textAnchor: 'start',
-                  fill: '#666',
+                  fill: 'var(--c-text-2, var(--c-theme-text-2, #525252))',
                 },
               },
               position: 'erPortPosition',
@@ -281,7 +303,10 @@
 
   const resetEdgeStyles = () => {
     graph.value?.getEdges().forEach((edge: any) => {
-      edge.attr('line/stroke', '#A2B1C3')
+      edge.attr(
+        'line/stroke',
+        'var(--c-text-3, var(--c-theme-text-3, #a3a3a3))'
+      )
       edge.attr('line/strokeWidth', 2)
     })
   }
@@ -474,7 +499,12 @@
             port: `${relation.targetTable}_${relation.targetField}`,
           },
           data: cloneData(relation),
-          attrs: { line: { stroke: '#A2B1C3', strokeWidth: 2 } },
+          attrs: {
+            line: {
+              stroke: 'var(--c-text-3, var(--c-theme-text-3, #a3a3a3))',
+              strokeWidth: 2,
+            },
+          },
         })
       )
     })

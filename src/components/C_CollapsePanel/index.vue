@@ -9,6 +9,7 @@
   <div
     ref="containerRef"
     class="c-collapse-panel"
+    :style="themeStyle"
     :class="[
       `c-collapse-panel--${variant}`,
       {
@@ -129,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { ref, toRef, useId } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import { useCollapsePanel } from './composables/useCollapsePanel'
@@ -140,6 +142,7 @@
   } from './types'
 
   defineOptions({ name: 'C_CollapsePanel' })
+  const themeStyle = useComponentTheme()
 
   interface Props {
     /** 面板项配置数组 */

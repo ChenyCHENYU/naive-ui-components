@@ -1,3 +1,4 @@
+import { useComponentColorMode } from '../../../composables/useComponentTheme'
 import {
   ref,
   computed,
@@ -72,7 +73,11 @@ export function useGlobalSearch(
   const isComposing = ref(false)
 
   // ==================== 计算属性 ====================
-  const isDark = computed(() => getOptions().isDark?.() ?? false)
+  const colorMode = useComponentColorMode(() => {
+    const explicit = getOptions().isDark?.()
+    return explicit === undefined ? undefined : explicit ? 'dark' : 'light'
+  })
+  const isDark = computed(() => colorMode.value === 'dark')
   const menuIndex = computed(() => createMenuSearchIndex(getMenuItems()))
 
   const filteredMenuItems = computed(() => {

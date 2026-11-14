@@ -6,7 +6,7 @@ import {
   COMPONENT_LOCALE_KEY,
   useComponentFeedback,
   useComponentLocale,
-} from '../src/config'
+} from '../src/component-config'
 import { useSearchState } from '../src/components/C_FormSearch/composables/useSearchState'
 import type {
   SearchFormItem,

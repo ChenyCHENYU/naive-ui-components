@@ -8,10 +8,18 @@
 
 <template>
   <div class="vp-speed-selector">
-    <NPopover trigger="click" placement="top" :show-arrow="false">
+    <NPopover
+      trigger="click"
+      placement="top"
+      :show-arrow="false"
+    >
       <template #trigger>
-        <NButton quaternary size="small" class="vp-speed-btn">
-          {{ currentRate === 1 ? "倍速" : `${currentRate}x` }}
+        <NButton
+          quaternary
+          size="small"
+          class="vp-speed-btn"
+        >
+          {{ currentRate === 1 ? '倍速' : `${currentRate}x` }}
         </NButton>
       </template>
 
@@ -23,7 +31,7 @@
           :class="{ 'is-active': rate === currentRate }"
           @click="handleSelect(rate)"
         >
-          {{ rate === 1 ? "正常" : `${rate}x` }}
+          {{ rate === 1 ? '正常' : `${rate}x` }}
         </div>
       </div>
     </NPopover>
@@ -31,56 +39,56 @@
 </template>
 
 <script setup lang="ts">
-import { DEFAULT_PLAYBACK_RATES } from "../constants";
-import type { PlaybackRate } from "../types";
+  import { DEFAULT_PLAYBACK_RATES } from '../constants'
+  import type { PlaybackRate } from '../types'
 
-interface Props {
-  currentRate?: number;
-  rates?: PlaybackRate[];
-}
+  interface Props {
+    currentRate?: number
+    rates?: PlaybackRate[]
+  }
 
-withDefaults(defineProps<Props>(), {
-  currentRate: 1,
-  rates: () => DEFAULT_PLAYBACK_RATES,
-});
+  withDefaults(defineProps<Props>(), {
+    currentRate: 1,
+    rates: () => DEFAULT_PLAYBACK_RATES,
+  })
 
-const emit = defineEmits<{
-  change: [rate: number];
-}>();
+  const emit = defineEmits<{
+    change: [rate: number]
+  }>()
 
-/** 处理倍速选择 */
-function handleSelect(rate: number) {
-  emit("change", rate);
-}
+  /** 处理倍速选择 */
+  function handleSelect(rate: number) {
+    emit('change', rate)
+  }
 </script>
 
 <style scoped lang="scss">
-.vp-speed-btn {
-  color: #fff;
-  font-size: 13px;
-}
-
-.vp-speed-list {
-  display: flex;
-  flex-direction: column;
-  min-width: 80px;
-}
-
-.vp-speed-item {
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  border-radius: 4px;
-  text-align: center;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+  .vp-speed-btn {
+    color: #fff;
+    font-size: 13px;
   }
 
-  &.is-active {
-    color: var(--c-primary, #18a058);
-    font-weight: 600;
+  .vp-speed-list {
+    display: flex;
+    flex-direction: column;
+    min-width: 80px;
   }
-}
+
+  .vp-speed-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-align: center;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    &.is-active {
+      color: var(--c-primary, var(--c-theme-primary, #18a058));
+      font-weight: 600;
+    }
+  }
 </style>

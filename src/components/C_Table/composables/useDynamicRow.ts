@@ -40,7 +40,7 @@ import {
   useComponentLocale,
   type ComponentFeedback,
   type ComponentLocale,
-} from '../../../config'
+} from '../../../component-config'
 
 /* ================= 类型定义 ================= */
 interface DynamicRowsBaseOptions<T extends object> {

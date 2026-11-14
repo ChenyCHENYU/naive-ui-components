@@ -85,9 +85,10 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = OrgChartNode">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, nextTick, onBeforeUnmount } from 'vue'
   import { useThemeVars } from 'naive-ui'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import OrgNode from './OrgNode.vue'
   import { useOrgChartState } from './useOrgChartState'
   import { useOrgChartViewport } from './useOrgChartViewport'
@@ -119,8 +120,10 @@
   const emit = defineEmits<OrgChartEmits<T>>()
   defineSlots<OrgChartSlots<T>>()
   const { t } = useComponentLocale()
+  const componentTheme = useComponentTheme()
   const theme = useThemeVars()
   const cssVars = computed(() => ({
+    ...componentTheme.value,
     '--c-orgchart-line-color': props.lineColor,
     '--c-orgchart-line-width': `${Math.max(0, props.lineWidth)}px`,
     '--c-orgchart-node-spacing': `${Math.max(0, props.nodeSpacing)}px`,

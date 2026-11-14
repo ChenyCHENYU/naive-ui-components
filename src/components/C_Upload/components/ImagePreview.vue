@@ -25,6 +25,7 @@
         >
           <NProgress
             type="circle"
+            color="#fff"
             :percentage="file.percent"
             :stroke-width="3"
             style="width: 40px"
@@ -118,19 +119,19 @@
       aspect-ratio: 1;
       border-radius: 8px;
       overflow: hidden;
-      border: 1px solid var(--border-color);
-      background: var(--body-color);
+      border: 1px solid var(--c-border, var(--c-theme-border));
+      background: var(--c-bg-body, var(--c-theme-bg-body));
 
       &--error {
-        border-color: var(--error-color);
+        border-color: var(--c-error, var(--c-theme-error));
       }
 
       &--success,
       &--instant {
         border-color: color-mix(
           in srgb,
-          var(--success-color) 30%,
-          var(--border-color)
+          var(--c-success, var(--c-theme-success)) 30%,
+          var(--c-border, var(--c-theme-border))
         );
       }
 
@@ -170,21 +171,15 @@
       opacity: 1;
     }
 
-    &__progress {
-      :deep(.n-progress) {
-        --n-fill-color: #fff;
-      }
-    }
-
     &__status-icon {
       font-size: 28px;
 
       &--success {
-        color: var(--success-color);
+        color: var(--c-success, var(--c-theme-success));
       }
 
       &--error {
-        color: var(--error-color);
+        color: var(--c-error, var(--c-theme-error));
       }
     }
 

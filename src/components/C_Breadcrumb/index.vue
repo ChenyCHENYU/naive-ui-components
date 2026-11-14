@@ -181,7 +181,7 @@
     resolveBreadcrumbItems,
     countBreadcrumbPages as countPages,
   } from './model'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import type { BreadcrumbItem } from '../_shared/public'
   import type { BreadcrumbMenuItem } from './types'
 

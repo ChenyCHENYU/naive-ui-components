@@ -110,6 +110,16 @@ const cases = [
     forbiddenComponents: /\/(?:C_WorkFlow|C_AntV)\d*\.js$/,
   },
   {
+    name: 'C_AntV',
+    component: 'C_AntV',
+    css: 'C_AntV.css',
+    props: "{ type: 'er', readonly: true }",
+    budget: 90 * 1024,
+    // SDK 绘图运行时约 282 KiB；只延后布局加载，不把总下载量说成首段体积。
+    firstOpen: { module: /\/ER\d*\.js$/, budget: 295 * 1024 },
+    forbiddenComponents: /\/(?:C_WorkFlow|C_UserPicker|C_Table)\d*\.js$/,
+  },
+  {
     name: 'C_WorkFlow',
     component: 'C_WorkFlow',
     css: 'C_WorkFlow.css',
@@ -218,7 +228,7 @@ for (const scenario of cases) {
     const measured = measureFirstOpen(byName, initial, scenario.firstOpen)
     if (!measured) {
       failures.push(
-        `${scenario.name}: deferred table missing or bundled eagerly`
+        `${scenario.name}: requested deferred module missing or bundled eagerly`
       )
     } else {
       if (measured.bytes > scenario.firstOpen.budget)

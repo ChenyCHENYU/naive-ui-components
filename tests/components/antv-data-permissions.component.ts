@@ -1,12 +1,15 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NButton } from 'naive-ui'
+import { NButton, NConfigProvider, darkTheme } from 'naive-ui'
+import { defineComponent, h, ref } from 'vue'
 import ER from '../../src/components/C_AntV/layout/ER/index.vue'
 import UML from '../../src/components/C_AntV/layout/UML/index.vue'
 import BPMN from '../../src/components/C_AntV/layout/BPMN/index.vue'
 import ERTableEditor from '../../src/components/C_AntV/layout/ER/components/ERTableEditor.vue'
 import UMLClassEditor from '../../src/components/C_AntV/layout/UML/components/UMLClassEditor.vue'
 import BPMNPropertyEditor from '../../src/components/C_AntV/layout/BPMN/components/BPMNPropertyEditor.vue'
+import Diagram from '../../src/components/C_AntV/index.vue'
+import { COMPONENT_COLOR_PALETTES } from '../../src/core/theme'
 import type {
   ERDiagramData,
   UMLDiagramData,
@@ -34,6 +37,12 @@ vi.mock('@antv/x6', async importOriginal => {
       }
       centerContent() {}
       zoomToFit() {}
+      drawBackground(background: unknown) {
+        this.options.background = background
+      }
+      drawGrid(grid: unknown) {
+        this.options.grid = grid
+      }
     },
   }
 })
@@ -94,6 +103,118 @@ function umlData(): UMLDiagramData {
     relations: [],
   }
 }
+
+test('AntV defaults follow local Provider changes without resetting cells or rewriting imported custom paint', async () => {
+  const dark = ref(false)
+  const cells = [
+    {
+      id: 'default-node',
+      shape: 'activity',
+      x: 0,
+      y: 0,
+      width: 120,
+      height: 60,
+    },
+    {
+      id: 'custom-node',
+      shape: 'activity',
+      x: 200,
+      y: 0,
+      width: 120,
+      height: 60,
+      attrs: {
+        body: { fill: '#e11d48', stroke: '#123456' },
+        text: { fill: '#ffffff' },
+      },
+    },
+  ]
+  const before = JSON.stringify(cells)
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          {
+            theme: dark.value ? darkTheme : undefined,
+            themeOverrides: {
+              common: {
+                bodyColor: dark.value ? '#101214' : '#f6f8fa',
+                primaryColor: '#a21caf',
+              },
+            },
+          },
+          () => h(BPMN, { data: cells, showToolbar: false })
+        ),
+    })
+  )
+  await flushPromises()
+  const canvas = wrapper.getComponent(BPMN)
+  const graph = canvas.vm.getGraph()!
+  const custom = graph.getCellById('custom-node')
+  expect(graph.getCellById('default-node').attr('body/fill')).toContain(
+    'var(--c-bg-muted'
+  )
+  expect(graph.options.background).toEqual({ color: '#f6f8fa' })
+  dark.value = true
+  await flushPromises()
+  expect(graph.options.background).toEqual({ color: '#101214' })
+  expect(
+    (canvas.element as HTMLElement).style.getPropertyValue('--c-theme-primary')
+  ).toBe('#a21caf')
+  expect(graph.getCellById('custom-node')).toBe(custom)
+  expect(custom.attr('body/fill')).toBe('#e11d48')
+  expect(custom.attr('body/stroke')).toBe('#123456')
+  expect(custom.getPosition()).toEqual({ x: 200, y: 0 })
+  expect(JSON.stringify(cells)).toBe(before)
+  wrapper.unmount()
+})
+
+test('explicit AntV light mode wins over a dark Provider while retaining its brand color', async () => {
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          {
+            theme: darkTheme,
+            themeOverrides: {
+              common: { cardColor: '#111111', primaryColor: '#a21caf' },
+            },
+          },
+          () =>
+            h(Diagram, {
+              type: 'bpmn',
+              theme: 'light',
+              data: { nodes: [], flows: [] },
+              showToolbar: false,
+            })
+        ),
+    })
+  )
+  await vi.waitFor(() =>
+    expect(wrapper.findComponent(BPMN).exists()).toBe(true)
+  )
+  await flushPromises()
+  const { style } = wrapper.get('.bpmn-layout').element as HTMLElement
+  expect(style.getPropertyValue('--c-theme-bg-card')).toBe(
+    COMPONENT_COLOR_PALETTES.light.bgCard
+  )
+  expect(style.getPropertyValue('--c-theme-primary')).toBe('#a21caf')
+  wrapper.unmount()
+})
+
+test('explicit per-canvas semantic colors override Provider defaults for concrete SDK background and grid', async () => {
+  const wrapper = mount(BPMN, {
+    props: { data: [], showToolbar: false },
+    attrs: { style: { '--c-bg-body': '#203040', '--c-border': '#304050' } },
+  })
+  await flushPromises()
+  expect(wrapper.vm.getGraph()!.options.background).toEqual({
+    color: '#203040',
+  })
+  expect(wrapper.vm.getGraph()!.options.grid.args[0].color).toBe('#304050')
+  wrapper.unmount()
+})
 
 test('ER imports, edits, replaces and exports complete relation metadata with unambiguous native ports', async () => {
   const data = erData()

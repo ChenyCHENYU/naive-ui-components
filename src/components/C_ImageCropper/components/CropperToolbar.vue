@@ -20,6 +20,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="逆时针旋转 90°"
           @click="$emit('rotate', -90)"
         >
           <template #icon><C_Icon name="mdi:rotate-left" /></template>
@@ -33,6 +34,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="顺时针旋转 90°"
           @click="$emit('rotate', 90)"
         >
           <template #icon><C_Icon name="mdi:rotate-right" /></template>
@@ -49,6 +51,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="水平翻转"
           @click="$emit('flipX')"
         >
           <template #icon><C_Icon name="mdi:flip-horizontal" /></template>
@@ -62,6 +65,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="垂直翻转"
           @click="$emit('flipY')"
         >
           <template #icon><C_Icon name="mdi:flip-vertical" /></template>
@@ -78,6 +82,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="放大"
           @click="$emit('zoom', 0.1)"
         >
           <template #icon><C_Icon name="mdi:magnify-plus-outline" /></template>
@@ -91,6 +96,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="缩小"
           @click="$emit('zoom', -0.1)"
         >
           <template #icon><C_Icon name="mdi:magnify-minus-outline" /></template>
@@ -107,6 +113,7 @@
           size="small"
           quaternary
           :disabled="disabled"
+          aria-label="重置裁剪"
           @click="$emit('reset')"
         >
           <template #icon><C_Icon name="mdi:refresh" /></template>

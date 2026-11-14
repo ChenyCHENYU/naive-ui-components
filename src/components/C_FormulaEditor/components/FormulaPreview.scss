@@ -2,8 +2,12 @@
 .formula-preview {
   min-width: 0;
   padding: 24px;
-  border-left: 1px solid var(--c-border);
-  background: color-mix(in srgb, var(--c-primary) 3%, var(--c-bg-card));
+  border-left: 1px solid var(--c-border, var(--c-theme-border));
+  background: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 3%,
+    var(--c-bg-card, var(--c-theme-bg-card))
+  );
   header {
     display: flex;
     gap: 12px;
@@ -15,19 +19,19 @@
   }
   h3 {
     font-size: 15px;
-    color: var(--c-text-1);
+    color: var(--c-text-1, var(--c-theme-text-1));
   }
   header p {
     margin-top: 4px;
     font-size: 12px;
     line-height: 1.7;
-    color: var(--c-text-2);
+    color: var(--c-text-2, var(--c-theme-text-2));
   }
   &__step {
     font:
       600 12px ui-monospace,
       monospace;
-    color: var(--c-primary);
+    color: var(--c-primary, var(--c-theme-primary));
   }
   &__result {
     display: flex;
@@ -36,27 +40,44 @@
     margin: 24px 0;
     padding: 20px;
     border-radius: 12px;
-    background: color-mix(in srgb, var(--c-primary) 7%, var(--c-bg-card));
-    border: 1px solid color-mix(in srgb, var(--c-primary) 20%, var(--c-border));
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 7%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 20%,
+        var(--c-border, var(--c-theme-border))
+      );
     min-height: 120px;
     &--error {
-      border-color: color-mix(in srgb, var(--c-error) 30%, var(--c-border));
-      background: color-mix(in srgb, var(--c-error) 4%, var(--c-bg-card));
+      border-color: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error)) 30%,
+        var(--c-border, var(--c-theme-border))
+      );
+      background: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error)) 4%,
+        var(--c-bg-card, var(--c-theme-bg-card))
+      );
     }
   }
   &__result-label {
-    color: var(--c-primary);
+    color: var(--c-primary, var(--c-theme-primary));
     font-size: 12px;
   }
   &__result-value {
-    color: var(--c-text-1);
+    color: var(--c-text-1, var(--c-theme-text-1));
     font:
       600 32px/1.5 ui-monospace,
       monospace;
     overflow-wrap: anywhere;
   }
   &__result-empty {
-    color: var(--c-text-2);
+    color: var(--c-text-2, var(--c-theme-text-2));
     font-size: 12px;
     line-height: 1.7;
   }
@@ -66,14 +87,14 @@
     font-size: 12px;
     font-weight: 600;
     span {
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
       font-weight: 400;
     }
   }
   &__var-row {
     padding-top: 16px;
     p {
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
       font-size: 11px;
       margin-top: 5px;
     }
@@ -85,10 +106,10 @@
     margin-bottom: 7px;
     label {
       font-size: 12px;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
     code {
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
       font-size: 10px;
       overflow-wrap: anywhere;
     }
@@ -99,13 +120,13 @@
   &__empty,
   &__note {
     font-size: 11px;
-    color: var(--c-text-3);
+    color: var(--c-text-3, var(--c-theme-text-3));
     line-height: 1.8;
     margin-top: 16px !important;
   }
   &__note {
     margin-top: 24px !important;
     padding-top: 16px;
-    border-top: 1px solid var(--c-border);
+    border-top: 1px solid var(--c-border, var(--c-theme-border));
   }
 }

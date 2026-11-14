@@ -10,9 +10,9 @@
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: var(--c-bg-card, #fff);
-    border: 1px solid var(--c-border, #e1e4e8);
-    border-radius: var(--c-radius, 6px);
+    background: var(--c-bg-card, var(--c-theme-bg-card, #fff));
+    border: 1px solid var(--c-border, var(--c-theme-border, #e1e4e8));
+    border-radius: var(--c-radius, var(--c-theme-radius, 6px));
     flex-wrap: wrap;
 
     .toolbar-section {
@@ -23,13 +23,13 @@
       &.divider {
         width: 1px;
         height: 24px;
-        background: var(--c-border, #e1e4e8);
+        background: var(--c-border, var(--c-theme-border, #e1e4e8));
         margin: 0 4px;
       }
 
       .section-label {
         font-size: 13px;
-        color: var(--c-text-3, #999);
+        color: var(--c-text-3, var(--c-theme-text-3, #999));
         font-weight: 500;
         white-space: nowrap;
         flex-shrink: 0;
@@ -45,20 +45,20 @@
 
   .signature-canvas-wrapper {
     position: relative;
-    border: 1px solid var(--c-border, #e1e4e8);
-    border-radius: var(--c-radius, 6px);
+    border: 1px solid var(--c-border, var(--c-theme-border, #e1e4e8));
+    border-radius: var(--c-radius, var(--c-theme-radius, 6px));
     overflow: hidden;
     background: var(--c-bg, #fff);
     transition: border-color 0.3s;
 
     &:hover {
-      border-color: var(--c-primary, #409eff);
+      border-color: var(--c-primary, var(--c-theme-primary, #409eff));
     }
 
     &.disabled {
       opacity: 0.6;
       cursor: not-allowed;
-      border-color: var(--c-border, #e1e4e8);
+      border-color: var(--c-border, var(--c-theme-border, #e1e4e8));
     }
 
     &.readonly {
@@ -83,7 +83,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: var(--c-text-4, #ccc);
+      color: var(--c-text-4, var(--c-theme-text-4, #ccc));
       font-size: 14px;
       pointer-events: none;
       user-select: none;

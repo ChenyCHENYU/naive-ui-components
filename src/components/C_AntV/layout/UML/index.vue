@@ -1,5 +1,8 @@
 <template>
-  <div class="uml-layout">
+  <div
+    class="uml-layout"
+    :style="componentTheme"
+  >
     <div
       class="toolbar"
       v-if="showToolbar"
@@ -67,6 +70,7 @@
     ></div>
 
     <UMLClassEditor
+      :style="componentTheme"
       :show="showEditor"
       v-model:editing-class="editingClass"
       @update:show="showEditor = $event"
@@ -81,6 +85,10 @@
   import { NSpace, NButton, NDropdown } from 'naive-ui'
   import { Graph, ObjectExt, type Node, type Cell, type Edge } from '@antv/x6'
   import { useGraphBase } from '../../composables/useGraphBase'
+  import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../../../composables/useComponentTheme'
   import { useGraphExport } from '../../composables/useGraphExport'
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
   import { bindReadonlyGuard } from '../../composables/readonlyGraph'
@@ -123,12 +131,14 @@
 
   // ==================== Composables ====================
   const containerRef = ref<HTMLDivElement>()
-  const isDark = computed(() => props.theme === 'dark')
+  const componentTheme = useComponentTheme(() => props.theme)
+  const colorMode = useComponentColorMode(() => props.theme)
+  const isDark = computed(() => colorMode.value === 'dark')
   const { graph, initGraph, centerContent, zoomToFit, scheduleZoomToFit } =
     useGraphBase(containerRef, isDark)
   const { exportOptions, handleExport } = useGraphExport(graph, 'uml-diagram')
   const { bindInteractions } = useEdgeInteraction(graph, {
-    defaultColor: '#722ed1',
+    defaultColor: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
     portPositions: ['top', 'right', 'bottom', 'left'],
     onDataChange: () => emitDataChange(),
     isReadonly: () => props.readonly,
@@ -187,7 +197,13 @@
         type,
         {
           inherit: 'edge',
-          attrs: { line: { strokeWidth: 2, stroke: '#722ed1', ...config } },
+          attrs: {
+            line: {
+              strokeWidth: 2,
+              stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+              ...config,
+            },
+          },
         },
         true
       )

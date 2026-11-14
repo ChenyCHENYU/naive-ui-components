@@ -31,7 +31,7 @@ import {
   parseDataPath,
   setDataPath,
 } from '../../../utils/data'
-import { useComponentFeedback, useComponentLocale } from '../../../config'
+import { useComponentFeedback, useComponentLocale } from '../../../component-config'
 import {
   createRequiredFormRule,
   resolveFormRules,

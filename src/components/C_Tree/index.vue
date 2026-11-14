@@ -147,7 +147,8 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = TreeNodeData">
-  import { useComponentLocale } from '../../config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentLocale } from '../../component-config'
   import { computed } from 'vue'
   import { NInput, NButton, NTree, useThemeVars } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
@@ -177,8 +178,10 @@
   })
   const emit = defineEmits<TreeEmits<T>>()
   const slots = defineSlots<TreeSlots<T>>()
+  const componentTheme = useComponentTheme()
   const theme = useThemeVars()
   const themeStyle = computed(() => ({
+    ...componentTheme.value,
     '--c-tree-border': theme.value.borderColor,
     '--c-tree-surface': theme.value.actionColor,
     '--c-tree-radius': theme.value.borderRadius,

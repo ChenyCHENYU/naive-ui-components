@@ -6,6 +6,7 @@
   <div
     class="c-audio-player"
     :class="{ 'is-minimal': theme === 'minimal' }"
+    :style="themeStyle"
   >
     <!-- ================ Now Playing ================ -->
     <div class="c-audio-player__now-playing">
@@ -177,6 +178,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import {
     computed,
     onBeforeUnmount,
@@ -193,6 +195,8 @@
     normalizeTrackIndex,
     type AudioPlayerProps,
   } from './types'
+
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(
     defineProps<{

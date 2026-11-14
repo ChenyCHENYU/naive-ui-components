@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-full-calendar">
+  <div
+    class="c-full-calendar"
+    :style="themeStyle"
+  >
     <FullCalendar
       ref="calendarRef"
       :options="calendarOptions"
@@ -17,7 +20,7 @@
       v-model:show="showActionDialog"
       preset="dialog"
       :title="`事件操作 - ${selectedEvent?.title}`"
-      style="width: 400px"
+      :style="{ ...themeStyle, width: 'min(400px, calc(100vw - 24px))' }"
     >
       <div class="ml-10% mt-20px">
         <NButton
@@ -42,6 +45,7 @@
       v-model:show="showEditModal"
       preset="dialog"
       :title="isEditing ? '编辑事件' : '添加事件'"
+      :style="{ ...themeStyle, width: 'min(480px, calc(100vw - 24px))' }"
       positive-text="保存"
       negative-text="取消"
       @positive-click="saveEvent"
@@ -54,7 +58,7 @@
           <NInput
             v-model:value="editForm.title"
             placeholder="请输入事件标题"
-            aria-label="事件标题"
+            :input-props="{ 'aria-label': '事件标题' }"
           />
         </div>
 
@@ -102,7 +106,7 @@
             <NInput
               v-model:value="editForm.startTime"
               placeholder="09:00"
-              aria-label="开始时间（24 小时制）"
+              :input-props="{ 'aria-label': '开始时间（24 小时制）' }"
             />
           </div>
           <div>
@@ -112,7 +116,7 @@
             <NInput
               v-model:value="editForm.endTime"
               placeholder="10:00"
-              aria-label="结束时间（24 小时制）"
+              :input-props="{ 'aria-label': '结束时间（24 小时制）' }"
             />
           </div>
         </div>
@@ -136,8 +140,8 @@
                 borderRadius: '50%',
                 border:
                   editForm.color === color
-                    ? '3px solid #000'
-                    : '2px solid #ddd',
+                    ? '3px solid var(--c-text-1, var(--c-theme-text-1))'
+                    : '2px solid var(--c-border, var(--c-theme-border))',
               }"
               @click="editForm.color = color"
             ></button>
@@ -149,12 +153,15 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { NModal, NButton, NInput, NDatePicker, NCheckbox } from 'naive-ui'
   import FullCalendar from '@fullcalendar/vue3'
   import { useCalendarEvents } from './composables/useCalendarEvents'
   import type { CalendarProps, CalendarEmits, CalendarExpose } from './types'
 
   defineOptions({ name: 'C_FullCalendar' })
+
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<CalendarProps>(), {
     events: () => [],
@@ -189,12 +196,34 @@
     width: 100%;
   }
 
+  /* FullCalendar 的公开主题变量保留事件配色，仅统一控件和画布底色。 */
+  .c-full-calendar :deep(.fc) {
+    --fc-page-bg-color: var(--c-bg-card, var(--c-theme-bg-card));
+    --fc-neutral-bg-color: var(--c-bg-muted, var(--c-theme-bg-muted));
+    --fc-neutral-text-color: var(--c-text-2, var(--c-theme-text-2));
+    --fc-border-color: var(--c-border, var(--c-theme-border));
+    --fc-today-bg-color: var(--c-bg-active, var(--c-theme-bg-active));
+    --fc-button-text-color: var(--c-text-1, var(--c-theme-text-1));
+    --fc-button-bg-color: var(--c-bg-card, var(--c-theme-bg-card));
+    --fc-button-border-color: var(--c-border, var(--c-theme-border));
+    --fc-button-hover-bg-color: var(--c-bg-hover, var(--c-theme-bg-hover));
+    --fc-button-hover-border-color: var(--c-primary, var(--c-theme-primary));
+    --fc-button-active-bg-color: var(--c-bg-active, var(--c-theme-bg-active));
+    --fc-button-active-border-color: var(--c-primary, var(--c-theme-primary));
+  }
+  .c-full-calendar :deep(.fc-header-toolbar) {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .c-full-calendar :deep(.fc-button) {
+    border-radius: var(--c-radius-sm, var(--c-theme-radius-sm));
+  }
   .event-color-swatch {
     cursor: pointer;
   }
 
   .event-color-swatch:focus-visible {
-    outline: 2px solid #3f86ff;
+    outline: 2px solid var(--c-primary, var(--c-theme-primary));
     outline-offset: 2px;
   }
 </style>

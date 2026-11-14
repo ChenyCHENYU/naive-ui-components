@@ -6,7 +6,10 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-upload">
+  <div
+    class="c-upload"
+    :style="themeStyle"
+  >
     <!-- 上传区域 -->
     <UploadArea
       ref="uploadAreaRef"
@@ -62,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { ref, computed, watch } from 'vue'
   import { NProgress } from 'naive-ui'
   import type { UploadProps, UploadExpose, UploadFileItem } from './types'
@@ -70,6 +74,8 @@
   import UploadArea from './components/UploadArea.vue'
   import FileList from './components/FileList.vue'
   import ImagePreview from './components/ImagePreview.vue'
+
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<UploadProps>(), {
     action: '',
@@ -283,10 +289,10 @@
 
 <style scoped lang="scss">
   .c-upload {
-    --c-upload-progress-bg: var(--body-color, #fff);
-    --c-upload-progress-border: var(--border-color, #e5e7eb);
+    --c-upload-progress-bg: var(--c-bg-body, var(--c-theme-bg-body, #fff));
+    --c-upload-progress-border: var(--c-border, var(--c-theme-border, #e5e7eb));
     --c-upload-progress-radius: 8px;
-    --c-upload-label-color: var(--text-color-3, #999);
+    --c-upload-label-color: var(--c-text-3, var(--c-theme-text-3, #999));
     --c-upload-label-size: 12px;
 
     width: 100%;

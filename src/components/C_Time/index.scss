@@ -17,7 +17,7 @@
 }
 
 .range-separator {
-  color: var(--c-text-3, #666);
+  color: var(--c-text-3, var(--c-theme-text-3, #666));
   font-size: 14px;
   white-space: nowrap;
   user-select: none;

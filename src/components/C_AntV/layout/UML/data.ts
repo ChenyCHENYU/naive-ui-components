@@ -14,8 +14,8 @@ export const edgeTypes = {
       name: 'block',
       width: 10,
       height: 8,
-      fill: 'white',
-      stroke: '#722ed1',
+      fill: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
+      stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
       strokeWidth: 2,
     },
   },
@@ -25,14 +25,18 @@ export const edgeTypes = {
       name: 'block',
       width: 10,
       height: 8,
-      fill: 'white',
-      stroke: '#722ed1',
+      fill: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
+      stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
       strokeWidth: 2,
     },
   },
   dependency: {
     strokeDasharray: '6,4',
-    targetMarker: { name: 'classic', size: 8, fill: '#722ed1' },
+    targetMarker: {
+      name: 'classic',
+      size: 8,
+      fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+    },
   },
   composition: {
     strokeDasharray: 0,
@@ -40,8 +44,8 @@ export const edgeTypes = {
       name: 'diamond',
       width: 12,
       height: 8,
-      fill: '#722ed1',
-      stroke: '#722ed1',
+      fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+      stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
     },
   },
   aggregation: {
@@ -50,14 +54,18 @@ export const edgeTypes = {
       name: 'diamond',
       width: 12,
       height: 8,
-      fill: 'white',
-      stroke: '#722ed1',
+      fill: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
+      stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
       strokeWidth: 2,
     },
   },
   association: {
     strokeDasharray: 0,
-    targetMarker: { name: 'classic', size: 8, fill: '#722ed1' },
+    targetMarker: {
+      name: 'classic',
+      size: 8,
+      fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+    },
   },
 }
 
@@ -76,8 +84,8 @@ export const portConfig = ['top', 'right', 'bottom', 'left'].reduce(
       ref: 'body',
       ...refConfig,
       r: 4,
-      fill: '#31d0c6',
-      stroke: '#ffffff',
+      fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+      stroke: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
       strokeWidth: 2,
       magnet: true,
       style: {
@@ -110,29 +118,29 @@ export const classNodeConfig = {
   attrs: {
     rect: { width: 160 },
     body: {
-      stroke: '#5f95ff',
+      stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
       strokeWidth: 1,
-      fill: '#fff',
+      fill: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
       magnet: false,
       style: { cursor: 'move' },
     },
     'name-rect': {
-      fill: '#5f95ff',
-      stroke: '#fff',
+      fill: 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))',
+      stroke: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
       strokeWidth: 0.5,
       magnet: false,
       style: { cursor: 'move' },
     },
     'attrs-rect': {
-      fill: '#eff4ff',
-      stroke: '#fff',
+      fill: 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))',
+      stroke: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
       strokeWidth: 0.5,
       magnet: false,
       style: { cursor: 'move' },
     },
     'methods-rect': {
-      fill: '#eff4ff',
-      stroke: '#fff',
+      fill: 'var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9))',
+      stroke: 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
       strokeWidth: 0.5,
       magnet: false,
       style: { cursor: 'move' },
@@ -143,7 +151,7 @@ export const classNodeConfig = {
       refX: 0.5,
       textAnchor: 'middle',
       fontWeight: 'bold',
-      fill: '#fff',
+      fill: 'var(--c-text-1, var(--c-theme-text-1, #262626))',
       fontSize: 12,
       pointerEvents: 'none',
     },
@@ -152,7 +160,7 @@ export const classNodeConfig = {
       refY: 0.5,
       refX: 5,
       textAnchor: 'left',
-      fill: 'black',
+      fill: 'var(--c-text-1, var(--c-theme-text-1, #262626))',
       fontSize: 10,
       pointerEvents: 'none',
     },
@@ -161,7 +169,7 @@ export const classNodeConfig = {
       refY: 0.5,
       refX: 5,
       textAnchor: 'left',
-      fill: 'black',
+      fill: 'var(--c-text-1, var(--c-theme-text-1, #262626))',
       fontSize: 10,
       pointerEvents: 'none',
     },
@@ -197,11 +205,23 @@ export const connectingConfig = {
 export const highlightingConfig = {
   magnetAvailable: {
     name: 'stroke',
-    args: { attrs: { fill: '#31d0c6', stroke: '#31d0c6', opacity: 1 } },
+    args: {
+      attrs: {
+        fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+        stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+        opacity: 1,
+      },
+    },
   },
   magnetAdsorbed: {
     name: 'stroke',
-    args: { attrs: { fill: '#5F95FF', stroke: '#5F95FF', opacity: 1 } },
+    args: {
+      attrs: {
+        fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+        stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
+        opacity: 1,
+      },
+    },
   },
 }
 
@@ -210,13 +230,13 @@ export const defaultEdgeConfig = {
   shape: 'extends',
   attrs: {
     line: {
-      stroke: '#722ed1',
+      stroke: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
       strokeWidth: 2,
       targetMarker: {
         name: 'block',
         width: 8,
         height: 6,
-        fill: '#722ed1',
+        fill: 'var(--c-primary, var(--c-theme-primary, #2080f0))',
       },
     },
   },

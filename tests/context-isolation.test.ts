@@ -8,7 +8,7 @@ import {
   useComponentLocale,
   type ComponentFeedback,
   type ComponentLocale,
-} from '../src/config'
+} from '../src/component-config'
 
 describe('application feedback and locale ownership', () => {
   test('applications resolve their own adapters and local changes do not alter peers', async () => {

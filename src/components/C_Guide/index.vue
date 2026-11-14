@@ -14,6 +14,7 @@
     <template #trigger>
       <NButton
         class="c-guide-trigger"
+        :style="themeStyle"
         text
         :loading="loading"
         :aria-label="props.triggerTooltip"
@@ -30,6 +31,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { NTooltip, NButton, useThemeVars } from 'naive-ui'
   import type { Driver, PopoverDOM } from 'driver.js'
@@ -38,6 +40,7 @@
   import type { GuideProps, GuideStep } from './types'
 
   defineOptions({ name: 'C_Guide' })
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<GuideProps>(), {
     steps: () => [],

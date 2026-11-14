@@ -172,7 +172,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../../config'
+  import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type {
@@ -258,7 +258,7 @@
   .notification-list {
     &__tabs {
       display: flex;
-      border-bottom: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
       padding: 0 4px;
     }
 
@@ -273,7 +273,7 @@
       gap: 4px;
       padding: 10px 12px;
       font-size: 13px;
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
       cursor: pointer;
       transition: all var(--c-transition, 0.2s ease);
       user-select: none;
@@ -291,15 +291,15 @@
       }
 
       &:hover {
-        color: var(--c-text-1);
+        color: var(--c-text-1, var(--c-theme-text-1));
       }
 
       &--active {
-        color: var(--c-primary);
+        color: var(--c-primary, var(--c-theme-primary));
         font-weight: 500;
 
         &::after {
-          background: var(--c-primary);
+          background: var(--c-primary, var(--c-theme-primary));
         }
       }
     }
@@ -309,8 +309,12 @@
       height: 16px;
       padding: 0 4px;
       border-radius: 8px;
-      background: #f5222d;
-      color: #fff;
+      background: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error, #d03050)) 16%,
+        var(--c-bg-surface, var(--c-theme-bg-surface, #fff))
+      );
+      color: var(--c-text-1, var(--c-theme-text-1, #262626));
       font-size: 10px;
       font-weight: 600;
       line-height: 16px;
@@ -323,7 +327,7 @@
       justify-content: flex-end;
       gap: 12px;
       padding: 6px 16px;
-      border-bottom: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     &__scroll {
@@ -356,12 +360,12 @@
       gap: 6px;
       padding: 12px;
       font-size: 12px;
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
       cursor: pointer;
       transition: color var(--c-transition, 0.2s ease);
 
       &:hover {
-        color: var(--c-primary);
+        color: var(--c-primary, var(--c-theme-primary));
       }
     }
 
@@ -375,13 +379,13 @@
     }
 
     &__empty-icon {
-      color: var(--c-text-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
       opacity: 0.5;
     }
 
     &__empty-text {
       font-size: 13px;
-      color: var(--c-text-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
     }
   }
 </style>

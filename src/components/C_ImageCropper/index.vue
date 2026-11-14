@@ -11,7 +11,7 @@
     v-model:show="modalVisible"
     preset="card"
     :title="props.modalTitle || '图片裁剪'"
-    :style="{ width: '860px' }"
+    :style="{ ...themeStyle, width: 'min(860px, calc(100vw - 24px))' }"
     :mask-closable="false"
     :closable="true"
   >
@@ -101,6 +101,7 @@
   <div
     v-else
     class="c-image-cropper"
+    :style="themeStyle"
   >
     <div class="c-image-cropper__body">
       <CropperToolbar
@@ -171,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { ref, computed, watch, onBeforeUnmount } from 'vue'
   import { NModal, NButton, NSpace } from 'naive-ui'
   import { VueCropper } from 'vue-cropper'
@@ -188,6 +190,8 @@
   import { flipImageSource, type FlipAxis } from './flipImageSource'
 
   defineOptions({ name: 'C_ImageCropper' })
+
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<ImageCropperProps>(), {
     src: '',

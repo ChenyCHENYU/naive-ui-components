@@ -23,14 +23,14 @@
 
   .n-tag {
     min-width: 0;
-    border-radius: 5px;
+    border-radius: var(--c-radius-sm, var(--c-theme-radius-sm, 4px));
     font-size: inherit;
   }
 
   .n-base-selection-tag-wrapper:first-child .n-tag:not(.n-tag--disabled) {
     background: color-mix(
       in srgb,
-      var(--n-caret-color, var(--c-primary)) 12%,
+      var(--c-primary, var(--c-theme-primary)) 12%,
       transparent
     );
   }

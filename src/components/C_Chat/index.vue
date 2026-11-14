@@ -7,7 +7,10 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
 -->
 <template>
-  <div class="c-chat">
+  <div
+    class="c-chat"
+    :style="componentTheme"
+  >
     <!-- ===== 联系人侧栏 ===== -->
     <aside
       v-if="mergedProps.showContacts && contactList.length"
@@ -237,8 +240,9 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import { computed, ref, watch } from 'vue'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import type { VirtualListInst } from 'vueuc'
   import { VVirtualList } from '../../utils/virtualList'
   import ChatMessageItem from './components/ChatMessageItem.vue'
@@ -254,6 +258,7 @@
 
   // ===== Props & Emits =====
   const { t } = useComponentLocale()
+  const componentTheme = useComponentTheme()
   const props = withDefaults(defineProps<ChatProps>(), {
     contacts: () => [],
     messages: () => [],

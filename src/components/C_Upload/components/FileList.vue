@@ -148,25 +148,25 @@
       align-items: flex-start;
       padding: 10px 12px;
       border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background: var(--card-color);
+      border: 1px solid var(--c-border, var(--c-theme-border));
+      background: var(--c-bg-card, var(--c-theme-bg-card));
       transition: all 0.25s ease;
 
       &:hover {
         border-color: color-mix(
           in srgb,
-          var(--primary-color) 40%,
-          var(--border-color)
+          var(--c-primary, var(--c-theme-primary)) 40%,
+          var(--c-border, var(--c-theme-border))
         );
         box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
       }
 
       &--error {
-        border-color: var(--error-color);
+        border-color: var(--c-error, var(--c-theme-error));
         background: color-mix(
           in srgb,
-          var(--error-color) 4%,
-          var(--card-color)
+          var(--c-error, var(--c-theme-error)) 4%,
+          var(--c-bg-card, var(--c-theme-bg-card))
         );
       }
 
@@ -174,8 +174,8 @@
       &--instant {
         border-color: color-mix(
           in srgb,
-          var(--success-color) 30%,
-          var(--border-color)
+          var(--c-success, var(--c-theme-success)) 30%,
+          var(--c-border, var(--c-theme-border))
         );
       }
     }
@@ -189,7 +189,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--body-color);
+      background: var(--c-bg-body, var(--c-theme-bg-body));
     }
 
     &__thumb-img {
@@ -200,7 +200,7 @@
 
     &__thumb-icon {
       font-size: 22px;
-      color: var(--text-color-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
     }
 
     &__info {
@@ -214,7 +214,7 @@
     &__name {
       font-size: 13px;
       font-weight: 500;
-      color: var(--text-color-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
 
     &__meta {
@@ -225,7 +225,7 @@
     }
 
     &__size {
-      color: var(--text-color-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
     }
 
     &__instant {
@@ -234,12 +234,12 @@
 
     &__chunk-info {
       font-size: 11px;
-      color: var(--text-color-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
     }
 
     &__error {
       font-size: 12px;
-      color: var(--error-color);
+      color: var(--c-error, var(--c-theme-error));
     }
 
     &__actions {

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { Boot, type IDomEditor } from '@wangeditor-next/editor'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
+import { NConfigProvider, darkTheme } from 'naive-ui'
 import C_Editor from '../../src/components/C_Editor/index.vue'
 import C_Form from '../../src/components/C_Form/index.vue'
 
@@ -146,4 +147,53 @@ test('explicit disposal reports current SDK errors through the existing error ev
   })
   wrapper.vm.destroyEditor()
   expect(error).toHaveBeenCalledExactlyOnceWith(failure)
+})
+
+test('real editor follows Provider mode without recreation and keeps explicit theme precedence', async () => {
+  const dark = ref(false)
+  const explicit = ref<'light' | 'dark'>()
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          { theme: dark.value ? darkTheme : null },
+          {
+            default: () =>
+              h(C_Editor, {
+                editorId: 'provider-mode',
+                modelValue: '<p>Keep my draft</p>',
+                theme: explicit.value,
+              }),
+          }
+        ),
+    }),
+    { attachTo: document.body }
+  )
+  await vi.waitFor(() =>
+    expect(wrapper.getComponent(C_Editor).vm.isInitialized).toBe(true)
+  )
+  await flushPromises()
+  const editor = wrapper.getComponent(C_Editor).vm.editorInstance
+  const initialBackground = wrapper
+    .get<HTMLElement>('.c-editor')
+    .element.style.getPropertyValue('--c-theme-bg-card')
+  dark.value = true
+  await flushPromises()
+  expect(wrapper.get('.c-editor').classes()).toContain('editor-dark')
+  expect(
+    wrapper
+      .get<HTMLElement>('.c-editor')
+      .element.style.getPropertyValue('--c-theme-bg-card')
+  ).not.toBe(initialBackground)
+  expect(wrapper.find('.w-e-bar-item button').exists()).toBe(true)
+  expect(wrapper.find('[data-slate-editor]').exists()).toBe(true)
+  expect(wrapper.getComponent(C_Editor).vm.editorInstance).toBe(editor)
+  expect(wrapper.getComponent(C_Editor).vm.getContent()).toContain(
+    'Keep my draft'
+  )
+  explicit.value = 'light'
+  await flushPromises()
+  expect(wrapper.get('.c-editor').classes()).not.toContain('editor-dark')
+  expect(wrapper.getComponent(C_Editor).vm.editorInstance).toBe(editor)
 })

@@ -7,7 +7,10 @@
 -->
 
 <template>
-  <div class="c-notification-center">
+  <div
+    class="c-notification-center"
+    :style="componentTheme"
+  >
     <NPopover
       v-model:show="core.popoverVisible.value"
       :width="420"
@@ -15,6 +18,7 @@
       placement="bottom-end"
       :show-arrow="false"
       content-class="c-notification-center__popover"
+      :content-style="componentTheme"
       @after-leave="handlePopoverClose"
     >
       <!-- 触发器：角标铃铛 -->
@@ -28,7 +32,10 @@
       </template>
 
       <!-- 面板内容 -->
-      <div class="c-notification-center__panel">
+      <div
+        class="c-notification-center__panel"
+        :style="componentTheme"
+      >
         <!-- 头部标题 -->
         <div class="c-notification-center__header">
           <span class="c-notification-center__title">{{
@@ -137,8 +144,9 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import { computed, watch } from 'vue'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import type {
     NotificationCenterProps,
     NotificationCenterSlots,
@@ -155,6 +163,7 @@
   defineOptions({ name: 'C_NotificationCenter' })
 
   const { t } = useComponentLocale()
+  const componentTheme = useComponentTheme()
   const props = withDefaults(defineProps<NotificationCenterProps>(), {
     autoStart: true,
     desktopNotification: false,
@@ -340,13 +349,13 @@
       align-items: center;
       justify-content: space-between;
       padding: 14px 16px 10px;
-      border-bottom: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     &__title {
       font-size: 15px;
       font-weight: 600;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
 
     &__header-extra {
@@ -362,7 +371,7 @@
       gap: 12px;
       margin: 10px 16px;
       padding: 10px;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
       background: color-mix(in srgb, #d03050 8%, transparent);
       border-radius: 6px;
       font-size: 12px;
@@ -372,7 +381,7 @@
       display: flex;
       justify-content: center;
       padding: 10px 16px;
-      border-top: 1px solid var(--c-border);
+      border-top: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     &__ws-dot {
@@ -393,7 +402,7 @@
       }
 
       &--disconnected {
-        background: var(--c-text-4);
+        background: var(--c-text-4, var(--c-theme-text-4));
       }
     }
   }

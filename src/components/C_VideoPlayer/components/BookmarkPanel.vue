@@ -16,7 +16,10 @@
       @click="handleAdd"
     >
       <template #icon>
-        <span>🔖</span>
+        <C_Icon
+          name="mdi:bookmark-plus-outline"
+          :size="16"
+        />
       </template>
       书签
     </NButton>
@@ -27,7 +30,7 @@
       trigger="click"
       placement="top-start"
       :show-arrow="false"
-      style="max-height: 300px; overflow-y: auto"
+      :style="{ ...themeStyle, maxHeight: '300px', overflowY: 'auto' }"
     >
       <template #trigger>
         <NBadge
@@ -68,9 +71,14 @@
             quaternary
             size="tiny"
             type="error"
+            :aria-label="`移除 ${formatTime(bm.time)} 的书签`"
             @click="$emit('remove', bm.id)"
           >
-            ✕
+            <template #icon
+              ><C_Icon
+                name="mdi:close"
+                :size="14"
+            /></template>
           </NButton>
         </div>
       </div>
@@ -79,6 +87,9 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../../composables/useComponentTheme'
+  import C_Icon from '../../C_Icon/index.vue'
+  const themeStyle = useComponentTheme()
   import type { Bookmark } from '../types'
 
   interface Props {
@@ -135,7 +146,7 @@
     font-size: 13px;
 
     &:hover {
-      background-color: rgba(0, 0, 0, 0.04);
+      background-color: var(--c-bg-hover, var(--c-theme-bg-hover));
     }
   }
 
@@ -145,7 +156,7 @@
     padding: 0;
     background: transparent;
     font: inherit;
-    color: var(--c-primary, #18a058);
+    color: var(--c-primary, var(--c-theme-primary, #18a058));
     cursor: pointer;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;

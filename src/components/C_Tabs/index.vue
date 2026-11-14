@@ -51,7 +51,7 @@
               v-if="item.icon"
               class="c-tabs__icon"
               :name="item.icon"
-              :size="14"
+              :size="tabIconSize"
             />
             <span>{{ item.label }}</span>
             <NBadge
@@ -121,6 +121,10 @@
     beforeChange: undefined,
   })
   const emit = defineEmits<CTabsEmits>()
+
+  const tabIconSize = computed(
+    () => ({ small: 14, medium: 16, large: 18 })[props.size]
+  )
 
   type ItemRenderer = (item: TabsItem) => VNodeChild
   const RenderNode = defineComponent({

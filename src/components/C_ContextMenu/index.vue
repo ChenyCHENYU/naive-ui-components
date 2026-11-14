@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
   import ContextMenuItems from './ContextMenuItems.vue'
   import {
@@ -48,7 +49,8 @@
     type ContextMenuProps,
   } from './types'
 
-  defineOptions({ name: 'C_ContextMenu' })
+  defineOptions({ name: 'C_ContextMenu', inheritAttrs: false })
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<ContextMenuProps>(), {
     items: () => [],
@@ -130,6 +132,7 @@
 
   // ===== 菜单定位样式 =====
   const menuStyle = computed(() => ({
+    ...themeStyle.value,
     left: `${position.value.x}px`,
     top: `${position.value.y}px`,
     minWidth: `${props.minWidth}px`,

@@ -1,5 +1,8 @@
 <template>
-  <div class="c-select-field">
+  <div
+    class="c-select-field"
+    :style="componentTheme"
+  >
     <NSelect
       ref="select"
       v-bind="$attrs"
@@ -40,6 +43,7 @@
         #action
       >
         <OptionStatus
+          :style="componentTheme"
           v-if="source"
           :active="remote.active.value"
           :loading="remote.loading.value"
@@ -86,6 +90,8 @@
   } from './types'
   import { useRemoteOptions } from '../../composables/useRemoteOptions'
   import { resolveComponentDensity } from '../../core/density'
+  import { useComponentDensity } from '../../composables/useComponentDensity'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import OptionStatus from '../../internal/OptionStatus.vue'
 
   defineOptions({ name: 'C_Select', inheritAttrs: false })
@@ -124,10 +130,12 @@
     values: selectedValues,
     disabled: blocked,
   })
+  const componentTheme = useComponentTheme()
+  const density = useComponentDensity(() => props.density)
   const resolvedSize = computed(
     () =>
       props.size ??
-      (props.density ? resolveComponentDensity(props.density).size : undefined)
+      (density.value ? resolveComponentDensity(density.value).size : undefined)
   )
   const resolvedOptions = computed(() =>
     props.source

@@ -17,7 +17,7 @@ function buildEntryMap(): Record<string, string> {
   const componentsDir = path.resolve(__dirname, 'src/components')
   const entries: Record<string, string> = {
     index: 'src/index.ts',
-    config: 'src/context.ts',
+    config: 'src/public-config.ts',
     data: 'src/data.ts',
     workflows: 'src/workflows.ts',
     resolver: 'src/resolver.ts',

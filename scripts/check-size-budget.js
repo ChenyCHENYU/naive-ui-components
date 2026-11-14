@@ -12,11 +12,12 @@ const budgets = {
   // 0.21.1 恢复先前丢失的 Markdown 六套主题，增加约 55 KiB。
   // 0.32 的独立建议输入和选择面板状态增加少量样式，保留约 5 KiB 余量。
   // 0.36 补齐并隔离流程 SDK 必需的定位样式，增加约 5.3 KiB。
-  'style.css': { min: 430 * 1024, max: 656 * 1024 },
+  // 0.37 公共变量优先/私有主题兜底的显式 CSS 增加约 26 KiB。
+  'style.css': { min: 430 * 1024, max: 688 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
   'C_Table.base.css': { min: 30 * 1024, max: 65 * 1024 },
-  'C_Table.css': { min: 90 * 1024, max: 140 * 1024 },
+  'C_Table.css': { min: 90 * 1024, max: 148 * 1024 },
 }
 
 const walk = directory =>
@@ -68,7 +69,8 @@ const totalSize = files.reduce(
 // 0.34 的节点状态和组织图增加约 22 KiB 双格式产物；消耗既有余量后追加 16 KiB。
 // 0.36 人员选择、端口/分支校验、声明和流程基础 CSS 共约 96.1 KiB，追加 100 KiB。
 // 每个公开入口的首屏/按需加载预算保持不变，由 check:consumer-size 独立约束。
-const totalLimit = 4 * 1024 * 1024 + 524 * 1024
+// 0.37 相对官方 0.36.0 增加约 118.7 KiB（CSS 约 69.2 KiB）；消耗既有余量并追加 116 KiB。
+const totalLimit = 4 * 1024 * 1024 + 640 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

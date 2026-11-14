@@ -136,13 +136,13 @@
       align-items: center;
       font-size: 13px;
       font-weight: 500;
-      color: var(--text-color-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
     }
 
     .preview-main {
       width: 100%;
       overflow: hidden;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--c-border, var(--c-theme-border));
       border-radius: 6px;
       background:
         linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
@@ -190,9 +190,9 @@
 
       &__box {
         overflow: hidden;
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--c-border, var(--c-theme-border));
         border-radius: 4px;
-        background: var(--body-color);
+        background: var(--c-bg-body, var(--c-theme-bg-body));
 
         &--circular {
           border-radius: 50%;
@@ -206,7 +206,7 @@
 
       &__label {
         font-size: 11px;
-        color: var(--text-color-3);
+        color: var(--c-text-3, var(--c-theme-text-3));
       }
     }
   }

@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../../config'
+  import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type { NotificationMessage } from '../types'
@@ -173,14 +173,14 @@
     padding: 12px 16px;
     cursor: pointer;
     transition: background-color var(--c-transition, 0.2s ease);
-    border-bottom: 1px solid var(--c-border);
+    border-bottom: 1px solid var(--c-border, var(--c-theme-border));
 
     &:last-child {
       border-bottom: none;
     }
 
     &:hover {
-      background-color: var(--c-bg-card);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card));
 
       .notification-item__actions {
         opacity: 1;
@@ -188,15 +188,23 @@
     }
 
     &--unread {
-      background-color: color-mix(in srgb, var(--c-primary) 4%, transparent);
+      background-color: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 4%,
+        transparent
+      );
 
       &:hover {
-        background-color: color-mix(in srgb, var(--c-primary) 8%, transparent);
+        background-color: color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 8%,
+          transparent
+        );
       }
     }
 
     &--urgent {
-      border-left: 3px solid #f5222d;
+      border-left: 3px solid var(--c-error, var(--c-theme-error, #d03050));
       padding-left: 13px;
     }
 
@@ -214,10 +222,10 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--c-primary);
+      background: var(--c-primary, var(--c-theme-primary));
 
       &--urgent {
-        background: #f5222d;
+        background: var(--c-error, var(--c-theme-error, #d03050));
         box-shadow: 0 0 4px rgba(245, 34, 45, 0.5);
       }
 
@@ -226,11 +234,11 @@
       }
 
       &--normal {
-        background: var(--c-primary);
+        background: var(--c-primary, var(--c-theme-primary));
       }
 
       &--low {
-        background: var(--c-text-4);
+        background: var(--c-text-4, var(--c-theme-text-4));
       }
     }
 
@@ -277,7 +285,7 @@
     &__title {
       font-size: 13px;
       font-weight: 500;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
       line-height: 1.4;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -286,7 +294,7 @@
 
     &__summary {
       font-size: 12px;
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
       line-height: 1.5;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -305,7 +313,7 @@
     &__time,
     &__sender {
       font-size: 11px;
-      color: var(--c-text-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
     }
 
     &__sender::before {
@@ -334,12 +342,12 @@
       padding: 2px;
       border-radius: 4px;
       cursor: pointer;
-      color: var(--c-text-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
       transition: all var(--c-transition, 0.2s ease);
 
       &:hover {
-        color: var(--c-primary);
-        background-color: var(--c-border);
+        color: var(--c-primary, var(--c-theme-primary));
+        background-color: var(--c-border, var(--c-theme-border));
       }
 
       &:disabled {

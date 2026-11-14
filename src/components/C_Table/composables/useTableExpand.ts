@@ -25,7 +25,7 @@ import type {
   DataRecord,
 } from '../types'
 import { flattenTableRows, mapTableColumnLeaves } from '../helpers'
-import { useComponentLocale } from '../../../config'
+import { useComponentLocale } from '../../../component-config'
 
 /* ================= 核心状态管理 ================= */
 const useExpandState = <T extends object, C>(

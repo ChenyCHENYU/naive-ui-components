@@ -1,4 +1,4 @@
-import { useComponentLocale } from '../../../config'
+import { useComponentLocale } from '../../../component-config'
 import {
   ref,
   computed,

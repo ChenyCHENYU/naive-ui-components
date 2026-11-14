@@ -1,11 +1,14 @@
 /* C_Skeleton 骨架屏组件样式 */
 
 .c-skeleton {
-  --c-skeleton-bg: #e5e7eb;
   --c-skeleton-wave-bg: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.4),
+    color-mix(
+      in srgb,
+      var(--c-bg-card, var(--c-theme-bg-card)) 65%,
+      transparent
+    ),
     transparent
   );
   --c-skeleton-radius: 4px;
@@ -24,7 +27,7 @@
 
 /* ─── 基础骨架块 ─── */
 .c-skeleton__item {
-  background-color: var(--c-skeleton-bg);
+  background-color: var(--c-skeleton-bg, var(--c-theme-skeleton-bg));
   border-radius: var(--c-skeleton-radius);
   position: relative;
   overflow: hidden;
@@ -142,20 +145,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--c-radius-panel, var(--c-theme-radius-panel, 8px));
   margin-bottom: var(--c-skeleton-gap);
 }
 
 .c-skeleton__image-icon {
-  color: var(--c-skeleton-bg);
+  color: var(--c-skeleton-bg, var(--c-theme-skeleton-bg));
   opacity: 0.6;
   filter: brightness(0.8);
 }
 
 /* ─── Card 预设 ─── */
 .c-skeleton__card {
-  border: 1px solid var(--c-skeleton-bg);
-  border-radius: 8px;
+  border: 1px solid var(--c-skeleton-bg, var(--c-theme-skeleton-bg));
+  border-radius: var(--c-radius-panel, var(--c-theme-radius-panel, 8px));
   overflow: hidden;
   margin-bottom: var(--c-skeleton-gap);
 }
@@ -179,28 +182,37 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--c-skeleton-bg);
+  border-top: 1px solid var(--c-skeleton-bg, var(--c-theme-skeleton-bg));
 }
 
 /* ─── Table 预设 ─── */
 .c-skeleton__table {
   width: 100%;
-  border: 1px solid var(--c-skeleton-bg);
-  border-radius: 8px;
+  border: 1px solid var(--c-skeleton-bg, var(--c-theme-skeleton-bg));
+  border-radius: var(--c-radius-panel, var(--c-theme-radius-panel, 8px));
   overflow: hidden;
 }
 
 .c-skeleton__table-header {
   display: flex;
   padding: 12px 16px;
-  background-color: color-mix(in srgb, var(--c-skeleton-bg) 30%, transparent);
-  border-bottom: 1px solid var(--c-skeleton-bg);
+  background-color: color-mix(
+    in srgb,
+    var(--c-skeleton-bg, var(--c-theme-skeleton-bg)) 30%,
+    transparent
+  );
+  border-bottom: 1px solid var(--c-skeleton-bg, var(--c-theme-skeleton-bg));
 }
 
 .c-skeleton__table-row {
   display: flex;
   padding: 12px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--c-skeleton-bg) 50%, transparent);
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--c-skeleton-bg, var(--c-theme-skeleton-bg)) 50%,
+      transparent
+    );
 
   &:last-child {
     border-bottom: none;
@@ -248,7 +260,12 @@
   align-items: flex-start;
   gap: var(--c-skeleton-gap);
   padding: 12px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--c-skeleton-bg) 50%, transparent);
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--c-skeleton-bg, var(--c-theme-skeleton-bg)) 50%,
+      transparent
+    );
 
   &:last-child {
     border-bottom: none;
@@ -284,4 +301,14 @@
 
 .c-skeleton__detail-value {
   margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-skeleton__item,
+  .c-skeleton__item::after {
+    animation: none;
+  }
+  .c-skeleton__item::after {
+    display: none;
+  }
 }

@@ -8,6 +8,7 @@
 <template>
   <div
     class="c-steps"
+    :style="themeStyle"
     :class="[`steps-${direction}`, { 'steps-connected': connected }]"
   >
     <component
@@ -64,9 +65,11 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import type { StepItem } from './types'
 
   defineOptions({ name: 'C_Steps' })
+  const themeStyle = useComponentTheme()
 
   interface LegacyStepItem extends StepItem {
     title: string

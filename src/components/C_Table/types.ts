@@ -15,7 +15,7 @@ import type {
 import type { TableConfig, CrudBinding } from './composables/useTableConfig'
 import type { UseCrossPageSelectionReturn } from './composables/useCrossPageSelection'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
-import type { ComponentFeedback, ComponentLocale } from '../../config'
+import type { ComponentFeedback, ComponentLocale } from '../../component-config'
 
 /* 宽松的 Ref-like 类型，支持跨 Vue 实例的 Ref 传递 */
 type RefLike<T> = { value: T } | T

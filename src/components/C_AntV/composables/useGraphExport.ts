@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { Graph } from '@antv/x6'
 import type { DropdownOption } from 'naive-ui'
-import { useComponentFeedback } from '../../../config'
+import { useComponentFeedback } from '../../../component-config'
 import { exportJSON, exportPNG, exportSVG } from '../utils/exportUtils'
 
 /** 导出下拉菜单选项（三个布局共享） */

@@ -3,7 +3,7 @@
 
 <script setup lang="ts">
   import { computed, inject, provide, reactive } from 'vue'
-  import { FORM_GLOBAL_CONFIG_KEY } from '../../context'
+  import { FORM_GLOBAL_CONFIG_KEY, COMPONENT_DENSITY_KEY } from '../../context'
   import { TABLE_GLOBAL_CONFIG_KEY } from '../C_Table/composables/useTableGlobalConfig'
   import type { ComponentDensity } from '../../core/density'
 
@@ -12,6 +12,7 @@
   const formDefaults = inject(FORM_GLOBAL_CONFIG_KEY, {})
   const tableDefaults = inject(TABLE_GLOBAL_CONFIG_KEY, {})
   const density = computed(() => props.density)
+  provide(COMPONENT_DENSITY_KEY, density)
   // 只复制本层默认配置；显式 size/单字段配置的优先级保持不变。
   provide(FORM_GLOBAL_CONFIG_KEY, reactive({ ...formDefaults, density }))
   provide(

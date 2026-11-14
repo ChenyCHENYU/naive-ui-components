@@ -181,6 +181,7 @@ function checkRenderedConsumer() {
     ['/C_OrgChart', 'C_OrgChart'],
     ['/C_UserPicker', 'C_UserPicker'],
     ['/config', 'COMPONENT_LOCALE_KEY'],
+    ['/config', 'createComponentTheme'],
   ]
   const imports = entries
     .map(([subpath, name]) =>
@@ -199,6 +200,10 @@ function checkRenderedConsumer() {
     import { renderToString } from 'vue/server-renderer';
     const require = createRequire(import.meta.url);
     ${imports}
+    const theme = createComponentTheme({ mode: 'dark', primary: '#7c3aed', radius: 8 });
+    assert.ok(theme.theme, 'Theme factory must return the vendor dark theme');
+    assert.equal(theme.themeOverrides.common.primaryColor, '#7c3aed', 'Theme factory must retain a custom brand');
+    assert.equal(theme.themeOverrides.common.borderRadius, '8px', 'Theme factory must retain the configured radius');
     const naiveRequire = createRequire(require.resolve('naive-ui'));
     const { setup: setupCssrSsr } = naiveRequire('@css-render/vue3-ssr');
     const app = createSSRApp({ render: () => h('main', [
@@ -563,6 +568,8 @@ try {
       ['/config', 'COMPONENT_LOCALE_KEY'],
       ['/config', 'COMPONENT_FEEDBACK_KEY'],
       ['/config', 'FORM_GLOBAL_CONFIG_KEY'],
+      ['/config', 'createComponentTheme'],
+      ['/config', 'COMPONENT_COLOR_PALETTES'],
     ],
     true
   )

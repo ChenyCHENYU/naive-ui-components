@@ -14,7 +14,7 @@
       :options="levelOptions[index]"
       clearable
       :placeholder="placeholders[index]"
-      :size="size"
+      :size="resolvedSize"
       :disabled="isLevelLocked(index)"
       @update:value="handleChange(index, $event)"
       class="n-select-item"
@@ -26,6 +26,11 @@
   import { ref, computed, watch } from 'vue'
   import { NSelect } from 'naive-ui'
   import { normalizeCascadeSelection } from './cascadeSelection'
+  import { useComponentDensity } from '../../composables/useComponentDensity'
+  import {
+    resolveComponentDensity,
+    type ComponentDensity,
+  } from '../../core/density'
   import type { CascadeItem, CascadeValue } from './types'
 
   defineOptions({ name: 'C_Cascade' })
@@ -38,6 +43,7 @@
       disabled?: boolean
       readonly?: boolean
       size?: 'small' | 'medium' | 'large'
+      density?: ComponentDensity
     }>(),
     {
       placeholders: () => ['请选择', '请选择', '请选择'],
@@ -48,6 +54,13 @@
     'update:modelValue': [value: CascadeValue]
     change: [value: CascadeValue]
   }>()
+
+  const density = useComponentDensity(() => props.density)
+  const resolvedSize = computed(
+    () =>
+      props.size ??
+      (density.value ? resolveComponentDensity(density.value).size : undefined)
+  )
 
   const levels = [0, 1, 2]
   const selectedValues = ref<(string | number | null)[]>([null, null, null])

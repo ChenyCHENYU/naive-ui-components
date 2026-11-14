@@ -1,7 +1,6 @@
 /* Grid 布局样式 */
 
 /* 变量定义 */
-$border-radius: 8px;
 $spacing-sm: 0.5rem;
 $spacing-md: 1rem;
 
@@ -102,24 +101,7 @@ $spacing-md: 1rem;
   }
 }
 
-/* 主题适配 */
-:deep(.n-card) {
-  --n-border-radius: #{$border-radius};
-}
-
+/* 原生卡片的圆角、明暗由当前 NConfigProvider 管理。 */
 :deep(.n-input-number) {
-  --n-width: 100%;
-}
-
-/* 暗色主题 */
-@media (prefers-color-scheme: dark) {
-  .c-grid-layout {
-    .grid-container {
-      .grid-item {
-        .item-wrapper:hover {
-          background-color: rgba(255, 255, 255, 0.05);
-        }
-      }
-    }
-  }
+  width: 100%;
 }

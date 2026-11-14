@@ -335,11 +335,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
     const validate = confirmationRequired.value
     const resolvedRows = validate ? await resolver.resolve(chosen) : undefined
     if (validate && !resolvedRows) return false
-    if (
-      !opened.value ||
-      session.value !== currentSession ||
-      !canConfirm.value
-    )
+    if (!opened.value || session.value !== currentSession || !canConfirm.value)
       return false
     completeSelection(chosen, resolvedRows)
     return true
@@ -547,7 +543,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
   }
 
   function applyQuery(search: string, filters: TFilters | undefined): void {
-    if (!opened.value || blocked.value) return
+    if (!opened.value || blocked.value || confirming.value) return
     const previous = queryState.value
     const sameQuery =
       previous.search === search && isDataEqual(previous.filters, filters)

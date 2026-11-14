@@ -1,5 +1,5 @@
 import { ref, shallowRef, computed, watch } from 'vue'
-import { useComponentFeedback } from '../../../config'
+import { useComponentFeedback } from '../../../component-config'
 import type { CalendarEvent, CalendarProps, CalendarEditForm } from '../types'
 import {
   EVENT_COLORS,

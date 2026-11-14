@@ -8,6 +8,7 @@
 <template>
   <div
     class="c-action-bar"
+    :style="themeStyle"
     :class="{
       'is-compact': finalConfig.compact,
       'is-inline': finalConfig.inline,
@@ -87,6 +88,9 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentDensity } from '../../composables/useComponentDensity'
+  import { resolveComponentDensity } from '../../core/density'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import {
     computed,
     h,
@@ -112,6 +116,8 @@
   } from './presets'
 
   defineOptions({ name: 'C_ActionBar' })
+  const themeStyle = useComponentTheme()
+  const scopedDensity = useComponentDensity()
 
   const props = withDefaults(defineProps<TableActionsProps>(), {
     actions: () => [],
@@ -125,6 +131,11 @@
   const finalConfig = computed<Required<ActionBarConfig>>(() => ({
     ...ACTION_BAR_DEFAULT_CONFIG,
     ...props.config,
+    size:
+      props.config.size ??
+      (scopedDensity.value
+        ? resolveComponentDensity(scopedDensity.value).size
+        : ACTION_BAR_DEFAULT_CONFIG.size),
     // 行内模式也通过按钮间距体现紧凑程度；显式 gap 始终优先。
     gap:
       props.config.gap ??

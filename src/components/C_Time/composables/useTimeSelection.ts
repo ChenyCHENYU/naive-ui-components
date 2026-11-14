@@ -1,3 +1,5 @@
+import { useComponentDensity } from '../../../composables/useComponentDensity'
+import { resolveComponentDensity } from '../../../core/density'
 import { ref, computed, watch } from 'vue'
 import type { TemporalValueMode } from '../../../core/temporalField'
 import { formatLocalTime, parseLocalTime } from '../../../utils/localTime'
@@ -23,6 +25,7 @@ export function useTimeSelection(
   props: TimeRuntimeProps<TimeMode | undefined, TemporalValueMode>,
   emit: EmitFn
 ) {
+  const density = useComponentDensity()
   const mode = computed(() => props.mode ?? 'range')
 
   /* ==================== 响应式状态 ==================== */
@@ -81,7 +84,12 @@ export function useTimeSelection(
           ? props.attrs.format
           : timeFormat.value
     const attrs = {
-      size: props.size,
+      // 无区域默认时继续透传 undefined，保留原生 Form 的尺寸继承。
+      size:
+        props.size ??
+        (density.value
+          ? resolveComponentDensity(density.value).size
+          : undefined),
       clearable: props.clearable,
       valueFormat: props.valueFormat,
       ...props.attrs,

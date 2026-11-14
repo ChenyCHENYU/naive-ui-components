@@ -1,7 +1,7 @@
 /* 字段规则控件：离散值可点选，模式与选择状态同步显示。 */
 .cron-field-editor {
   padding: 18px;
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--c-border, var(--c-theme-border));
   border-radius: 12px;
   &__heading {
     display: flex;
@@ -9,10 +9,10 @@
     gap: 12px;
     strong {
       font-size: 13px;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
     span {
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
       font-size: 11px;
     }
   }
@@ -23,24 +23,28 @@
     margin: 16px 0;
     button {
       padding: 6px 12px;
-      border: 1px solid var(--c-border);
+      border: 1px solid var(--c-border, var(--c-theme-border));
       border-radius: 7px;
       font-size: 12px;
       &[aria-pressed='true'] {
-        border-color: var(--c-primary);
-        background: color-mix(in srgb, var(--c-primary) 8%, transparent);
-        color: var(--c-primary);
+        border-color: var(--c-primary, var(--c-theme-primary));
+        background: color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 8%,
+          transparent
+        );
+        color: var(--c-primary, var(--c-theme-primary));
       }
     }
   }
   button {
     appearance: none;
     font: inherit;
-    color: var(--c-text-2);
+    color: var(--c-text-2, var(--c-theme-text-2));
     background: transparent;
     cursor: pointer;
     &:focus-visible {
-      outline: 2px solid var(--c-primary);
+      outline: 2px solid var(--c-primary, var(--c-theme-primary));
       outline-offset: 2px;
     }
     &:disabled {
@@ -55,14 +59,14 @@
     gap: 8px;
     min-height: 34px;
     font-size: 12px;
-    color: var(--c-text-2);
+    color: var(--c-text-2, var(--c-theme-text-2));
     :deep(.n-input-number) {
       width: 96px;
     }
     button {
       border: 0;
       font-size: 12px;
-      color: var(--c-primary);
+      color: var(--c-primary, var(--c-theme-primary));
     }
   }
   &__grid {
@@ -75,25 +79,33 @@
     }
   }
   &__cell {
-    border: 1px solid var(--c-border);
+    border: 1px solid var(--c-border, var(--c-theme-border));
     border-radius: 6px;
     padding: 7px 3px;
     font:
       12px ui-monospace,
       monospace !important;
     &:hover:enabled {
-      border-color: var(--c-primary);
+      border-color: var(--c-primary, var(--c-theme-primary));
     }
     &--on {
-      border-color: color-mix(in srgb, var(--c-primary) 25%, var(--c-border));
-      background: color-mix(in srgb, var(--c-primary) 7%, transparent);
-      color: var(--c-primary) !important;
+      border-color: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 25%,
+        var(--c-border, var(--c-theme-border))
+      );
+      background: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 7%,
+        transparent
+      );
+      color: var(--c-primary, var(--c-theme-primary)) !important;
     }
   }
   &__hint {
     font-size: 11px;
     line-height: 1.7;
-    color: var(--c-text-3);
+    color: var(--c-text-3, var(--c-theme-text-3));
     margin: 14px 0 0;
   }
 }

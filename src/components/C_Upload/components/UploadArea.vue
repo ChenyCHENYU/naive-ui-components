@@ -158,33 +158,33 @@
     position: relative;
     box-sizing: border-box;
     padding: 32px 24px;
-    border: 2px dashed var(--border-color);
+    border: 2px dashed var(--c-border, var(--c-theme-border));
     border-radius: 10px;
     cursor: pointer;
-    background: var(--card-color);
+    background: var(--c-bg-card, var(--c-theme-bg-card));
     transition: all 0.25s ease;
     text-align: center;
 
     &:hover:not(.upload-area--disabled) {
-      border-color: var(--primary-color);
+      border-color: var(--c-primary, var(--c-theme-primary));
       background: color-mix(
         in srgb,
-        var(--primary-color) 4%,
-        var(--card-color)
+        var(--c-primary, var(--c-theme-primary)) 4%,
+        var(--c-bg-card, var(--c-theme-bg-card))
       );
     }
 
     &--drag-over {
-      border-color: var(--primary-color);
+      border-color: var(--c-primary, var(--c-theme-primary));
       border-style: solid;
       background: color-mix(
         in srgb,
-        var(--primary-color) 8%,
-        var(--card-color)
+        var(--c-primary, var(--c-theme-primary)) 8%,
+        var(--c-bg-card, var(--c-theme-bg-card))
       );
 
       .upload-area__icon {
-        color: var(--primary-color);
+        color: var(--c-primary, var(--c-theme-primary));
         transform: scale(1.1);
       }
     }
@@ -207,27 +207,27 @@
 
     &__icon {
       font-size: 48px;
-      color: var(--text-color-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
       transition: all 0.25s ease;
     }
 
     &__text {
       font-size: 14px;
-      color: var(--text-color-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
       line-height: 1.6;
 
       kbd {
         padding: 1px 5px;
         font-size: 12px;
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--c-border, var(--c-theme-border));
         border-radius: 3px;
-        background: var(--body-color);
+        background: var(--c-bg-body, var(--c-theme-bg-body));
       }
     }
 
     &__tip {
       font-size: 12px;
-      color: var(--text-color-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
     }
   }
 </style>

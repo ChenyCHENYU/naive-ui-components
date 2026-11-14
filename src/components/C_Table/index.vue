@@ -23,6 +23,7 @@
     ]"
     :aria-busy="normalizedLoading"
     :style="{
+      ...componentTheme,
       '--c-table-native-width':
         nativeLayout.width === undefined ? '100%' : `${nativeLayout.width}px`,
     }"
@@ -218,7 +219,7 @@
       v-model:show="modalVisible"
       :title="resolved.modalTitle"
       :aria-label="resolved.modalTitle"
-      :style="modalStyles.shell"
+      :style="{ ...componentTheme, ...modalStyles.shell }"
       :header-style="modalStyles.header"
       :content-style="modalStyles.content"
       :footer-style="modalStyles.footer"
@@ -277,12 +278,13 @@
     <!-- 列设置抽屉 -->
     <NDrawer
       v-model:show="showSettingsPanel"
-      :width="420"
+      width="min(420px, calc(100vw - 24px))"
       placement="right"
       :mask-closable="true"
     >
       <NDrawerContent
         :title="t('table.columnSettings')"
+        :style="componentTheme"
         closable
       >
         <ColumnSettings
@@ -357,7 +359,8 @@
   import { useActionTask } from '../../composables/useActionTask'
   import { resolveFormModalStyles } from '../shared/formModal'
   import { cloneData, isDataEqual } from '../../utils/data'
-  import { useComponentFeedback, useComponentLocale } from '../../config'
+  import { useComponentFeedback, useComponentLocale } from '../../component-config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { C_Loading } from '../C_Loading'
   import {
     collectTreeBranchKeys,
@@ -367,6 +370,7 @@
   } from './helpers'
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
+  const componentTheme = useComponentTheme()
 
   const C_Form = defineAsyncComponent(() =>
     import('../C_Form').then(module => module.C_Form)

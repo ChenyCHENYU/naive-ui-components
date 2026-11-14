@@ -33,6 +33,7 @@
               >
               <NButton
                 text
+                :disabled="confirming || options.disabled || options.readonly"
                 @click="navigate(undefined)"
                 >{{ t('picker.allCategories') }}</NButton
               >
@@ -45,6 +46,7 @@
                 :selected-keys="navigationKeys"
                 :addable="false"
                 :refreshable="false"
+                :disabled="confirming || options.disabled || options.readonly"
                 @node-select="(_node, keys) => navigate(keys[0])"
               />
             </template>

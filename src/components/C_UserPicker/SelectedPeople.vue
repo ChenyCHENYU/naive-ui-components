@@ -80,6 +80,7 @@
   </section>
 </template>
 <script setup lang="ts" generic="T extends object">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, ref, watch } from 'vue'
   import { NButton, NPagination, useThemeVars } from 'naive-ui'
   import { useComponentLocale } from '../../composables/useComponentLocale'
@@ -95,8 +96,10 @@
     disabledReason?: (row: T) => string | undefined
   }>()
   const { t } = useComponentLocale(() => props.locale)
+  const componentTheme = useComponentTheme()
   const theme = useThemeVars()
   const themeStyle = computed(() => ({
+    ...componentTheme.value,
     '--c-user-picker-muted': theme.value.textColor3,
     '--c-user-picker-border': theme.value.borderColor,
   }))

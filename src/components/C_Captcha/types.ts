@@ -1,4 +1,4 @@
-import type { ComponentFeedback, ComponentLocale } from '../../config'
+import type { ComponentFeedback, ComponentLocale } from '../../component-config'
 
 export interface CaptchaProof {
   /** Client correlation value only; servers must never trust it as proof. */

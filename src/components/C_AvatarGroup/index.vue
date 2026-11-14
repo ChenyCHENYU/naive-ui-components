@@ -5,6 +5,7 @@
 <template>
   <div
     class="c-avatar-group"
+    :style="themeStyle"
     :class="{ 'is-rtl': mergedProps.direction === 'rtl' }"
   >
     <NTooltip
@@ -94,15 +95,18 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed } from 'vue'
   import {
     DEFAULT_AVATAR_GROUP_PROPS,
     getInitials,
     nameToColor,
-    STATUS_COLOR_MAP,
     type AvatarGroupProps,
     type AvatarItem,
   } from './types'
+
+  defineOptions({ name: 'C_AvatarGroup' })
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(
     defineProps<{
@@ -178,13 +182,20 @@
     }
   })
 
-  /** 计算状态指示点样式 */
+  const statusColors: Record<string, string> = {
+    online: 'var(--c-success, var(--c-theme-success))',
+    offline: 'var(--c-text-3, var(--c-theme-text-3))',
+    busy: 'var(--c-error, var(--c-theme-error))',
+    away: 'var(--c-warning, var(--c-theme-warning))',
+  }
+
+  /** 状态点表达语义；头像姓名色仍保持稳定，不随主题改变。 */
   function statusStyle(status: string) {
     const dotSize = Math.max(8, Math.round(mergedProps.value.size! * 0.24))
     return {
       width: `${dotSize}px`,
       height: `${dotSize}px`,
-      backgroundColor: STATUS_COLOR_MAP[status] ?? STATUS_COLOR_MAP.offline,
+      backgroundColor: statusColors[status] ?? statusColors.offline,
     }
   }
 </script>

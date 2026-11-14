@@ -33,7 +33,7 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.36.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.37.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.33 增强树的远程路径定位、分组选项、搜索字段设置和表格编辑契约，并保留原有默认用法。见[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 
@@ -192,6 +192,7 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 | [组件目录](./docs/components.md)                         | 63 个组件、外部依赖与各组件的使用边界                            |
 | [使用指南](./docs/guides/usage.md)                       | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
 | [密度与多表工作台](./docs/guides/table-density.md)       | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
+| [主题与视觉标准](./docs/guides/theme.md)                 | 统一色彩、明暗主题、尺寸层级与局部覆盖，不增加 Provider          |
 | [大列表与异步任务](./docs/guides/runtime-performance.md) | 自动窗口化、聊天滚动、搜索索引、字幕与图片任务                   |
 | [瀑布流长列表](./docs/guides/waterfall.md)               | 自动窗口化、嵌套滚动、变高卡片与键盘导航                         |
 | [兼容 API 迁移](./docs/guides/api-migration.md)          | 标准模型、应用渲染器与只读迁移检查                               |

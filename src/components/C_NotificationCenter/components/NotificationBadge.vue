@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../../config'
+  import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import { DEFAULT_MAX_BADGE_COUNT } from '../constants'
@@ -107,21 +107,21 @@
       transition: all var(--c-transition, 0.2s ease);
 
       &:hover {
-        background-color: var(--c-border);
+        background-color: var(--c-border, var(--c-theme-border));
 
         .notification-badge__icon {
-          color: var(--c-primary);
+          color: var(--c-primary, var(--c-theme-primary));
         }
       }
 
       &:focus-visible {
-        outline: 2px solid var(--c-primary);
+        outline: 2px solid var(--c-primary, var(--c-theme-primary));
         outline-offset: 2px;
       }
     }
 
     &__icon {
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
       transition: color var(--c-transition, 0.2s ease);
     }
 
@@ -133,8 +133,12 @@
       height: 16px;
       padding: 0 4px;
       border-radius: 8px;
-      background: #f5222d;
-      color: #fff;
+      background: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error, #d03050)) 16%,
+        var(--c-bg-surface, var(--c-theme-bg-surface, #fff))
+      );
+      color: var(--c-text-1, var(--c-theme-text-1, #262626));
       font-size: 10px;
       font-weight: 600;
       line-height: 16px;

@@ -45,7 +45,7 @@
 </template>
 <script setup lang="ts">
   import { NButton, NCheckbox, NCheckboxGroup, NPopover } from 'naive-ui'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import type { ComponentLocale } from '../../core/contracts'
   const props = defineProps<{
     fields: readonly { key: string; label: string; locked: boolean }[]

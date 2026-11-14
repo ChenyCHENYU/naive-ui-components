@@ -1,31 +1,39 @@
 import { Graph } from '@antv/x6'
 import {
   ref,
+  computed,
   shallowRef,
   watch,
   nextTick,
   onUnmounted,
   type ComputedRef,
   type Ref,
+  type CSSProperties,
 } from 'vue'
+import { useComponentTheme } from '../../../composables/useComponentTheme'
 
 /**
  * 获取主题相关的颜色配置
  */
-function getThemeColors(isDark: boolean) {
+function getThemeColors(variables: CSSProperties, container?: HTMLElement) {
+  const style = container && getComputedStyle(container)
+  const color = (role: 'bg-body' | 'border' | 'bg-muted') =>
+    String(
+      style?.getPropertyValue(`--c-${role}`).trim() ||
+        variables[`--c-${role}`] ||
+        variables[`--c-theme-${role}`]
+    )
   return {
-    background: isDark ? '#18181c' : '#f5f5f5',
-    gridPrimary: isDark ? 'rgba(255, 255, 255, 0.08)' : '#eee',
-    gridSecondary: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ddd',
+    background: color('bg-body'),
+    gridPrimary: color('border'),
+    gridSecondary: color('bg-muted'),
   }
 }
 
 /**
  * 默认的图表配置选项
  */
-function getDefaultOptions(isDark: boolean = false) {
-  const colors = getThemeColors(isDark)
-
+function getDefaultOptions(colors: ReturnType<typeof getThemeColors>) {
   return {
     background: { color: colors.background },
     grid: {
@@ -75,6 +83,17 @@ export function useGraphBase(
   containerRef: Ref<HTMLElement | undefined>,
   isDarkRef?: Ref<boolean> | ComputedRef<boolean>
 ) {
+  const componentTheme = useComponentTheme(() =>
+    isDarkRef === undefined ? undefined : isDarkRef.value ? 'dark' : 'light'
+  )
+  // SVG 网格被编码为图片，需要实色；节点默认值仍使用 CSS 变量，保留导入 attrs 的所有权。
+  const colors = computed(() =>
+    getThemeColors(componentTheme.value, containerRef.value)
+  )
+  const themeOptions = computed(() => {
+    const { background, grid } = getDefaultOptions(colors.value)
+    return { background, grid }
+  })
   let initVersion = 0
   let zoomToFitTimer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
@@ -98,8 +117,7 @@ export function useGraphBase(
 
       const { width, height } = getContainerSize(containerRef.value)
 
-      const isDark = isDarkRef?.value ?? false
-      const defaultOptions = getDefaultOptions(isDark)
+      const defaultOptions = getDefaultOptions(colors.value)
 
       const finalOptions = {
         container: containerRef.value,
@@ -107,6 +125,8 @@ export function useGraphBase(
         height,
         ...defaultOptions,
         ...options,
+        background: options.background ?? defaultOptions.background,
+        grid: options.grid ?? defaultOptions.grid,
       }
 
       graph.value = new Graph(finalOptions)
@@ -130,30 +150,26 @@ export function useGraphBase(
   /**
    * 更新主题
    */
-  function updateTheme(isDark: boolean) {
+  function updateTheme() {
     if (!graph.value) return
 
-    const colors = getThemeColors(isDark)
+    const palette = colors.value
 
     // 更新背景色
-    graph.value.drawBackground({ color: colors.background })
+    graph.value.drawBackground?.({ color: palette.background })
 
     // 更新网格颜色
-    graph.value.drawGrid({
+    graph.value.drawGrid?.({
       type: 'doubleMesh',
       args: [
-        { color: colors.gridPrimary, thickness: 1 },
-        { color: colors.gridSecondary, thickness: 1, factor: 4 },
+        { color: palette.gridPrimary, thickness: 1 },
+        { color: palette.gridSecondary, thickness: 1, factor: 4 },
       ],
     })
   }
 
   // 监听主题变化
-  if (isDarkRef) {
-    watch(isDarkRef, isDark => {
-      updateTheme(isDark)
-    })
-  }
+  watch(colors, updateTheme, { flush: 'post' })
 
   /**
    * 销毁当前图表实例
@@ -232,5 +248,6 @@ export function useGraphBase(
     zoom,
     resizeGraph,
     updateTheme,
+    themeOptions,
   }
 }

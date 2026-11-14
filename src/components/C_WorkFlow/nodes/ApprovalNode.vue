@@ -31,9 +31,8 @@
         <div class="node-header">
           <div class="node-icon">
             <C_Icon
-              name="mdi:account"
+              name="mdi:account-check-outline"
               :size="12"
-              color="white"
             />
           </div>
           <span class="node-title">{{ data.title }}</span>
@@ -190,6 +189,7 @@
 
 <style scoped lang="scss">
   .approval-node {
+    --workflow-node-accent: var(--c-primary, var(--c-theme-primary, #2080f0));
     position: relative;
   }
 
@@ -200,18 +200,18 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 2px solid white;
+    border: 2px solid var(--workflow-surface, #fff);
     z-index: 2;
-    background: #faad14;
+    background: var(--c-warning, var(--c-theme-warning, #f0a020));
 
     &.approved {
-      background: #52c41a;
+      background: var(--c-success, var(--c-theme-success, #18a058));
     }
     &.rejected {
-      background: #ff4d4f;
+      background: var(--c-error, var(--c-theme-error, #d03050));
     }
     &.pending {
-      background: #1890ff;
+      background: var(--workflow-node-accent);
     }
   }
 
@@ -224,8 +224,12 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #ff4d4f;
-    color: white;
+    background: color-mix(
+      in srgb,
+      var(--c-error, var(--c-theme-error, #d03050)) 14%,
+      var(--workflow-surface, #fff)
+    );
+    color: var(--c-error, var(--c-theme-error, #d03050));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -234,12 +238,16 @@
     opacity: 0;
     transform: scale(0.8);
     transition: all 0.2s ease;
-    border: 2px solid white;
+    border: 2px solid var(--workflow-surface, #fff);
     box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
 
     &:hover {
       transform: scale(1);
-      background: #ff7875;
+      background: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error, #d03050)) 22%,
+        var(--workflow-surface, #fff)
+      );
       box-shadow: 0 4px 12px rgba(255, 77, 79, 0.5);
     }
 
@@ -268,14 +276,23 @@
     &:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-      border-color: #1890ff;
+      border-color: var(--workflow-node-accent);
     }
   }
 
   .node-header {
     padding: 12px 16px;
-    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #1890ff);
-    border-bottom: 1px solid #91d5ff;
+    background: color-mix(
+      in srgb,
+      var(--workflow-surface, white) 90%,
+      var(--workflow-node-accent)
+    );
+    border-bottom: 1px solid
+      color-mix(
+        in srgb,
+        var(--workflow-node-accent) 28%,
+        var(--workflow-border, #dfe5ed)
+      );
     display: flex;
     align-items: center;
     gap: 8px;
@@ -286,8 +303,12 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #1890ff;
-    color: white;
+    background: color-mix(
+      in srgb,
+      var(--workflow-node-accent) 18%,
+      var(--workflow-surface, #fff)
+    );
+    color: var(--workflow-node-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -301,8 +322,12 @@
   }
 
   .node-badge {
-    background: #1890ff;
-    color: white;
+    background: color-mix(
+      in srgb,
+      var(--workflow-node-accent) 18%,
+      var(--workflow-surface, #fff)
+    );
+    color: var(--workflow-text, #262626);
     padding: 2px 6px;
     border-radius: 10px;
     font-size: 11px;
@@ -331,8 +356,17 @@
   }
 
   .approver-tag {
-    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #1890ff);
-    border: 1px solid #91d5ff;
+    background: color-mix(
+      in srgb,
+      var(--workflow-surface, white) 90%,
+      var(--workflow-node-accent)
+    );
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--workflow-node-accent) 28%,
+        var(--workflow-border, #dfe5ed)
+      );
     border-radius: 8px;
     padding: 8px 12px;
     transition: all 0.2s ease;
@@ -359,7 +393,7 @@
 
         .approver-name {
           font-weight: 600;
-          color: #1890ff;
+          color: var(--workflow-node-accent);
           font-size: 13px;
         }
 
@@ -382,13 +416,13 @@
 
   .more-count {
     background: var(--workflow-background, #f0f0f0);
-    color: #8c8c8c;
+    color: var(--workflow-muted, #738094);
     padding: 6px 8px;
     border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
     text-align: center;
-    border: 1px dashed #d9d9d9;
+    border: 1px dashed var(--workflow-border, #dfe5ed);
   }
 
   .placeholder {
@@ -397,10 +431,10 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: #8c8c8c;
+    color: var(--workflow-muted, #738094);
     font-size: 12px;
     padding: 20px 0;
-    border: 1px dashed #d9d9d9;
+    border: 1px dashed var(--workflow-border, #dfe5ed);
     border-radius: 8px;
     background: var(--workflow-background, #fafafa);
 
@@ -420,29 +454,35 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #1890ff, #722ed1);
-    color: white;
+    background: color-mix(
+      in srgb,
+      var(--workflow-node-accent) 14%,
+      var(--workflow-surface, #fff)
+    );
+    color: var(--workflow-node-accent);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+    box-shadow: 0 4px 12px
+      color-mix(in srgb, var(--workflow-node-accent) 30%, transparent);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 10;
 
     &:hover {
       transform: translateX(-50%) scale(1.1);
-      box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
+      box-shadow: 0 6px 20px
+        color-mix(in srgb, var(--workflow-node-accent) 40%, transparent);
     }
     &:focus-visible {
-      outline: 2px solid #1890ff;
+      outline: 2px solid var(--workflow-node-accent);
       outline-offset: 2px;
     }
   }
 
   .delete-btn:focus-visible {
     opacity: 1;
-    outline: 2px solid #1890ff;
+    outline: 2px solid var(--workflow-node-accent);
     outline-offset: 2px;
   }
 </style>

@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-time-wrapper">
+  <div
+    class="c-time-wrapper"
+    :style="themeStyle"
+  >
     <!-- 时间段选择模式 -->
     <div
       v-if="mode === 'range'"
@@ -65,6 +68,7 @@
     V extends TemporalValueMode = 'timestamp'
   "
 >
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, type Ref } from 'vue'
   import { NTimePicker } from 'naive-ui'
   import { useTimeSelection } from './composables/useTimeSelection'
@@ -77,6 +81,7 @@
   } from './types'
 
   defineOptions({ name: 'C_Time' })
+  const themeStyle = useComponentTheme()
 
   const props = withDefaults(defineProps<TimeRuntimeProps<M, V>>(), {
     startPlaceholder: '请选择开始时间',

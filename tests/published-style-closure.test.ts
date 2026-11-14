@@ -49,14 +49,16 @@ describe('published CSS sharing contract', () => {
         'entry.css': '@import "./form.css";\n.table{display:grid}',
         'form.css': '@import "./editor.css";\n.form{gap:8px}',
         'editor.css': `@import "./${SHARED_TOKENS_FILE}";\n/*! required notice */\n.editor{color:red}`,
-        [SHARED_TOKENS_FILE]: ':root{--c-primary:blue}',
+        [SHARED_TOKENS_FILE]: ':root{--c-theme-primary:blue}',
       },
       root => {
         const css = readPublishedStyle(root, 'entry.css')
         expect(css).not.toContain('@import')
         expect(css).toContain('/*! required notice */')
-        expect(css.match(/--c-primary:/g)).toHaveLength(1)
-        expect(css.indexOf('--c-primary')).toBeLessThan(css.indexOf('.editor'))
+        expect(css.match(/--c-theme-primary:/g)).toHaveLength(1)
+        expect(css.indexOf('--c-theme-primary')).toBeLessThan(
+          css.indexOf('.editor')
+        )
         expect(css.indexOf('.editor')).toBeLessThan(css.indexOf('.form'))
         expect(css.indexOf('.form')).toBeLessThan(css.indexOf('.table'))
         expect(css).toContain('display:grid')
@@ -98,7 +100,7 @@ describe('published CSS sharing contract', () => {
         })
       )
       const files = {
-        [SHARED_TOKENS_FILE]: ':root{--c-primary:blue}',
+        [SHARED_TOKENS_FILE]: ':root{--c-theme-primary:blue}',
         'C_Editor.css': `@import "./${SHARED_TOKENS_FILE}";/*! editor notice */.w-e-text-container{color:blue}`,
         'C_Form.css':
           '@import "./C_Editor.css";.c-form-actions[data-v-form]{gap:8px}',

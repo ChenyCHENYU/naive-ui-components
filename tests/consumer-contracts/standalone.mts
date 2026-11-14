@@ -1,4 +1,7 @@
 import {
+  createComponentTheme,
+  COMPONENT_COLOR_PALETTES,
+  type ComponentThemeConfig,
   COMPONENT_LOCALE_KEY,
   COMPONENT_FEEDBACK_KEY,
   type ComponentLocale,
@@ -12,3 +15,10 @@ import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
 import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
 import { C_Menu } from '@robot-admin/naive-ui-components/C_Menu'
 void [C_Icon, C_Form, C_Table, C_Menu]
+
+const componentTheme: ComponentThemeConfig = createComponentTheme({
+  mode: 'dark',
+  primary: COMPONENT_COLOR_PALETTES.dark.primary,
+  radius: 8,
+})
+void componentTheme

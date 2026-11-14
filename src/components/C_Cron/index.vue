@@ -8,6 +8,7 @@
   <section
     class="c-cron"
     :style="{
+      ...themeStyle,
       height:
         typeof options.height === 'number'
           ? `${options.height}px`
@@ -129,6 +130,7 @@
   </section>
 </template>
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { useId, watch } from 'vue'
   import { NInput, NButton, NTag } from 'naive-ui'
   import type { CronProps, CronEmits, CronExpose } from './types'
@@ -138,6 +140,8 @@
   import CronTemplates from './components/CronTemplates.vue'
   import CronPreview from './components/CronPreview.vue'
   defineOptions({ name: 'C_Cron' })
+  const themeStyle = useComponentTheme()
+
   const props = withDefaults(defineProps<CronProps>(), {
     disabled: false,
     showSecond: true,

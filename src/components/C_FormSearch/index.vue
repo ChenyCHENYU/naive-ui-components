@@ -305,6 +305,7 @@
             <NPopover
               v-if="hiddenActiveCount"
               v-model:show="hiddenConditionsOpen"
+              :style="componentTheme"
               trigger="click"
               placement="bottom-end"
               :show-arrow="false"
@@ -447,7 +448,8 @@
     type Ref,
     type VNodeChild,
   } from 'vue'
-  import { useComponentLocale } from '../../config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentLocale } from '../../component-config'
   import { resolveComponentDensity } from '../../core/density'
   import { shouldSummarizeSelectTags } from '../../core/selectPresentation'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
@@ -523,10 +525,12 @@
   )
   const densityTokens = computed(() => resolveComponentDensity(density.value))
   const resolvedSize = computed(() => props.size ?? densityTokens.value.size)
-  const densityStyle = computed<CSSProperties | undefined>(() => {
-    if (density.value === undefined) return undefined
+  const componentTheme = useComponentTheme()
+  const densityStyle = computed<CSSProperties>(() => {
+    if (density.value === undefined) return componentTheme.value
     const { gap, rowGap, padding } = densityTokens.value
     return {
+      ...componentTheme.value,
       '--c-search-gap': `${gap}px`,
       '--c-search-row-gap': `${rowGap}px`,
       '--c-search-padding': `${padding}px`,

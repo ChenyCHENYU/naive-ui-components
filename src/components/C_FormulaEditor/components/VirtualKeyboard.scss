@@ -7,18 +7,18 @@
 .virtual-keyboard {
   container: formula-keyboard / inline-size;
   padding: 16px;
-  color: var(--c-text-2);
+  color: var(--c-text-2, var(--c-theme-text-2));
   &__label {
     display: block;
     margin: 0 0 10px;
-    color: var(--c-text-3);
+    color: var(--c-text-3, var(--c-theme-text-3));
     font-size: 11px;
     font-weight: 500;
   }
   &__functions {
     padding-bottom: 16px;
     margin-bottom: 16px;
-    border-bottom: 1px solid var(--c-border);
+    border-bottom: 1px solid var(--c-border, var(--c-theme-border));
   }
   &__function-grid {
     display: grid;
@@ -28,10 +28,19 @@
   &__function {
     min-width: 0;
     padding: 8px 6px;
-    border: 1px solid color-mix(in srgb, var(--c-primary) 20%, var(--c-border));
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 20%,
+        var(--c-border, var(--c-theme-border))
+      );
     border-radius: 7px;
-    color: var(--c-primary);
-    background: color-mix(in srgb, var(--c-primary) 5%, var(--c-bg-card));
+    color: var(--c-primary, var(--c-theme-primary));
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 5%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
     font:
       600 11px ui-monospace,
       monospace;
@@ -55,9 +64,13 @@
   &__numbers {
     min-width: 0;
     padding: 12px;
-    border: 1px solid var(--c-border);
+    border: 1px solid var(--c-border, var(--c-theme-border));
     border-radius: 12px;
-    background: color-mix(in srgb, var(--c-border) 16%, var(--c-bg-card));
+    background: color-mix(
+      in srgb,
+      var(--c-border, var(--c-theme-border)) 16%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
   }
   &__keys {
     display: grid;
@@ -76,7 +89,7 @@
     }
   }
   &__key {
-    --key-accent: var(--c-border);
+    --key-accent: var(--c-border, var(--c-theme-border));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -89,11 +102,16 @@
     border-radius: 8px;
     background: linear-gradient(
       180deg,
-      var(--c-bg-card),
-      color-mix(in srgb, var(--c-border) 10%, var(--c-bg-card))
+      var(--c-bg-card, var(--c-theme-bg-card)),
+      color-mix(
+        in srgb,
+        var(--c-border, var(--c-theme-border)) 10%,
+        var(--c-bg-card, var(--c-theme-bg-card))
+      )
     );
-    color: var(--c-text-1);
-    box-shadow: 0 2px 3px color-mix(in srgb, var(--c-text-1) 4%, transparent);
+    color: var(--c-text-1, var(--c-theme-text-1));
+    box-shadow: 0 2px 3px
+      color-mix(in srgb, var(--c-text-1, var(--c-theme-text-1)) 4%, transparent);
     font:
       600 14px ui-monospace,
       monospace;
@@ -107,15 +125,31 @@
       grid-column: span 2;
     }
     &--primary {
-      --key-accent: color-mix(in srgb, var(--c-primary) 35%, var(--c-border));
-      color: var(--c-primary);
-      background: color-mix(in srgb, var(--c-primary) 5%, var(--c-bg-card));
+      --key-accent: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 35%,
+        var(--c-border, var(--c-theme-border))
+      );
+      color: var(--c-primary, var(--c-theme-primary));
+      background: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 5%,
+        var(--c-bg-card, var(--c-theme-bg-card))
+      );
       font-size: 18px;
     }
     &--warning {
-      --key-accent: color-mix(in srgb, var(--c-warning) 30%, var(--c-border));
-      color: var(--c-warning);
-      background: color-mix(in srgb, var(--c-warning) 7%, var(--c-bg-card));
+      --key-accent: color-mix(
+        in srgb,
+        var(--c-warning, var(--c-theme-warning)) 30%,
+        var(--c-border, var(--c-theme-border))
+      );
+      color: var(--c-warning, var(--c-theme-warning));
+      background: color-mix(
+        in srgb,
+        var(--c-warning, var(--c-theme-warning)) 7%,
+        var(--c-bg-card, var(--c-theme-bg-card))
+      );
       font-size: 12px;
     }
     &:active:enabled {
@@ -131,10 +165,10 @@
     gap: 12px;
     padding-top: 16px;
     margin-top: 16px;
-    border-top: 1px solid var(--c-border);
+    border-top: 1px solid var(--c-border, var(--c-theme-border));
     > span {
       flex: 1 1 140px;
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
       font-size: 11px;
       line-height: 1.7;
     }
@@ -151,24 +185,28 @@
     gap: 6px;
     min-width: 0;
     padding: 8px 10px;
-    border: 1px solid var(--c-border);
+    border: 1px solid var(--c-border, var(--c-theme-border));
     border-radius: 8px;
-    background: var(--c-bg-card);
-    color: var(--c-text-2);
+    background: var(--c-bg-card, var(--c-theme-bg-card));
+    color: var(--c-text-2, var(--c-theme-text-2));
     font: inherit;
     font-size: 12px;
     cursor: pointer;
     &--clear {
-      color: var(--c-error);
+      color: var(--c-error, var(--c-theme-error));
     }
   }
   button {
     &:hover:enabled {
-      border-color: var(--c-primary);
-      background: color-mix(in srgb, var(--c-primary) 8%, var(--c-bg-card));
+      border-color: var(--c-primary, var(--c-theme-primary));
+      background: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 8%,
+        var(--c-bg-card, var(--c-theme-bg-card))
+      );
     }
     &:focus-visible {
-      outline: 2px solid var(--c-primary);
+      outline: 2px solid var(--c-primary, var(--c-theme-primary));
       outline-offset: 3px;
     }
     &:disabled {

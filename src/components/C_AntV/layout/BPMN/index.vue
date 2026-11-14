@@ -1,5 +1,8 @@
 <template>
-  <div class="bpmn-layout">
+  <div
+    class="bpmn-layout"
+    :style="componentTheme"
+  >
     <div
       class="top-toolbar"
       v-if="showToolbar"
@@ -94,6 +97,7 @@
     </div>
 
     <BPMNPropertyEditor
+      :style="componentTheme"
       :show="showEditor"
       v-model:editing-element="editingElement"
       @update:show="showEditor = $event"
@@ -108,6 +112,10 @@
   import { NButton, NDropdown } from 'naive-ui'
   import { Graph } from '@antv/x6'
   import { useGraphBase } from '../../composables/useGraphBase'
+  import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../../../composables/useComponentTheme'
   import { useGraphExport } from '../../composables/useGraphExport'
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
   import { bindReadonlyGuard } from '../../composables/readonlyGraph'
@@ -164,9 +172,17 @@
 
   // ==================== Composables ====================
   const containerRef = ref<HTMLDivElement>()
-  const isDark = computed(() => props.theme === 'dark')
-  const { graph, initGraph, centerContent, zoomToFit, scheduleZoomToFit } =
-    useGraphBase(containerRef, isDark)
+  const componentTheme = useComponentTheme(() => props.theme)
+  const colorMode = useComponentColorMode(() => props.theme)
+  const isDark = computed(() => colorMode.value === 'dark')
+  const {
+    graph,
+    initGraph,
+    centerContent,
+    zoomToFit,
+    scheduleZoomToFit,
+    themeOptions,
+  } = useGraphBase(containerRef, isDark)
   const { exportOptions, handleExport } = useGraphExport(graph, 'bpmn-diagram')
   const { bindInteractions } = useEdgeInteraction(graph, {
     portPositions,
@@ -377,6 +393,7 @@
     const bpmnConfig = getGraphConfig()
     await initGraph({
       ...bpmnConfig,
+      ...themeOptions.value,
       interacting: () => !props.readonly,
       connecting: {
         ...bpmnConfig.connecting,

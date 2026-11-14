@@ -4,7 +4,7 @@
     preset="card"
     :title="modalTitle"
     :aria-label="modalTitle"
-    :style="modalStyles.shell"
+    :style="{ ...componentTheme, ...modalStyles.shell }"
     :header-style="modalStyles.header"
     :content-style="modalStyles.content"
     :footer-style="modalStyles.footer"
@@ -67,7 +67,8 @@
     useFormGlobalConfig,
   } from '../C_Form'
   import { useActionTask } from '../../composables/useActionTask'
-  import { useComponentFeedback } from '../../config'
+  import { useComponentFeedback } from '../../component-config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { resolveComponentDensity } from '../../core/density'
   import { notifyObserver } from '../../core/observer'
   import { cloneData, isDataEqual } from '../../utils/data'
@@ -76,6 +77,7 @@
   import type { FormModalEmits, FormModalProps } from './types'
 
   defineOptions({ name: 'C_FormModal' })
+  const componentTheme = useComponentTheme()
 
   const props = withDefaults(defineProps<FormModalProps<T>>(), {
     config: () => ({}),

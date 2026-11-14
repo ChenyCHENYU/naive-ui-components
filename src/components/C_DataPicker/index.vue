@@ -1,5 +1,8 @@
 <template>
-  <div class="c-data-picker">
+  <div
+    class="c-data-picker"
+    :style="componentTheme"
+  >
     <component
       :is="renderTrigger"
       v-if="props.showTrigger !== false && (!popover || fullModal)"
@@ -92,6 +95,8 @@
   import { resolveComponentDensity } from '../../core/density'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
   import { useComponentLocale } from '../../composables/useComponentLocale'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentDensity } from '../../composables/useComponentDensity'
   import type {
     DataPickerProps,
     DataPickerEmits,
@@ -137,8 +142,10 @@
     popover.value && !fullModal.value ? NPopover : inline.value ? NCard : NModal
   )
   const globalFormConfig = useFormGlobalConfig()
+  const componentTheme = useComponentTheme()
+  const inheritedDensity = useComponentDensity(() => props.density)
   const resolvedDensity = computed(
-    () => props.density ?? globalFormConfig.density ?? 'compact'
+    () => inheritedDensity.value ?? globalFormConfig.density ?? 'compact'
   )
   const density = computed(() => resolveComponentDensity(resolvedDensity.value))
   const { t } = useComponentLocale(() => props.locale)
@@ -349,7 +356,7 @@
         placement: 'bottom-start',
         showArrow: false,
         width: 640,
-        style: { maxWidth: 'calc(100vw - 24px)' },
+        style: { ...componentTheme.value, maxWidth: 'calc(100vw - 24px)' },
         onClickoutside: (event: MouseEvent) => {
           if (
             event.target instanceof Node &&
@@ -371,6 +378,7 @@
             ? undefined
             : title,
         size: 'small',
+        style: componentTheme.value,
         onKeydown: panelKeydown,
       }
     return {
@@ -380,6 +388,7 @@
       title,
       'aria-label': title,
       style: {
+        ...componentTheme.value,
         width: `min(${slots.selected ? 1160 : 960}px, calc(100vw - 24px))`,
       },
       'onUpdate:show': (show: boolean) => {

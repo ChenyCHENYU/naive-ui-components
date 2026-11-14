@@ -1,4 +1,4 @@
-/** Compatibility entry: public protocols and Vue context, with the Naive UI adapter. */
+/** 组件内部 Vue/Naive 适配入口；公开 /config 由 public-config.ts 维护。 */
 export type {
   ConfirmOptions,
   ComponentFeedback,

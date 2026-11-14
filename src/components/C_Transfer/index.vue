@@ -5,6 +5,7 @@
   <div
     class="c-transfer"
     :class="[`is-${mergedProps.size}`]"
+    :style="componentTheme"
   >
     <!-- ================ Source Panel ================ -->
     <div class="c-transfer__panel">
@@ -14,6 +15,7 @@
           :checked="isSourceAllChecked"
           :indeterminate="isSourceIndeterminate"
           :disabled="locked"
+          :size="mergedProps.size"
           @update:checked="toggleSourceAll"
         >
           {{ mergedProps.titles?.[0] }}
@@ -36,7 +38,7 @@
         <NInput
           v-model:value="sourceQuery"
           clearable
-          size="small"
+          :size="mergedProps.size"
           :placeholder="mergedProps.filterPlaceholder"
           :disabled="props.disabled"
           :input-props="{ 'aria-label': t('transfer.searchSource') }"
@@ -97,6 +99,7 @@
           :checked="isTargetAllChecked"
           :indeterminate="isTargetIndeterminate"
           :disabled="locked"
+          :size="mergedProps.size"
           @update:checked="toggleTargetAll"
         >
           {{ mergedProps.titles?.[1] }}
@@ -119,7 +122,7 @@
         <NInput
           v-model:value="targetQuery"
           clearable
-          size="small"
+          :size="mergedProps.size"
           :placeholder="mergedProps.filterPlaceholder"
           :disabled="props.disabled"
           :input-props="{ 'aria-label': t('transfer.searchTarget') }"
@@ -151,9 +154,10 @@
 </template>
 
 <script setup lang="ts" generic="T extends TransferItem = TransferItem">
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import { computed, shallowReactive, ref, watch } from 'vue'
   import { NCheckbox, NInput } from 'naive-ui'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import C_Icon from '../C_Icon/index.vue'
   import TransferList from './components/TransferList.vue'
   import { movableKeys, allMovableChecked } from './transferSelection'
@@ -174,6 +178,7 @@
 
   defineOptions({ name: 'C_Transfer' })
   const emit = defineEmits<TransferEmits<T>>()
+  const componentTheme = useComponentTheme()
   const locked = computed(() => props.disabled || props.readonly)
 
   const mergedProps = computed(() => ({

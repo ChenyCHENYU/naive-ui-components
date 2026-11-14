@@ -19,6 +19,7 @@
     <div
       ref="wrapperRef"
       class="c-video-player"
+      :style="themeStyle"
       :class="{
         'is-mini': miniPlayer.isMiniMode.value,
         'is-fullscreen': isFullscreen,
@@ -90,7 +91,10 @@
         aria-label="关闭小窗播放"
         @click="miniPlayer.closeMiniPlayer()"
       >
-        ✕
+        <C_Icon
+          name="mdi:close"
+          :size="14"
+        />
       </button>
 
       <!-- 小窗点击回原位 -->
@@ -107,6 +111,8 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import C_Icon from '../C_Icon/index.vue'
   import {
     ref,
     computed,
@@ -149,6 +155,7 @@
 
   defineOptions({ name: 'VideoPlayerRuntime' })
 
+  const themeStyle = useComponentTheme()
   const props = defineProps<VideoPlayerProps>()
 
   const emit = defineEmits<{

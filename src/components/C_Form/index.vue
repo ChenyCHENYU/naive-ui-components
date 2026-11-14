@@ -155,7 +155,8 @@
     type Ref,
   } from 'vue'
   import { type FormInst, NForm, NFormItem, NButton, NSpace } from 'naive-ui'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { resolveComponentDensity } from '../../core/density'
   import { renderActionIcon } from '../C_ActionBar/actionIcon'
   import type {
@@ -248,10 +249,12 @@
   const densityTokens = computed(() =>
     resolveComponentDensity(resolved.value.density)
   )
-  const densityStyle = computed<CSSProperties | undefined>(() => {
-    if (!densityEnabled.value) return undefined
+  const componentTheme = useComponentTheme()
+  const densityStyle = computed<CSSProperties>(() => {
+    if (!densityEnabled.value) return componentTheme.value
     const { gap, rowGap, padding, formItemGap } = densityTokens.value
     return {
+      ...componentTheme.value,
       '--c-form-gap': `${gap}px`,
       '--c-form-row-gap': `${rowGap}px`,
       '--c-form-padding': `${padding}px`,

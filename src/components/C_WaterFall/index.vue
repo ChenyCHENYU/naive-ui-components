@@ -9,6 +9,7 @@
   <div
     ref="containerRef"
     class="c-waterfall"
+    :style="componentTheme"
   >
     <div
       class="waterfall__body"
@@ -132,6 +133,7 @@
     type Ref,
   } from 'vue'
   import { NSpin, NButton } from 'naive-ui'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import type {
     WaterFallItem,
     WaterFallLayoutItem,
@@ -151,6 +153,7 @@
   import { useWaterFallWindow } from './composables/useWaterFallWindow'
 
   defineOptions({ name: 'C_WaterFall' })
+  const componentTheme = useComponentTheme()
 
   const props = withDefaults(defineProps<WaterFallProps>(), {
     columns: undefined,
@@ -440,7 +443,7 @@
     cursor: pointer;
 
     &:focus-visible {
-      outline: 2px solid var(--primary-color, #2080f0);
+      outline: 2px solid var(--c-primary, var(--c-theme-primary, #2080f0));
       outline-offset: 2px;
     }
   }
@@ -448,8 +451,8 @@
   .waterfall__card {
     overflow: hidden;
     border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--card-color);
+    border: 1px solid var(--c-border, var(--c-theme-border, #e5e7eb));
+    background: var(--c-bg-card, var(--c-theme-bg-card, #fff));
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     transition:
       box-shadow 0.2s ease,
@@ -465,14 +468,14 @@
     display: block;
     width: 100%;
     object-fit: cover;
-    background: var(--body-color);
+    background: var(--c-bg-body, var(--c-theme-bg-body, #fff));
   }
 
   .waterfall__title {
     padding: 10px 12px;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--text-color-1);
+    color: var(--c-text-1, var(--c-theme-text-1, #262626));
     word-break: break-all;
   }
 
@@ -487,9 +490,14 @@
     border-radius: 8px;
     background: linear-gradient(
       90deg,
-      var(--body-color) 25%,
-      color-mix(in srgb, var(--body-color) 80%, var(--border-color)) 37%,
-      var(--body-color) 63%
+      var(--c-bg-body, var(--c-theme-bg-body, #fff)) 25%,
+      color-mix(
+          in srgb,
+          var(--c-bg-body, var(--c-theme-bg-body, #fff)) 80%,
+          var(--c-border, var(--c-theme-border, #e5e7eb))
+        )
+        37%,
+      var(--c-bg-body, var(--c-theme-bg-body, #fff)) 63%
     );
     background-size: 400% 100%;
     animation: shimmer 1.4s ease infinite;
@@ -518,10 +526,19 @@
     gap: 8px;
     align-items: center;
     font-size: 13px;
-    color: var(--text-color-3);
+    color: var(--c-text-3, var(--c-theme-text-3, #a3a3a3));
 
     &--done {
-      color: var(--text-color-4);
+      color: var(--c-text-4, var(--c-theme-text-4, #c0c0c0));
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .waterfall__item,
+    .waterfall__skeleton {
+      transition: none !important;
+    }
+    .waterfall__skeleton-inner {
+      animation: none;
     }
   }
 </style>

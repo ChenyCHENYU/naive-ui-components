@@ -19,9 +19,9 @@
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--c-border, var(--c-theme-border));
     border-radius: 6px;
-    background: var(--body-color);
+    background: var(--c-bg-body, var(--c-theme-bg-body));
 
     :deep(.vue-cropper) {
       width: 100% !important;
@@ -34,9 +34,9 @@
     min-width: 200px;
     padding: 16px;
     overflow: hidden;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--c-border, var(--c-theme-border));
     border-radius: 6px;
-    background: var(--card-color);
+    background: var(--c-bg-card, var(--c-theme-bg-card));
   }
 
   &__placeholder {
@@ -46,7 +46,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--text-color-3);
+    color: var(--c-text-3, var(--c-theme-text-3));
     font-size: 14px;
   }
 }
@@ -58,6 +58,7 @@
     }
 
     &__preview-panel {
+      min-width: 0;
       max-width: none;
     }
   }

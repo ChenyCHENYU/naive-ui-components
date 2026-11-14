@@ -18,17 +18,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--workflow-surface, var(--n-card-color));
+  background: var(--workflow-surface, #fff);
   backdrop-filter: blur(10px);
   padding: 8px 12px;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--workflow-border, var(--n-border-color));
+  border: 1px solid var(--workflow-border, #dfe5ed);
 
   .toolbar-divider {
     width: 1px;
     height: 20px;
-    background: var(--workflow-border, var(--n-border-color));
+    background: var(--workflow-border, #dfe5ed);
     margin: 0 4px;
   }
 }
@@ -44,11 +44,11 @@
   pointer-events: none;
 
   .add-menu-content {
-    background: var(--workflow-surface, var(--n-card-color));
+    background: var(--workflow-surface, #fff);
     border-radius: 12px;
     padding: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--workflow-border, var(--n-border-color));
+    border: 1px solid var(--workflow-border, #dfe5ed);
     display: flex;
     gap: 8px;
     pointer-events: auto;
@@ -59,7 +59,7 @@
 .add-menu-item {
   appearance: none;
   border: 0;
-  color: inherit;
+  color: var(--workflow-text);
   font: inherit;
   display: flex;
   flex-direction: column;
@@ -69,7 +69,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 70px;
-  background: var(--workflow-background, var(--n-color-embedded));
+  background: var(--workflow-background, #f2f5f9);
 
   &:hover {
     background: color-mix(
@@ -80,12 +80,13 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--n-color-target, #18a058);
+    outline: 2px solid var(--workflow-accent, #2080f0);
     outline-offset: 2px;
   }
 }
 
 .menu-icon {
+  --workflow-menu-accent: var(--workflow-accent, #2080f0);
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -93,16 +94,17 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 6px;
-  color: white;
-
-  &.approval-icon {
-    background: linear-gradient(135deg, #1890ff, #722ed1);
-  }
+  color: var(--workflow-menu-accent);
+  background: color-mix(
+    in srgb,
+    var(--workflow-menu-accent) 14%,
+    var(--workflow-surface, #fff)
+  );
   &.copy-icon {
-    background: linear-gradient(135deg, #52c41a, #389e0d);
+    --workflow-menu-accent: var(--c-success, var(--c-theme-success, #18a058));
   }
   &.condition-icon {
-    background: linear-gradient(135deg, #fa8c16, #d48806);
+    --workflow-menu-accent: var(--c-warning, var(--c-theme-warning, #f0a020));
   }
 }
 
@@ -126,7 +128,7 @@
 .validation-success {
   text-align: center;
   padding: 40px 20px;
-  color: #52c41a;
+  color: var(--c-success, var(--c-theme-success, #18a058));
 
   .success-icon {
     margin-bottom: 16px;
@@ -140,7 +142,7 @@
 
   p {
     margin: 0;
-    color: #666;
+    color: var(--workflow-muted, #738094);
     font-size: 14px;
   }
 }
@@ -149,10 +151,19 @@
   .error-summary {
     text-align: center;
     padding: 20px;
-    background: #fff2f0;
+    background: color-mix(
+      in srgb,
+      var(--c-error, var(--c-theme-error, #d03050)) 9%,
+      var(--workflow-surface, #fff)
+    );
     border-radius: 8px;
     margin-bottom: 20px;
-    border: 1px solid #ffccc7;
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error, #d03050)) 28%,
+        var(--workflow-border, #dfe5ed)
+      );
 
     .error-icon {
       margin-bottom: 12px;
@@ -160,14 +171,14 @@
 
     h3 {
       margin: 0 0 8px 0;
-      color: #ff4d4f;
+      color: var(--c-error, var(--c-theme-error, #d03050));
       font-size: 16px;
       font-weight: 600;
     }
 
     p {
       margin: 0;
-      color: var(--workflow-text, var(--n-text-color-2));
+      color: var(--workflow-text, #28323e);
       font-size: 14px;
     }
   }
@@ -179,14 +190,14 @@
   }
 
   .error-item {
-    background: white;
-    border: 1px solid #f0f0f0;
+    background: var(--workflow-surface, #fff);
+    border: 1px solid var(--workflow-border, #dfe5ed);
     border-radius: 8px;
     padding: 16px;
     transition: all 0.2s ease;
 
     &:hover {
-      border-color: #d9d9d9;
+      border-color: var(--workflow-accent, #2080f0);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
 
@@ -199,8 +210,12 @@
       .error-number {
         width: 24px;
         height: 24px;
-        background: #ff4d4f;
-        color: white;
+        background: color-mix(
+          in srgb,
+          var(--c-error, var(--c-theme-error, #d03050)) 14%,
+          var(--workflow-surface, #fff)
+        );
+        color: var(--workflow-text, #262626);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -216,13 +231,13 @@
 
         .error-node {
           display: block;
-          color: var(--workflow-text, var(--n-text-color-1));
+          color: var(--workflow-text, #28323e);
           font-size: 14px;
           margin-bottom: 2px;
         }
 
         .error-field {
-          color: var(--workflow-muted, var(--n-text-color-3));
+          color: var(--workflow-muted, #738094);
           font-size: 12px;
         }
       }
@@ -236,27 +251,54 @@
         &.required,
         &.invalid,
         &.error {
-          background: #fff2f0;
-          color: #ff4d4f;
-          border: 1px solid #ffccc7;
+          background: color-mix(
+            in srgb,
+            var(--c-error, var(--c-theme-error, #d03050)) 9%,
+            var(--workflow-surface, #fff)
+          );
+          color: var(--c-error, var(--c-theme-error, #d03050));
+          border: 1px solid
+            color-mix(
+              in srgb,
+              var(--c-error, var(--c-theme-error, #d03050)) 28%,
+              var(--workflow-border, #dfe5ed)
+            );
         }
 
         &.incomplete {
-          background: #fff7e6;
-          color: #fa8c16;
-          border: 1px solid #ffd591;
+          background: color-mix(
+            in srgb,
+            var(--c-warning, var(--c-theme-warning, #f0a020)) 9%,
+            var(--workflow-surface, #fff)
+          );
+          color: var(--c-warning, var(--c-theme-warning, #f0a020));
+          border: 1px solid
+            color-mix(
+              in srgb,
+              var(--c-warning, var(--c-theme-warning, #f0a020)) 28%,
+              var(--workflow-border, #dfe5ed)
+            );
         }
 
         &.warning {
-          background: #fffbe6;
-          color: #faad14;
-          border: 1px solid #ffe58f;
+          background: color-mix(
+            in srgb,
+            var(--c-warning, var(--c-theme-warning, #f0a020)) 9%,
+            var(--workflow-surface, #fff)
+          );
+          color: var(--c-warning, var(--c-theme-warning, #f0a020));
+          border: 1px solid
+            color-mix(
+              in srgb,
+              var(--c-warning, var(--c-theme-warning, #f0a020)) 28%,
+              var(--workflow-border, #dfe5ed)
+            );
         }
       }
     }
 
     .error-message {
-      color: var(--workflow-text, var(--n-text-color-2));
+      color: var(--workflow-text, #28323e);
       font-size: 13px;
       line-height: 1.5;
       margin-bottom: 12px;
@@ -271,13 +313,22 @@
   .validation-tips {
     margin-top: 24px;
     padding: 16px;
-    background: #f6ffed;
+    background: color-mix(
+      in srgb,
+      var(--c-success, var(--c-theme-success, #18a058)) 9%,
+      var(--workflow-surface, #fff)
+    );
     border-radius: 8px;
-    border: 1px solid #b7eb8f;
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--c-success, var(--c-theme-success, #18a058)) 28%,
+        var(--workflow-border, #dfe5ed)
+      );
 
     h4 {
       margin: 0 0 12px 0;
-      color: #389e0d;
+      color: var(--c-success, var(--c-theme-success, #18a058));
       font-size: 14px;
       font-weight: 600;
     }
@@ -285,7 +336,7 @@
     ul {
       margin: 0;
       padding-left: 16px;
-      color: var(--workflow-text, var(--n-text-color-2));
+      color: var(--workflow-text, #28323e);
       font-size: 13px;
       line-height: 1.6;
 
@@ -293,7 +344,7 @@
         margin-bottom: 6px;
 
         strong {
-          color: var(--workflow-text, var(--n-text-color-1));
+          color: var(--workflow-text, #28323e);
         }
       }
     }
@@ -341,109 +392,6 @@
   }
 }
 
-/* 暗色主题适配 */
-[data-theme='dark'] {
-  .approval-workflow-container {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  }
-
-  /* 添加节点菜单文字 */
-  .add-menu-item span {
-    color: white;
-  }
-
-  .validation-success {
-    color: #52c41a;
-
-    h3 {
-      color: #52c41a;
-    }
-
-    p {
-      color: var(--workflow-text, var(--n-text-color-2));
-    }
-  }
-
-  .validation-errors {
-    .error-summary {
-      background: rgba(255, 77, 79, 0.1);
-      border-color: rgba(255, 77, 79, 0.3);
-
-      h3 {
-        color: #ff4d4f;
-      }
-
-      p {
-        color: var(--workflow-text, var(--n-text-color-2));
-      }
-    }
-
-    .error-item {
-      background: var(--workflow-surface, var(--n-card-color));
-      border-color: var(--workflow-border, var(--n-border-color));
-
-      &:hover {
-        border-color: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      }
-
-      .error-info {
-        .error-node {
-          color: var(--workflow-text, var(--n-text-color-1));
-        }
-
-        .error-field {
-          color: var(--workflow-muted, var(--n-text-color-3));
-        }
-      }
-
-      .error-type {
-        &.required,
-        &.invalid,
-        &.error {
-          background: rgba(255, 77, 79, 0.15);
-          color: #ff7875;
-          border-color: rgba(255, 77, 79, 0.3);
-        }
-
-        &.incomplete {
-          background: rgba(250, 140, 22, 0.15);
-          color: #ffa940;
-          border-color: rgba(250, 140, 22, 0.3);
-        }
-
-        &.warning {
-          background: rgba(250, 173, 20, 0.15);
-          color: #ffc53d;
-          border-color: rgba(250, 173, 20, 0.3);
-        }
-      }
-
-      .error-message {
-        color: var(--workflow-text, var(--n-text-color-2));
-      }
-    }
-
-    .validation-tips {
-      background: rgba(82, 196, 26, 0.1);
-      border-color: rgba(82, 196, 26, 0.3);
-
-      h4 {
-        color: #73d13d;
-      }
-
-      ul {
-        color: var(--workflow-text, var(--n-text-color-2));
-
-        li strong {
-          color: var(--workflow-text, var(--n-text-color-1));
-        }
-      }
-    }
-  }
-}
-
 /* ─── 流程预览抽屉样式 ────────────────────────────────────── */
 .preview-stats {
   display: flex;
@@ -457,38 +405,35 @@
     text-align: center;
     padding: 12px 8px;
     border-radius: 10px;
-    background: var(--workflow-background, var(--n-action-color));
-    border: 1px solid var(--workflow-border, var(--n-border-color));
+    background: var(--workflow-background, #f2f5f9);
+    border: 1px solid var(--workflow-border, #dfe5ed);
     transition: all 0.2s;
 
     .stat-value {
       display: block;
       font-size: 22px;
       font-weight: 700;
-      color: var(--workflow-text, var(--n-text-color-1));
+      color: var(--workflow-text, #28323e);
     }
 
     .stat-label {
       display: block;
       font-size: 12px;
-      color: var(--workflow-muted, var(--n-text-color-3));
+      color: var(--workflow-muted, #738094);
       margin-top: 4px;
     }
 
     &.approval .stat-value {
-      color: #ff6b35;
+      color: var(--workflow-accent, #2080f0);
     }
-
     &.copy .stat-value {
-      color: #1890ff;
+      color: var(--c-success, var(--c-theme-success, #18a058));
     }
-
     &.condition .stat-value {
-      color: #faad14;
+      color: var(--c-warning, var(--c-theme-warning, #f0a020));
     }
-
     &.edge .stat-value {
-      color: #52c41a;
+      color: var(--workflow-muted, #64748b);
     }
   }
 }
@@ -522,35 +467,45 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
+      color: var(--workflow-muted, #64748b);
       flex-shrink: 0;
       z-index: 1;
-      background: #999;
+      background: var(--workflow-surface, #fff);
     }
 
     .step-line {
       width: 2px;
       flex: 1;
       min-height: 20px;
-      background: var(--workflow-border, var(--n-border-color));
+      background: var(--workflow-border, #dfe5ed);
     }
   }
 
   /* 不同节点类型的圆点颜色 */
-  .start .step-dot {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-  }
-
+  .start .step-dot,
   .approval .step-dot {
-    background: linear-gradient(135deg, #ff6b35, #ff4500);
+    color: var(--workflow-accent, #2080f0);
+    background: color-mix(
+      in srgb,
+      var(--workflow-accent, #2080f0) 14%,
+      var(--workflow-surface, #fff)
+    );
   }
-
   .copy .step-dot {
-    background: linear-gradient(135deg, #1890ff, #096dd9);
+    color: var(--c-success, var(--c-theme-success, #18a058));
+    background: color-mix(
+      in srgb,
+      var(--c-success, var(--c-theme-success, #18a058)) 14%,
+      var(--workflow-surface, #fff)
+    );
   }
-
   .condition .step-dot {
-    background: linear-gradient(135deg, #faad14, #d48806);
+    color: var(--c-warning, var(--c-theme-warning, #f0a020));
+    background: color-mix(
+      in srgb,
+      var(--c-warning, var(--c-theme-warning, #f0a020)) 14%,
+      var(--workflow-surface, #fff)
+    );
   }
 
   .step-content {
@@ -566,7 +521,7 @@
 
       .step-order {
         font-size: 12px;
-        color: var(--workflow-muted, var(--n-text-color-3));
+        color: var(--workflow-muted, #738094);
         font-weight: 500;
       }
 
@@ -574,28 +529,28 @@
         font-size: 11px;
         padding: 1px 8px;
         border-radius: 10px;
-        background: var(--workflow-background, var(--n-action-color));
-        color: var(--workflow-text, var(--n-text-color-2));
-        border: 1px solid var(--workflow-border, var(--n-border-color));
+        background: var(--workflow-background, #f2f5f9);
+        color: var(--workflow-text, #28323e);
+        border: 1px solid var(--workflow-border, #dfe5ed);
       }
     }
 
     .step-title {
       font-size: 15px;
       font-weight: 600;
-      color: var(--workflow-text, var(--n-text-color-1));
+      color: var(--workflow-text, #28323e);
       margin-bottom: 8px;
     }
 
     .step-details {
-      background: var(--workflow-background, var(--n-action-color));
+      background: var(--workflow-background, #f2f5f9);
       border-radius: 8px;
       padding: 10px 14px;
-      border: 1px solid var(--workflow-border, var(--n-border-color));
+      border: 1px solid var(--workflow-border, #dfe5ed);
 
       .step-detail-item {
         font-size: 13px;
-        color: var(--workflow-text, var(--n-text-color-2));
+        color: var(--workflow-text, #28323e);
         line-height: 1.8;
         word-break: break-all;
         display: flex;
@@ -604,18 +559,17 @@
         gap: 4px;
 
         &:not(:last-child) {
-          border-bottom: 1px dashed
-            var(--workflow-border, var(--n-border-color));
+          border-bottom: 1px dashed var(--workflow-border, #dfe5ed);
           padding-bottom: 8px;
           margin-bottom: 8px;
         }
 
         &.is-warning {
-          color: #faad14;
+          color: var(--c-warning, var(--c-theme-warning, #f0a020));
         }
 
         .detail-label {
-          color: var(--workflow-muted, var(--n-text-color-3));
+          color: var(--workflow-muted, #738094);
           font-size: 12px;
           flex-shrink: 0;
           line-height: 24px;
@@ -629,23 +583,18 @@
           border-radius: 12px;
           line-height: 20px;
 
-          &.any {
-            background: rgba(24, 144, 255, 0.1);
-            color: #1890ff;
-            border: 1px solid rgba(24, 144, 255, 0.25);
-          }
-
-          &.all {
-            background: rgba(255, 77, 79, 0.1);
-            color: #ff4d4f;
-            border: 1px solid rgba(255, 77, 79, 0.25);
-          }
-
-          &.sequence {
-            background: rgba(114, 46, 209, 0.1);
-            color: #722ed1;
-            border: 1px solid rgba(114, 46, 209, 0.25);
-          }
+          background: color-mix(
+            in srgb,
+            var(--workflow-accent, #2080f0) 9%,
+            var(--workflow-surface, #fff)
+          );
+          color: var(--workflow-accent, #2080f0);
+          border: 1px solid
+            color-mix(
+              in srgb,
+              var(--workflow-accent, #2080f0) 25%,
+              var(--workflow-border, #dce3ed)
+            );
         }
 
         .user-tag {
@@ -653,7 +602,7 @@
         }
 
         .warning-text {
-          color: #faad14;
+          color: var(--c-warning, var(--c-theme-warning, #f0a020));
           font-weight: 500;
         }
       }
@@ -670,7 +619,7 @@
 
   p {
     margin-top: 12px;
-    color: var(--workflow-muted, var(--n-text-color-3));
+    color: var(--workflow-muted, #738094);
     font-size: 14px;
   }
 }
@@ -679,4 +628,14 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :deep(.vue-flow__edge.animated),
+  .add-menu-content {
+    animation: none;
+  }
+  .add-menu-item {
+    transition: none;
+  }
 }

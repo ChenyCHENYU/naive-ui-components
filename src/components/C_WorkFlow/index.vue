@@ -146,6 +146,7 @@
     <!-- 节点配置弹窗 - 拆分到独立组件 -->
     <NodeConfigModal
       v-if="showNodeConfig"
+      :style="workflowStyle"
       v-model:show="showNodeConfig"
       :current-node="currentNode"
       :users="users"
@@ -177,7 +178,7 @@
             <C_Icon
               name="mdi:check-circle"
               :size="32"
-              color="#52c41a"
+              color="var(--c-success, var(--c-theme-success, #18a058))"
             />
           </div>
           <h3>验证通过</h3>
@@ -195,7 +196,7 @@
               <C_Icon
                 name="mdi:alert-circle"
                 :size="24"
-                color="#ff4d4f"
+                color="var(--c-error, var(--c-theme-error, #d03050))"
               />
             </div>
             <h3>发现 {{ validationErrors.length }} 个问题</h3>
@@ -244,7 +245,13 @@
           </div>
 
           <div class="validation-tips">
-            <h4>💡 常见问题解决方案：</h4>
+            <h4
+              ><C_Icon
+                name="mdi:lightbulb-outline"
+                :size="16"
+              />
+              常见问题解决方案：</h4
+            >
             <ul>
               <li>
                 <strong>审批人未设置：</strong
@@ -391,7 +398,11 @@
                     v-else-if="detail.type === 'warning'"
                     class="warning-text"
                   >
-                    ⚠️ {{ detail.value }}
+                    <C_Icon
+                      name="mdi:alert-outline"
+                      :size="14"
+                    />
+                    {{ detail.value }}
                   </span>
 
                   <!-- 普通文本 -->
@@ -441,15 +452,10 @@
 <script setup lang="ts">
   import { ref, computed, provide, defineAsyncComponent } from 'vue'
   import { VueFlow } from '@vue-flow/core'
-  import {
-    NButton,
-    NDrawer,
-    NDrawerContent,
-    NTag,
-    useThemeVars,
-  } from 'naive-ui'
+  import { NButton, NDrawer, NDrawerContent, NTag } from 'naive-ui'
   import { C_Icon } from '../C_Icon'
-  import { useComponentFeedback } from '../../config'
+  import { useComponentFeedback } from '../../component-config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import type {
     WorkflowProps,
     WorkflowEmits,
@@ -484,43 +490,18 @@
         !props.allowedNodeTypes || props.allowedNodeTypes.includes(option.type)
     )
   )
-  const themeVars = useThemeVars()
-  const workflowStyle = computed(() => {
-    const theme = themeVars.value
-    const palettes = {
-      dark: {
-        surface: '#20252e',
-        background: '#171b22',
-        text: '#e8ebf0',
-        muted: '#aab1bd',
-        border: '#39414e',
-      },
-      light: {
-        surface: '#ffffff',
-        background: '#f2f5f9',
-        text: '#28323e',
-        muted: '#738094',
-        border: '#dfe5ed',
-      },
-    }
-    const palette = props.theme
-      ? palettes[props.theme]
-      : {
-          surface: theme.cardColor,
-          background: theme.bodyColor,
-          text: theme.textColor1,
-          muted: theme.textColor3,
-          border: theme.borderColor,
-        }
-    return {
-      '--workflow-surface': palette.surface,
-      '--workflow-background': palette.background,
-      '--workflow-text': palette.text,
-      '--workflow-muted': palette.muted,
-      '--workflow-border': palette.border,
-      '--workflow-accent': theme.primaryColor,
-    }
-  })
+  const componentTheme = useComponentTheme(() => props.theme)
+  const workflowStyle = computed(() => ({
+    ...componentTheme.value,
+    '--workflow-surface': 'var(--c-bg-card, var(--c-theme-bg-card, #fff))',
+    '--workflow-background':
+      'var(--c-bg-body, var(--c-theme-bg-body, #f6f8fc))',
+    '--workflow-text': 'var(--c-text-1, var(--c-theme-text-1, #1f2937))',
+    '--workflow-muted': 'var(--c-text-3, var(--c-theme-text-3, #64748b))',
+    '--workflow-border': 'var(--c-border, var(--c-theme-border, #dce3ed))',
+    '--workflow-accent': 'var(--c-primary, var(--c-theme-primary, #2563eb))',
+    color: 'var(--workflow-text)',
+  }))
   const message = useComponentFeedback()
   const vueFlowRef = ref()
 

@@ -16,10 +16,7 @@
     border: 0;
     padding: 0 2px;
     background: transparent;
-    color: var(
-      --n-loading-color,
-      var(--n-caret-color, var(--c-primary, #18a058))
-    );
+    color: var(--c-primary, var(--c-theme-primary, #18a058));
     font: inherit;
     cursor: pointer;
     &:focus-visible {

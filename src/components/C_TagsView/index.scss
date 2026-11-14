@@ -4,10 +4,11 @@
 
 /* --------- 标签视图容器 --------- */
 .tags-view-container {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--c-border, var(--c-theme-border));
   padding: 8px 16px 0;
   position: relative;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* --------- 滚动轨道容器 --------- */
@@ -44,7 +45,7 @@
   font-size: 12px;
   font-weight: 500;
   border-radius: 14px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--c-border, var(--c-theme-border));
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
@@ -65,9 +66,9 @@
   }
 
   /* --------- 悬停效果 --------- */
-  &:hover:not([type='primary']) {
-    color: var(--color-primary) !important;
-    border-color: var(--color-primary);
+  &:hover:not(.is-active) {
+    color: var(--c-primary, var(--c-theme-primary)) !important;
+    border-color: var(--c-primary, var(--c-theme-primary));
     transform: scale(1.02);
 
     &::before {
@@ -76,26 +77,32 @@
 
     :deep(.c-icon),
     :deep([class*='c-icon']) {
-      color: var(--color-primary) !important;
+      color: var(--c-primary, var(--c-theme-primary)) !important;
     }
 
     i,
     .icon {
-      color: var(--color-primary) !important;
+      color: var(--c-primary, var(--c-theme-primary)) !important;
     }
 
     :deep(.n-tag__close) {
-      color: var(--color-primary) !important;
+      color: var(--c-primary, var(--c-theme-primary)) !important;
       opacity: 0.8;
-      transform: scale(1.05);
     }
   }
 
   /* --------- 激活状态 --------- */
-  &[type='primary'] {
-    background: var(--tag-active-bg, rgba(32, 128, 240, 0.08)) !important;
-    color: var(--color-primary) !important;
-    border-color: var(--color-primary) !important;
+  &.is-active {
+    background: var(
+      --tag-active-bg,
+      color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 8%,
+        transparent
+      )
+    ) !important;
+    color: var(--c-primary, var(--c-theme-primary)) !important;
+    border-color: var(--c-primary, var(--c-theme-primary)) !important;
     font-weight: 600;
     transform: scale(1.02);
 
@@ -103,39 +110,42 @@
       opacity: 0.6;
     }
 
-    :deep(.n-tag__content),
-    :deep(*:not(.n-tag__close)) {
-      color: var(--color-primary) !important;
+    :deep(.n-tag__content) {
+      color: var(--c-primary, var(--c-theme-primary)) !important;
     }
 
     :deep(.c-icon),
     :deep([class*='c-icon']) {
-      color: var(--color-primary) !important;
+      color: var(--c-primary, var(--c-theme-primary)) !important;
     }
 
     i,
     .icon {
-      color: var(--color-primary) !important;
+      color: var(--c-primary, var(--c-theme-primary)) !important;
     }
 
     &:hover {
       background: var(
         --tag-active-hover-bg,
-        rgba(32, 128, 240, 0.12)
+        color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 12%,
+          transparent
+        )
       ) !important;
       transform: scale(1.03);
     }
 
     :deep(.n-tag__close) {
-      color: var(--color-primary) !important;
+      color: var(--c-primary, var(--c-theme-primary)) !important;
       opacity: 0.8;
     }
   }
 
   /* --------- 关闭按钮 --------- */
   :deep(.n-tag__close) {
-    width: 16px !important;
-    height: 16px !important;
+    width: 22px !important;
+    height: 22px !important;
     border-radius: 8px !important;
     display: flex !important;
     align-items: center !important;
@@ -145,28 +155,36 @@
     font-weight: 600 !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     opacity: 0.6;
-    background: rgba(0, 0, 0, 0.02) !important;
+    background: transparent !important;
     border: 1px solid transparent;
-
-    &:not(:hover) {
-      transform: scale(0.9);
-    }
 
     &:hover {
       background: linear-gradient(
         135deg,
-        rgba(248, 113, 113, 0.1),
-        rgba(239, 68, 68, 0.08)
+        color-mix(
+          in srgb,
+          var(--c-error, var(--c-theme-error)) 10%,
+          transparent
+        ),
+        color-mix(in srgb, var(--c-error, var(--c-theme-error)) 8%, transparent)
       ) !important;
-      border-color: rgba(239, 68, 68, 0.15) !important;
-      color: #ef4444 !important;
+      border-color: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error)) 15%,
+        transparent
+      ) !important;
+      color: var(--c-error, var(--c-theme-error)) !important;
       opacity: 1 !important;
-      transform: scale(0.6) !important;
-      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2) !important;
+
+      box-shadow: 0 2px 6px
+        color-mix(
+          in srgb,
+          var(--c-error, var(--c-theme-error)) 20%,
+          transparent
+        ) !important;
     }
 
     &:active {
-      transform: scale(0.95) !important;
       transition-duration: 0.1s !important;
     }
   }
@@ -195,8 +213,8 @@
     border-radius: 13px;
 
     :deep(.n-tag__close) {
-      width: 14px;
-      height: 14px;
+      width: 22px;
+      height: 22px;
       font-size: 11px;
       margin-left: 4px;
     }
@@ -213,20 +231,11 @@
   }
 }
 
-/* --------- 暗色主题 --------- */
-[data-theme='dark'] {
-  .n-tag {
-    :deep(.n-tag__close) {
-      background: rgba(255, 255, 255, 0.03) !important;
-
-      &:hover {
-        background: linear-gradient(
-          135deg,
-          rgba(248, 113, 113, 0.12),
-          rgba(239, 68, 68, 0.1)
-        ) !important;
-        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25) !important;
-      }
-    }
+@media (prefers-reduced-motion: reduce) {
+  .tags-view-container :deep(.n-tag),
+  .tags-view-container :deep(.n-tag__close),
+  .tags-view-container :deep(.c-icon) {
+    transition: none !important;
+    transform: none !important;
   }
 }

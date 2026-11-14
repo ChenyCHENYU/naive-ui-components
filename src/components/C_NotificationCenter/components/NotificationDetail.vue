@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../../config'
+  import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type { NotificationMessage } from '../types'
@@ -178,18 +178,18 @@
 
     &__back {
       padding: 8px 16px;
-      border-bottom: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     &__header {
       padding: 16px;
-      border-bottom: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     &__title {
       font-size: 15px;
       font-weight: 600;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
       line-height: 1.5;
       margin: 0 0 8px;
     }
@@ -203,7 +203,7 @@
 
     &__time {
       font-size: 11px;
-      color: var(--c-text-4);
+      color: var(--c-text-4, var(--c-theme-text-4));
     }
 
     &__sender {
@@ -212,7 +212,7 @@
       gap: 6px;
       margin-top: 8px;
       font-size: 12px;
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
     }
 
     &__content {
@@ -224,7 +224,7 @@
       padding: 16px;
       font-size: 13px;
       line-height: 1.7;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
       word-break: break-word;
 
       :deep(p) {
@@ -243,13 +243,13 @@
 
       :deep(strong) {
         font-weight: 600;
-        color: var(--c-primary);
+        color: var(--c-primary, var(--c-theme-primary));
       }
     }
 
     &__footer {
       padding: 12px 16px;
-      border-top: 1px solid var(--c-border);
+      border-top: 1px solid var(--c-border, var(--c-theme-border));
       display: flex;
       justify-content: flex-end;
     }

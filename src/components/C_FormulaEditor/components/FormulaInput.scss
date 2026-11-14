@@ -8,7 +8,7 @@
     margin-bottom: 16px;
   }
   &__label {
-    color: var(--c-text-1);
+    color: var(--c-text-1, var(--c-theme-text-1));
     font-size: 13px;
     font-weight: 600;
   }
@@ -16,7 +16,7 @@
     appearance: none;
     border: 0;
     background: transparent;
-    color: var(--c-primary);
+    color: var(--c-primary, var(--c-theme-primary));
     font: inherit;
     font-size: 12px;
     cursor: pointer;
@@ -28,10 +28,14 @@
     min-height: 168px;
     resize: vertical;
     padding: 18px;
-    border: 1px solid var(--c-border);
+    border: 1px solid var(--c-border, var(--c-theme-border));
     border-radius: 12px;
-    background: color-mix(in srgb, var(--c-primary) 2%, var(--c-bg-card));
-    color: var(--c-text-1);
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 2%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
+    color: var(--c-text-1, var(--c-theme-text-1));
     font:
       15px/1.9 ui-monospace,
       'SFMono-Regular',
@@ -40,25 +44,33 @@
     outline: none;
     overflow-wrap: anywhere;
     &:focus {
-      border-color: var(--c-primary);
+      border-color: var(--c-primary, var(--c-theme-primary));
       box-shadow: 0 0 0 3px
-        color-mix(in srgb, var(--c-primary) 12%, transparent);
+        color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 12%,
+          transparent
+        );
     }
     &::placeholder {
       font-size: 13px;
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
     }
     &:read-only {
-      background: color-mix(in srgb, var(--c-border) 25%, var(--c-bg-card));
+      background: color-mix(
+        in srgb,
+        var(--c-border, var(--c-theme-border)) 25%,
+        var(--c-bg-card, var(--c-theme-bg-card))
+      );
     }
   }
   &--error &__editor {
-    border-color: var(--c-error);
+    border-color: var(--c-error, var(--c-theme-error));
   }
   &__tokens {
     margin-top: 16px;
     padding: 14px 16px;
-    border: 1px dashed var(--c-border);
+    border: 1px dashed var(--c-border, var(--c-theme-border));
     border-radius: 10px;
     font:
       12px/2 ui-monospace,
@@ -69,7 +81,7 @@
       display: block;
       font: 11px/1.5 sans-serif;
       margin-bottom: 8px;
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
     }
   }
   &__validation {
@@ -79,42 +91,46 @@
     gap: 10px;
     margin-top: 12px;
     font-size: 12px;
-    color: var(--c-text-3);
+    color: var(--c-text-3, var(--c-theme-text-3));
     line-height: 1.7;
     button {
       appearance: none;
       flex-shrink: 0;
       border: 0;
       padding: 2px 0;
-      color: var(--c-primary);
+      color: var(--c-primary, var(--c-theme-primary));
       background: transparent;
       cursor: pointer;
       font: inherit;
     }
   }
   &--error &__validation {
-    color: var(--c-error);
+    color: var(--c-error, var(--c-theme-error));
   }
   button:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-primary, var(--c-theme-primary));
     outline-offset: 3px;
   }
   .formula-token {
     &--variable {
-      color: var(--c-primary);
+      color: var(--c-primary, var(--c-theme-primary));
       padding: 2px 5px;
       border-radius: 4px;
-      background: color-mix(in srgb, var(--c-primary) 9%, transparent);
+      background: color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 9%,
+        transparent
+      );
     }
     &--function {
-      color: var(--c-success);
+      color: var(--c-success, var(--c-theme-success));
       font-weight: 600;
     }
     &--operator {
-      color: var(--c-primary);
+      color: var(--c-primary, var(--c-theme-primary));
     }
     &--number {
-      color: var(--c-warning);
+      color: var(--c-warning, var(--c-theme-warning));
     }
   }
 }

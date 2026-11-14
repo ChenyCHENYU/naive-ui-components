@@ -4,17 +4,21 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="robot-search-palette">
+  <div
+    class="robot-search-palette"
+    :style="themeStyle"
+  >
     <!-- 搜索触发按钮 -->
-    <div
+    <button
+      type="button"
       class="robot-search-trigger"
       :class="{ 'trigger-dark': isDark }"
       @click="openDialog"
     >
-      <div class="i-mdi:search robot-trigger-icon" />
+      <span class="i-mdi:search robot-trigger-icon" />
       <span class="robot-trigger-text">搜索</span>
       <span class="robot-trigger-shortcut">Ctrl K</span>
-    </div>
+    </button>
 
     <!-- 搜索对话框 -->
     <Teleport to="body">
@@ -22,6 +26,7 @@
         <div
           v-if="showDialog"
           class="robot-dialog-overlay"
+          :style="themeStyle"
           @click="closeDialog"
           @keydown="handleDialogKeydown"
         >
@@ -281,6 +286,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, nextTick, ref, useId, watch } from 'vue'
   import type { VirtualListInst } from 'vueuc'
   import { VVirtualList } from '../../utils/virtualList'
@@ -330,6 +336,7 @@
     handleCompositionStart,
     handleCompositionEnd,
   } = useGlobalSearch(() => props.options)
+  const themeStyle = useComponentTheme(() => (isDark.value ? 'dark' : 'light'))
 
   const optionListId = `robot-search-options-${useId()}`
   const optionId = (index: number) => `${optionListId}-${index}`

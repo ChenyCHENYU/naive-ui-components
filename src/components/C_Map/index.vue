@@ -8,6 +8,7 @@
 <template>
   <div
     class="c-map"
+    :style="componentTheme"
     role="region"
     :aria-label="ariaLabel"
     :aria-busy="loading"
@@ -38,6 +39,7 @@
   } from 'leaflet'
   import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
   import { NSpin } from 'naive-ui'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { DEFAULT_MAP_CONFIG } from './data'
   import { loadAMapApi } from './amapLoader'
   import { loadLeafletApi } from './leafletLoader'
@@ -87,6 +89,9 @@
   }>()
 
   const mapContainer = ref<HTMLElement>()
+  const componentTheme = useComponentTheme()
+  let resizeObserver: ResizeObserver | undefined
+  let previousSize = ''
   const loading = ref(true)
   let leafletApi: typeof import('leaflet') | null = null
   let leafletMap: LeafletMap | null = null
@@ -355,12 +360,28 @@
 
   onMounted(async () => {
     await nextTick()
+    if (disposed) return
+    if (typeof ResizeObserver !== 'undefined' && mapContainer.value) {
+      resizeObserver = new ResizeObserver(entries => {
+        const { width, height } = entries[0]?.contentRect ?? {
+          width: 0,
+          height: 0,
+        }
+        const size = `${width}:${height}`
+        if (size === previousSize) return
+        previousSize = size
+        // 隐藏状态只记录尺寸；再次显示时刷新，不调用零尺寸 SDK 布局。
+        if (width > 0 && height > 0 && !disposed) refresh()
+      })
+      resizeObserver.observe(mapContainer.value)
+    }
     await initializeMap()
   })
 
   onUnmounted(() => {
     disposed = true
     initVersion += 1
+    resizeObserver?.disconnect()
     resetMapInstances()
   })
 

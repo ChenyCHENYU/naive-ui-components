@@ -45,6 +45,7 @@
     V extends DataPickerValue = DataPickerValue
   "
 >
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import {
     computed,
     defineAsyncComponent,
@@ -83,8 +84,10 @@
   defineSlots<UserPickerSlots<T>>()
   const picker = shallowRef<DataPickerExpose>()
   const { t } = useComponentLocale(() => props.locale)
+  const componentTheme = useComponentTheme()
   const theme = useThemeVars()
   const themeStyle = computed(() => ({
+    ...componentTheme.value,
     '--c-user-picker-muted': theme.value.textColor3,
     '--c-user-picker-border': theme.value.borderColor,
     '--c-user-picker-error': theme.value.errorColor,
@@ -93,7 +96,7 @@
     import('../C_Tree/index.vue').then(module => module.default<O>)
   )
   const navigation = computed<DataPickerNavigation<F> | undefined>(() => {
-    const {organization} = props
+    const { organization } = props
     if (!organization) return
     const { field, title, ...tree } = organization
     return {

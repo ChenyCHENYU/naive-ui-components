@@ -119,7 +119,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { useComponentLocale } from '../../../config'
+  import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
   import type { ChatMessage } from '../types'

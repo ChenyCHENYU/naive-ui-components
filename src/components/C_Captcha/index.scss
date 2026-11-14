@@ -2,12 +2,12 @@
   --cc-height: 44px;
   --cc-radius: 12px;
   --cc-color: rgba(255, 255, 255, 0.76);
-  --cc-icon-color: #8fb5ff;
+  --cc-icon-color: var(--c-primary, var(--c-theme-primary));
   --cc-bg: rgba(255, 255, 255, 0.055);
   --cc-bg-hover: rgba(255, 255, 255, 0.09);
   --cc-border: rgba(255, 255, 255, 0.14);
   --cc-border-hover: rgba(126, 166, 255, 0.55);
-  --cc-focus: #77a4ff;
+  --cc-focus: var(--c-primary, var(--c-theme-primary));
   width: 100%;
   font-family: inherit;
 }
@@ -179,7 +179,7 @@
 
 .c-captcha-modern[data-theme='light'] {
   --cc-color: rgba(15, 23, 42, 0.72);
-  --cc-icon-color: #4778dc;
+  --cc-icon-color: var(--c-primary, var(--c-theme-primary));
   --cc-bg: rgba(15, 23, 42, 0.035);
   --cc-bg-hover: rgba(71, 120, 220, 0.07);
   --cc-border: rgba(15, 23, 42, 0.12);
@@ -257,5 +257,45 @@
     height: 24px;
     font-size: 12px;
     right: 10px;
+  }
+}
+
+/* 亮色背景需要深色反馈文字，不能沿用玻璃暗色面板的浅色状态。 */
+.c-captcha-modern[data-theme='light'] {
+  .captcha-state-icon.is-success {
+    color: var(--c-success, var(--c-theme-success));
+  }
+  .captcha-state-icon.is-error {
+    color: var(--c-error, var(--c-theme-error));
+  }
+  .captcha-trigger.verified {
+    color: var(--c-success, var(--c-theme-success));
+    border-color: color-mix(
+      in srgb,
+      var(--c-success, var(--c-theme-success)) 45%,
+      var(--c-border, var(--c-theme-border))
+    );
+    background: color-mix(
+      in srgb,
+      var(--c-success, var(--c-theme-success)) 8%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
+  }
+  .captcha-trigger.error {
+    color: var(--c-error, var(--c-theme-error));
+    border-color: color-mix(
+      in srgb,
+      var(--c-error, var(--c-theme-error)) 45%,
+      var(--c-border, var(--c-theme-border))
+    );
+    background: color-mix(
+      in srgb,
+      var(--c-error, var(--c-theme-error)) 8%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
+  }
+  .refresh-button:hover {
+    color: var(--c-primary, var(--c-theme-primary));
+    background: var(--c-bg-hover, var(--c-theme-bg-hover));
   }
 }

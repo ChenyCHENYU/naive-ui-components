@@ -6,9 +6,13 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-antv-container">
+  <div
+    class="c-antv-container"
+    :style="componentTheme"
+  >
     <component
       :is="currentComponent"
+      :style="componentTheme"
       v-bind="componentProps"
       @ready="handleReady"
       @data-change="handleDataChange"
@@ -18,11 +22,12 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, type Component } from 'vue'
+  import { ref, computed, defineAsyncComponent, type Component } from 'vue'
   import type { Graph } from '@antv/x6'
-  import ERLayout from './layout/ER/index.vue'
-  import BPMNLayout from './layout/BPMN/index.vue'
-  import UMLLayout from './layout/UML/index.vue'
+  import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../composables/useComponentTheme'
   import type {
     BPMNDiagramData,
     DiagramConfig,
@@ -48,13 +53,14 @@
     height: '600px',
     readonly: false,
     showToolbar: true,
-    theme: 'light',
   })
 
   const emit = defineEmits<{
     (e: 'ready', graph: Graph): void
     (e: 'data-change', data: DiagramData): void
   }>()
+  const componentTheme = useComponentTheme(() => props.theme)
+  const colorMode = useComponentColorMode(() => props.theme)
 
   const layoutRef = ref<{
     getGraph: () => Graph | null | undefined
@@ -62,9 +68,15 @@
   }>()
 
   const components = {
-    er: ERLayout,
-    bpmn: BPMNLayout,
-    uml: UMLLayout,
+    er: defineAsyncComponent(() =>
+      import('./layout/ER/index.vue').then(module => module.default)
+    ),
+    bpmn: defineAsyncComponent(() =>
+      import('./layout/BPMN/index.vue').then(module => module.default)
+    ),
+    uml: defineAsyncComponent(() =>
+      import('./layout/UML/index.vue').then(module => module.default)
+    ),
   } as const
 
   const currentComponent = computed<Component>(() => components[props.type])
@@ -75,7 +87,7 @@
       height: props.height,
       readonly: props.readonly,
       showToolbar: props.showToolbar,
-      theme: props.theme,
+      theme: colorMode.value,
     }
 
     const adaptedData =

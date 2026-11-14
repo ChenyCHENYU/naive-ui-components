@@ -9,6 +9,7 @@
   <div
     ref="containerRef"
     class="c-split-pane"
+    :style="themeStyle"
     :class="[
       `c-split-pane--${direction}`,
       {
@@ -153,7 +154,8 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentLocale } from '../../component-config'
   import { ref, computed, toRef, useId } from 'vue'
   import { useSplitResize } from './composables/useSplitResize'
   import type {
@@ -164,6 +166,7 @@
   } from './types'
 
   defineOptions({ name: 'C_SplitPane' })
+  const themeStyle = useComponentTheme()
 
   const { t } = useComponentLocale()
   const props = withDefaults(defineProps<SplitPaneProps>(), {

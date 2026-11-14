@@ -1,6 +1,15 @@
 import { describe, expect, test, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { NCode } from 'naive-ui'
+import {
+  NCode,
+  NConfigProvider,
+  NButton,
+  NModal,
+  NTooltip,
+  NSpin,
+  darkTheme,
+} from 'naive-ui'
+import { defineComponent, h, ref } from 'vue'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import C_Code from '../../src/components/C_Code/index.vue'
@@ -188,4 +197,154 @@ describe('C_Code current async task ownership', () => {
       expect(error).not.toHaveBeenCalled()
     }
   )
+})
+
+test('fullscreen Code carries instance semantic overrides across the real Teleport without copying layout styles', async () => {
+  const dark = ref(true)
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          { theme: dark.value ? darkTheme : null, hljs },
+          {
+            default: () =>
+              h(C_Code, {
+                code: 'const current = true',
+                language: 'text',
+                showFullscreen: true,
+                style: { '--c-primary': '#a43e89', width: '480px' },
+              }),
+          }
+        ),
+    }),
+    {
+      attachTo: document.body,
+      global: {
+        components: { NCode, NButton, NModal, NTooltip, NSpin },
+        stubs: { C_Icon: true },
+      },
+    }
+  )
+  wrapper.getComponent(C_Code).vm.toggleFullscreen()
+  await flushPromises()
+  const popup = document.querySelector<HTMLElement>('.fullscreen-content')!
+  expect(popup).toBeTruthy()
+  expect(wrapper.get('.c-code-wrapper').element.contains(popup)).toBe(false)
+  expect(popup.style.getPropertyValue('--c-primary')).toBe('#a43e89')
+  expect(popup.style.width).not.toBe('480px')
+  const background = popup.style.getPropertyValue('--c-theme-bg-card')
+  dark.value = false
+  await flushPromises()
+  expect(document.querySelector('.fullscreen-content')).toBe(popup)
+  expect(popup.style.getPropertyValue('--c-theme-bg-card')).not.toBe(background)
+  expect(popup.textContent).toContain('const current = true')
+})
+
+test('an explicitly pending manager renders safe plaintext until retry makes a real engine available', async () => {
+  const engine = hljs.newInstance()
+  const requests: ReturnType<typeof deferred>[] = []
+  class LateManager {
+    getHljs?: () => typeof engine
+    getLoadedLanguages = () => []
+    loadLanguage = () => {
+      const pending = deferred()
+      requests.push(pending)
+      return pending.promise.then(() => {
+        engine.registerLanguage('javascript', javascript)
+        this.getHljs = () => engine
+      })
+    }
+  }
+  const manager = new LateManager()
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const code = '\n<script>danger()</script>\nconst answer = 42\n'
+  const wrapper = mount(C_Code, {
+    props: { code, language: 'javascript', trim: false },
+    global: {
+      provide: { highlightManager: manager },
+      stubs: {
+        C_Icon: true,
+        NButton: true,
+        NTooltip: true,
+        NSpin: true,
+        NModal: true,
+      },
+    },
+  })
+  expect(wrapper.findComponent(NCode).exists()).toBe(false)
+  expect(wrapper.get('.c-code-plain__source code').element.textContent).toBe(
+    code
+  )
+  expect(wrapper.find('script').exists()).toBe(false)
+  expect(wrapper.get('.c-code-plain__numbers').element.textContent).toBe(
+    '1\n2\n3'
+  )
+  expect(warn).not.toHaveBeenCalled()
+  expect(error).not.toHaveBeenCalled()
+  requests[0].reject(new Error('language unavailable'))
+  await flushPromises()
+  expect(wrapper.find('.c-code-plain').exists()).toBe(true)
+  await wrapper.setProps({
+    autoLoadLanguage: false,
+    wordWrap: true,
+    trim: true,
+  })
+  expect(wrapper.find('.c-code-plain__numbers').exists()).toBe(false)
+  expect(wrapper.get('.c-code-plain__source code').element.textContent).toBe(
+    code.trim()
+  )
+  await wrapper.setProps({ autoLoadLanguage: true })
+  expect(wrapper.findComponent(NCode).exists()).toBe(false)
+  requests[1].resolve()
+  await flushPromises()
+  expect(wrapper.find('.c-code-plain').exists()).toBe(false)
+  expect(wrapper.getComponent(NCode).find('.hljs-keyword').text()).toBe('const')
+  await wrapper.setProps({ wordWrap: false })
+  expect(wrapper.getComponent(NCode).get('.n-code__line-numbers').text()).toBe(
+    '1\n2'
+  )
+  expect(wrapper.find('script').exists()).toBe(false)
+  expect(error).not.toHaveBeenCalled()
+  expect(
+    warn.mock.calls.filter(([message]) =>
+      String(message).includes('[naive/code]')
+    )
+  ).toEqual([])
+  expect(warn).toHaveBeenCalledExactlyOnceWith(
+    'Failed to load language: javascript',
+    expect.any(Error)
+  )
+})
+
+test('a real native NConfigProvider engine is inherited without a Robot manager', async () => {
+  const engine = hljs.newInstance()
+  engine.registerLanguage('javascript', javascript)
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          { hljs: engine },
+          {
+            default: () =>
+              h(C_Code, { code: 'const answer = 42', language: 'javascript' }),
+          }
+        ),
+    }),
+    {
+      global: {
+        components: { NButton, NModal, NTooltip, NSpin },
+        stubs: { C_Icon: true },
+      },
+    }
+  )
+  await flushPromises()
+  expect(wrapper.getComponent(NCode).find('.hljs-keyword').text()).toBe('const')
+  expect(warn).not.toHaveBeenCalled()
+  expect(error).not.toHaveBeenCalled()
+  wrapper.unmount()
 })

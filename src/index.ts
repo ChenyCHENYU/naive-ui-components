@@ -8,7 +8,7 @@ import {
   COMPONENT_LOCALE_KEY,
   type ComponentFeedback,
   type ComponentLocale,
-} from './config'
+} from './component-config'
 
 // ====== 全局样式由 sass CLI 编译到 dist/style.css，不再通过 JS 导入 ======
 
@@ -245,13 +245,23 @@ export {
   COMPONENT_LOCALE_KEY,
   useComponentFeedback,
   useComponentLocale,
-} from './config'
+} from './component-config'
+export {
+  createComponentTheme,
+  COMPONENT_COLOR_PALETTES,
+  COMPONENT_CONTROL_HEIGHTS,
+} from './public-config'
 export type {
   ComponentFeedback,
   ComponentLocale,
   ComponentLocaleName,
   ConfirmOptions,
-} from './config'
+} from './component-config'
+export type {
+  ComponentThemeOptions,
+  ComponentThemeConfig,
+  ComponentColorMode,
+} from './public-config'
 
 // ====== 插件导出 ======
 export { createHighlight, setupHighlight, useHighlight }

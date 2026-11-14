@@ -10,7 +10,11 @@
     <WorkflowNodeBody :node-id="id">
       <!-- 主要内容区域 -->
       <div class="node-content">
-        <div class="node-icon">🚀</div>
+        <div class="node-icon"
+          ><C_Icon
+            name="mdi:play-circle-outline"
+            :size="24"
+        /></div>
         <div class="node-info">
           <div class="node-text">{{ data.title }}</div>
           <div
@@ -104,8 +108,12 @@
   }
 
   .node-content {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: color-mix(
+      in srgb,
+      var(--workflow-accent, #2080f0) 14%,
+      var(--workflow-surface, #fff)
+    );
+    color: var(--workflow-accent, #2080f0);
     padding: 16px 20px;
     border-radius: 12px;
     display: flex;
@@ -113,13 +121,15 @@
     justify-content: center;
     gap: 12px;
     min-width: 160px;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 20px
+      color-mix(in srgb, var(--workflow-accent, #2080f0) 30%, transparent);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+      box-shadow: 0 8px 30px
+        color-mix(in srgb, var(--workflow-accent, #2080f0) 40%, transparent);
     }
   }
 
@@ -143,7 +153,11 @@
   .initiator-name {
     font-size: 12px;
     opacity: 0.9;
-    background: rgba(255, 255, 255, 0.2);
+    background: color-mix(
+      in srgb,
+      var(--workflow-accent, #2080f0) 8%,
+      var(--workflow-surface, #fff)
+    );
     padding: 2px 8px;
     border-radius: 8px;
   }
@@ -165,13 +179,18 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #1890ff, #722ed1);
-    color: white;
+    background: color-mix(
+      in srgb,
+      var(--workflow-accent, #2080f0) 14%,
+      var(--workflow-surface, #fff)
+    );
+    color: var(--workflow-accent, #2080f0);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+    box-shadow: 0 4px 12px
+      color-mix(in srgb, var(--workflow-accent, #2080f0) 30%, transparent);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 16px;
     font-weight: bold;
@@ -179,11 +198,12 @@
 
     &:hover {
       transform: translateX(-50%) scale(1.1);
-      box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
+      box-shadow: 0 6px 20px
+        color-mix(in srgb, var(--workflow-accent, #2080f0) 40%, transparent);
     }
 
     &:focus-visible {
-      outline: 2px solid #1890ff;
+      outline: 2px solid var(--workflow-accent, #2080f0);
       outline-offset: 2px;
     }
   }

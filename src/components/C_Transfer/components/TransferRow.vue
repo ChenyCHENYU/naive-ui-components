@@ -12,7 +12,7 @@
       :checked="checked"
       :disabled="locked || item.disabled"
       :aria-label="item.label"
-      size="small"
+      :size="size"
       @update:checked="toggle"
       @click.stop
     />
@@ -28,11 +28,12 @@
 <script setup lang="ts">
   import { NCheckbox } from 'naive-ui'
   import C_Icon from '../../C_Icon/index.vue'
-  import type { TransferItem } from '../types'
+  import type { TransferItem, TransferProps } from '../types'
   const props = defineProps<{
     item: TransferItem
     checked: boolean
     locked?: boolean
+    size?: TransferProps['size']
   }>()
   const emit = defineEmits<{ check: [key: string | number] }>()
   const toggle = () => {
@@ -51,7 +52,7 @@
     cursor: pointer;
     transition: background 0.15s;
     font-size: var(--tf-item-font-size);
-    color: var(--c-text-1, var(--text-color-1, #262626));
+    color: var(--c-text-1, var(--c-theme-text-1, #262626));
 
     &:hover {
       background: var(--tf-item-hover);
@@ -73,7 +74,7 @@
     &-icon {
       font-size: 16px;
       flex-shrink: 0;
-      color: var(--c-text-3, var(--text-color-3, #a3a3a3));
+      color: var(--c-text-3, var(--c-theme-text-3, #a3a3a3));
     }
     &-label {
       flex: 1;

@@ -38,6 +38,8 @@
   }
 
   &__spinner {
+    display: block;
+    box-sizing: border-box;
     width: 100%;
     height: 100%;
     border: 2px solid currentColor;
@@ -66,5 +68,17 @@
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-icon,
+  .c-icon__spinner {
+    animation: none;
+    transition: none;
+  }
+  .c-icon--clickable:hover,
+  .c-icon--clickable:active {
+    transform: none;
   }
 }

@@ -111,7 +111,7 @@
 <script setup lang="ts">
   import { nextTick, onMounted, ref, watch } from 'vue'
   import { C_Icon } from '../C_Icon'
-  import { useComponentLocale } from '../../config'
+  import { useComponentLocale } from '../../component-config'
   import { countBreadcrumbPages as countPages } from './model'
   import type { BreadcrumbItem } from '../_shared/public'
   defineOptions({ name: 'BreadcrumbMenu' })

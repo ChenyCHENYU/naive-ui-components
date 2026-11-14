@@ -6,7 +6,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="c-qrcode">
+  <div
+    class="c-qrcode"
+    :style="themeStyle"
+  >
     <div
       class="qrcode-wrapper"
       :class="{ 'with-border': showBorder }"
@@ -32,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, ref, toRef, watch, onMounted } from 'vue'
   import { useQRCode } from './composables/useQRCode'
   import type {
@@ -44,6 +48,7 @@
   import { sanitizeSvg } from '../../utils/html'
 
   defineOptions({ name: 'C_QRCode' })
+  const themeStyle = useComponentTheme()
 
   interface Props {
     value: string

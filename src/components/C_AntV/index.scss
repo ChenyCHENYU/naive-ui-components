@@ -13,8 +13,8 @@
 /* 工具栏样式 */
 @mixin antv-toolbar {
   padding: 12px;
-  background: var(--n-color-embedded);
-  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9));
+  border-bottom: 1px solid var(--c-border, var(--c-theme-border));
   flex-shrink: 0;
 }
 
@@ -24,7 +24,7 @@
   position: relative;
   min-height: 300px;
   width: 100%;
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--c-border, var(--c-theme-border));
   overflow: hidden;
 
   :deep(.x6-graph),
@@ -46,7 +46,7 @@
 
     .n-form-item-label {
       font-size: 12px;
-      color: #666;
+      color: var(--c-text-2, var(--c-theme-text-2, #475569));
       margin-bottom: 4px;
       white-space: nowrap;
     }
@@ -56,12 +56,12 @@
 /* 卡片样式 */
 @mixin antv-card-item {
   .n-card {
-    border: 1px solid var(--c-border);
+    border: 1px solid var(--c-border, var(--c-theme-border));
 
     .n-card-header {
       padding: 8px 12px;
-      background: var(--n-color-embedded);
-      border-bottom: 1px solid var(--c-border);
+      background: var(--c-bg-muted, var(--c-theme-bg-muted, #f1f5f9));
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     }
 
     .n-card__content {
@@ -77,7 +77,7 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--n-scrollbar-color);
+    background: var(--c-border, var(--c-theme-border, #dce3ed));
     border-radius: 3px;
   }
 }

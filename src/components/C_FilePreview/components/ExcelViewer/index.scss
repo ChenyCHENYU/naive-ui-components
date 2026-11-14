@@ -5,8 +5,8 @@
 
   .file-toolbar {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--c-border, #e0e0e0);
-    background-color: var(--c-bg-card, #f9f9f9);
+    border-bottom: 1px solid var(--c-border, var(--c-theme-border, #e0e0e0));
+    background-color: var(--c-bg-card, var(--c-theme-bg-card, #f9f9f9));
     flex-shrink: 0;
     z-index: 8;
     position: relative;
@@ -24,8 +24,8 @@
 
     .excel-info {
       padding: 8px 16px;
-      background-color: var(--c-bg-card, #f9f9f9);
-      border-bottom: 1px solid var(--c-border, #e0e0e0);
+      background-color: var(--c-bg-card, var(--c-theme-bg-card, #f9f9f9));
+      border-bottom: 1px solid var(--c-border, var(--c-theme-border, #e0e0e0));
       flex-shrink: 0;
       z-index: 7;
       position: relative;
@@ -50,7 +50,7 @@
 
             .excel-header {
               padding: 6px 8px;
-              background: #f8f9fa;
+              background: var(--c-bg-muted, var(--c-theme-bg-muted));
 
               .header-content {
                 .column-letter {
@@ -64,7 +64,7 @@
             }
 
             .excel-row:nth-child(even) {
-              background-color: #fefefe;
+              background-color: var(--c-bg-card, var(--c-theme-bg-card));
             }
 
             .excel-cell {
@@ -72,7 +72,7 @@
               font-size: 12px;
 
               &.merged-cell {
-                border: 1px solid #1976d2 !important;
+                border: 1px solid var(--c-primary, var(--c-theme-primary)) !important;
 
                 &::after {
                   display: none;
@@ -91,24 +91,32 @@
         min-width: 100%;
 
         .row-number {
-          background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+          background: linear-gradient(
+            135deg,
+            var(--c-bg-muted, var(--c-theme-bg-muted)) 0%,
+            var(--c-bg-hover, var(--c-theme-bg-hover)) 100%
+          );
           text-align: center;
           min-width: 30px;
           width: 30px;
           padding: 2px 4px;
           font-size: 11px;
           font-weight: bold;
-          border: 1px solid #d0d0d0;
-          color: #666;
+          border: 1px solid var(--c-border, var(--c-theme-border));
+          color: var(--c-text-3, var(--c-theme-text-3));
           position: sticky;
           left: 0;
           z-index: 10;
         }
 
         .excel-header {
-          background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+          background: linear-gradient(
+            135deg,
+            var(--c-bg-muted, var(--c-theme-bg-muted)) 0%,
+            var(--c-bg-hover, var(--c-theme-bg-hover)) 100%
+          );
           padding: 8px 12px;
-          border: 1px solid #c0c0c0;
+          border: 1px solid var(--c-border, var(--c-theme-border));
           font-weight: bold;
           position: sticky;
           top: 0;
@@ -121,7 +129,7 @@
             gap: 2px;
 
             .column-letter {
-              background-color: var(--c-primary, #1976d2);
+              background-color: var(--c-primary, var(--c-theme-primary));
               color: white;
               padding: 2px 6px;
               border-radius: 3px;
@@ -140,17 +148,17 @@
 
         .excel-row {
           &:nth-child(even) {
-            background-color: #fafafa;
+            background-color: var(--c-bg-muted, var(--c-theme-bg-muted));
           }
 
           &:hover {
-            background-color: #e6f3ff;
+            background-color: var(--c-bg-hover, var(--c-theme-bg-hover));
           }
         }
 
         .excel-cell {
           padding: 8px 12px;
-          border: 1px solid #d0d0d0;
+          border: 1px solid var(--c-border, var(--c-theme-border));
           vertical-align: middle;
           word-wrap: break-word;
           word-break: break-all;
@@ -168,12 +176,12 @@
             font-family: monospace;
             font-size: 14px;
             font-weight: bold;
-            background-color: #f0f0f0;
-            color: var(--c-text-1, #333);
+            background-color: var(--c-bg-muted, var(--c-theme-bg-muted));
+            color: var(--c-text-1, var(--c-theme-text-1, #333));
           }
 
           &.cell-date {
-            color: var(--c-primary, #1976d2);
+            color: var(--c-primary, var(--c-theme-primary));
           }
 
           &.cell-boolean {
@@ -187,19 +195,19 @@
           }
 
           &.cell-empty {
-            background-color: #fafafa;
+            background-color: var(--c-bg-muted, var(--c-theme-bg-muted));
           }
 
           &.merged-cell {
             background: linear-gradient(
               135deg,
-              #f0f8ff 0%,
-              #e3f2fd 100%
+              var(--c-bg-active, var(--c-theme-bg-active)) 0%,
+              var(--c-bg-active, var(--c-theme-bg-active)) 100%
             ) !important;
-            border: 2px solid var(--c-primary, #1976d2) !important;
+            border: 2px solid var(--c-primary, var(--c-theme-primary)) !important;
             font-weight: bold;
             text-align: center;
-            color: var(--c-primary, #1976d2);
+            color: var(--c-primary, var(--c-theme-primary));
 
             &::before {
               content: '';
@@ -208,7 +216,11 @@
               left: 3px;
               right: 3px;
               bottom: 3px;
-              background: rgba(25, 118, 210, 0.08);
+              background: color-mix(
+                in srgb,
+                var(--c-primary, var(--c-theme-primary)) 8%,
+                transparent
+              );
               border-radius: 2px;
               pointer-events: none;
             }
@@ -230,13 +242,13 @@
             &.merged-cell {
               background: linear-gradient(
                 135deg,
-                #f0f8ff 0%,
-                #e3f2fd 100%
+                var(--c-bg-active, var(--c-theme-bg-active)) 0%,
+                var(--c-bg-active, var(--c-theme-bg-active)) 100%
               ) !important;
-              border: 1px solid var(--c-primary, #1976d2) !important;
+              border: 1px solid var(--c-primary, var(--c-theme-primary)) !important;
               font-weight: bold;
               text-align: center;
-              color: var(--c-primary, #1976d2);
+              color: var(--c-primary, var(--c-theme-primary));
 
               &::before {
                 top: 2px;
@@ -264,8 +276,8 @@
 
       .excel-pagination {
         padding: 20px 16px;
-        border-top: 1px solid var(--c-border, #e0e0e0);
-        background-color: var(--c-bg-card, #f9f9f9);
+        border-top: 1px solid var(--c-border, var(--c-theme-border, #e0e0e0));
+        background-color: var(--c-bg-card, var(--c-theme-bg-card, #f9f9f9));
         display: flex;
         justify-content: center;
         flex-shrink: 0;

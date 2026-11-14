@@ -2,8 +2,8 @@
   position: relative;
   width: 100%;
   min-height: 300px;
-  background: var(--c-bg-surface, #fff);
-  border-radius: var(--c-radius-sm, 4px);
+  background: var(--c-bg-surface, var(--c-theme-bg-surface, #fff));
+  border-radius: var(--c-radius-sm, var(--c-theme-radius-sm, 4px));
   overflow: hidden;
 
   .map-container {
@@ -22,7 +22,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in srgb, var(--c-bg-surface, #fff) 90%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--c-bg-surface, var(--c-theme-bg-surface, #fff)) 90%,
+      transparent
+    );
     border-radius: inherit;
     z-index: 1000;
   }

@@ -3,12 +3,12 @@
   --icon-size: 32px;
   --line-width: 2px;
   --line-gap: 4px;
-  --primary: var(--c-primary, #18a058);
-  --success: var(--c-success, #18a058);
-  --warning: var(--c-warning, #f0a020);
-  --error: var(--c-error, #d03050);
-  --border: var(--c-border, rgba(0, 0, 0, 0.09));
-  --bg-hover: rgba(0, 0, 0, 0.04);
+  --primary: var(--c-primary, var(--c-theme-primary, #18a058));
+  --success: var(--c-success, var(--c-theme-success, #18a058));
+  --warning: var(--c-warning, var(--c-theme-warning, #f0a020));
+  --error: var(--c-error, var(--c-theme-error, #d03050));
+  --border: var(--c-border, var(--c-theme-border, rgba(0, 0, 0, 0.09)));
+  --bg-hover: var(--c-bg-hover, var(--c-theme-bg-hover));
 
   display: flex;
 }
@@ -82,7 +82,7 @@
   align-items: center;
   justify-content: center;
   border: var(--line-width) solid var(--border);
-  background: var(--c-bg-card, #fff);
+  background: var(--c-bg-card, var(--c-theme-bg-card, #fff));
   position: relative;
   z-index: 2;
   transition: all 0.2s ease;
@@ -96,8 +96,8 @@
 
 .step-process .step-icon {
   border-color: var(--primary);
-  background: var(--primary);
-  color: white;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
 }
 
 .step-error .step-icon {

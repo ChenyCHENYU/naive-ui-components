@@ -17,7 +17,7 @@
 
 .steps-indicator {
   padding: var(--c-form-padding, 24px);
-  border-radius: 8px;
+  border-radius: var(--c-radius-panel, var(--c-theme-radius-panel, 8px));
 }
 
 .steps-content {
@@ -31,7 +31,7 @@
 .step-header {
   margin-bottom: var(--c-form-row-gap, 24px);
   padding-bottom: var(--c-form-row-gap, 16px);
-  border-bottom: 1px solid var(--n-border-color);
+  border-bottom: 1px solid var(--c-border, var(--c-theme-border, #e5e7eb));
 }
 
 .step-title {
@@ -53,7 +53,7 @@
 .steps-actions {
   margin-top: var(--c-form-row-gap, 24px);
   padding-top: var(--c-form-row-gap, 16px);
-  border-top: 1px solid var(--n-border-color);
+  border-top: 1px solid var(--c-border, var(--c-theme-border, #e5e7eb));
 }
 
 @keyframes fadeIn {

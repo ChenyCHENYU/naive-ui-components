@@ -4,6 +4,7 @@
 <template>
   <div
     :class="rootClasses"
+    :style="themeStyle"
     role="list"
   >
     <div
@@ -119,18 +120,19 @@
 </template>
 
 <script setup lang="ts">
-  import { useComponentLocale } from '../../config'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentLocale } from '../../component-config'
   import { computed, reactive, watch } from 'vue'
   import C_Icon from '../C_Icon/index.vue'
   import { sanitizeRichHtml } from '../../utils/html'
   import {
     DEFAULT_TIMELINE_PROPS,
-    STATUS_COLOR_MAP,
     type TimelineProps,
     type TimelineItem,
   } from './types'
 
   defineOptions({ name: 'C_Timeline' })
+  const themeStyle = useComponentTheme()
 
   const { t } = useComponentLocale()
   const props = withDefaults(defineProps<TimelineProps>(), {
@@ -189,10 +191,19 @@
     `is-label-${props.labelPlacement}`,
   ])
 
+  // 语义状态跟随当前主题；调用方明确传入的节点颜色始终优先。
+  const statusColors = {
+    default: '',
+    success: 'var(--c-success, var(--c-theme-success))',
+    warning: 'var(--c-warning, var(--c-theme-warning))',
+    error: 'var(--c-error, var(--c-theme-error))',
+    info: 'var(--c-info, var(--c-theme-info))',
+  }
+
   // ===== 节点颜色 =====
   const dotStyle = (item: TimelineItem) => {
     const color =
-      item.color || STATUS_COLOR_MAP[item.status || 'default'] || undefined
+      item.color || statusColors[item.status || 'default'] || undefined
     if (item.icon) {
       return { color, borderColor: color || undefined }
     }

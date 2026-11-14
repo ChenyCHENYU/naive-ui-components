@@ -160,7 +160,7 @@ const componentStyleContracts = {
     '.cron-field-editor[',
     '.cron-preview[',
     '.c-loading[',
-    '--c-primary:',
+    '--c-theme-primary:',
   ],
   'C_FormulaEditor.css': [
     '.c-formula[',
@@ -169,7 +169,7 @@ const componentStyleContracts = {
     '.formula-preview[',
     '.variable-panel[',
     '.c-icon[',
-    '--c-primary:',
+    '--c-theme-primary:',
   ],
   'C_PageLoading.css': [
     '.c-page-loading[',

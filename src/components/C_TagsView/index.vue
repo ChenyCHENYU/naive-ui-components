@@ -27,7 +27,10 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
 -->
 <template>
-  <div class="tags-view-container">
+  <div
+    class="tags-view-container"
+    :style="themeStyle"
+  >
     <div
       class="tags-track"
       ref="tagsTrack"
@@ -41,6 +44,7 @@
           v-for="tag in tags.tagsViewList.value"
           :key="tag.path"
           :type="isActive(tag) ? 'primary' : 'default'"
+          :class="{ 'is-active': isActive(tag) }"
           :closable="!isAffix(tag)"
           :data-path="tag.path"
           @close.stop="handleClose(tag)"
@@ -71,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import { ref, computed, watch, nextTick, h, onBeforeUnmount } from 'vue'
   import {
     useRoute,
@@ -88,6 +93,7 @@
   import type { ContextMenuLabels } from './types'
 
   defineOptions({ name: 'C_TagsView' })
+  const themeStyle = useComponentTheme()
 
   interface LegacyContextMenuLabels extends ContextMenuLabels {
     close?: string

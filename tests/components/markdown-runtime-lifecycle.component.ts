@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { nextTick, defineComponent, h, ref } from 'vue'
+import { NConfigProvider, darkTheme } from 'naive-ui'
 import { MdEditor, type ExposeParam } from 'md-editor-v3'
 import C_Markdown from '../../src/components/C_Markdown/index.vue'
 
@@ -168,4 +169,44 @@ test('disposing one real Markdown editor preserves another instance', async () =
   second.unmount()
   expect(destroySecond).toHaveBeenCalledTimes(1)
   expect(observers.every(targets => targets.size === 0)).toBe(true)
+})
+
+test('real Markdown theme follows Provider while explicit false stays light without replacing the editor', async () => {
+  const dark = ref(true)
+  const explicit = ref<boolean>()
+  const wrapper = mount(
+    defineComponent({
+      setup: () => () =>
+        h(
+          NConfigProvider,
+          { theme: dark.value ? darkTheme : null },
+          {
+            default: () =>
+              h(C_Markdown, {
+                modelValue: '# Preserve text',
+                toolbar: [],
+                showWordCount: false,
+                isDark: explicit.value,
+              }),
+          }
+        ),
+    }),
+    { attachTo: document.body }
+  )
+  await nextTick()
+  const editor = wrapper.getComponent(MdEditor)
+  const runtime = editor.vm as unknown as ExposeParam
+  const view = runtime.getEditorView()
+  expect(editor.vm.$.props.theme).toBe('dark')
+  explicit.value = false
+  await nextTick()
+  expect(editor.vm.$.props.theme).toBe('light')
+  explicit.value = undefined
+  dark.value = false
+  await nextTick()
+  expect(editor.vm.$.props.theme).toBe('light')
+  dark.value = true
+  await nextTick()
+  expect(editor.vm.$.props.theme).toBe('dark')
+  expect(runtime.getEditorView()).toBe(view)
 })

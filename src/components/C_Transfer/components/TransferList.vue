@@ -16,6 +16,7 @@
         :item="item"
         :checked="checked.has(item.key)"
         :locked="locked"
+        :size="size"
         @check="emit('check', $event)"
       />
     </template>
@@ -30,6 +31,7 @@
       :item="item"
       :checked="checked.has(item.key)"
       :locked="locked"
+      :size="size"
       @check="emit('check', $event)"
     />
   </div>

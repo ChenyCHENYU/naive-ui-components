@@ -8,7 +8,11 @@
 <template>
   <div
     class="c-markdown-wrapper"
-    :class="{ 'is-dark': isDark, 'toc-left': tocNavPosition === 'left' }"
+    :style="themeStyle"
+    :class="{
+      'is-dark': colorMode === 'dark',
+      'toc-left': tocNavPosition === 'left',
+    }"
   >
     <MdEditor
       :id="editorId"
@@ -16,7 +20,7 @@
       :model-value="modelValue"
       :height="height"
       :placeholder="placeholder"
-      :theme="isDark ? 'dark' : 'light'"
+      :theme="colorMode"
       :preview="effectiveMode !== 'edit'"
       :preview-only="effectiveMode === 'preview'"
       :read-only="disabled"
@@ -38,6 +42,10 @@
 </template>
 
 <script setup lang="ts">
+  import {
+    useComponentTheme,
+    useComponentColorMode,
+  } from '../../composables/useComponentTheme'
   import {
     ref,
     computed,
@@ -122,8 +130,13 @@
     showWordCount: true,
     autoSave: false,
     autoSaveInterval: 30000,
-    isDark: false,
+    isDark: undefined,
   })
+
+  const explicitMode = () =>
+    props.isDark === undefined ? undefined : props.isDark ? 'dark' : 'light'
+  const colorMode = useComponentColorMode(explicitMode)
+  const themeStyle = useComponentTheme(explicitMode)
 
   interface Emits {
     'update:modelValue': [value: string]

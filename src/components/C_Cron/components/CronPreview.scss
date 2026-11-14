@@ -2,8 +2,12 @@
 .cron-preview {
   min-width: 0;
   padding: 24px;
-  background: color-mix(in srgb, var(--c-primary) 3%, var(--c-bg-card));
-  border-left: 1px solid var(--c-border);
+  background: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 3%,
+    var(--c-bg-card, var(--c-theme-bg-card))
+  );
+  border-left: 1px solid var(--c-border, var(--c-theme-border));
   header {
     display: flex;
     align-items: center;
@@ -15,18 +19,18 @@
   }
   h3 {
     font-size: 15px;
-    color: var(--c-text-1);
+    color: var(--c-text-1, var(--c-theme-text-1));
   }
   header p {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--c-text-2);
+    color: var(--c-text-2, var(--c-theme-text-2));
   }
   &__step {
     font:
       600 12px ui-monospace,
       monospace;
-    color: var(--c-primary);
+    color: var(--c-primary, var(--c-theme-primary));
   }
   &__next {
     display: flex;
@@ -35,24 +39,33 @@
     min-height: 128px;
     margin: 24px 0;
     padding: 20px;
-    border: 1px solid color-mix(in srgb, var(--c-primary) 20%, var(--c-border));
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 20%,
+        var(--c-border, var(--c-theme-border))
+      );
     border-radius: 12px;
-    background: color-mix(in srgb, var(--c-primary) 7%, var(--c-bg-card));
+    background: color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 7%,
+      var(--c-bg-card, var(--c-theme-bg-card))
+    );
     strong {
       font:
         600 20px/1.5 ui-monospace,
         monospace;
       overflow-wrap: anywhere;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
     p {
       font-size: 13px;
-      color: var(--c-text-2);
+      color: var(--c-text-2, var(--c-theme-text-2));
     }
   }
   &__label {
     font-size: 12px;
-    color: var(--c-primary);
+    color: var(--c-primary, var(--c-theme-primary));
   }
   &__waiting {
     display: flex;
@@ -68,7 +81,7 @@
     font-weight: 600;
     span {
       font-weight: 400;
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
     }
   }
   ol {
@@ -84,18 +97,18 @@
     gap: 8px;
     align-items: center;
     padding: 12px 0;
-    border-bottom: 1px solid var(--c-border);
+    border-bottom: 1px solid var(--c-border, var(--c-theme-border));
     font-size: 11px;
     time {
       font-family: ui-monospace, monospace;
-      color: var(--c-text-1);
+      color: var(--c-text-1, var(--c-theme-text-1));
     }
     > span:last-child {
-      color: var(--c-text-3);
+      color: var(--c-text-3, var(--c-theme-text-3));
     }
   }
   &__idx {
-    color: var(--c-primary);
+    color: var(--c-primary, var(--c-theme-primary));
     font:
       500 11px ui-monospace,
       monospace;
@@ -105,7 +118,7 @@
     flex-wrap: wrap;
     gap: 8px;
     font-size: 11px;
-    color: var(--c-text-3);
+    color: var(--c-text-3, var(--c-theme-text-3));
     code {
       overflow-wrap: anywhere;
     }
@@ -118,6 +131,6 @@
 @container cron-editor (max-width: 820px) {
   .cron-preview {
     border-left: 0;
-    border-top: 1px solid var(--c-border);
+    border-top: 1px solid var(--c-border, var(--c-theme-border));
   }
 }

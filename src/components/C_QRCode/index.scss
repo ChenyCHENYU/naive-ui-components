@@ -9,7 +9,7 @@
   .qrcode-wrapper {
     display: inline-block;
     padding: 8px;
-    background: var(--c-bg-content, #fff);
+    background: #fff;
     border-radius: 6px;
     transition: all 0.3s ease;
     overflow: hidden;
@@ -17,12 +17,15 @@
     line-height: 0;
 
     &.with-border {
-      border: 1px dashed var(--c-border-default, #e0e0e6);
+      border: 1px dashed var(--c-border, var(--c-theme-border, #e0e0e6));
     }
 
     &:hover {
-      border-color: var(--primary-color, #409eff);
-      box-shadow: var(--c-shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.08));
+      border-color: var(--c-primary, var(--c-theme-primary, #2080f0));
+      box-shadow: var(
+        --c-shadow-sm,
+        var(--c-theme-shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.08))
+      );
     }
 
     canvas {
@@ -47,7 +50,7 @@
 
   .qrcode-label {
     font-size: 14px;
-    color: var(--c-text-secondary, #999);
+    color: var(--c-text-2, var(--c-theme-text-2, #525252));
     text-align: center;
     font-weight: 500;
     word-break: break-all;

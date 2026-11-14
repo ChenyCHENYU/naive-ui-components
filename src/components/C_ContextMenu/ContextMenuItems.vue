@@ -38,7 +38,10 @@
         v-if="item.icon"
         class="c-context-menu__icon"
       >
-        <C_Icon :name="item.icon" />
+        <C_Icon
+          :name="item.icon"
+          size="var(--ctx-icon-size, 16px)"
+        />
       </span>
 
       <span class="c-context-menu__label">{{ item.label }}</span>
@@ -54,7 +57,10 @@
         v-if="item.children?.length"
         class="c-context-menu__arrow"
       >
-        <C_Icon name="mdi:chevron-right" />
+        <C_Icon
+          name="mdi:chevron-right"
+          :size="12"
+        />
       </span>
 
       <div
