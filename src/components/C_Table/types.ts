@@ -35,7 +35,8 @@ export interface TableRowKeyIssue<T extends object = DataRecord> {
   firstIndex?: number
   cause?: unknown
 }
-export type EditMode = 'row' | 'cell' | 'both' | 'modal' | 'none'
+/** inline 常显控件即时更新模型；row/cell/modal 保留保存与取消会话。 */
+export type EditMode = 'row' | 'cell' | 'both' | 'modal' | 'inline' | 'none'
 export type EditType =
   | 'input'
   | 'textarea'

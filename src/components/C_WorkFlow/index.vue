@@ -112,12 +112,13 @@
     <!-- 节点添加菜单 -->
     <Teleport to="body">
       <div
+        ref="addMenuRef"
         v-show="showAddMenu"
         class="add-node-menu"
         :style="{
           ...workflowStyle,
-          left: menuPosition.x + 'px',
-          top: menuPosition.y + 'px',
+          left: boundedMenuPosition.x + 'px',
+          top: boundedMenuPosition.y + 'px',
         }"
       >
         <div class="add-menu-content">
@@ -125,6 +126,7 @@
             v-for="nodeType in paletteOptions"
             :key="nodeType.type"
             type="button"
+            :aria-label="nodeType.label"
             class="add-menu-item"
             @click="addNode(nodeType.type)"
           >
@@ -450,7 +452,15 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, provide, defineAsyncComponent } from 'vue'
+  import {
+    ref,
+    computed,
+    provide,
+    defineAsyncComponent,
+    onDeactivated,
+    watch,
+    nextTick,
+  } from 'vue'
   import { VueFlow } from '@vue-flow/core'
   import { NButton, NDrawer, NDrawerContent, NTag } from 'naive-ui'
   import { C_Icon } from '../C_Icon'
@@ -504,6 +514,8 @@
   }))
   const message = useComponentFeedback()
   const vueFlowRef = ref()
+  const addMenuRef = ref<HTMLElement>()
+  const boundedMenuPosition = ref({ x: 0, y: 0 })
 
   /* ─── 节点管理 ──────────────────────────────────────────── */
   const {
@@ -531,6 +543,38 @@
     fitView,
     deleteNode,
   } = useWorkflowNodes(props, emit, vueFlowRef)
+
+  watch(
+    [showAddMenu, menuPosition],
+    async ([visible, position], _previous, onCleanup) => {
+      if (!visible) return
+      let current = true
+      onCleanup(() => {
+        current = false
+      })
+      // post watcher 仍可能先于 v-show updated；完整 DOM 更新后再测可见尺寸。
+      await nextTick()
+      const menu = addMenuRef.value
+      if (!current || !showAddMenu.value || !menu) return
+      const { width, height } = menu.getBoundingClientRect()
+      const viewportWidth =
+        document.documentElement.clientWidth || window.innerWidth
+      const viewportHeight =
+        document.documentElement.clientHeight || window.innerHeight
+      // 显示后按真实尺寸收敛到视口；保留原始锚点，避免测量回写触发循环。
+      boundedMenuPosition.value = {
+        x: Math.min(
+          Math.max(8, position.x),
+          Math.max(8, viewportWidth - width - 8)
+        ),
+        y: Math.min(
+          Math.max(8, position.y),
+          Math.max(8, viewportHeight - height - 8)
+        ),
+      }
+    },
+    { flush: 'post' }
+  )
 
   provide(WORKFLOW_PRESENTATION, {
     readonly: computed(() => props.readonly),
@@ -578,6 +622,7 @@
   /* ─── 流程预览 ──────────────────────────────────────────── */
   const { showPreview, previewSteps, previewStats, openPreview, closePreview } =
     useWorkflowPreview(nodes, edges)
+  onDeactivated(closePreview)
 
   /* ─── 编排方法（跨 composable 协作） ────────────────────── */
   const saveWorkflow = (): void => {

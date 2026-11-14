@@ -254,6 +254,7 @@ export interface DynamicFieldConfig {
   type: ComponentType | string
   prop: string
   label: string
+  /** 初始显隐；创建后由控制器的切换方法管理运行态，allFields.show 为当前值。 */
   visible: boolean
   removable: boolean
   created: number
@@ -711,7 +712,9 @@ export interface DynamicFormController {
   addField(config?: Partial<DynamicFieldConfig>): DynamicFieldConfig | null
   removeField(index?: number): DynamicFieldConfig | null
   clearDynamicFields(): number
+  /** 按 prop 切换基础或动态字段；返回切换后的可见性，未知 prop 返回 false。 */
   toggleFieldVisibility(fieldId: string): boolean
+  /** 统一切换基础与动态字段；返回切换后是否全部可见。 */
   toggleAllVisibility(): boolean
   updateConfig(config: Partial<DynamicFormConfig>): void
   exportConfig(): string

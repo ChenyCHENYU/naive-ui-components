@@ -3,7 +3,7 @@
  * 封装流程校验逻辑、错误展示和节点定位
  */
 
-import { ref, onBeforeUnmount, type Ref } from 'vue'
+import { ref, onBeforeUnmount, onActivated, onDeactivated, type Ref } from 'vue'
 import { useComponentFeedback } from '../../../component-config'
 import type {
   WorkflowNode,
@@ -38,6 +38,11 @@ export function useWorkflowValidation(
   const validationErrors = ref<ValidationError[]>([])
   const showValidationErrors = ref(false)
   let jumpTimer: ReturnType<typeof setTimeout> | undefined
+  let active = true
+  const cancelJump = (): void => {
+    if (jumpTimer !== undefined) clearTimeout(jumpTimer)
+    jumpTimer = undefined
+  }
 
   /* ─── 核心验证 ──────────────────────────────────────────── */
   /** 执行工作流验证，返回错误列表（纯逻辑，不操作 UI） */
@@ -126,6 +131,7 @@ export function useWorkflowValidation(
 
   /** 定位到错误节点并打开配置弹窗 */
   const jumpToErrorNode = (nodeId: string): void => {
+    if (!active) return
     const node = nodes.value.find(n => n.id === nodeId)
     if (!node || !vueFlowRef.value) return
 
@@ -134,11 +140,11 @@ export function useWorkflowValidation(
       duration: 800,
     })
 
-    if (jumpTimer) clearTimeout(jumpTimer)
+    cancelJump()
     jumpTimer = setTimeout(() => {
       jumpTimer = undefined
       // 定位动画期间数据可能被重置或替换，不再打开过期节点的配置。
-      if (!nodes.value.includes(node)) return
+      if (!active || !nodes.value.includes(node)) return
       options?.onShowNodeConfig?.(node)
       showValidationErrors.value = false
     }, 900)
@@ -155,14 +161,23 @@ export function useWorkflowValidation(
 
   /** 重置验证状态 */
   const resetValidation = (): void => {
-    if (jumpTimer) clearTimeout(jumpTimer)
-    jumpTimer = undefined
+    cancelJump()
     validationErrors.value = []
     showValidationErrors.value = false
   }
 
+  onActivated(() => {
+    active = true
+  })
+  onDeactivated(() => {
+    active = false
+    cancelJump()
+    // 只关闭离开页面的抽屉；保留检查结果供用户返回后主动查看。
+    showValidationErrors.value = false
+  })
   onBeforeUnmount(() => {
-    if (jumpTimer) clearTimeout(jumpTimer)
+    active = false
+    cancelJump()
   })
 
   return {

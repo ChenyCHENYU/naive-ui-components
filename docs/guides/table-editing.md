@@ -2,6 +2,24 @@
 
 旧的平铺列、`editable: false`、静态选项和 `editRender` 保持有效。行键继续由业务提供，`0` 也是有效身份。
 
+## 常显录入
+
+检测矩阵等需要连续填写的页面可直接配置 `edit: 'inline'`：
+
+```vue
+<C_Table
+  v-model:data="measurements"
+  :columns="columns"
+  :config="{ edit: 'inline', density: 'compact', pagination: false }"
+/>
+```
+
+列继续声明 `editType`、`editProps` 或 `editRender`。所有可编辑单元格常显控件，输入即不可变发布 `update:data`，同一轮多个字段更新会合并。字段权限按当前模型与源行索引判断，`editProps.disabled/readonly` 也约束自定义控件的回调。仅开启此模式时不生成默认操作列，显式业务操作保持有效。
+
+此模式直接编辑应用模型，没有逐格保存／取消草稿；不会逐键调用 `edit.onSave` 或自动提交网络请求。页面在提交时使用自己的业务规则或 `useValidationScope` 协调校验。`C_Table` 目前没有公开整表 `validate()`，不能把单元格或行保存内部的校验方法当成整表提交入口。需要先校验再确认的逐格操作继续使用 `edit: 'cell'`。
+
+切换受控数据、删除源行、更换列或离开缓存页面会结束旧控件的写入会话；重新激活后可继续编辑现有模型。只在同一 tick 内暂存字段补丁以合并受控事件，父级未接收的值不会变成组件内部长期草稿。大量数据仍需分页或虚拟滚动；常显控件数量由实际渲染的行列决定，不代表电子表格区域编辑或报表版式引擎。
+
 ## 按行决定编辑许可
 
 ```ts

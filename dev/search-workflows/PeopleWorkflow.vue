@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import { ref } from 'vue'
   import {
     NConfigProvider,
     NMessageProvider,
@@ -16,6 +17,8 @@
   import './people-workflow.css'
 
   defineOptions({ name: 'PeopleWorkflowExperience' })
+  // 模拟管理端缓存切页，便于直接验证浮层取消与流程草稿保留。
+  const workflowActive = ref(true)
   const {
     dark,
     selected,
@@ -50,7 +53,8 @@
       >
         <header class="pw-heading">
           <div
-            ><a href="./organization.html">← 组织目录与架构图</a
+            ><a href="./organization.html">← 组织目录与架构图</a>
+            <a href="./business-scenarios.html">生产、质量与选择场景 →</a
             ><p class="pw-eyebrow">PEOPLE & APPROVAL</p
             ><h1>协作与审批，清晰可控。</h1
             ><p>通过组织找到合适的人，用明确的节点表达审批规则。</p></div
@@ -155,23 +159,36 @@
               v-model:value="remotePeople"
               aria-label="审批人使用分页来源"
           /></label>
+          <NButton
+            data-testid="toggle-workflow-page"
+            @click="workflowActive = !workflowActive"
+            >{{ workflowActive ? '离开流程页' : '返回流程页' }}</NButton
+          >
           <div class="pw-flow"
-            ><C_WorkFlow
-              v-model="workflow"
-              :users="users"
-              :departments="departments"
-              :people="remotePeople ? people : undefined"
-              :condition-fields="conditionFields"
-              :readonly="readonly"
-              :allow-cycles="false"
-              :theme="dark ? 'dark' : 'light'"
-              @save="
-                workflowReceipt = `已保存设计快照：${$event.nodes.length} 个节点，${$event.edges.length} 条路径。`
-              "
-              @validate-error="
-                workflowReceipt = `请检查 ${$event.length} 项流程配置。`
-              "
-          /></div>
+            ><KeepAlive
+              ><C_WorkFlow
+                v-if="workflowActive"
+                v-model="workflow"
+                :users="users"
+                :departments="departments"
+                :people="remotePeople ? people : undefined"
+                :condition-fields="conditionFields"
+                :readonly="readonly"
+                :allow-cycles="false"
+                :theme="dark ? 'dark' : 'light'"
+                @save="
+                  workflowReceipt = `已保存设计快照：${$event.nodes.length} 个节点，${$event.edges.length} 条路径。`
+                "
+                @validate-error="
+                  workflowReceipt = `请检查 ${$event.length} 项流程配置。`
+                "
+            /></KeepAlive>
+            <p
+              v-if="!workflowActive"
+              role="status"
+              >流程页已缓存，返回后可继续编辑。</p
+            >
+          </div>
           <p
             class="pw-receipt"
             role="status"

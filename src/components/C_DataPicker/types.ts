@@ -38,6 +38,7 @@ export interface DataPickerNavigationNode {
 
 export interface DataPickerNavigation<TFilters extends object> {
   options: readonly DataPickerNavigationNode[]
+  /** 查询表单省略该字段时保留当前导航；显式提交（含 undefined）可覆盖或清除。 */
   field: Extract<keyof TFilters, string>
   title?: string
   /** 自定义组织导航保留统一筛选会话；不接管候选或选择状态。 */

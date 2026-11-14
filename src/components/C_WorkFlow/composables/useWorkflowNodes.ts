@@ -10,6 +10,8 @@ import {
   watch,
   onMounted,
   onBeforeUnmount,
+  onActivated,
+  onDeactivated,
   nextTick,
   markRaw,
   type Component,
@@ -121,11 +123,23 @@ export function useWorkflowNodes(
   const currentAddNodeId = ref<string | null>(null)
   const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
   let disposed = false
+  let active = true
+  let viewRevision = 0
+
+  // 缓存切页会结束当前视图会话；重新激活不能补执行上次的 nextTick 操作。
+  const afterActiveTick = (callback: () => void) => {
+    const revision = viewRevision
+    void nextTick(() => {
+      if (disposed || !active || revision !== viewRevision) return
+      callback()
+    })
+  }
 
   const schedule = (callback: () => void, delay: number) => {
+    if (disposed || !active) return
     const timer = setTimeout(() => {
       pendingTimers.delete(timer)
-      if (!disposed) callback()
+      if (!disposed && active) callback()
     }, delay)
     pendingTimers.add(timer)
   }
@@ -271,8 +285,7 @@ export function useWorkflowNodes(
     padding: `${number}px` = '60px',
     duration = 400
   ): void => {
-    nextTick(() => {
-      if (disposed) return
+    afterActiveTick(() => {
       schedule(() => {
         vueFlowRef.value?.fitView?.({ padding, duration })
       }, 100)
@@ -281,7 +294,7 @@ export function useWorkflowNodes(
 
   /* ─── 添加菜单 ──────────────────────────────────────────── */
   const handleShowAddMenu = (position: MenuPosition, nodeId?: string): void => {
-    if (props.readonly) return
+    if (props.readonly || !active) return
     menuPosition.value = {
       x: typeof position.x === 'number' ? position.x : 0,
       y: typeof position.y === 'number' ? position.y : 0,
@@ -535,6 +548,7 @@ export function useWorkflowNodes(
 
   /* ─── 节点交互 ──────────────────────────────────────────── */
   const onNodeClick = (event: { node: { id: string } }): void => {
+    if (!active) return
     const node = nodes.value.find(item => item.id === event.node.id)
     if (!node) return
     if (!props.readonly) {
@@ -581,8 +595,8 @@ export function useWorkflowNodes(
       message.warning('画布未准备就绪，请稍后重试')
       return
     }
-    nextTick(() => {
-      if (disposed || vueFlowRef.value !== target) return
+    afterActiveTick(() => {
+      if (vueFlowRef.value !== target) return
       target.fitView({
         padding: '50px',
         includeHiddenNodes: false,
@@ -647,8 +661,7 @@ export function useWorkflowNodes(
 
   onMounted(() => {
     disposed = false
-    nextTick(() => {
-      if (disposed) return
+    afterActiveTick(() => {
       schedule(() => {
         vueFlowRef.value?.fitView?.({
           padding: '80px',
@@ -661,10 +674,28 @@ export function useWorkflowNodes(
     })
   })
 
-  onBeforeUnmount(() => {
-    disposed = true
+  const closeTransientInteractions = (): void => {
+    viewRevision += 1
     pendingTimers.forEach(timer => clearTimeout(timer))
     pendingTimers.clear()
+    showAddMenu.value = false
+    currentAddNodeId.value = null
+    showNodeConfig.value = false
+    currentNode.value = null
+  }
+
+  onActivated(() => {
+    active = true
+  })
+  onDeactivated(() => {
+    active = false
+    // 按取消语义结束未确认配置，不提交、不清空节点/边及已编辑的图草稿。
+    closeTransientInteractions()
+  })
+  onBeforeUnmount(() => {
+    disposed = true
+    active = false
+    closeTransientInteractions()
   })
 
   return {

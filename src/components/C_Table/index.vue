@@ -364,7 +364,10 @@
   import { useActionTask } from '../../composables/useActionTask'
   import { resolveFormModalStyles } from '../shared/formModal'
   import { cloneData, isDataEqual } from '../../utils/data'
-  import { useComponentFeedback, useComponentLocale } from '../../component-config'
+  import {
+    useComponentFeedback,
+    useComponentLocale,
+  } from '../../component-config'
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import { C_Loading } from '../C_Loading'
   import {
@@ -598,14 +601,16 @@
 
   const showActionsColumn = computed(() => {
     const { actions } = effectiveConfig.value
-    return Boolean(
-      resolved.value.showRowActions ||
-      actions?.delete ||
-      actions?.detail ||
-      actions?.inline?.length ||
-      actions?.custom?.length ||
-      actions?.render
-    )
+    return [
+      resolved.value.showRowActions,
+      resolved.value.editMode === 'inline' &&
+        typeof actions?.edit === 'function',
+      actions?.delete,
+      actions?.detail,
+      actions?.inline?.length,
+      actions?.custom?.length,
+      actions?.render,
+    ].some(Boolean)
   })
 
   const columnFontRevision = ref(0)
@@ -624,6 +629,7 @@
       attrs.tableLayout != null || attrs['table-layout'] != null,
     rawColumns: effectiveColumns,
     data: normalizedData,
+    onInlineChange: rows => bridgedEmit('update:data', rows),
     fontRevision: columnFontRevision,
     getFont: (header = false) => {
       const root = tableWrapperRef.value

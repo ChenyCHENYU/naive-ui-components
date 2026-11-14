@@ -35,6 +35,7 @@ import { flattenTableColumns } from '../helpers'
 import C_Icon from '../../C_Icon/index.vue'
 import { columnPixels, allocateColumnWidths } from './columnLayout'
 import { nativeCellEllipsis } from './nativeCellEllipsis'
+import { useInlineEdit } from './useInlineEdit'
 
 /* ================= 内部辅助类型 ================= */
 
@@ -236,6 +237,8 @@ export interface UseTableColumnsOptions {
   config: ComputedRef<ResolvedConfig>
   /** 只对已加载数据做有界抽样；外部独立使用此 hook 时可省略。 */
   data?: ComputedRef<readonly DataRecord[]>
+  /** 常显编辑沿用表格受控 update:data，不触发保存回调。 */
+  onInlineChange?: (rows: DataRecord[]) => void
   getFont?: (header?: boolean) => string
   fontRevision?: Readonly<Ref<number>>
   /** 默认列宽 */
@@ -380,6 +383,15 @@ export function useTableColumns(
     get: () => mergeColumnPreferences(baseColumns.value, preferences.value),
     set: handleColumnChange,
   })
+  const inlineEdit = useInlineEdit({
+    enabled: () => config.value.editable && config.value.editMode === 'inline',
+    data: () => options.data?.value ?? [],
+    columns: () => reactiveColumns.value,
+    rowKey,
+    childrenKey: () =>
+      config.value.treeEnabled ? config.value.treeChildrenKey : undefined,
+    update: options.onInlineChange,
+  })
   watch(
     [rawColumns, storageKey, () => options.nativeLayout?.()],
     ([columns, key], [previous, previousKey]) => {
@@ -449,6 +461,32 @@ export function useTableColumns(
       () => startEditCell(rowKeyVal, colKey),
       config.value.formatterConfig
     )
+  }
+
+  const renderInlineCell = (
+    column: TableColumn,
+    row: DataRecord,
+    index: number
+  ) => {
+    const binding = inlineEdit.bind(column, row)
+    return binding
+      ? renderEditComponent(
+          column,
+          row[String(column.key)],
+          binding.update,
+          row,
+          binding.index,
+          {
+            size: config.value.controlSize,
+          }
+        )
+      : renderDisplayCell(
+          column,
+          row,
+          index,
+          row[String(column.key)],
+          config.value.formatterConfig
+        )
   }
 
   /** 统一单元格渲染入口 */
@@ -623,7 +661,10 @@ export function useTableColumns(
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
       render: (rowData: DataRecord, rowIndex: number) => {
-        const cell = renderCell(column, rowData, rowIndex)
+        const cell =
+          config.value.editMode === 'inline'
+            ? renderInlineCell(column, rowData, rowIndex)
+            : renderCell(column, rowData, rowIndex)
         return automatic && col.ellipsis === undefined
           ? nativeCellEllipsis(cell)
           : cell

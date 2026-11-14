@@ -25,7 +25,10 @@ import type { RowDragConfig } from './useRowDrag'
 import type { CrossPageSelectionConfig } from './useCrossPageSelection'
 import type { ExportConfig } from './useTableExport'
 import type { FormatterConfig } from './useTableGlobalConfig'
-import type { ComponentFeedback, ComponentLocale } from '../../../component-config'
+import type {
+  ComponentFeedback,
+  ComponentLocale,
+} from '../../../component-config'
 import type { ActionBarConfig, ActionItem } from '../../C_ActionBar/types'
 
 /* ================= CRUD 绑定类型 ================= */
@@ -360,6 +363,9 @@ const EDIT_DISABLED: Pick<
   onEditError: undefined,
 }
 
+const rowActionsDefault = (edit: EditConfig) =>
+  edit.showRowActions ?? edit.mode !== 'inline'
+
 const resolveEdit = (
   edit: EditConfig | EditMode | boolean | undefined
 ): Pick<
@@ -390,7 +396,7 @@ const resolveEdit = (
   return {
     editable: enabled,
     editMode: edit.mode || 'modal',
-    showRowActions: enabled && edit.showRowActions !== false,
+    showRowActions: enabled && rowActionsDefault(edit),
     modalTitle: edit.modalTitle || '编辑数据',
     modalWidth: edit.modalWidth || 600,
     onEditSave: edit.onSave,

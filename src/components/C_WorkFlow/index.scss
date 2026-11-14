@@ -40,16 +40,23 @@
 
 .add-node-menu {
   position: fixed;
+  width: max-content;
+  max-width: calc(100vw - 16px);
   z-index: 1000;
   pointer-events: none;
 
   .add-menu-content {
+    box-sizing: border-box;
+    max-height: calc(100vh - 16px);
+    overflow: auto;
+    overscroll-behavior: contain;
     background: var(--workflow-surface, #fff);
     border-radius: 12px;
     padding: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     border: 1px solid var(--workflow-border, #dfe5ed);
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     pointer-events: auto;
     animation: menuSlideUp 0.3s ease;

@@ -34,6 +34,9 @@ export default defineConfig({
         visualStandards: fileURLToPath(
           new URL('./visual-standards.html', import.meta.url)
         ),
+        businessScenarios: fileURLToPath(
+          new URL('./business-scenarios.html', import.meta.url)
+        ),
       },
     },
     outDir: '../../node_modules/.cache/search-workflows',

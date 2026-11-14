@@ -75,16 +75,13 @@ export const useDynamicFormState = (): DynamicFormController => {
     isInitialized: false,
   })
 
-  /**
-   * @description 计算所有字段（基础字段+动态字段）
-   */
-  const allFields = computed<FormOption[]>(() => [
-    ...state.baseFields,
-    ...state.dynamicFields.map(field => ({
+  // show/visible 仅在初始化时归一到隐藏集合，之后基础与动态字段共用同一运行态。
+  const allFields = computed<FormOption[]>(() =>
+    [...state.baseFields, ...state.dynamicFields].map(field => ({
       ...field,
       show: !state.hiddenFieldIds.has(field.prop),
-    })),
-  ])
+    }))
+  )
 
   /**
    * @description 计算可见字段
@@ -130,6 +127,7 @@ export const useDynamicFormState = (): DynamicFormController => {
     const newField = createDynamicField(state.fieldCounter, config)
     if (allFields.value.some(field => field.prop === newField.prop)) return null
 
+    if (!newField.visible) state.hiddenFieldIds.add(newField.prop)
     state.dynamicFields.push(newField)
     return newField
   }
@@ -172,7 +170,7 @@ export const useDynamicFormState = (): DynamicFormController => {
 
   /**
    * @description 切换字段可见性
-   * @param fieldId - 字段ID
+   * @param fieldId - 字段 prop；手动切换覆盖初始显隐，直到下一次 initialize
    */
   const toggleFieldVisibility = (fieldId: string): boolean => {
     if (!allFields.value.some(field => field.prop === fieldId)) return false
@@ -189,7 +187,7 @@ export const useDynamicFormState = (): DynamicFormController => {
    */
   const toggleAllVisibility = (): boolean => {
     if (allVisible.value) {
-      state.dynamicFields.forEach(field => {
+      allFields.value.forEach(field => {
         state.hiddenFieldIds.add(field.prop)
       })
     } else {
@@ -237,6 +235,9 @@ export const useDynamicFormState = (): DynamicFormController => {
     state.baseFields = [...baseFields]
     state.dynamicFields.length = 0
     state.hiddenFieldIds.clear()
+    baseFields.forEach(field => {
+      if (field.show === false) state.hiddenFieldIds.add(field.prop)
+    })
     state.fieldCounter = 0
     Object.assign(state.config, DEFAULT_CONFIG)
     updateConfig(config)

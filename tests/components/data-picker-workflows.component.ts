@@ -54,6 +54,72 @@ const open = async (wrapper: ReturnType<typeof mount>) => {
   await flushPromises()
 }
 
+test.each([true, false])(
+  'query submissions preserve only the owned navigation field (navigation=%s)',
+  async navigated => {
+    const adapter = source()
+    let submit!: (filters: Filters) => void
+    const wrapper = mount(C_DataPicker<Entity, Filters>, {
+      props: {
+        source: adapter,
+        columns,
+        initialValues: { name: 'initial', category: 'initial' },
+        fixedFilters: { factory: 'A' },
+        ...(navigated
+          ? {
+              navigation: {
+                field: 'category' as const,
+                options: [{ key: 'steel', label: '钢材' }],
+              },
+            }
+          : {}),
+      },
+      slots: {
+        query: ({
+          submit: submitQuery,
+        }: {
+          submit: (filters: Filters) => void
+        }) => {
+          submit = submitQuery
+          return null
+        },
+      },
+    })
+    await open(wrapper)
+    if (navigated) {
+      wrapper
+        .getComponent(C_Tree)
+        .vm.$emit('node-select', { key: 'steel', label: '钢材' }, ['steel'])
+      await flushPromises()
+    }
+    submit({ name: 'new', factory: 'B' })
+    await flushPromises()
+    expect(vi.mocked(adapter.request).mock.lastCall?.[0].filters).toStrictEqual(
+      navigated
+        ? { name: 'new', category: 'steel', factory: 'A' }
+        : { name: 'new', factory: 'A' }
+    )
+
+    submit({ category: undefined })
+    await flushPromises()
+    expect(vi.mocked(adapter.request).mock.lastCall?.[0].filters).toStrictEqual(
+      {
+        category: undefined,
+        factory: 'A',
+      }
+    )
+    submit({ category: 'alloy' })
+    await flushPromises()
+    expect(vi.mocked(adapter.request).mock.lastCall?.[0].filters).toStrictEqual(
+      {
+        category: 'alloy',
+        factory: 'A',
+      }
+    )
+    wrapper.unmount()
+  }
+)
+
 test('page selection, imperative APIs and confirmation share eligibility and the cross-page cap', async () => {
   const adapter = source()
   const wrapper = mount(C_DataPicker<Entity, Filters>, {

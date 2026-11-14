@@ -494,7 +494,19 @@ export function useDataPicker<T extends object, TFilters extends object>(
   }
 
   function submitFilters(filters: TFilters): void {
-    applyQuery('', requestFilters(filters))
+    const next = { ...filters }
+    const { navigation } = props
+    const current = queryState.value.filters
+    // 查询表单只替换自身字段；省略导航字段时保留当前分类，显式提交仍可覆盖或清除。
+    if (
+      navigation &&
+      current &&
+      !Object.prototype.hasOwnProperty.call(filters, navigation.field) &&
+      Object.prototype.hasOwnProperty.call(current, navigation.field)
+    ) {
+      Reflect.set(next, navigation.field, current[navigation.field])
+    }
+    applyQuery('', requestFilters(next))
   }
 
   function navigate(key: DataPickerValue | undefined): void {
