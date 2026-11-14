@@ -1,12 +1,16 @@
 .c-captcha-modern {
   --cc-height: 44px;
   --cc-radius: 12px;
-  --cc-color: rgba(255, 255, 255, 0.76);
+  --cc-color: var(--c-text-2, var(--c-theme-text-2));
   --cc-icon-color: var(--c-primary, var(--c-theme-primary));
   --cc-bg: rgba(255, 255, 255, 0.055);
   --cc-bg-hover: rgba(255, 255, 255, 0.09);
   --cc-border: rgba(255, 255, 255, 0.14);
-  --cc-border-hover: rgba(126, 166, 255, 0.55);
+  --cc-border-hover: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 55%,
+    transparent
+  );
   --cc-focus: var(--c-primary, var(--c-theme-primary));
   width: 100%;
   font-family: inherit;
@@ -79,7 +83,7 @@
   --altcha-color-base: var(--cc-bg);
   --altcha-color-base-content: var(--cc-color);
   --altcha-color-primary: var(--cc-focus);
-  --altcha-color-success: #65d39a;
+  --altcha-color-success: var(--c-success, var(--c-theme-success));
   --altcha-checkbox-size: 20px;
   --altcha-padding: 9px 12px;
 }
@@ -137,11 +141,11 @@
   }
 
   &.is-success {
-    color: #65d39a;
+    color: var(--c-success, var(--c-theme-success));
   }
 
   &.is-error {
-    color: #ff7f8d;
+    color: var(--c-error, var(--c-theme-error));
   }
 }
 
@@ -173,17 +177,25 @@
     color 0.2s ease,
     background-color 0.2s ease,
     transform 0.3s ease;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--c-text-3, var(--c-theme-text-3));
   flex-shrink: 0;
 }
 
 .c-captcha-modern[data-theme='light'] {
-  --cc-color: rgba(15, 23, 42, 0.72);
+  --cc-color: var(--c-text-2, var(--c-theme-text-2));
   --cc-icon-color: var(--c-primary, var(--c-theme-primary));
   --cc-bg: rgba(15, 23, 42, 0.035);
-  --cc-bg-hover: rgba(71, 120, 220, 0.07);
+  --cc-bg-hover: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 7%,
+    transparent
+  );
   --cc-border: rgba(15, 23, 42, 0.12);
-  --cc-border-hover: rgba(71, 120, 220, 0.42);
+  --cc-border-hover: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 42%,
+    transparent
+  );
 }
 
 .c-captcha-modern[data-theme='light'] .captcha-text {
@@ -191,19 +203,27 @@
 }
 
 .c-captcha-modern[data-theme='light'] .refresh-button {
-  color: rgba(0, 0, 0, 0.52);
+  color: var(--c-text-3, var(--c-theme-text-3));
 }
 
 .refresh-button:hover {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--c-text-1, var(--c-theme-text-1));
   background: rgba(255, 255, 255, 0.08);
   transform: translateY(-50%) rotate(180deg);
 }
 
 .captcha-trigger.verified {
-  color: rgba(183, 246, 211, 0.92);
-  border-color: rgba(101, 211, 154, 0.4);
-  background: rgba(66, 188, 124, 0.1);
+  color: var(--c-text-1, var(--c-theme-text-1));
+  border-color: color-mix(
+    in srgb,
+    var(--c-success, var(--c-theme-success)) 40%,
+    transparent
+  );
+  background: color-mix(
+    in srgb,
+    var(--c-success, var(--c-theme-success)) 10%,
+    transparent
+  );
 }
 
 .captcha-trigger.verified::after,
@@ -212,9 +232,17 @@
 }
 
 .captcha-trigger.error {
-  color: rgba(255, 205, 211, 0.92);
-  border-color: rgba(255, 127, 141, 0.42);
-  background: rgba(245, 108, 108, 0.1);
+  color: var(--c-text-1, var(--c-theme-text-1));
+  border-color: color-mix(
+    in srgb,
+    var(--c-error, var(--c-theme-error)) 42%,
+    transparent
+  );
+  background: color-mix(
+    in srgb,
+    var(--c-error, var(--c-theme-error)) 10%,
+    transparent
+  );
   animation: captcha-shake 0.3s ease;
 }
 
@@ -269,7 +297,7 @@
     color: var(--c-error, var(--c-theme-error));
   }
   .captcha-trigger.verified {
-    color: var(--c-success, var(--c-theme-success));
+    color: var(--c-text-1, var(--c-theme-text-1));
     border-color: color-mix(
       in srgb,
       var(--c-success, var(--c-theme-success)) 45%,
@@ -282,7 +310,7 @@
     );
   }
   .captcha-trigger.error {
-    color: var(--c-error, var(--c-theme-error));
+    color: var(--c-text-1, var(--c-theme-text-1));
     border-color: color-mix(
       in srgb,
       var(--c-error, var(--c-theme-error)) 45%,

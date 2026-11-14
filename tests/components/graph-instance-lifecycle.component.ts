@@ -50,11 +50,11 @@ vi.mock('@visactor/vtable-gantt', () => ({
   },
 }))
 
-vi.mock('@visactor/vtable', () => {
+vi.mock('@visactor/vtable', async importOriginal => {
+  const { themes } = await importOriginal<typeof import('@visactor/vtable')>()
   const editors = new Map<string, unknown>()
-  const theme = { extends: (options: unknown) => options }
   return {
-    themes: { DARK: theme, DEFAULT: theme },
+    themes,
     register: {
       editor: (name: string, editor?: unknown) => {
         if (editor !== undefined) editors.set(name, editor)

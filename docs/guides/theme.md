@@ -14,7 +14,7 @@
   const theme = computed(() =>
     createComponentTheme({
       mode: dark.value ? 'dark' : 'light',
-      primary: '#2563eb',
+      primary: dark.value ? '#a78bfa' : '#6d28d9',
       radius: 6,
     })
   )
@@ -29,7 +29,39 @@
 
 `createComponentTheme()` 是可选的。已有项目继续传自己的 `theme` / `themeOverrides` 即可，自绘区域默认跟随当前 Provider。嵌套 Provider 可以使用不同品牌和明暗主题，不会改写父级或兄弟实例。
 
-工厂接受 `mode`、`primary`、`success`、`warning`、`error`、`info`、`radius`。颜色接受 `#RGB` / `#RRGGBB`，以便 Naive 与第三方 SDK 正确计算衍生色。圆角接受非负有限像素值。返回配置可以按 Naive 的标准方式继续补充组件级覆盖。
+项目的全局主题放在一份配置中即可。所有颜色都是可选的扁平属性，只填写项目需要改变的角色；其余沿用所选模式的默认值。省略 `mode` 时使用 `light`，省略 `radius` 时使用 `6px`；工厂不会自动读取父级 Provider，动态切换采用上方的 `computed` 写法。
+
+```ts
+// 项目 theme.ts
+import { createComponentTheme } from '@robot-admin/naive-ui-components/config'
+
+export const theme = createComponentTheme({
+  primary: '#6d28d9',
+  bgBody: '#faf7f1',
+  bgCard: '#fffdf8',
+  bgMuted: '#f3eddf',
+  text1: '#362c22',
+  border: '#ddcfb9',
+})
+```
+
+App 中把这个对象绑定到现有 `NConfigProvider`。页面、表单和表格不重复传颜色，也不需要自行生成悬停色、维护 CSS 变量或声明 Naive 类型扩展。
+
+| 配置                                             | 用途                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| `primary`、`success`、`warning`、`error`、`info` | 品牌与状态色；原生控件的悬停和按下色自动生成                 |
+| `bgBody`、`bgCard`、`bgSurface`                  | 页面、内容面板、浮层背景                                     |
+| `bgMuted`、`bgHover`、`bgActive`                 | 次要区域、悬停和按下背景，统一原生表头、输入和按钮等状态面   |
+| `text1`、`text2`、`text3`、`text4`               | 正文、辅助、次要、禁用文字；相应图标和输入提示随语义角色映射 |
+| `border`                                         | 边框和分隔线                                                 |
+| `skeletonBg`                                     | 原生 `NSkeleton` 与 `C_Skeleton` 共用的占位色                |
+| `mode`、`radius`                                 | 明暗模式与控件圆角                                           |
+
+颜色接受 `#RGB` / `#RRGGBB`，以便 Naive 与第三方 SDK 正确计算衍生色；无效颜色会在创建配置时明确报错。圆角接受非负有限像素值。输入对象和内置色板不会被修改，不同应用及作用域的配置相互独立。
+
+函数已包含配置类型推导，一般不需要类型注解。需要声明可复用的项目色板时，可选用包内 `ComponentThemeColors`；不必对 `typeof` 默认色板做类型转换。
+
+普通原生控件、自绘区域与库自有弹层共享上述角色。对单个 Naive 组件的特殊需求，继续使用原生 `themeOverrides`；组件显式的颜色、样式与业务配色仍有自己的优先级，主题工厂不抢占它们。
 
 ## 色彩角色
 
@@ -79,3 +111,13 @@
 ## 独立演示
 
 在组件库目录执行 `bun run build`、`bun run dev:search-workflows`，打开 `http://127.0.0.1:4188/visual-standards.html`。可切换明暗、品牌与密度，检查城市浮层、导航、穿梭框、长时间线、富文本及代码全屏。演示使用正式公开入口和离线图标子集；不依赖 Robot_Admin，也不进入 npm 运行时产物。
+
+## 新增和维护组件的约束
+
+- 原生控件使用现有 Provider；自绘区域使用语义变量与局部主题桥接，不再维护另一套品牌色默认值。
+- `--c-*` 公共语义变量留给项目覆盖，组件只写 `--c-theme-*` 私有默认。组件自己的 `--c-table-*`、`--cl-*` 等领域样式钩子继续可用。
+- 库自有 Teleport 与 SDK 弹层显式携带本实例主题，使用 SDK 官方配置或渲染回调；不扫描或修改其他实例的 DOM。
+- 发布样式边界检查会拒绝全局公共主题默认、越界全局选择器，以及藏在 `:is()` / `:where()` / `:not()` / `:has()` 中的作用域逃逸。主题回归覆盖实际原生控件和自绘区域，不能只检查配置对象包含字段。
+- 业务显式状态色、头像、视频遮罩、文档纸张、地图瓦片和反色导航等保留领域语义；新增这类例外时说明原因，避免把固定通用色混进例外。
+
+边界检查约束的是可验证的样式作用域与覆盖规则。颜色角色是否选对、组合后的可读性和 SDK 升级仍需组件回归与视觉验收，不能用一次扫描代替。

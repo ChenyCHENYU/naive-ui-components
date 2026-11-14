@@ -259,6 +259,7 @@ export type {
 } from './component-config'
 export type {
   ComponentThemeOptions,
+  ComponentThemeColors,
   ComponentThemeConfig,
   ComponentColorMode,
 } from './public-config'

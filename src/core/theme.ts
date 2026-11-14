@@ -1,14 +1,29 @@
 /** 包内语义标准：无 Vue/Naive UI 依赖；品牌配置与供应商主题适配分开维护。 */
 export type ComponentColorMode = 'light' | 'dark'
 
-export interface ComponentThemeOptions {
+/** 项目可覆盖的语义色；接受 #RGB / #RRGGBB，省略的角色沿用当前模式标准。 */
+export interface ComponentThemeColors {
+  primary: string
+  success: string
+  warning: string
+  error: string
+  info: string
+  bgBody: string
+  bgCard: string
+  bgSurface: string
+  bgMuted: string
+  bgHover: string
+  bgActive: string
+  skeletonBg: string
+  text1: string
+  text2: string
+  text3: string
+  text4: string
+  border: string
+}
+
+export interface ComponentThemeOptions extends Partial<ComponentThemeColors> {
   mode?: ComponentColorMode
-  /** 品牌与状态色接受 #RGB / #RRGGBB，衍生色由同一规则计算。 */
-  primary?: string
-  success?: string
-  warning?: string
-  error?: string
-  info?: string
   /** 控件圆角，单位 px；面板、卡片仍保留自己的角色层级。 */
   radius?: number
 }
@@ -108,6 +123,18 @@ export function normalizeThemeColor(value: string): string {
         .map(char => char + char)
         .join('')}`.toLowerCase()
     : value.toLowerCase()
+}
+
+/** 只遍历包内角色，既不接纳额外配置键，也不修改项目配置或冻结的缺省色板。 */
+export function resolveComponentThemeColors(
+  options: Partial<ComponentThemeColors>,
+  mode: ComponentColorMode
+): ComponentThemeColors {
+  const colors: ComponentThemeColors = { ...COMPONENT_COLOR_PALETTES[mode] }
+  const keys = Object.keys(colors) as Array<keyof ComponentThemeColors>
+  for (const key of keys)
+    colors[key] = normalizeThemeColor(options[key] ?? colors[key])
+  return colors
 }
 
 /** 生成真实色值，供 Naive/SDK 的颜色计算器直接使用。 */

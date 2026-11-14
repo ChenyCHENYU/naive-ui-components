@@ -255,7 +255,11 @@
                 left: 2px;
                 right: 2px;
                 bottom: 2px;
-                background: rgba(25, 118, 210, 0.05);
+                background: color-mix(
+                  in srgb,
+                  var(--c-primary, var(--c-theme-primary)) 5%,
+                  transparent
+                );
               }
 
               &::after {

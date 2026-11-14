@@ -142,7 +142,17 @@
   }
 
   const themeColor = (
-    name: 'bg-body' | 'bg-card' | 'bg-muted' | 'border' | 'text-1'
+    name:
+      | 'bg-body'
+      | 'bg-card'
+      | 'bg-surface'
+      | 'bg-muted'
+      | 'bg-hover'
+      | 'border'
+      | 'text-1'
+      | 'text-2'
+      | 'text-3'
+      | 'primary'
   ) =>
     String(
       themeStyle.value[`--c-${name}`] ?? themeStyle.value[`--c-theme-${name}`]
@@ -151,44 +161,112 @@
     underlayBackgroundColor: themeColor('bg-body'),
     timelineHeaderBg: themeColor('bg-muted'),
     gridBg: themeColor('bg-card'),
+    surfaceBg: themeColor('bg-surface'),
+    hoverBg: themeColor('bg-hover'),
     lineColor: themeColor('border'),
     textColor: themeColor('text-1'),
+    secondaryTextColor: themeColor('text-2'),
+    mutedTextColor: themeColor('text-3'),
+    primaryColor: themeColor('primary'),
   })
+
+  const getTaskTableTheme = (colors: ReturnType<typeof getThemeConfig>) => {
+    const cell = {
+      bgColor: colors.gridBg,
+      color: colors.textColor,
+      borderColor: colors.lineColor,
+      hover: {
+        cellBgColor: colors.hoverBg,
+        inlineRowBgColor: colors.hoverBg,
+        inlineColumnBgColor: colors.hoverBg,
+      },
+    }
+    const header = {
+      ...cell,
+      bgColor: colors.timelineHeaderBg,
+      color: colors.secondaryTextColor,
+    }
+    return {
+      underlayBackgroundColor: colors.gridBg,
+      defaultStyle: cell,
+      headerStyle: header,
+      rowHeaderStyle: header,
+      cornerHeaderStyle: header,
+      bodyStyle: cell,
+      frameStyle: { borderColor: colors.lineColor },
+      selectionStyle: {
+        cellBgColor: colors.hoverBg,
+        cellBorderColor: colors.primaryColor,
+      },
+      columnResize: {
+        lineColor: colors.primaryColor,
+        bgColor: colors.hoverBg,
+      },
+      scrollStyle: {
+        scrollRailColor: colors.timelineHeaderBg,
+        scrollSliderColor: colors.mutedTextColor,
+      },
+      tooltipStyle: { bgColor: colors.surfaceBg, color: colors.textColor },
+    }
+  }
+
+  // 网格线支持 SDK 回调；显式回调须原样交给 SDK，不能展开为普通对象。
+  type GridLine =
+    | NonNullable<GanttOptions['grid']>['verticalLine']
+    | NonNullable<GanttOptions['grid']>['horizontalLine']
+  const withLineColor = <L extends GridLine>(line: L, color: string) =>
+    typeof line === 'function'
+      ? line
+      : { ...line, lineColor: line?.lineColor ?? color }
 
   const applyThemeToTimelineHeader = (
     timelineHeader: any,
     themeColors: any
   ) => ({
     ...timelineHeader,
-    backgroundColor: themeColors.timelineHeaderBg,
-    horizontalLine: {
-      ...timelineHeader?.horizontalLine,
-      lineColor: themeColors.lineColor,
-    },
-    verticalLine: {
-      ...timelineHeader?.verticalLine,
-      lineColor: themeColors.lineColor,
-    },
+    backgroundColor:
+      timelineHeader?.backgroundColor ?? themeColors.timelineHeaderBg,
+    horizontalLine: withLineColor(
+      timelineHeader?.horizontalLine,
+      themeColors.lineColor
+    ),
+    verticalLine: withLineColor(
+      timelineHeader?.verticalLine,
+      themeColors.lineColor
+    ),
     scales: timelineHeader?.scales?.map((scale: any) => ({
       ...scale,
       style: {
         ...scale.style,
-        color: themeColors.textColor,
+        color: scale.style?.color ?? themeColors.textColor,
       },
     })),
   })
 
   const applyThemeToGrid = (grid: any, themeColors: any) => ({
     ...grid,
-    backgroundColor: themeColors.gridBg,
-    horizontalLine: {
-      ...grid?.horizontalLine,
-      lineColor: themeColors.lineColor,
+    backgroundColor: grid?.backgroundColor ?? themeColors.gridBg,
+    horizontalLine: withLineColor(grid?.horizontalLine, themeColors.lineColor),
+    verticalLine: withLineColor(grid?.verticalLine, themeColors.lineColor),
+  })
+
+  const applyThemeToFrame = (
+    frame: GanttOptions['frame'],
+    themeColors: ReturnType<typeof getThemeConfig>
+  ) => ({
+    ...frame,
+    outerFrameStyle: {
+      ...frame?.outerFrameStyle,
+      borderColor: frame?.outerFrameStyle?.borderColor ?? themeColors.lineColor,
     },
-    verticalLine: {
-      ...grid?.verticalLine,
-      lineColor: themeColors.lineColor,
-    },
+    verticalSplitLine: withLineColor(
+      frame?.verticalSplitLine,
+      themeColors.lineColor
+    ),
+    horizontalSplitLine: withLineColor(
+      frame?.horizontalSplitLine,
+      themeColors.lineColor
+    ),
   })
 
   const buildGanttOptions = (
@@ -199,16 +277,30 @@
   ) => ({
     ...finalConfig,
     records: processedData,
-    underlayBackgroundColor: themeColors.underlayBackgroundColor,
+    underlayBackgroundColor:
+      finalConfig.underlayBackgroundColor ??
+      themeColors.underlayBackgroundColor,
     taskListTable: {
       ...finalConfig.taskListTable,
-      theme: tableTheme.extends(finalConfig.taskListTable?.theme ?? {}),
+      // SDK extends 返回独立 Theme；公共默认在前，项目显式配置最后覆盖。
+      theme: tableTheme
+        .extends(getTaskTableTheme(themeColors))
+        .extends(finalConfig.taskListTable?.theme ?? {}),
     },
     timelineHeader: applyThemeToTimelineHeader(
       finalConfig.timelineHeader,
       themeColors
     ),
     grid: applyThemeToGrid(finalConfig.grid, themeColors),
+    frame: applyThemeToFrame(finalConfig.frame, themeColors),
+    scrollStyle: {
+      ...finalConfig.scrollStyle,
+      scrollRailColor:
+        finalConfig.scrollStyle?.scrollRailColor ?? themeColors.hoverBg,
+      scrollSliderColor:
+        finalConfig.scrollStyle?.scrollSliderColor ??
+        themeColors.mutedTextColor,
+    },
   })
 
   const resolveGanttOptions = (

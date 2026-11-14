@@ -67,15 +67,15 @@
 
 .single-card,
 .basic-card {
-  border-left-color: #3b82f6;
+  border-left-color: var(--c-primary, var(--c-theme-primary, #3b82f6));
 }
 
 .contact-card {
-  border-left-color: #22c55e;
+  border-left-color: var(--c-success, var(--c-theme-success, #22c55e));
 }
 
 .preferences-card {
-  border-left-color: #a855f7;
+  border-left-color: var(--c-info, var(--c-theme-info, #2080f0));
 }
 
 .group-card {
@@ -105,8 +105,12 @@
   height: 2.5rem;
   padding: 0.5rem;
   border-radius: 0.5rem;
-  background: linear-gradient(to bottom right, #3b82f6, #9333ea);
-  color: white;
+  background: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 12%,
+    transparent
+  );
+  color: var(--c-primary, var(--c-theme-primary));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,7 +126,7 @@
 
   p {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--c-text-3, var(--c-theme-text-3, #6b7280));
     margin: 0;
   }
 }
@@ -188,4 +192,8 @@
 .action-buttons {
   display: flex;
   gap: 0.75rem;
+}
+
+.single-card-icon {
+  color: var(--c-primary, var(--c-theme-primary));
 }

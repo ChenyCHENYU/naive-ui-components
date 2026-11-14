@@ -21,5 +21,14 @@ const componentTheme: ComponentThemeConfig = createComponentTheme({
   mode: 'dark',
   primary: COMPONENT_COLOR_PALETTES.dark.primary,
   radius: 8,
+  bgCard: '#fffdf8',
+  bgMuted: '#f3eddf',
+  border: '#ddcfb9',
+  skeletonBg: '#e7ddcd',
 })
 void componentTheme
+
+// The package owns the vendor extension declaration; consumers add no module augmentation.
+const skeletonColor: string | undefined =
+  componentTheme.themeOverrides.common?.robotComponentSkeletonColor
+void skeletonColor

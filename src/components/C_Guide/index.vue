@@ -33,7 +33,7 @@
 <script setup lang="ts">
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
-  import { NTooltip, NButton, useThemeVars } from 'naive-ui'
+  import { NTooltip, NButton } from 'naive-ui'
   import type { Driver, PopoverDOM } from 'driver.js'
   import C_Icon from '../C_Icon/index.vue'
   import { renderGuideDescription, resolveGuideTarget } from './data'
@@ -67,7 +67,6 @@
     'step-change': [stepIndex: number, step: GuideStep]
     error: [error: unknown]
   }>()
-  const themeVars = useThemeVars()
   const loading = ref(false)
   const persistKey = computed(
     () => `${props.persistence?.keyPrefix ?? 'c_guide'}_completed`
@@ -114,24 +113,38 @@
     dispose?.()
   }
 
-  /** 将 Provider 中的主题映射到挂载在 body 的弹层，支持独立消费与实时切换。 */
-  const applyPopoverTheme = (popover: PopoverDOM): void => {
+  const resolvePopoverTheme = (): Record<string, string> => {
     const theme = props.theme ?? {}
-    const variables: Record<string, string> = {
-      '--c-guide-bg': theme.popoverBgColor ?? themeVars.value.popoverColor,
-      '--c-guide-text': theme.popoverTextColor ?? themeVars.value.textColor1,
+    return {
+      '--c-guide-bg':
+        theme.popoverBgColor ??
+        'var(--c-bg-surface, var(--c-theme-bg-surface))',
+      '--c-guide-text':
+        theme.popoverTextColor ?? 'var(--c-text-1, var(--c-theme-text-1))',
       '--c-guide-text-secondary':
-        theme.popoverTextColor ?? themeVars.value.textColor2,
-      '--c-guide-text-muted': themeVars.value.textColor3,
-      '--c-guide-primary': theme.primaryColor ?? themeVars.value.primaryColor,
+        theme.popoverTextColor ?? 'var(--c-text-2, var(--c-theme-text-2))',
+      '--c-guide-text-muted': 'var(--c-text-3, var(--c-theme-text-3))',
+      '--c-guide-primary':
+        theme.primaryColor ?? 'var(--c-primary, var(--c-theme-primary))',
       '--c-guide-primary-hover':
-        theme.primaryColor ?? themeVars.value.primaryColorHover,
-      '--c-guide-border': themeVars.value.borderColor,
+        theme.primaryColor ??
+        'var(--c-primary-hover, var(--c-theme-primary-hover))',
+      '--c-guide-border': 'var(--c-border, var(--c-theme-border))',
       '--c-guide-radius': theme.borderRadius ?? '14px',
     }
-    for (const [name, value] of Object.entries(variables)) {
+  }
+
+  let appliedThemeKeys: string[] = []
+  /** 仅更新本实例创建的 body 弹层；保留直接传入的语义变量，不搬运布局样式。 */
+  const applyPopoverTheme = (popover: PopoverDOM): void => {
+    for (const name of appliedThemeKeys)
+      popover.wrapper.style.removeProperty(name)
+    const variables = resolvePopoverTheme()
+    for (const [name, value] of Object.entries(themeStyle.value))
+      if (value !== undefined && value !== null) variables[name] = String(value)
+    appliedThemeKeys = Object.keys(variables)
+    for (const [name, value] of Object.entries(variables))
       popover.wrapper.style.setProperty(name, value)
-    }
   }
 
   /** 未指定透明度时保留 Driver 默认值，避免 undefined 覆盖默认配置。 */
@@ -276,7 +289,7 @@
   onBeforeUnmount(stopGuide)
   watch(() => props.steps, stopGuide)
   watch(
-    [themeVars, () => props.theme],
+    [themeStyle, () => props.theme],
     () => {
       const popover = activeDriver?.getState().popover
       if (popover) applyPopoverTheme(popover)

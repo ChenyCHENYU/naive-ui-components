@@ -175,7 +175,9 @@
               title="固定列"
               clickable
               :style="{
-                color: column.fixed ? 'var(--n-primary-color)' : undefined,
+                color: column.fixed
+                  ? 'var(--c-primary, var(--c-theme-primary))'
+                  : undefined,
               }"
             />
           </NDropdown>

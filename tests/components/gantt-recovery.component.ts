@@ -223,34 +223,215 @@ test('theme-only updates retain the engine, records and public scroll coordinate
   expect(wrapper.emitted('ganttCreated')).toHaveLength(1)
 })
 
-test('Provider theme changes update the same Gantt with current custom neutral colors', async () => {
-  const dark = ref(false)
+test.each(['basic', 'project', 'timeline', 'official', 'milestone'] as const)(
+  '%s Provider colors update the same Gantt while preset accents remain',
+  async preset => {
+    const dark = ref(false)
+    const wrapper = mount(
+      defineComponent({
+        setup: () => () =>
+          h(
+            NConfigProvider,
+            {
+              theme: dark.value ? darkTheme : null,
+              themeOverrides: {
+                common: {
+                  cardColor: dark.value ? '#19242f' : '#fdfbfa',
+                  actionColor: dark.value ? '#24313d' : '#f4f1ee',
+                  borderColor: dark.value ? '#607080' : '#d1c8c1',
+                  bodyColor: dark.value ? '#121a22' : '#f8f5f2',
+                  textColor3: dark.value ? '#a1b2c3' : '#665544',
+                  hoverColor: dark.value ? '#354657' : '#eee4d9',
+                },
+              },
+            },
+            {
+              default: () => h(GanttView, { preset, showToolbar: false }),
+            }
+          ),
+      })
+    )
+    await vi.waitFor(() => expect(state.instances).toHaveLength(1))
+    const instance = state.instances[0]
+    dark.value = true
+    await flushPromises()
+    expect(state.instances).toHaveLength(1)
+    expect(instance.updateOption).toHaveBeenCalledOnce()
+    const next = instance.updateOption.mock.calls[0][0]
+    expect(next.grid).toMatchObject({
+      backgroundColor: '#19242f',
+      verticalLine: {
+        lineColor:
+          preset === 'milestone' ? 'rgba(255, 168, 64, 0.3)' : '#607080',
+      },
+    })
+    const tableTheme = next.taskListTable!.theme!
+    expect(tableTheme.headerStyle).toMatchObject({ bgColor: '#24313d' })
+    expect(tableTheme.bodyStyle).toMatchObject({ bgColor: '#19242f' })
+    expect(next.timelineHeader).toMatchObject({
+      backgroundColor: '#24313d',
+      horizontalLine: { lineColor: '#607080' },
+      verticalLine: { lineColor: '#607080' },
+    })
+    expect(next.frame).toMatchObject({
+      outerFrameStyle: {
+        borderColor: preset === 'milestone' ? '#ffa940' : '#607080',
+      },
+      verticalSplitLine: { lineColor: '#607080' },
+      horizontalSplitLine: { lineColor: '#607080' },
+    })
+    expect(next.scrollStyle).toMatchObject({
+      scrollRailColor: '#354657',
+      scrollSliderColor: '#a1b2c3',
+    })
+    expect(next.underlayBackgroundColor).toBe('#121a22')
+    expect(next.taskBar).toEqual(instance.options.taskBar)
+    if (preset === 'official') {
+      expect(tableTheme.headerStyle).toMatchObject({ color: 'red' })
+      expect(tableTheme.bodyStyle).toMatchObject({ color: '#4D4D4D' })
+      expect(next.timelineHeader.scales[0].style).toMatchObject({
+        color: 'white',
+      })
+      expect(next.taskBar).toMatchObject({ barStyle: { borderColor: 'black' } })
+    }
+    expect(instance.released).toBe(false)
+    wrapper.unmount()
+  }
+)
+
+test('Canvas task table follows Provider colors while explicit SDK styles and shared themes stay intact', async () => {
+  const { themes } = await import('@visactor/vtable')
+  const shared = [themes.DEFAULT, themes.DARK].map(theme => ({
+    headerBg: theme.headerStyle?.bgColor,
+    bodyBg: theme.bodyStyle?.bgColor,
+    border: theme.defaultStyle.borderColor,
+    selection: theme.selectionStyle.cellBorderColor,
+  }))
+  const common = ref({
+    cardColor: '#fdfbfa',
+    actionColor: '#f1edea',
+    hoverColor: '#eae1d7',
+    popoverColor: '#fffefd',
+    textColor1: '#292018',
+    textColor2: '#67574a',
+    textColor3: '#88796c',
+    borderColor: '#cfc0b1',
+    primaryColor: '#96601d',
+  })
+  const options = {
+    underlayBackgroundColor: '#091827',
+    grid: {
+      backgroundColor: '#fff1e2',
+      verticalLine: { lineColor: '#884422', lineWidth: 3 },
+      horizontalLine: () => ({ lineColor: '#557744' }),
+    },
+    timelineHeader: {
+      backgroundColor: '#e3f4f5',
+      horizontalLine: { lineColor: '#258369' },
+      verticalLine: { lineColor: '#873e67' },
+      scales: [{ unit: 'day' as const, step: 1, style: { color: '#603399' } }],
+    },
+    frame: {
+      outerFrameStyle: { borderColor: '#123abc', borderLineWidth: 4 },
+      verticalSplitLine: { lineColor: '#567abc' },
+      horizontalSplitLine: { lineColor: '#abc123' },
+    },
+    scrollStyle: { scrollRailColor: '#231645', scrollSliderColor: '#c0ffee' },
+    taskListTable: {
+      theme: {
+        headerStyle: { bgColor: '#c12345', fontSize: 19 },
+        bodyStyle: { color: '#1234ab' },
+      },
+    },
+  }
   const wrapper = mount(
     defineComponent({
       setup: () => () =>
         h(
           NConfigProvider,
+          { themeOverrides: { common: common.value } },
           {
-            theme: dark.value ? darkTheme : null,
-            themeOverrides: {
-              common: { cardColor: dark.value ? '#19242f' : '#fdfbfa' },
-            },
-          },
-          {
-            default: () => h(GanttView, { showToolbar: false }),
+            default: () =>
+              h(GanttView, {
+                showToolbar: false,
+                options,
+              }),
           }
         ),
     })
   )
   await vi.waitFor(() => expect(state.instances).toHaveLength(1))
   const instance = state.instances[0]
-  dark.value = true
+  const original = instance.options.taskListTable!.theme!
+  expect(original.headerStyle).toMatchObject({
+    bgColor: '#c12345',
+    color: '#67574a',
+    borderColor: '#cfc0b1',
+    fontSize: 19,
+  })
+  expect(original.bodyStyle).toMatchObject({
+    bgColor: '#fdfbfa',
+    color: '#1234ab',
+    borderColor: '#cfc0b1',
+    hover: { cellBgColor: '#eae1d7' },
+  })
+  instance.scrollTop = 80
+  instance.scrollLeft = 120
+  common.value = {
+    cardColor: '#202a34',
+    actionColor: '#26323d',
+    hoverColor: '#344859',
+    popoverColor: '#2d3b47',
+    textColor1: '#f2f5f8',
+    textColor2: '#c1ceda',
+    textColor3: '#95aabd',
+    borderColor: '#4f6578',
+    primaryColor: '#a8d8ff',
+  }
   await flushPromises()
   expect(state.instances).toHaveLength(1)
   expect(instance.updateOption).toHaveBeenCalledOnce()
-  expect(instance.updateOption.mock.calls[0][0].grid?.backgroundColor).toBe(
-    '#19242f'
-  )
+  const [updated] = instance.updateOption.mock.lastCall!
+  const next = updated.taskListTable!.theme!
+  expect(next).not.toBe(original)
+  expect(next.headerStyle).toMatchObject({
+    bgColor: '#c12345',
+    color: '#c1ceda',
+    borderColor: '#4f6578',
+    fontSize: 19,
+  })
+  expect(next.bodyStyle).toMatchObject({
+    bgColor: '#202a34',
+    color: '#1234ab',
+    borderColor: '#4f6578',
+    hover: { cellBgColor: '#344859' },
+  })
+  expect(next.rowHeaderStyle?.bgColor).toBe('#c12345')
+  expect(next.defaultStyle?.color).toBe('#f2f5f8')
+  expect(next.frameStyle?.borderColor).toBe('#4f6578')
+  expect(next.selectionStyle?.cellBorderColor).toBe('#a8d8ff')
+  expect(next.columnResize?.lineColor).toBe('#a8d8ff')
+  expect(next.scrollStyle?.scrollSliderColor).toBe('#95aabd')
+  expect(next.tooltipStyle).toMatchObject({
+    bgColor: '#2d3b47',
+    color: '#f2f5f8',
+  })
+  expect(updated.underlayBackgroundColor).toBe(options.underlayBackgroundColor)
+  expect(updated.grid).toMatchObject(options.grid)
+  expect(updated.timelineHeader).toMatchObject(options.timelineHeader)
+  expect(updated.frame).toMatchObject(options.frame)
+  expect(updated.scrollStyle).toMatchObject(options.scrollStyle)
+  expect(updated.taskBar?.barStyle).toEqual(instance.options.taskBar?.barStyle)
+  expect(instance.scrollTop).toBe(80)
+  expect(instance.scrollLeft).toBe(120)
   expect(instance.released).toBe(false)
+  expect(
+    [themes.DEFAULT, themes.DARK].map(theme => ({
+      headerBg: theme.headerStyle?.bgColor,
+      bodyBg: theme.bodyStyle?.bgColor,
+      border: theme.defaultStyle.borderColor,
+      selection: theme.selectionStyle.cellBorderColor,
+    }))
+  ).toEqual(shared)
   wrapper.unmount()
 })

@@ -16,7 +16,7 @@
       flex-shrink: 0;
       padding: 0 10px;
       height: 34px;
-      background: var(--n-color-target);
+      background: var(--c-bg-muted, var(--c-theme-bg-muted, #f3f4f6));
       border-radius: 6px;
       white-space: nowrap;
     }
@@ -28,7 +28,7 @@
     align-items: center;
     margin-bottom: 16px;
     padding: 10px 12px;
-    background: var(--n-color-target);
+    background: var(--c-bg-muted, var(--c-theme-bg-muted, #f3f4f6));
     border-radius: 6px;
 
     .stats-info {
@@ -53,7 +53,7 @@
       transition: all 0.2s ease;
 
       &:hover {
-        background: var(--n-color-target);
+        background: var(--c-bg-muted, var(--c-theme-bg-muted, #f3f4f6));
       }
 
       &.disabled {
@@ -62,11 +62,19 @@
       }
 
       &.fixed-left {
-        background: rgba(24, 160, 88, 0.08);
+        background: color-mix(
+          in srgb,
+          var(--c-success, var(--c-theme-success)) 8%,
+          transparent
+        );
       }
 
       &.fixed-right {
-        background: rgba(240, 138, 0, 0.08);
+        background: color-mix(
+          in srgb,
+          var(--c-warning, var(--c-theme-warning)) 8%,
+          transparent
+        );
       }
 
       .column-info {
@@ -83,7 +91,7 @@
           flex-shrink: 0;
 
           .drag-handle {
-            color: var(--n-text-color-3);
+            color: var(--c-text-3, var(--c-theme-text-3, #999));
             cursor: grab;
 
             &:active {

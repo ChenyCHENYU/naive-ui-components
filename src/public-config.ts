@@ -19,4 +19,8 @@ export {
   COMPONENT_COLOR_PALETTES,
   COMPONENT_CONTROL_HEIGHTS,
 } from './core/theme'
-export type { ComponentColorMode, ComponentThemeOptions } from './core/theme'
+export type {
+  ComponentColorMode,
+  ComponentThemeColors,
+  ComponentThemeOptions,
+} from './core/theme'

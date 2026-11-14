@@ -4,21 +4,17 @@ import type { GanttOptions, GanttPreset } from './types'
 export type { GanttTask, GanttOptions, GanttPreset } from './types'
 
 // ==================== 通用主题配置 ====================
-// 移除硬编码颜色，让背景透明以跟随系统主题
+// 只保留排版和边框尺寸，中性色由当前 Provider 在运行时补齐。
 export const commonTheme: NonNullable<GanttOptions['taskListTable']>['theme'] =
   {
     headerStyle: {
-      borderColor: 'rgba(128, 128, 128, 0.2)',
       borderLineWidth: 1,
       fontSize: 14,
       fontWeight: 'bold',
-      // bgColor 留空或透明，自动跟随主题
     },
     bodyStyle: {
-      borderColor: 'rgba(128, 128, 128, 0.2)',
       borderLineWidth: [1, 0, 1, 0],
       fontSize: 13,
-      // bgColor 留空或透明，自动跟随主题
     },
   }
 
@@ -42,16 +38,15 @@ export const presetConfigs = {
     frame: {
       outerFrameStyle: {
         borderLineWidth: 1,
-        borderColor: '#e1e4e8',
         cornerRadius: 6,
       },
       verticalSplitLineMoveable: true,
-      verticalSplitLine: { lineColor: '#e1e4e8', lineWidth: 2 },
+      verticalSplitLine: { lineWidth: 2 },
     },
     grid: {
-      // 移除 weekendBackgroundColor，让它透明跟随主题
-      verticalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
-      horizontalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
+      // 背景与网格线使用运行时主题默认值。
+      verticalLine: { lineWidth: 1 },
+      horizontalLine: { lineWidth: 1 },
     },
     taskBar: {
       startDateField: 'start',
@@ -76,10 +71,10 @@ export const presetConfigs = {
       },
     },
     timelineHeader: {
-      // 移除 backgroundColor，让它透明跟随主题
+      // 表头背景与网格线使用运行时主题默认值。
       colWidth: 60,
-      horizontalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
-      verticalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
+      horizontalLine: { lineWidth: 1 },
+      verticalLine: { lineWidth: 1 },
       scales: [
         {
           unit: 'week',
@@ -96,11 +91,9 @@ export const presetConfigs = {
       ],
     },
     scrollStyle: {
-      scrollRailColor: 'rgba(246,246,246,0.5)',
       visible: 'scrolling',
       width: 6,
       scrollSliderCornerRadius: 2,
-      scrollSliderColor: '#1890ff',
     },
   },
 
@@ -136,15 +129,14 @@ export const presetConfigs = {
     frame: {
       outerFrameStyle: {
         borderLineWidth: 2,
-        borderColor: '#e1e4e8',
         cornerRadius: 8,
       },
       verticalSplitLineMoveable: true,
-      verticalSplitLine: { lineColor: '#e1e4e8', lineWidth: 3 },
+      verticalSplitLine: { lineWidth: 3 },
     },
     grid: {
-      verticalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
-      horizontalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
+      verticalLine: { lineWidth: 1 },
+      horizontalLine: { lineWidth: 1 },
     },
     taskBar: {
       startDateField: 'start',
@@ -169,8 +161,8 @@ export const presetConfigs = {
     },
     timelineHeader: {
       colWidth: 60,
-      horizontalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
-      verticalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
+      horizontalLine: { lineWidth: 1 },
+      verticalLine: { lineWidth: 1 },
       scales: [
         {
           unit: 'week',
@@ -190,15 +182,11 @@ export const presetConfigs = {
     rowSeriesNumber: {
       title: '序号',
       dragOrder: true,
-      headerStyle: { borderColor: 'rgba(128, 128, 128, 0.2)' },
-      style: { borderColor: 'rgba(128, 128, 128, 0.2)' },
     },
     scrollStyle: {
-      scrollRailColor: 'rgba(246,246,246,0.5)',
       visible: 'scrolling',
       width: 6,
       scrollSliderCornerRadius: 2,
-      scrollSliderColor: '#1890ff',
     },
   },
 
@@ -221,14 +209,13 @@ export const presetConfigs = {
     frame: {
       outerFrameStyle: {
         borderLineWidth: 1,
-        borderColor: 'rgba(128, 128, 128, 0.3)',
         cornerRadius: 4,
       },
       verticalSplitLineMoveable: true,
     },
     grid: {
-      verticalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
-      horizontalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
+      verticalLine: { lineWidth: 1 },
+      horizontalLine: { lineWidth: 1 },
     },
     taskBar: {
       startDateField: 'start',
@@ -264,11 +251,9 @@ export const presetConfigs = {
       ],
     },
     scrollStyle: {
-      scrollRailColor: 'rgba(246,246,246,0.5)',
       visible: 'scrolling',
       width: 6,
       scrollSliderCornerRadius: 2,
-      scrollSliderColor: '#1890ff',
     },
   },
 
@@ -335,11 +320,9 @@ export const presetConfigs = {
       ],
     },
     scrollStyle: {
-      scrollRailColor: 'rgba(246,246,246,0.5)',
       visible: 'scrolling',
       width: 6,
       scrollSliderCornerRadius: 2,
-      scrollSliderColor: '#1890ff',
     },
   },
 
@@ -406,16 +389,15 @@ export const presetConfigs = {
     frame: {
       outerFrameStyle: {
         borderLineWidth: 2,
-        borderColor: '#e1e4e8',
         cornerRadius: 8,
       },
       verticalSplitLineMoveable: true,
-      verticalSplitLine: { lineColor: '#e1e4e8', lineWidth: 3 },
-      horizontalSplitLine: { lineColor: '#e1e4e8', lineWidth: 3 },
+      verticalSplitLine: { lineWidth: 3 },
+      horizontalSplitLine: { lineWidth: 3 },
     },
     grid: {
-      verticalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
-      horizontalLine: { lineWidth: 1, lineColor: 'rgba(128, 128, 128, 0.2)' },
+      verticalLine: { lineWidth: 1 },
+      horizontalLine: { lineWidth: 1 },
     },
     taskBar: {
       startDateField: 'start',
@@ -446,10 +428,9 @@ export const presetConfigs = {
       },
     },
     timelineHeader: {
-      backgroundColor: '#EEF1F5',
       colWidth: 60,
-      horizontalLine: { lineWidth: 1, lineColor: '#e1e4e8' },
-      verticalLine: { lineWidth: 1, lineColor: '#e1e4e8' },
+      horizontalLine: { lineWidth: 1 },
+      verticalLine: { lineWidth: 1 },
       scales: [
         {
           unit: 'week',
@@ -494,15 +475,11 @@ export const presetConfigs = {
     rowSeriesNumber: {
       title: '行号',
       dragOrder: true,
-      headerStyle: { borderColor: 'rgba(128, 128, 128, 0.2)' },
-      style: { borderColor: 'rgba(128, 128, 128, 0.2)' },
     },
     scrollStyle: {
-      scrollRailColor: 'rgba(246,246,246,0.5)',
       visible: 'scrolling',
       width: 6,
       scrollSliderCornerRadius: 2,
-      scrollSliderColor: '#1890ff',
     },
   },
 } satisfies Record<GanttPreset, GanttOptions>

@@ -10,6 +10,7 @@
     NRadioGroup,
     NRadioButton,
     NTag,
+    NSkeleton,
     zhCN,
   } from 'naive-ui'
   import {
@@ -38,6 +39,8 @@
   } from '@robot-admin/naive-ui-components/C_Tabs'
   import { C_TagsView } from '@robot-admin/naive-ui-components/C_TagsView'
   import { C_Transfer } from '@robot-admin/naive-ui-components/C_Transfer'
+  import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
+  import { C_Skeleton } from '@robot-admin/naive-ui-components/C_Skeleton'
   import {
     C_Timeline,
     type TimelineItem,
@@ -55,6 +58,8 @@
   import '@robot-admin/naive-ui-components/C_Timeline/style.css'
   import '@robot-admin/naive-ui-components/C_Editor/style.css'
   import '@robot-admin/naive-ui-components/C_Code/style.css'
+  import '@robot-admin/naive-ui-components/C_Table/base.css'
+  import '@robot-admin/naive-ui-components/C_Skeleton/style.css'
   import './visual-standards.css'
 
   defineOptions({ name: 'VisualStandards' })
@@ -63,6 +68,40 @@
   const dark = ref(false)
   const brand = ref('purple')
   const density = ref<ComponentDensity>('compact')
+  const customColors = ref(false)
+  // 演示两个项目色板；业务页面只消费同一份全局配置。
+  const projectColors = computed(() => {
+    if (!customColors.value) return {}
+    return dark.value
+      ? {
+          bgBody: '#181511',
+          bgCard: '#26211b',
+          bgSurface: '#30291f',
+          bgMuted: '#393026',
+          bgHover: '#44382b',
+          bgActive: '#514333',
+          text1: '#f8f0df',
+          text2: '#e2d3ba',
+          text3: '#bbaa8c',
+          text4: '#8e7c60',
+          border: '#66543c',
+          skeletonBg: '#504333',
+        }
+      : {
+          bgBody: '#faf7f1',
+          bgCard: '#fffdf8',
+          bgSurface: '#fffaf0',
+          bgMuted: '#f3eddf',
+          bgHover: '#ede2cc',
+          bgActive: '#e4d4b6',
+          text1: '#362c22',
+          text2: '#5e5143',
+          text3: '#776755',
+          text4: '#9f917f',
+          border: '#ddcfb9',
+          skeletonBg: '#e7ddcd',
+        }
+  })
   const primary = computed(() => {
     if (brand.value === 'purple') return dark.value ? '#b8a4ff' : '#7c5ce7'
     return COMPONENT_COLOR_PALETTES[dark.value ? 'dark' : 'light'].primary
@@ -72,6 +111,7 @@
       mode: dark.value ? 'dark' : 'light',
       primary: primary.value,
       radius: 8,
+      ...projectColors.value,
     })
   )
   const pageStyle = computed<CSSProperties>(() => {
@@ -231,10 +271,15 @@
   const article = ref(
     '<h2>让每一次操作，都有清晰的回应。</h2><p>编辑、选择与导航共享同一组设计规则。切换页面上方的主题，内容和输入状态会被保留。</p><p><strong>质感来自一致的细节。</strong></p>'
   )
-  const integration = computed(
-    () =>
-      `const theme = createComponentTheme({\n  mode: '${dark.value ? 'dark' : 'light'}',\n  primary: '${primary.value}',\n  radius: 8,\n})\n\n// 交给应用已有的 NConfigProvider\n<NConfigProvider v-bind="theme">...</NConfigProvider>`
-  )
+  const integration = computed(() => {
+    const options = {
+      mode: dark.value ? 'dark' : 'light',
+      primary: primary.value,
+      radius: 8,
+      ...projectColors.value,
+    }
+    return `const theme = createComponentTheme(${JSON.stringify(options, null, 2)})\n\n// 交给应用已有的 NConfigProvider\n<NConfigProvider v-bind="theme">...</NConfigProvider>`
+  })
 </script>
 
 <template>
@@ -298,6 +343,11 @@
               ? '紧凑密度 · 适合高频操作'
               : '舒适密度 · 留足阅读空间'
           }}</div
+          ><label class="vs-switch"
+            ><span>项目自定义配色</span
+            ><NSwitch
+              v-model:value="customColors"
+              aria-label="项目自定义配色" /></label
           ><div
             class="vs-summary-status"
             aria-live="polite"
@@ -411,7 +461,48 @@
             <section class="vs-card vs-span">
               <div class="vs-card-heading"
                 ><div
-                  ><span class="vs-number">03 / COMPOSITION</span
+                  ><span class="vs-number">03 / GLOBAL CONFIG</span
+                  ><h2>一份配置，贯穿原生与自绘。</h2
+                  ><p
+                    >开启上方项目配色，表头、输入、边框与两种骨架屏一起变化，业务字段保持原值。</p
+                  ></div
+                ></div
+              >
+              <C_Table
+                class="vs-theme-table"
+                :columns="[
+                  { key: 'name', title: '颜色来源' },
+                  { key: 'description', title: '适用范围' },
+                ]"
+                :data="[
+                  {
+                    id: 1,
+                    name: '项目全局配置',
+                    description: '原生控件、自绘区域与浮层',
+                  },
+                ]"
+                :row-number="false"
+                :pagination="false"
+                :config="{ toolbar: { show: false } }"
+              />
+              <div class="vs-skeleton-comparison"
+                ><div
+                  ><span>组合骨架屏 C_Skeleton</span
+                  ><C_Skeleton
+                    :repeat="2"
+                    :animation="false" /></div
+                ><div class="vs-native-skeleton"
+                  ><span>原生骨架屏 NSkeleton</span
+                  ><NSkeleton
+                    :repeat="2"
+                    :animated="false"
+                    :height="16" /></div
+              ></div>
+            </section>
+            <section class="vs-card vs-span">
+              <div class="vs-card-heading"
+                ><div
+                  ><span class="vs-number">04 / COMPOSITION</span
                   ><h2>复杂信息，也能从容组织。</h2
                   ><p>穿梭选择保留清晰状态，时间线完整呈现过程。</p></div
                 ><NTag :bordered="false"
@@ -435,7 +526,7 @@
             <section class="vs-card vs-span">
               <div class="vs-card-heading"
                 ><div
-                  ><span class="vs-number">04 / WORKSPACE</span
+                  ><span class="vs-number">05 / WORKSPACE</span
                   ><h2>同一主题，延伸到编辑工作区。</h2
                   ><p
                     >工具栏、正文与弹出菜单跟随外观切换，编辑草稿持续保留。</p

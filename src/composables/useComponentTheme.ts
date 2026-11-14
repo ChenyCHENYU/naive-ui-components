@@ -6,6 +6,7 @@ import {
   type StyleValue,
 } from 'vue'
 import { useThemeVars } from 'naive-ui'
+import type {} from '../adapters/naive/theme'
 import {
   COMPONENT_COLOR_PALETTES,
   inferComponentColorMode,
@@ -20,7 +21,6 @@ const NEUTRAL_ROLES = {
   'bg-muted': ['bgMuted', 'actionColor'],
   'bg-hover': ['bgHover', 'hoverColor'],
   'bg-active': ['bgActive', 'pressedColor'],
-  'skeleton-bg': ['skeletonBg', 'actionColor'],
   'text-1': ['text1', 'textColor1'],
   'text-2': ['text2', 'textColor2'],
   'text-3': ['text3', 'textColor3'],
@@ -32,12 +32,18 @@ function neutralStyles(
   value: ReturnType<typeof useThemeVars>['value'],
   palette: (typeof COMPONENT_COLOR_PALETTES)['light' | 'dark'] | undefined
 ): CSSProperties {
-  return Object.fromEntries(
-    Object.entries(NEUTRAL_ROLES).map(([role, [own, native]]) => [
-      `--c-theme-${role}`,
-      palette ? palette[own] : value[native],
-    ])
-  )
+  return {
+    ...Object.fromEntries(
+      Object.entries(NEUTRAL_ROLES).map(([role, [own, native]]) => [
+        `--c-theme-${role}`,
+        palette ? palette[own] : value[native],
+      ])
+    ),
+    '--c-theme-skeleton-bg':
+      palette?.skeletonBg ??
+      value.robotComponentSkeletonColor ??
+      value.actionColor,
+  }
 }
 
 /** 公共 --c-* 留给调用方；适配值只写私有默认，避免 inline 默认值压过宿主 CSS。 */

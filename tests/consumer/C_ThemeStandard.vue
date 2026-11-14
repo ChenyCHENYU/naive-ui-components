@@ -14,6 +14,11 @@
     createComponentTheme({
       mode: mode.value,
       primary: COMPONENT_COLOR_PALETTES.light.primary,
+      bgCard: '#fffdf8',
+      bgMuted: '#f3eddf',
+      text1: '#362c22',
+      border: '#ddcfb9',
+      skeletonBg: '#e7ddcd',
     })
   )
   const value = ref<number | null>(null)

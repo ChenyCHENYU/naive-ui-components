@@ -87,7 +87,7 @@
               v-if="showIcons"
               :name="'mdi:form-select'"
               :size="18"
-              style="color: #3b82f6"
+              class="single-card-icon"
             />
             <span>表单信息</span>
           </div>
@@ -190,7 +190,11 @@
             >
               <NProgress
                 :percentage="getGroupProgress(group)"
-                :color="getGroupProgress(group) === 100 ? '#52c41a' : '#1890ff'"
+                :color="
+                  getGroupProgress(group) === 100
+                    ? themeVars.successColor
+                    : themeVars.primaryColor
+                "
                 :show-indicator="false"
                 class="mb-4"
               />
@@ -222,7 +226,11 @@
               <NProgress
                 :percentage="totalProgress"
                 :show-indicator="false"
-                :color="totalProgress === 100 ? '#52c41a' : '#1890ff'"
+                :color="
+                  totalProgress === 100
+                    ? themeVars.successColor
+                    : themeVars.primaryColor
+                "
                 class="flex-1"
               />
               <span class="text-sm min-w-12">{{ totalProgress }}%</span>
@@ -256,6 +264,7 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted, watch, type VNode } from 'vue'
+  import { useThemeVars } from 'naive-ui'
   import type { CardLayoutConfig, FormOption, GroupConfig } from '../../types'
   import { getDataPath } from '../../../../utils/data'
   import C_Icon from '../../../C_Icon/index.vue'
@@ -284,6 +293,7 @@
     formData?: Record<string, unknown>
   }
 
+  const themeVars = useThemeVars()
   const props = withDefaults(defineProps<Props>(), {
     layoutConfig: () => ({}),
     options: () => [],

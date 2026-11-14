@@ -307,3 +307,27 @@
     animation-duration: 0.01ms;
   }
 }
+
+.vs-skeleton-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+}
+.vs-skeleton-comparison > div {
+  min-width: 0;
+}
+.vs-skeleton-comparison span {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--vs-secondary);
+  font-size: 12px;
+}
+.vs-native-skeleton .n-skeleton + .n-skeleton {
+  margin-top: 8px;
+}
+@media (max-width: 620px) {
+  .vs-skeleton-comparison {
+    grid-template-columns: 1fr;
+  }
+}

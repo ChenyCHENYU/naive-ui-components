@@ -73,7 +73,9 @@ const totalSize = files.reduce(
 // 0.37.2 缩列展示、右区投影和偏好范围隔离相对官方 0.37.1 净增 8416 B；
 // 消耗原余量 554 B 后追加 8 KiB。表格基础样式闭包仅增加 424 B，限额追加 1 KiB；
 // 首屏/按需 gzip、懒加载和性能限额保持不变。
-const totalLimit = 4 * 1024 * 1024 + 648 * 1024
+// 0.38 扁平色板配置、原生映射与遗漏区域的语义样式相对官方 0.37.2 增加约 11.8 KiB；
+// 仅为双格式物理产物追加 16 KiB，原有 CSS 闭包及首屏/按需加载限额保持不变。
+const totalLimit = 4 * 1024 * 1024 + 664 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

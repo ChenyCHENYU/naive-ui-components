@@ -279,7 +279,7 @@
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #d4d4d4;
+      background: var(--c-border, var(--c-theme-border, #d4d4d4));
       border-radius: 3px;
     }
   }
@@ -295,13 +295,13 @@
   }
 
   .section .n-card {
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--c-border, var(--c-theme-border, #e8e8e8));
   }
 
   .section .n-card-header {
     padding: 8px 12px;
-    background: #fafafa;
-    border-bottom: 1px solid #e8e8e8;
+    background: var(--c-bg-muted, var(--c-theme-bg-muted, #fafafa));
+    border-bottom: 1px solid var(--c-border, var(--c-theme-border, #e8e8e8));
   }
 
   .section .n-card__content {
@@ -315,6 +315,6 @@
   .section .n-form-item-label {
     font-size: 12px;
     margin-bottom: 4px;
-    color: #666;
+    color: var(--c-text-2, var(--c-theme-text-2, #666));
   }
 </style>

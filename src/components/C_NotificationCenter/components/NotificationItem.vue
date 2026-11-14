@@ -226,11 +226,16 @@
 
       &--urgent {
         background: var(--c-error, var(--c-theme-error, #d03050));
-        box-shadow: 0 0 4px rgba(245, 34, 45, 0.5);
+        box-shadow: 0 0 4px
+          color-mix(
+            in srgb,
+            var(--c-error, var(--c-theme-error)) 50%,
+            transparent
+          );
       }
 
       &--high {
-        background: #fa8c16;
+        background: var(--c-warning, var(--c-theme-warning, #fa8c16));
       }
 
       &--normal {

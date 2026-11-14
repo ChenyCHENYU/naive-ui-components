@@ -14,9 +14,10 @@
   --cl-panel-border: rgba(255, 255, 255, 0.18);
   --cl-panel-radius: 16px;
   --cl-panel-padding: 20px 26px 16px;
-    --cl-panel-width: 400px;
+  --cl-panel-width: 400px;
   --cl-panel-backdrop: blur(20px);
-  --cl-panel-shadow: 0 8px 32px rgba(0, 10, 60, 0.12), 0 2px 8px rgba(0, 10, 40, 0.06);
+  --cl-panel-shadow:
+    0 8px 32px rgba(0, 10, 60, 0.12), 0 2px 8px rgba(0, 10, 40, 0.06);
 
   /* 文字 */
   --cl-text-primary: rgba(255, 255, 255, 0.95);
@@ -28,7 +29,11 @@
   --cl-input-border: none;
   --cl-input-underline: rgba(255, 255, 255, 0.25);
   --cl-input-underline-hover: rgba(255, 255, 255, 0.5);
-  --cl-input-underline-focus: rgba(24, 89, 233, 0.85);
+  --cl-input-underline-focus: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 85%,
+    transparent
+  );
   --cl-input-text: rgba(255, 255, 255, 0.95);
   --cl-input-placeholder: rgba(255, 255, 255, 0.45);
   --cl-input-icon: rgba(255, 255, 255, 0.6);
@@ -36,15 +41,25 @@
   /* Tab */
   --cl-tab-text: rgba(255, 255, 255, 0.55);
   --cl-tab-active: rgba(255, 255, 255, 0.95);
-  --cl-tab-bar: #1859e9;
+  --cl-tab-bar: var(--c-primary, var(--c-theme-primary));
 
   /* 按钮 */
-  --cl-btn-bg: linear-gradient(135deg, #1859e9, #1040a0);
-  --cl-btn-bg-hover: linear-gradient(135deg, #2464f0, #1545ad);
-  --cl-btn-shadow: 0 4px 15px rgba(24, 89, 233, 0.3);
-  --cl-btn-shadow-hover: 0 6px 20px rgba(24, 89, 233, 0.4);
+  --cl-btn-bg: var(--c-primary, var(--c-theme-primary));
+  --cl-btn-bg-hover: var(--c-primary-hover, var(--c-theme-primary-hover));
+  --cl-btn-shadow: 0 4px 15px
+    color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 30%,
+      transparent
+    );
+  --cl-btn-shadow-hover: 0 6px 20px
+    color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 40%,
+      transparent
+    );
   --cl-btn-height: 40px;
-    --cl-btn-radius: 8px;
+  --cl-btn-radius: 8px;
 
   /* 社交按钮 */
   --cl-social-btn-bg: rgba(255, 255, 255, 0.08);
@@ -57,11 +72,11 @@
 
   /* 链接 */
   --cl-link-color: rgba(255, 255, 255, 0.6);
-  --cl-link-hover: rgba(255, 255, 255, 0.95);
+  --cl-link-hover: var(--c-primary-hover, var(--c-theme-primary-hover));
 
   /* 间距 */
   --cl-gap: 10px;
-    --cl-gap-sm: 6px;
+  --cl-gap-sm: 6px;
 }
 
 /* ===== 面板容器 ===== */
@@ -102,7 +117,12 @@
     background: linear-gradient(
       135deg,
       rgba(255, 255, 255, 0.12) 0%,
-      rgba(24, 89, 233, 0.04) 100%
+      color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 4%,
+          transparent
+        )
+        100%
     );
     pointer-events: none;
     border-radius: inherit;
@@ -119,26 +139,26 @@
 .c-login__header {
   text-align: center;
   margin-bottom: 10px;
+}
+
+/* ===== 返回按钮（登录/注册下方块级按钮） ===== */
+.c-login__back-btn {
+  margin-top: 10px;
+  height: var(--cl-btn-height) !important;
+  border-radius: var(--cl-btn-radius) !important;
+  background: transparent !important;
+  border: 1px solid var(--cl-input-underline) !important;
+  color: var(--cl-text-secondary) !important;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  transition: all 0.25s ease !important;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--cl-input-underline-hover) !important;
+    color: var(--cl-text-primary) !important;
   }
-
-  /* ===== 返回按钮（登录/注册下方块级按钮） ===== */
-  .c-login__back-btn {
-    margin-top: 10px;
-    height: var(--cl-btn-height) !important;
-    border-radius: var(--cl-btn-radius) !important;
-    background: transparent !important;
-    border: 1px solid var(--cl-input-underline) !important;
-    color: var(--cl-text-secondary) !important;
-    font-size: 14px;
-    font-weight: 400;
-    letter-spacing: 2px;
-    transition: all 0.25s ease !important;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.06) !important;
-      border-color: var(--cl-input-underline-hover) !important;
-      color: var(--cl-text-primary) !important;
-    }
 }
 
 .c-login__logo {
@@ -148,13 +168,20 @@
 
   .c-login__logo-icon {
     color: var(--cl-text-primary);
-    filter: drop-shadow(0 2px 8px rgba(24, 89, 233, 0.4));
+    filter: drop-shadow(
+      0 2px 8px
+        color-mix(
+          in srgb,
+          var(--c-primary, var(--c-theme-primary)) 40%,
+          transparent
+        )
+    );
   }
 }
 
 .c-login__title {
   margin: 0 0 2px;
-    font-size: 20px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--cl-text-primary);
   letter-spacing: 0.5px;
@@ -188,13 +215,17 @@
   transition: all 0.2s ease !important;
 
   &:hover {
-      background: rgba(255, 255, 255, 0.1) !important;
-      color: var(--cl-text-primary) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--cl-text-primary) !important;
   }
 
-                                                                &.is-active {
-                                                                  background: color-mix(in srgb, var(--cl-tab-bar) 22%, transparent) !important;
-                                                                  color: var(--cl-tab-active) !important;
+  &.is-active {
+    background: color-mix(
+      in srgb,
+      var(--cl-tab-bar) 22%,
+      transparent
+    ) !important;
+    color: var(--cl-tab-active) !important;
   }
 }
 
@@ -206,13 +237,13 @@
 .c-login__form-item {
   margin-bottom: 6px !important;
 
-    /* 彻底干掉 NaiveUI FormItem 内置间距 CSS 变量 */
-    :deep(.n-form-item) {
-      --n-feedback-padding: 2px 0 0 0 !important;
-      --n-feedback-height: 0 !important;
-      --n-blank-height: 0 !important;
-      --n-label-height: 0 !important;
-    }
+  /* 彻底干掉 NaiveUI FormItem 内置间距 CSS 变量 */
+  :deep(.n-form-item) {
+    --n-feedback-padding: 2px 0 0 0 !important;
+    --n-feedback-height: 0 !important;
+    --n-blank-height: 0 !important;
+    --n-label-height: 0 !important;
+  }
 
   :deep(.n-form-item-label) {
     display: none;
@@ -221,17 +252,17 @@
   /* 校验信息减少占用 */
   :deep(.n-form-item-feedback-wrapper) {
     min-height: 0 !important;
-      padding-top: 0 !important;
-      line-height: 1.4;
-    }
+    padding-top: 0 !important;
+    line-height: 1.4;
+  }
 
-    :deep(.n-form-item-feedback) {
-      font-size: 11px !important;
-      line-height: 1.4;
-    }
+  :deep(.n-form-item-feedback) {
+    font-size: 11px !important;
+    line-height: 1.4;
+  }
 
-    :deep(.n-form-item-blank) {
-      min-height: 0 !important;
+  :deep(.n-form-item-blank) {
+    min-height: 0 !important;
   }
 
   /* 底线风格输入框 */
@@ -280,7 +311,7 @@
   justify-content: space-between;
   align-items: center;
   margin-top: 8px;
-    margin-bottom: 14px;
+  margin-bottom: 14px;
 }
 
 .c-login__remember {
@@ -383,60 +414,62 @@
 /* ===== 人机验证 ===== */
 .c-login__captcha-wrap {
   margin-top: 10px;
-    display: flex;
-    justify-content: center;
-  }
+  display: flex;
+  justify-content: center;
+}
 
-  /* ===== 扫码登录面板 ===== */
-  .c-login__qr-panel {
+/* ===== 扫码登录面板 ===== */
+.c-login__qr-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 4px;
+  gap: 14px;
+}
+
+.c-login__qr-frame {
+  position: relative;
+  width: 164px;
+  height: 164px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 28px rgba(0, 0, 0, 0.4);
+
+  .c-login__qr-placeholder {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    padding: 8px 0 4px;
-    gap: 14px;
+    justify-content: center;
+    height: 100%;
+    padding: 16px;
+    color: var(--cl-text-secondary);
+    font-size: 13px;
+    text-align: center;
   }
 
-  .c-login__qr-frame {
-    position: relative;
-    width: 164px;
-    height: 164px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgba(0, 0, 0, 0.35);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 28px rgba(0, 0, 0, 0.4);
-
-    .c-login__qr-placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 16px;
-      color: var(--cl-text-secondary);
-      font-size: 13px;
-      text-align: center;
+  /* 扫描动画线 */
+  @keyframes qr-scan {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
     }
 
-    /* 扫描动画线 */
-    @keyframes qr-scan {
-      0% {
-        transform: translateY(0);
-        opacity: 1;
-      }
+    90% {
+      transform: translateY(144px);
+      opacity: 1;
+    }
 
-      90% {
-        transform: translateY(144px);
-        opacity: 1;
-      }
-
-      100% {
-        transform: translateY(144px);
-        opacity: 0;
-      }
+    100% {
+      transform: translateY(144px);
+      opacity: 0;
     }
   }
+}
 
-  /* C_QRCode 居中在 frame 内 */
-  .c-login__qr-frame {
+/* C_QRCode 居中在 frame 内 */
+.c-login__qr-frame {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -448,14 +481,31 @@
   left: 10px;
   right: 10px;
   height: 2px;
-  background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(24, 89, 233, 0.7) 30%,
-      rgba(100, 160, 255, 1) 50%,
-      rgba(24, 89, 233, 0.7) 70%,
-      transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 70%,
+        transparent
+      )
+      30%,
+    var(--c-primary-hover, var(--c-theme-primary-hover)) 50%,
+    color-mix(
+        in srgb,
+        var(--c-primary, var(--c-theme-primary)) 70%,
+        transparent
+      )
+      70%,
+    transparent 100%
+  );
   border-radius: 1px;
-  box-shadow: 0 0 6px rgba(24, 89, 233, 0.8);
+  box-shadow: 0 0 6px
+    color-mix(
+      in srgb,
+      var(--c-primary, var(--c-theme-primary)) 80%,
+      transparent
+    );
   animation: qr-scan 2.4s ease-in-out infinite;
   pointer-events: none;
 }
@@ -465,7 +515,11 @@
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: rgba(24, 89, 233, 0.9);
+  border-color: color-mix(
+    in srgb,
+    var(--c-primary, var(--c-theme-primary)) 90%,
+    transparent
+  );
   border-style: solid;
   pointer-events: none;
 
@@ -537,7 +591,7 @@
   display: flex;
   justify-content: center;
   gap: 14px;
-    margin-bottom: 6px;
+  margin-bottom: 6px;
 }
 
 .c-login__social-btn {
@@ -602,5 +656,5 @@
   --cl-social-btn-hover-bg: rgba(0, 0, 0, 0.08);
   --cl-divider-color: rgba(0, 0, 0, 0.1);
   --cl-link-color: #888;
-  --cl-link-hover: #1a1a1a;
+  --cl-link-hover: var(--c-primary-hover, var(--c-theme-primary-hover));
 }

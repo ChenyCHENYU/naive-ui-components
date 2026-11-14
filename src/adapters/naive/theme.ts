@@ -4,21 +4,24 @@ import {
   type GlobalThemeOverrides,
 } from 'naive-ui'
 import {
-  COMPONENT_COLOR_PALETTES,
   COMPONENT_CONTROL_HEIGHTS,
   mixThemeColor,
-  normalizeThemeColor,
+  resolveComponentThemeColors,
   themeForeground,
   type ComponentThemeOptions,
 } from '../../core/theme'
+
+// 使用 Naive 的公开扩展点，独立骨架色随现有 Provider 传递，不借用其他控件的颜色字段。
+declare module 'naive-ui' {
+  interface CustomThemeCommonVars {
+    robotComponentSkeletonColor?: string
+  }
+}
 
 export interface ComponentThemeConfig {
   theme: GlobalTheme | null
   themeOverrides: GlobalThemeOverrides
 }
-
-const resolveColor = (value: string | undefined, fallback: string) =>
-  normalizeThemeColor(value ?? fallback)
 
 function resolveRadius(value: number | undefined): number {
   const radius = value ?? 6
@@ -36,13 +39,10 @@ export function createComponentTheme(
   const mode = options.mode ?? 'light'
   if (mode !== 'light' && mode !== 'dark')
     throw new TypeError('Component theme mode must be light or dark')
-  const palette = COMPONENT_COLOR_PALETTES[mode]
+  const palette = resolveComponentThemeColors(options, mode)
   const radius = resolveRadius(options.radius)
-  const primary = resolveColor(options.primary, palette.primary)
-  const success = resolveColor(options.success, palette.success)
-  const warning = resolveColor(options.warning, palette.warning)
-  const error = resolveColor(options.error, palette.error)
-  const info = resolveColor(options.info, palette.info)
+  const { primary, success, warning, error, info } = palette
+  const controlBorder = `1px solid ${palette.border}`
   const common = {
     baseColor: mode === 'dark' ? '#000000' : '#ffffff',
     textColorBase: mode === 'dark' ? '#ffffff' : '#000000',
@@ -68,17 +68,48 @@ export function createComponentTheme(
     infoColorSuppl: info,
     bodyColor: palette.bgBody,
     cardColor: palette.bgCard,
+    tableColor: palette.bgCard,
     modalColor: palette.bgSurface,
     popoverColor: palette.bgSurface,
+    inputColor: palette.bgCard,
+    inputColorDisabled: palette.bgMuted,
+    tableHeaderColor: palette.bgMuted,
+    tableColorHover: palette.bgHover,
+    tableColorStriped: palette.bgMuted,
+    tabColor: palette.bgMuted,
+    codeColor: palette.bgMuted,
+    tagColor: palette.bgMuted,
+    buttonColor2: palette.bgMuted,
+    buttonColor2Hover: palette.bgHover,
+    buttonColor2Pressed: palette.bgActive,
     actionColor: palette.bgMuted,
     hoverColor: palette.bgHover,
     pressedColor: palette.bgActive,
+    robotComponentSkeletonColor: palette.skeletonBg,
     borderColor: palette.border,
     dividerColor: palette.border,
     textColor1: palette.text1,
     textColor2: palette.text2,
     textColor3: palette.text3,
     textColorDisabled: palette.text4,
+    placeholderColor: palette.text3,
+    placeholderColorDisabled: palette.text4,
+    iconColor: palette.text3,
+    iconColorHover: palette.text2,
+    iconColorPressed: palette.text1,
+    iconColorDisabled: palette.text4,
+    clearColor: palette.text3,
+    clearColorHover: palette.text2,
+    clearColorPressed: palette.text1,
+    closeIconColor: palette.text3,
+    closeIconColorHover: palette.text2,
+    closeIconColorPressed: palette.text1,
+    closeColorHover: palette.bgHover,
+    closeColorPressed: palette.bgActive,
+    progressRailColor: palette.bgMuted,
+    railColor: palette.border,
+    scrollbarColor: palette.text4,
+    scrollbarColorHover: palette.text3,
     borderRadius: `${radius}px`,
     borderRadiusSmall: `${Math.max(0, radius - 2)}px`,
     heightTiny: `${COMPONENT_CONTROL_HEIGHTS.tiny}px`,
@@ -91,24 +122,34 @@ export function createComponentTheme(
     themeOverrides: {
       common,
       Skeleton: { color: palette.skeletonBg, colorEnd: palette.bgHover },
+      Tabs: { colorSegment: palette.bgMuted, tabColorSegment: palette.bgCard },
+      Input: { border: controlBorder, borderDisabled: controlBorder },
+      InternalSelection: {
+        border: controlBorder,
+      },
       Button: {
         textColorPrimary: themeForeground(primary),
+        textColorDisabledPrimary: themeForeground(primary),
         textColorHoverPrimary: themeForeground(common.primaryColorHover),
         textColorPressedPrimary: themeForeground(common.primaryColorPressed),
         textColorFocusPrimary: themeForeground(common.primaryColorHover),
         textColorSuccess: themeForeground(success),
+        textColorDisabledSuccess: themeForeground(success),
         textColorHoverSuccess: themeForeground(common.successColorHover),
         textColorPressedSuccess: themeForeground(common.successColorPressed),
         textColorFocusSuccess: themeForeground(common.successColorHover),
         textColorWarning: themeForeground(warning),
+        textColorDisabledWarning: themeForeground(warning),
         textColorHoverWarning: themeForeground(common.warningColorHover),
         textColorPressedWarning: themeForeground(common.warningColorPressed),
         textColorFocusWarning: themeForeground(common.warningColorHover),
         textColorError: themeForeground(error),
+        textColorDisabledError: themeForeground(error),
         textColorHoverError: themeForeground(common.errorColorHover),
         textColorPressedError: themeForeground(common.errorColorPressed),
         textColorFocusError: themeForeground(common.errorColorHover),
         textColorInfo: themeForeground(info),
+        textColorDisabledInfo: themeForeground(info),
         textColorHoverInfo: themeForeground(common.infoColorHover),
         textColorPressedInfo: themeForeground(common.infoColorPressed),
         textColorFocusInfo: themeForeground(common.infoColorHover),

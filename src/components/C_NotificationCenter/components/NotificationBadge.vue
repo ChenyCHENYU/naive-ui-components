@@ -145,7 +145,7 @@
       text-align: center;
       white-space: nowrap;
       pointer-events: none;
-      box-shadow: 0 0 0 2px var(--c-bg);
+      box-shadow: 0 0 0 2px var(--c-bg-surface, var(--c-theme-bg-surface, #fff));
     }
 
     &__pulse {
@@ -155,7 +155,11 @@
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: rgba(245, 34, 45, 0.4);
+      background: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error)) 40%,
+        transparent
+      );
       animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
       pointer-events: none;
     }

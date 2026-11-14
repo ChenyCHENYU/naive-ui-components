@@ -3,7 +3,10 @@
  * 通过 features prop 控制功能模块的显隐，样式通过 CSS 变量覆盖
 -->
 <template>
-  <div class="c-login-panel">
+  <div
+    class="c-login-panel"
+    :style="themeStyle"
+  >
     <!-- ===== Logo / 标题区 ===== -->
     <div class="c-login__header">
       <slot name="logo">
@@ -509,6 +512,7 @@
   } from 'vue'
   import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
+  import { useComponentTheme } from '../../composables/useComponentTheme'
   import C_Captcha from '../C_Captcha/index.vue'
   import type { CaptchaSuccessPayload } from '../C_Captcha/types'
   import C_QRCode from '../C_QRCode/index.vue'
@@ -522,6 +526,9 @@
     type CaptchaFormData,
     type RegisterFormData,
   } from './types'
+
+  // 玻璃中性色保留领域外观，品牌强调来自当前 Provider。
+  const themeStyle = useComponentTheme()
 
   // ===== i18n helper =====
   type GlobalTranslator = (

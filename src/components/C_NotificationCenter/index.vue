@@ -372,7 +372,11 @@
       margin: 10px 16px;
       padding: 10px;
       color: var(--c-text-1, var(--c-theme-text-1));
-      background: color-mix(in srgb, #d03050 8%, transparent);
+      background: color-mix(
+        in srgb,
+        var(--c-error, var(--c-theme-error)) 8%,
+        transparent
+      );
       border-radius: 6px;
       font-size: 12px;
     }
@@ -391,13 +395,18 @@
       transition: background-color var(--c-transition, 0.2s ease);
 
       &--connected {
-        background: #52c41a;
-        box-shadow: 0 0 4px rgba(82, 196, 26, 0.5);
+        background: var(--c-success, var(--c-theme-success, #52c41a));
+        box-shadow: 0 0 4px
+          color-mix(
+            in srgb,
+            var(--c-success, var(--c-theme-success)) 50%,
+            transparent
+          );
       }
 
       &--connecting,
       &--reconnecting {
-        background: #faad14;
+        background: var(--c-warning, var(--c-theme-warning, #faad14));
         animation: status-blink 1s ease-in-out infinite;
       }
 

@@ -165,7 +165,10 @@
       background: var(--workflow-node-accent);
     }
     &.active {
-      background: #1890ff;
+      background: var(
+        --workflow-node-accent,
+        var(--c-primary, var(--c-theme-primary, #1890ff))
+      );
     }
   }
 
