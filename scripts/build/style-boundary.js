@@ -24,6 +24,7 @@ const publicSemanticNames = new Set([
   'warning',
   'error',
   'info',
+  'on-solid',
   'border',
   'radius',
   'focus-ring',

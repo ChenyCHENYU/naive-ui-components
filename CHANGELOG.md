@@ -1,5 +1,14 @@
 # @robot-admin/naive-ui-components
 
+## 0.39.0
+
+- Infer enabled selection from an explicit selection column when no selection config is supplied; preserve explicit global and local overrides, including dynamic columns.
+- Apply compact spacing to native cells and row actions, show disabled selection controls accurately, and display the inclusive pagination range correctly.
+
+### Minor Changes
+
+- Keep asynchronous exports bound to their initial columns and formatting, prevent downloads after unmount, and add the configurable white onSolid foreground shared by filled controls. Checked table rows display a configurable leading selection marker.
+
 ## 0.38.0
 
 ### Minor Changes

@@ -131,7 +131,7 @@ export function usePagination<T extends object = DataRecord>(
       prefix: (info: PaginationRenderInfo) => `共 ${info.itemCount ?? 0} 条`,
       suffix: (info: PaginationRenderInfo) =>
         (info.itemCount ?? 0) > 0
-          ? `第 ${info.startIndex + 1}-${info.endIndex} 条`
+          ? `第 ${info.startIndex + 1}-${info.endIndex + 1} 条`
           : '暂无数据',
       'onUpdate:page': handlePageChange,
       'onUpdate:pageSize': handlePageSizeChange,

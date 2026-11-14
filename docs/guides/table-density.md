@@ -33,6 +33,12 @@
 `display.size`、`pagination.size`、`toolbar.actionBar`、列 `editProps.size` 仍可分别覆盖；原生表格 attrs 保持既有覆盖顺序。
 不传 `density` 保留旧表格尺寸和紧凑工具按钮。密度仅影响当前实例，不修改全局主题和相邻表格。
 
+显式 `compact` 且表格最终尺寸为 `small` 时，普通单元格内距为 `2px 8px`、表头内距为 `4px 8px`，通过 Naive 公开 `themeOverrides` 的 `tdPaddingSmall / thPaddingSmall` 设置。密度几何优先于父 Provider 的这两项内距；表格局部 `theme-overrides` 显式值最后合并，仍可覆盖密度。Provider 的颜色等其他主题项继续继承，嵌套表格和相邻原生表格互不改写。显式 `display.size: 'large'` 或原生 `size="large"` 不应用 compact 内距。操作列复用当前密度的单元格内距，未声明密度时保留 `8px 12px`。
+
+已勾选的行默认在首个单元格内显示 `2px` 主色标识，不增加列宽或行高。选择列的 Checkbox 与单选 Radio 均适用；展开子表的勾选不会误标父行。可在表格 `style` 中设置 `--c-table-selected-marker-width: 0px` 关闭，或调整为其他宽度。此标识只反映已有勾选状态，不创建当前行、不把业务 `aria-selected` 转换为多选；业务当前项仍由页面自己的行属性控制。样式使用项目既有现代浏览器支持的 `:has()`。
+
+未声明 `config.selection` 时，显式 `{ type: 'selection' }` 列自动启用选择；全局或局部显式 `false / { enabled: false }` 仍优先，并让选择控件呈禁用态。启用后的禁选规则继续组合列 `disabled` 与 `selection.rowCheckable`，不会改写原列定义。
+
 ## 编辑模式使用一个配置项
 
 ```ts
@@ -143,3 +149,9 @@ const config = { persistKey: 'shipping', density: 'compact' } as const
 - 不传 `persistKey` 不会生成默认存储键；临时列设置在范围变化时清空。偏好始终属于表格实例及其范围，不写回原始业务列定义，也不修改相邻实例。
 
 传入的范围字符串只判空，不规范化身份 ID。按需导入与全量安装使用相同的配置键；全量安装时也可把同一配置对象放在 `app.use` 的 `table` 选项中。
+
+## 异步导出的快照与卸载
+
+`export.requestData` 开始前，表格会固定本次导出的列、列级 formatter、全局 formatter 与文件配置。等待期间切换报表，旧请求仍按原报表快照导出；下一次导出使用新配置。`persistKey` 只控制偏好存储，不是业务请求的取消范围。
+
+组件卸载后，尚在等待的数据请求或 XLSX 模块加载不会继续发起下载。已经执行的同步下载无法撤销；服务端请求本身的取消由业务处理。数据请求或下载失败时，`exportData()` 会拒绝给调用方，任务锁随即释放，可以重试；请求与下载尚未完成时，重复导出不会再启动一份任务。

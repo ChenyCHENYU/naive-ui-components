@@ -43,6 +43,8 @@ function neutralStyles(
       palette?.skeletonBg ??
       value.robotComponentSkeletonColor ??
       value.actionColor,
+    '--c-theme-on-solid':
+      palette?.onSolid ?? value.robotComponentOnSolidColor ?? '#ffffff',
   }
 }
 

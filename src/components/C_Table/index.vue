@@ -157,6 +157,7 @@
         tableLayout: ($attrs.tableLayout ??
           $attrs['table-layout'] ??
           computedTableProps.tableLayout) as DataTableProps['tableLayout'],
+        themeOverrides: nativeThemeOverrides,
         onUnstableColumnResize: onNativeColumnResize,
       }"
       :flex-height="flexHeight"
@@ -379,6 +380,11 @@
 
   defineOptions({ name: 'C_Table', inheritAttrs: false })
   const componentTheme = useComponentTheme()
+  // 密度只定义 small 几何；实例显式 themeOverrides 保持更高优先级。
+  const compactTableTheme: DataTableProps['themeOverrides'] = {
+    tdPaddingSmall: '2px 8px',
+    thPaddingSmall: '4px 8px',
+  }
 
   const C_Form = defineAsyncComponent(() =>
     import('../C_Form').then(module => module.C_Form)
@@ -472,7 +478,28 @@
 
   /* ================= 配置解析 ================= */
 
-  const resolved = computed(() => resolveConfig(effectiveConfig.value))
+  const resolved = computed(() => {
+    const config = effectiveConfig.value
+    const selection =
+      config.selection === undefined
+        ? flattenTableColumns(effectiveColumns.value).some(
+            column => column.type === 'selection'
+          )
+        : config.selection
+    return resolveConfig({ ...config, selection })
+  })
+  const nativeThemeOverrides = computed<DataTableProps['themeOverrides']>(
+    () => {
+      const overrides = (attrs.themeOverrides ??
+        attrs['theme-overrides']) as DataTableProps['themeOverrides']
+      if (
+        resolved.value.density !== 'compact' ||
+        (attrs.size ?? resolved.value.size) !== 'small'
+      )
+        return overrides
+      return { ...compactTableTheme, ...overrides }
+    }
+  )
   const modalStyles = computed(() =>
     resolveFormModalStyles(resolved.value.modalWidth, resolved.value.density)
   )
@@ -894,9 +921,19 @@
 
   /** 导出 */
   const exportTasks = useActionTask<string>()
+  let exportDisposed = false
   const handleExport = async () => {
-    const cfg = resolved.value.exportConfig ?? {}
     await exportTasks.run('export', async () => {
+      // 一次导出拥有启动时的列与配置；等待服务端期间切表不能混用新表结构。
+      const cfg = cloneData({
+        ...resolved.value.exportConfig,
+        formatterConfig: resolved.value.formatterConfig,
+      })
+      const columns = cloneData(
+        cfg.scope && cfg.scope !== 'source'
+          ? reactiveColumns.value
+          : effectiveColumns.value
+      )
       const selectedRows = () =>
         isCrossPageSelectionEnabled.value
           ? crossPageState.getSelectedRows()
@@ -908,14 +945,8 @@
         : cfg.scope === 'selected'
           ? selectedRows()
           : source
-      const columns =
-        cfg.scope && cfg.scope !== 'source'
-          ? reactiveColumns.value
-          : effectiveColumns.value
-      await exportTableData(rows, columns, {
-        ...cfg,
-        formatterConfig: resolved.value.formatterConfig,
-      })
+      if (exportDisposed) return
+      await exportTableData(rows, columns, cfg, () => !exportDisposed)
     })
   }
 
@@ -1417,6 +1448,8 @@
   )
 
   onBeforeUnmount(() => {
+    exportDisposed = true
+    exportTasks.dispose()
     batchSelectionRevision++
     columnFontSet?.removeEventListener('loadingdone', refreshColumnFonts)
     columnState.flushColumnWidths()

@@ -33,7 +33,7 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.38.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.39.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.33 增强树的远程路径定位、分组选项、搜索字段设置和表格编辑契约，并保留原有默认用法。见[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 
@@ -60,6 +60,10 @@
 `C_Table` 窄列编辑时操作组可自然换行，输入保持可见。功能列保持紧凑；普通自动业务列按表头与内容基准比例均衡分配余量，列多时保留基准横向滚动。显式宽度和已保存的列宽偏好继续生效。
 
 `C_Table` 默认显示序号和分页，数字与其他内容默认居中。通过 `:row-number="false"` 和 `:pagination="false"` 分别关闭自动序号与分页。后端返回列和行可直接绑定，详见[动态表格示例](./docs/guides/usage.md#后端返回列和行)。
+
+勾选行默认显示左侧主题色标识，可通过 `--c-table-selected-marker-width: 0px` 关闭。异步导出使用发起时的列、格式化和文件配置，卸载后停止下载。`createComponentTheme({ primary: '#409eff' })` 默认让填充按钮和选中控件使用白色前景；需要其他配色时集中设置 `onSolid`，或在局部 Provider 覆盖，详见[主题标准](./docs/guides/theme.md)。
+
+列中声明 `{ type: 'selection' }` 即启用多选，无需再写 `selection: true`。显式全局或单表 `selection: false` / `{ enabled: false }` 继续优先，动态列沿用同一规则。
 
 | 场景       | 代表组件                                                         | 覆盖能力                                                 |
 | ---------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
@@ -148,6 +152,7 @@ bun add vue@^3.5.3 naive-ui@^2.35.0
 import { TABLE_GLOBAL_CONFIG_KEY } from '@robot-admin/naive-ui-components/config'
 
 app.provide(TABLE_GLOBAL_CONFIG_KEY, {
+  defaults: { density: 'compact' },
   get persistPrefix() {
     const scope = session.value
     return scope
@@ -157,7 +162,7 @@ app.provide(TABLE_GLOBAL_CONFIG_KEY, {
 })
 ```
 
-页面只配置稳定表 ID，如 `config: { persistKey: 'shipping' }`。组件分别保存各范围的列显隐、顺序和宽度，不改写业务列定义；`C_Density` 内同样生效。`/config` 是轻量入口，与 `/C_Table` 导出同一个配置键。
+页面只配置稳定表 ID，如 `config: { persistKey: 'shipping' }`。全局紧凑默认同步表头、普通行、操作列与编辑区；区域 `C_Density` 或单表配置可覆盖。组件分别保存各范围的列显隐、顺序和宽度，不改写业务列定义。`/config` 是轻量入口，与 `/C_Table` 导出同一个配置键。
 
 启动时就声明该 getter；切换账号只更新响应式身份值，不删除字段。显式 `persistPrefix` 为 `undefined`、空串或空白时不读取、写入偏好，也不回退旧缓存。未配置 `persistPrefix` 的项目保留旧键；没有 `persistKey` 的表格仅保留临时设置，并在范围变化时清空。详见[表格偏好与作用域](./docs/guides/table-density.md#表格偏好与作用域)。
 

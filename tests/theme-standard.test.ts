@@ -38,20 +38,42 @@ describe('component theme standard', () => {
     expect(Object.isFrozen(COMPONENT_COLOR_PALETTES.light)).toBe(true)
   })
 
-  test('foreground selection preserves contrast for bright and dark custom brands and statuses', () => {
+  test.each(['light', 'dark'] as const)(
+    '%s uses the explicit solid foreground consistently for filled controls',
+    mode => {
+      const theme = createComponentTheme({ mode, primary: '#409eff' })
+      const button = theme.themeOverrides.Button!
+      for (const type of ['Primary', 'Success', 'Warning', 'Error', 'Info'])
+        for (const state of ['', 'Hover', 'Pressed', 'Focus', 'Disabled'])
+          expect(
+            button[`textColor${state}${type}` as keyof typeof button]
+          ).toBe('#ffffff')
+      expect(theme.themeOverrides.Checkbox?.checkMarkColor).toBe('#ffffff')
+      expect(theme.themeOverrides.Radio?.dotColorActive).toBe('#ffffff')
+      expect(theme.themeOverrides.Radio?.colorActive).toBe('#409eff')
+      expect(theme.themeOverrides.Switch?.textColor).toBe('#ffffff')
+    }
+  )
+
+  test('bright custom brands can explicitly select a dark solid foreground without changing the brand', () => {
     const theme = createComponentTheme({
       primary: '#ffff00',
+      onSolid: '#000',
       warning: '#101010',
     })
+    expect(theme.themeOverrides.common?.primaryColor).toBe('#ffff00')
     expect(theme.themeOverrides.Button?.textColorPrimary).toBe('#000000')
     expect(theme.themeOverrides.Button?.textColorDisabledPrimary).toBe(
       '#000000'
     )
-    expect(theme.themeOverrides.Button?.textColorWarning).toBe('#ffffff')
+    expect(theme.themeOverrides.Button?.textColorWarning).toBe('#000000')
     expect(theme.themeOverrides.Button?.textColorDisabledWarning).toBe(
-      '#ffffff'
+      '#000000'
     )
-    expect(theme.themeOverrides.Button?.textColorHoverWarning).toBe('#ffffff')
+    expect(theme.themeOverrides.Button?.textColorHoverWarning).toBe('#000000')
+    expect(theme.themeOverrides.Checkbox?.checkMarkColor).toBe('#000000')
+    expect(theme.themeOverrides.Radio?.dotColorActive).toBe('#000000')
+    expect(theme.themeOverrides.Switch?.textColor).toBe('#000000')
     expect(themeForeground('#fff')).toBe('#000000')
     expect(themeForeground('#000')).toBe('#ffffff')
     expect(normalizeThemeColor('#AbC')).toBe('#aabbcc')

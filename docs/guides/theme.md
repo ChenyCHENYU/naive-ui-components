@@ -47,15 +47,16 @@ export const theme = createComponentTheme({
 
 App 中把这个对象绑定到现有 `NConfigProvider`。页面、表单和表格不重复传颜色，也不需要自行生成悬停色、维护 CSS 变量或声明 Naive 类型扩展。
 
-| 配置                                             | 用途                                                         |
-| ------------------------------------------------ | ------------------------------------------------------------ |
-| `primary`、`success`、`warning`、`error`、`info` | 品牌与状态色；原生控件的悬停和按下色自动生成                 |
-| `bgBody`、`bgCard`、`bgSurface`                  | 页面、内容面板、浮层背景                                     |
-| `bgMuted`、`bgHover`、`bgActive`                 | 次要区域、悬停和按下背景，统一原生表头、输入和按钮等状态面   |
-| `text1`、`text2`、`text3`、`text4`               | 正文、辅助、次要、禁用文字；相应图标和输入提示随语义角色映射 |
-| `border`                                         | 边框和分隔线                                                 |
-| `skeletonBg`                                     | 原生 `NSkeleton` 与 `C_Skeleton` 共用的占位色                |
-| `mode`、`radius`                                 | 明暗模式与控件圆角                                           |
+| 配置                                             | 用途                                                              |
+| ------------------------------------------------ | ----------------------------------------------------------------- |
+| `primary`、`success`、`warning`、`error`、`info` | 品牌与状态色；原生控件的悬停和按下色自动生成                      |
+| `onSolid`                                        | 品牌/语义实色面上的文字、图标和勾选标记，明暗模式均默认 `#ffffff` |
+| `bgBody`、`bgCard`、`bgSurface`                  | 页面、内容面板、浮层背景                                          |
+| `bgMuted`、`bgHover`、`bgActive`                 | 次要区域、悬停和按下背景，统一原生表头、输入和按钮等状态面        |
+| `text1`、`text2`、`text3`、`text4`               | 正文、辅助、次要、禁用文字；相应图标和输入提示随语义角色映射      |
+| `border`                                         | 边框和分隔线                                                      |
+| `skeletonBg`                                     | 原生 `NSkeleton` 与 `C_Skeleton` 共用的占位色                     |
+| `mode`、`radius`                                 | 明暗模式与控件圆角                                                |
 
 颜色接受 `#RGB` / `#RRGGBB`，以便 Naive 与第三方 SDK 正确计算衍生色；无效颜色会在创建配置时明确报错。圆角接受非负有限像素值。输入对象和内置色板不会被修改，不同应用及作用域的配置相互独立。
 
@@ -72,13 +73,16 @@ App 中把这个对象绑定到现有 `NConfigProvider`。页面、表单和表�
 | warning                  | `#b45309` | `#fbbf24` | 提醒、待处理         |
 | error                    | `#b91c1c` | `#f87171` | 错误、拒绝           |
 | info                     | `#0369a1` | `#38bdf8` | 一般信息             |
+| on-solid                 | `#ffffff` | `#ffffff` | 实色面上的文字与标记 |
 | bg-body                  | `#f6f8fc` | `#111827` | 页面背景             |
 | bg-card                  | `#ffffff` | `#1f2937` | 内容面板             |
 | bg-surface               | `#ffffff` | `#253246` | 浮层、编辑工具       |
 | text-1 / text-2 / text-3 | 深到浅    | 浅到深    | 正文、辅助、次要信息 |
 | border                   | `#dce3ed` | `#40516a` | 分隔与边框           |
 
-完整标准由 `COMPONENT_COLOR_PALETTES` 导出；修改主题时集中维护，不在业务页面重复写色值。实色按钮前景会依据品牌色计算黑/白文字；自定义内容仍需根据实际字号和背景检查可读性。
+完整标准由 `COMPONENT_COLOR_PALETTES` 导出；修改主题时集中维护，不在业务页面重复写色值。实色主按钮与语义按钮在普通、悬停、按下、聚焦和禁用状态均使用 `onSolid`，继承 `currentColor` 的图标随文字保持一致。Checkbox 的选中勾、Radio 的选中圆点及实色单选按钮、Switch 的轨道文字使用同一角色；普通正文、文字按钮、描边按钮和 Switch 的滑块保留各自角色。
+
+`onSolid` 不再依据品牌亮度自动切换。例如 `primary: '#409eff'` 默认显示白字和白图标；亮黄色品牌需要深色前景时，显式配置 `createComponentTheme({ primary: '#ffff00', onSolid: '#000000' })`。自定义内容仍需根据实际字号和背景检查可读性。自绘区域可用 `--c-on-solid` 局部覆盖这个角色。
 
 ## 尺寸与形状
 
