@@ -24,6 +24,9 @@ import { usePickerHistory } from './usePickerHistory'
 import { usePickerResolver } from './usePickerResolver'
 import type { ComponentDensity } from '../../core/density'
 
+const PICKER_VIEWPORT_HEIGHT = 360
+const NATIVE_PAGE_LIMIT = 30
+
 function normalizeValues(
   value: DataPickerProps<object>['modelValue']
 ): DataPickerValue[] {
@@ -283,7 +286,12 @@ export function useDataPicker<T extends object, TFilters extends object>(
       rowCheckable: row =>
         !confirming.value && checkable(row) && hasCapacity(rowValue(row)),
     },
-    virtualScroll: { enabled: true, maxHeight: 360 },
+    // 小分页直接渲染，避免无收益的动态虚拟行测高；大页继续使用窗口化。
+    display: { maxHeight: PICKER_VIEWPORT_HEIGHT },
+    virtualScroll: {
+      enabled: rows.value.length > NATIVE_PAGE_LIMIT,
+      maxHeight: PICKER_VIEWPORT_HEIGHT,
+    },
   }))
 
   function close(): void {

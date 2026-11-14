@@ -229,6 +229,29 @@ test('a cached workflow closes its teleported menu and preserves the graph for a
   expect(document.body.contains(menu)).toBe(false)
 })
 
+test('viewport resizing cancels the node menu without changing the workflow model', async () => {
+  const model = workflowModel()
+  const wrapper = mount(Workflow, {
+    props: { modelValue: model },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  await wrapper.get('.add-node-btn').trigger('click')
+  await flushPromises()
+  const menu = document.body.querySelector<HTMLElement>('.add-node-menu')!
+  expect(menu.style.display).not.toBe('none')
+  window.dispatchEvent(new Event('resize'))
+  await flushPromises()
+  expect(menu.style.display).toBe('none')
+  expect(wrapper.vm.getCurrentWorkflowData()).toEqual(model)
+  expect(wrapper.emitted('change')).toBeUndefined()
+  await wrapper.get('.add-node-btn').trigger('click')
+  await flushPromises()
+  expect(menu.style.display).not.toBe('none')
+  wrapper.unmount()
+  expect(document.body.contains(menu)).toBe(false)
+})
+
 test('cached workflow viewport tasks expire on deactivation while graph edits survive', async () => {
   vi.useFakeTimers()
   const fitView = vi.fn()

@@ -1,5 +1,7 @@
 import { createApp } from 'vue'
 import BusinessScenarios from './BusinessScenarios.vue'
-import './organization-icons'
+import { registerOrganizationIcons } from './organization-icons'
+
+registerOrganizationIcons()
 
 createApp(BusinessScenarios).mount('#app')

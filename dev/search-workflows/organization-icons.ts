@@ -1,7 +1,7 @@
 /** Offline MDI subset from @iconify-json/mdi (Apache-2.0); no Iconify API requests. */
 import { addCollection } from '@iconify/vue'
 
-addCollection({
+const iconCollection = {
   prefix: 'mdi',
   width: 24,
   height: 24,
@@ -85,4 +85,9 @@ addCollection({
       body: '<path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>',
     },
   },
-})
+}
+
+/** 在挂载前显式注册，避免纯副作用导入被验证工程的 tree-shaking 裁剪。 */
+export function registerOrganizationIcons(): void {
+  addCollection(iconCollection)
+}

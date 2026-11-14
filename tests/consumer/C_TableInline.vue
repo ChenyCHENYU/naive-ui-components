@@ -30,8 +30,8 @@
   ])
 
   defineTableColumns<Measurement>([
+    // @ts-expect-error 业务列键继续受模型约束。
     {
-      // @ts-expect-error 业务列键继续受模型约束。
       key: 'missing',
       title: '无效字段',
     },

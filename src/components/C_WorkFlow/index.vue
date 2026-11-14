@@ -549,8 +549,14 @@
     async ([visible, position], _previous, onCleanup) => {
       if (!visible) return
       let current = true
+      // 视口变化会使原锚点失效；只在菜单会话内监听，关闭后立即释放。
+      window.addEventListener('resize', closeAddMenu, {
+        once: true,
+        passive: true,
+      })
       onCleanup(() => {
         current = false
+        window.removeEventListener('resize', closeAddMenu)
       })
       // post watcher 仍可能先于 v-show updated；完整 DOM 更新后再测可见尺寸。
       await nextTick()

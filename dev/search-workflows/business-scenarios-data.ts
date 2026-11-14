@@ -116,18 +116,19 @@ export function useProductionParity(api?: ProductionApi) {
       }
     },
   }
-  const order = () => productionOrders.find(row => row.id === selected.value)!
+  const order = (key: string) => productionOrders.find(row => row.id === key)!
   const bound = proxyRefs(
     useDataResource({
       key: selected,
-      load: async ({ signal }) => (await client.bound(order(), signal)).data,
+      load: async ({ key, signal }) =>
+        (await client.bound(order(key), signal)).data,
     })
   )
   const slabs = proxyRefs(
     useDataResource({
       key: selected,
-      load: async ({ signal }) =>
-        (await client.candidates(order(), signal)).data,
+      load: async ({ key, signal }) =>
+        (await client.candidates(order(key), signal)).data,
     })
   )
   const rowProps = (row: ProductionOrder) => ({

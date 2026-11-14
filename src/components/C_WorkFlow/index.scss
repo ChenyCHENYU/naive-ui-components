@@ -14,8 +14,11 @@
   position: absolute;
   top: 16px;
   left: 16px;
+  box-sizing: border-box;
+  max-width: calc(100% - 32px);
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   background: var(--workflow-surface, #fff);

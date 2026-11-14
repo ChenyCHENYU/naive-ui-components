@@ -1,6 +1,9 @@
 import { createApp } from 'vue'
 import PeopleWorkflow from './PeopleWorkflow.vue'
-import './organization-icons'
-import './people-workflow-icons'
+import { registerOrganizationIcons } from './organization-icons'
+import { registerPeopleWorkflowIcons } from './people-workflow-icons'
+
+registerOrganizationIcons()
+registerPeopleWorkflowIcons()
 
 createApp(PeopleWorkflow).mount('#app')

@@ -1,7 +1,9 @@
 import { createApp, defineComponent } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import './visual-standards-icons'
+import { registerVisualStandardsIcons } from './visual-standards-icons'
 import VisualStandards from './VisualStandards.vue'
+
+registerVisualStandardsIcons()
 
 const EmptyPage = defineComponent({ render: () => null })
 const router = createRouter({

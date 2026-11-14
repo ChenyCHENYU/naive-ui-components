@@ -1,7 +1,7 @@
 /** 本页使用的离线 MDI 子集，来自 @iconify-json/mdi (Apache-2.0)。 */
 import { addCollection } from '@iconify/vue'
 
-addCollection({
+const iconCollection = {
   prefix: 'mdi',
   width: 24,
   height: 24,
@@ -154,4 +154,9 @@ addCollection({
       body: '<path fill="currentColor" d="m12.89 3l1.96.4L11.11 21l-1.96-.4zm6.7 9L16 8.41V5.58L22.42 12L16 18.41v-2.83zM1.58 12L8 5.58v2.83L4.41 12L8 15.58v2.83z"/>',
     },
   },
-})
+}
+
+/** 在挂载前显式注册，避免纯副作用导入被验证工程的 tree-shaking 裁剪。 */
+export function registerVisualStandardsIcons(): void {
+  addCollection(iconCollection)
+}
