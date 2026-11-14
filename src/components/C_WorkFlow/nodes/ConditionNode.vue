@@ -6,6 +6,7 @@
 
 <template>
   <div class="condition-node">
+    <WorkflowPorts />
     <div
       class="status-indicator"
       :class="data.status"
@@ -14,7 +15,8 @@
     <!-- 删除按钮 -->
     <button
       type="button"
-      class="delete-btn"
+      v-if="!readonly"
+      class="delete-btn nodrag nopan"
       @click="handleDelete"
       title="删除节点"
     >
@@ -24,51 +26,54 @@
       />
     </button>
 
-    <div class="node-card">
-      <div class="node-header">
-        <div class="node-icon">🔀</div>
-        <span class="node-title">{{ data.title }}</span>
-        <div
-          class="node-badge"
-          v-if="conditionCount > 0"
-        >
-          {{ conditionCount }}
-        </div>
-      </div>
-
-      <div class="node-content">
-        <div
-          v-if="conditionCount > 0"
-          class="conditions-list"
-        >
+    <WorkflowNodeBody :node-id="id">
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon">🔀</div>
+          <span class="node-title">{{ data.title }}</span>
           <div
-            v-for="condition in displayConditions"
-            :key="condition.id"
-            class="condition-tag"
+            class="node-badge"
+            v-if="conditionCount > 0"
           >
-            <span class="condition-icon">→</span>
-            <span>{{
-              condition.name ||
-              '条件' + (displayConditions.indexOf(condition) + 1)
-            }}</span>
+            {{ conditionCount }}
+          </div>
+        </div>
+
+        <div class="node-content">
+          <div
+            v-if="conditionCount > 0"
+            class="conditions-list"
+          >
+            <div
+              v-for="condition in displayConditions"
+              :key="condition.id"
+              class="condition-tag"
+            >
+              <span class="condition-icon">→</span>
+              <span>{{
+                condition.name ||
+                '条件' + (displayConditions.indexOf(condition) + 1)
+              }}</span>
+            </div>
+            <div
+              v-if="moreCount > 0"
+              class="more-count"
+              >+{{ moreCount }}</div
+            >
           </div>
           <div
-            v-if="moreCount > 0"
-            class="more-count"
-            >+{{ moreCount }}</div
+            v-else
+            class="placeholder"
+            >请设置分支条件</div
           >
         </div>
-        <div
-          v-else
-          class="placeholder"
-          >请设置分支条件</div
-        >
       </div>
-    </div>
+    </WorkflowNodeBody>
 
     <button
       type="button"
-      class="add-node-btn"
+      v-if="!readonly"
+      class="add-node-btn nodrag nopan"
       @click="showAddMenu"
       title="添加下一个节点"
     >
@@ -81,6 +86,9 @@
 </template>
 
 <script setup lang="ts">
+  import WorkflowPorts from './WorkflowPorts.vue'
+  import { WorkflowNodeBody, useWorkflowReadonly } from './workflowPresentation'
+  const readonly = useWorkflowReadonly()
   import { computed, inject } from 'vue'
   import { C_Icon } from '../../C_Icon'
 
@@ -203,7 +211,7 @@
   }
 
   .node-card {
-    background: white;
+    background: var(--workflow-surface, white);
     border-radius: 12px;
     min-width: 220px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -221,7 +229,7 @@
 
   .node-header {
     padding: 12px 16px;
-    background: #fff7e6;
+    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #fa8c16);
     border-bottom: 1px solid #ffe7ba;
     display: flex;
     align-items: center;
@@ -242,7 +250,7 @@
 
   .node-title {
     font-weight: 600;
-    color: #262626;
+    color: var(--workflow-text, #262626);
     font-size: 14px;
     flex: 1;
   }
@@ -272,7 +280,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #fff7e6;
+    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #fa8c16);
     color: #fa8c16;
     padding: 6px 10px;
     border-radius: 8px;
@@ -292,7 +300,7 @@
   }
 
   .more-count {
-    background: #f0f0f0;
+    background: var(--workflow-background, #f0f0f0);
     color: #8c8c8c;
     padding: 4px 8px;
     border-radius: 12px;

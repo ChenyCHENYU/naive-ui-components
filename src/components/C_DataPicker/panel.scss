@@ -9,6 +9,14 @@
     max-height: 420px;
     overflow: auto;
   }
+  &__selected-panel {
+    flex: 0 0 224px;
+    min-width: 0;
+    max-height: 420px;
+    overflow: auto;
+    border-inline-start: 1px solid var(--n-border-color, #e0e0e6);
+    padding-inline-start: 12px;
+  }
   &__navigation-title {
     margin-block: 4px 8px;
     font-weight: 600;
@@ -84,6 +92,13 @@
   @media (max-width: 640px) {
     &__layout {
       flex-direction: column;
+    }
+    &__selected-panel {
+      flex-basis: auto;
+      max-height: 240px;
+      border-inline-start: 0;
+      border-top: 1px solid var(--n-border-color, #e0e0e6);
+      padding: 12px 0 0;
     }
     &__navigation {
       flex-basis: auto;

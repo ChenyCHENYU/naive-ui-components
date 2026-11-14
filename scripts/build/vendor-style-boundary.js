@@ -10,6 +10,7 @@ import { createRequire } from 'node:module'
 
 const markdownStyle = 'md-editor-v3/lib/style.css'
 const markdownTheme = '@vavt/markdown-theme/css/all.css'
+const workflowStyle = '@vue-flow/core/dist/style.css'
 
 const policies = {
   'vue3-puzzle-vcode/dist/main.css': /\.(?:vue-auth-box_|vue-puzzle-)/,
@@ -21,6 +22,7 @@ const policies = {
   'md-editor-v3/lib/style.css': /\.(?:md-editor(?:\b|-)|medium-zoom-)/,
   '@vavt/markdown-theme/css/all.css': /\.md-editor(?:\b|-)/,
   'xgplayer/dist/index.min.css': /\.xg(?:player\b|-)|(?:^|[\s>+~])xg-[\w-]+/,
+  [workflowStyle]: /\.vue-flow(?:\b|__)/,
 }
 
 /** 内联已确认的 Markdown 主题依赖，避免拼接全局样式后使 @import 失效。 */
@@ -67,12 +69,15 @@ export function isolateVendorStyles(css, packagePath) {
   if (!namespace) throw new Error(`未定义第三方样式边界: ${packagePath}`)
   const root = parse(css)
   const markdown = packagePath === 'md-editor-v3/lib/style.css'
+  const workflow = packagePath === workflowStyle
   const animationNames = markdown
     ? new Map([
         ['zoomIn', 'c-vendor-md-zoom-in'],
         ['zoomOut', 'c-vendor-md-zoom-out'],
       ])
-    : new Map()
+    : workflow
+      ? new Map([['dashdraw', 'c-vendor-workflow-dashdraw']])
+      : new Map()
 
   root.walkAtRules(atRule => {
     if (atRule.name.endsWith('keyframes') && animationNames.has(atRule.params))
@@ -96,6 +101,8 @@ export function isolateVendorStyles(css, packagePath) {
     )
       return
     rule.selectors = rule.selectors.map(selector => {
+      // SDK 的定位规则仅服务本设计器，不覆盖宿主自己的 Vue Flow 实例。
+      if (workflow) return `.approval-workflow-container ${selector}`
       // 供应商主题的 div.*-theme 规则只在 Markdown 容器内生效。
       if (
         packagePath === markdownTheme &&

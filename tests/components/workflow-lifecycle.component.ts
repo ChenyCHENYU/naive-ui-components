@@ -7,6 +7,47 @@ import type { WorkflowNode } from '../../src/components/C_WorkFlow/types'
 
 afterEach(() => vi.useRealTimers())
 
+test('workflow fitting uses pixel padding rather than SDK ratio padding on every entry point', async () => {
+  vi.useFakeTimers()
+  const fitView = vi.fn()
+  let workflow!: ReturnType<typeof useWorkflowNodes>
+  const wrapper = mount(
+    defineComponent({
+      setup() {
+        workflow = useWorkflowNodes({}, () => {}, shallowRef({ fitView }))
+        return () => null
+      },
+    })
+  )
+  await nextTick()
+  await vi.advanceTimersByTimeAsync(300)
+  expect(fitView).toHaveBeenLastCalledWith({
+    padding: '80px',
+    includeHiddenNodes: false,
+    minZoom: 0.8,
+    maxZoom: 1.2,
+    duration: 600,
+  })
+  workflow.fitView()
+  await nextTick()
+  expect(fitView).toHaveBeenLastCalledWith({
+    padding: '50px',
+    includeHiddenNodes: false,
+    minZoom: 0.5,
+    maxZoom: 1.5,
+    duration: 800,
+  })
+  workflow.addNode('copy')
+  await nextTick()
+  await vi.advanceTimersByTimeAsync(100)
+  expect(fitView).toHaveBeenLastCalledWith({ padding: '60px', duration: 400 })
+  workflow.resetNodes()
+  await nextTick()
+  await vi.advanceTimersByTimeAsync(100)
+  expect(fitView).toHaveBeenLastCalledWith({ padding: '80px', duration: 600 })
+  wrapper.unmount()
+})
+
 test.each(['unmount', 'replacement'])(
   'a manual workflow fit request cannot run after %s',
   async reason => {

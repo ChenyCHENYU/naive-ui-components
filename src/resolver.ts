@@ -94,6 +94,7 @@ export const componentNames = [
   'C_VtableGantt',
   'C_WaterFall',
   'C_WorkFlow',
+  'C_UserPicker',
 ] as const
 
 /** 组件名称类型 */

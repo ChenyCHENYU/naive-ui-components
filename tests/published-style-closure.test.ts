@@ -109,6 +109,10 @@ describe('published CSS sharing contract', () => {
           '@import "./C_Form.css";.c-action-bar[data-v-action]{display:flex}',
         'C_DataPicker.css':
           '@import "./C_Table.base.css";.c-data-picker[data-v-picker]{width:100%}',
+        'C_UserPicker.css':
+          '@import "./C_DataPicker.css";.c-user-picker__selected{display:flex}',
+        'C_WorkFlow.css':
+          '@import "./C_UserPicker.css";.approval-workflow-container .vue-flow__container{position:absolute}',
         'C_BatchResult.css':
           '@import "./C_Table.base.css";.c-batch-result[data-v-batch]{gap:8px}',
         'C_Map.css': `@import "./${SHARED_TOKENS_FILE}";.leaflet-container{background-image:url("./images/layers.png")}`,
@@ -120,7 +124,7 @@ describe('published CSS sharing contract', () => {
         path.join(directory, 'dist', 'images', 'layers.png')
       )
       expect(await checkSharedStyleConsumer(directory)).toMatchObject({
-        components: 6,
+        components: 8,
         cssAssets: 1,
         relativeAssets: 1,
       })

@@ -6,29 +6,33 @@
 
 <template>
   <div class="start-node">
-    <!-- 主要内容区域 -->
-    <div class="node-content">
-      <div class="node-icon">🚀</div>
-      <div class="node-info">
-        <div class="node-text">{{ data.title }}</div>
-        <div
-          v-if="initiatorNames"
-          class="initiator-name"
-        >
-          {{ initiatorNames }}
+    <WorkflowPorts start />
+    <WorkflowNodeBody :node-id="id">
+      <!-- 主要内容区域 -->
+      <div class="node-content">
+        <div class="node-icon">🚀</div>
+        <div class="node-info">
+          <div class="node-text">{{ data.title }}</div>
+          <div
+            v-if="initiatorNames"
+            class="initiator-name"
+          >
+            {{ initiatorNames }}
+          </div>
+          <div
+            v-else
+            class="placeholder-text"
+            >点击设置发起人</div
+          >
         </div>
-        <div
-          v-else
-          class="placeholder-text"
-          >点击设置发起人</div
-        >
       </div>
-    </div>
+    </WorkflowNodeBody>
 
     <!-- 添加节点按钮 -->
     <button
       type="button"
-      class="add-node-btn"
+      v-if="!readonly"
+      class="add-node-btn nodrag nopan"
       @click="showAddMenu"
       title="添加下一个节点"
     >
@@ -41,6 +45,9 @@
 </template>
 
 <script setup lang="ts">
+  import WorkflowPorts from './WorkflowPorts.vue'
+  import { WorkflowNodeBody, useWorkflowReadonly } from './workflowPresentation'
+  const readonly = useWorkflowReadonly()
   import { inject, computed } from 'vue'
   import { C_Icon } from '../../C_Icon'
 

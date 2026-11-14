@@ -27,6 +27,8 @@ export async function checkSharedStyleConsumer(directory = packageRoot) {
       'C_Table',
       'C_FormModal',
       'C_DataPicker',
+      'C_UserPicker',
+      'C_WorkFlow',
       'C_BatchResult',
       'C_Map',
     ]
@@ -64,6 +66,9 @@ export async function checkSharedStyleConsumer(directory = packageRoot) {
     const css = cssAssets.map(asset => String(asset.source)).join('\n')
     for (const selector of [
       '.c-data-picker[',
+      '.c-user-picker__selected',
+      '.approval-workflow-container',
+      '.approval-workflow-container .vue-flow__container',
       '.c-batch-result[',
       '.c-table-wrapper[',
       '.c-action-bar[',

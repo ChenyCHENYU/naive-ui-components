@@ -4,7 +4,7 @@
 
 <div align="center">
   <p><strong>Turn recurring business interactions into composable components.</strong></p>
-  <p>Vue 3 · Naive UI · TypeScript · 62 business components</p>
+  <p>Vue 3 · Naive UI · TypeScript · 63 business components</p>
   <p>
     <a href="https://www.npmjs.com/package/@robot-admin/naive-ui-components"><img src="https://img.shields.io/npm/v/@robot-admin/naive-ui-components?style=flat-square&amp;color=249D70&amp;labelColor=183C2E" alt="npm version"></a>
     <a href="./package.json"><img src="https://img.shields.io/badge/Vue-3.5+-249D70?style=flat-square&amp;logo=vue.js&amp;logoColor=white&amp;labelColor=183C2E" alt="Vue 3.5+"></a>
@@ -30,14 +30,16 @@
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Configuration           | Typed configuration for fields, columns, actions and dialogs; 8 form layouts                                                                                 |
 | Connected types         | Field paths, columns, events and instance methods, with helpers such as `defineFormOptions`, `useCForm` and `useTableQuery`                                  |
-| Selective loading       | 62 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
+| Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.35.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.36.0**. See the [changelog](./CHANGELOG.md) for release details.
 
 0.33 adds optional remote tree paths, grouped options, search field settings and table editing contracts while retaining existing defaults. See the [compatibility and standalone demo guide](./docs/guides/component-contracts.md) (Chinese).
 
 0.34 adds state-aware tree icons, richer node contexts and action states, plus organization-chart field mapping, controlled interaction and measured connectors. Use `C_Tree` for hierarchical selection and the independent `C_OrgChart` for reporting relationships. See the [organization examples](./docs/guides/tree-org-examples.md) (Chinese).
+
+0.36 adds `C_UserPicker` for organization-based person selection, sharing pagination, drafts and confirmation. Workflow nodes gain real connection ports, explicit conditional targets and the same person-selection interface. See [person selection](./docs/guides/user-picker.md) and [workflow design](./docs/guides/workflow.md) (Chinese).
 
 Use `C_Select` for standalone selections and freeform tags. Multiple selections in forms and search share the compact tag summary. Date and time fields can bind directly to formatted API strings. See the [composition examples](./docs/guides/data-workflows.md#多选标签和日期时间) (Chinese).
 
@@ -70,7 +72,7 @@ In narrow `C_Table` cells, edit actions wrap so the input stays visible. Utility
 | Workspace             | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | Menus, view switching, tab navigation and global search                              |
 | Common interactions   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | Login UI, human verification, onboarding and navigation feedback                     |
 
-Browse [all 62 components and dependencies](./docs/components.en.md), or explore scenarios in [Robot Admin](https://robotadmin.cn). Cron previews calculate times only; formulas run locally. Production human verification requires server validation. See the [usage guide](./docs/guides/usage.en.md).
+Browse [all 63 components and dependencies](./docs/components.en.md), or explore scenarios in [Robot Admin](https://robotadmin.cn). Cron previews calculate times only; formulas run locally. Production human verification requires server validation. See the [usage guide](./docs/guides/usage.en.md).
 
 ## Quick start
 
@@ -187,7 +189,7 @@ Root imports aggregate navigation components and require `vue-router` at runtime
 | Document                                                       | Contents                                                                                  |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [Architecture and isolation](./docs/architecture.en.md)        | Dependency boundaries, instance ownership and the independent Element Plus roadmap        |
-| [Component catalog](./docs/components.en.md)                   | All 62 components, dependencies and behavior boundaries                                   |
+| [Component catalog](./docs/components.en.md)                   | All 63 components, dependencies and behavior boundaries                                   |
 | [Usage guide](./docs/guides/usage.en.md)                       | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading   |
 | [Density and workbenches](./docs/guides/table-density.md)      | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese) |
 | [Lists and async tasks](./docs/guides/runtime-performance.md)  | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese) |

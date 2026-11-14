@@ -28,6 +28,9 @@ export default defineConfig({
         organization: fileURLToPath(
           new URL('./organization.html', import.meta.url)
         ),
+        peopleWorkflow: fileURLToPath(
+          new URL('./people-workflow.html', import.meta.url)
+        ),
       },
     },
     outDir: '../../node_modules/.cache/search-workflows',

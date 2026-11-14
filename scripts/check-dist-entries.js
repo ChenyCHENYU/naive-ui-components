@@ -101,6 +101,8 @@ for (const styleEntry of [
   'C_Table.css',
   'C_FormModal.css',
   'C_DataPicker.css',
+  'C_UserPicker.css',
+  'C_WorkFlow.css',
   'C_BatchResult.css',
   'style.css',
 ]) {
@@ -125,6 +127,22 @@ const componentStyleContracts = {
     '.c-table-wrapper[',
     '.c-form-actions[',
     '.c-icon[',
+  ],
+  'C_UserPicker.css': [
+    '.c-user-picker__selected',
+    '.c-data-picker__navigation[',
+    '.c-tree[',
+    '.c-table-wrapper[',
+  ],
+  'C_WorkFlow.css': [
+    '.approval-workflow-container',
+    '.approval-workflow-container .vue-flow__container',
+    '.approval-workflow-container .vue-flow__node',
+    '.workflow-condition-row[',
+    '.c-user-picker__selected',
+    '.c-data-picker__navigation[',
+    '.c-tree[',
+    '.c-table-wrapper[',
   ],
   'C_BatchResult.css': [
     '.c-batch-result[',

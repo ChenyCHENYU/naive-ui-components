@@ -4,7 +4,7 @@
 
 <div align="center">
   <p><strong>把重复的业务交互，沉淀为可组合的组件。</strong></p>
-  <p>Vue 3 · Naive UI · TypeScript · 62 个业务组件</p>
+  <p>Vue 3 · Naive UI · TypeScript · 63 个业务组件</p>
   <p>
     <a href="https://www.npmjs.com/package/@robot-admin/naive-ui-components"><img src="https://img.shields.io/npm/v/@robot-admin/naive-ui-components?style=flat-square&amp;color=249D70&amp;labelColor=183C2E" alt="npm version"></a>
     <a href="./package.json"><img src="https://img.shields.io/badge/Vue-3.5+-249D70?style=flat-square&amp;logo=vue.js&amp;logoColor=white&amp;labelColor=183C2E" alt="Vue 3.5+"></a>
@@ -30,14 +30,16 @@
 | -------- | ------------------------------------------------------------------------------------------------------ |
 | 配置驱动 | 表单字段、表格列、操作按钮与弹窗通过类型化配置组合；表单提供 8 种布局                                  |
 | 类型贯通 | 字段路径、列定义、事件与实例方法配套类型；提供 `defineFormOptions`、`useCForm`、`useTableQuery` 等助手 |
-| 按需消费 | 62 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
+| 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.35.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.36.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.33 增强树的远程路径定位、分组选项、搜索字段设置和表格编辑契约，并保留原有默认用法。见[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 
 0.34 完善树的动态图标、自定义节点状态与操作配置，以及组织架构图的数据映射、受控交互和连线。目录选择使用 `C_Tree`，卡片式汇报关系使用独立的 `C_OrgChart`。见[组织场景示例](./docs/guides/tree-org-examples.md)。
+
+0.36 增加组织人员选择入口 `C_UserPicker`，共用分页、草稿和确认机制；完善审批节点端口、显式条件分支及统一选人配置。见[人员选择](./docs/guides/user-picker.md)与[工作流设计](./docs/guides/workflow.md)。
 
 搜索条件、录入字段和操作按钮可以由响应式配置生成。筛选和编辑共享紧凑密度，支持校验、异步选项和业务弹窗。后端字典或权限由项目接入，表单和搜索消费普通选项，表格消费普通列配置。
 
@@ -70,7 +72,7 @@
 | 工作空间   | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | 菜单、场景切换、多标签导航、全局搜索                     |
 | 通用交互   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | 登录、人机验证、功能引导、页面切换反馈                   |
 
-查看 [全部 62 个组件与依赖](./docs/components.md)，或在 [Robot Admin](https://robotadmin.cn) 中体验组件场景。Cron 预览只计算时间，公式只进行本地试算；生产人机验证需接入服务端校验，详见[使用指南](./docs/guides/usage.md)。
+查看 [全部 63 个组件与依赖](./docs/components.md)，或在 [Robot Admin](https://robotadmin.cn) 中体验组件场景。Cron 预览只计算时间，公式只进行本地试算；生产人机验证需接入服务端校验，详见[使用指南](./docs/guides/usage.md)。
 
 ## 快速开始
 
@@ -187,7 +189,7 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 | 文档                                                     | 内容                                                             |
 | -------------------------------------------------------- | ---------------------------------------------------------------- |
 | [架构与隔离](./docs/architecture.md)                     | 依赖边界、实例所有权与独立 Element Plus 演进路线                 |
-| [组件目录](./docs/components.md)                         | 62 个组件、外部依赖与各组件的使用边界                            |
+| [组件目录](./docs/components.md)                         | 63 个组件、外部依赖与各组件的使用边界                            |
 | [使用指南](./docs/guides/usage.md)                       | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
 | [密度与多表工作台](./docs/guides/table-density.md)       | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
 | [大列表与异步任务](./docs/guides/runtime-performance.md) | 自动窗口化、聊天滚动、搜索索引、字幕与图片任务                   |

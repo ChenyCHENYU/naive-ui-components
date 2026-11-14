@@ -28,6 +28,7 @@ export function usePickerHistory<T extends object, F extends object>(
         options.storageKey,
         options.scope,
         props.fixedFilters ?? null,
+        ...(props.scope === undefined ? [] : [props.scope]),
       ])}`
     } catch {
       return undefined

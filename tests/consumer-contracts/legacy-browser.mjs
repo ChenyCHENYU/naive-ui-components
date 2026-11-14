@@ -6,6 +6,8 @@ import { C_Form } from '@robot-admin/naive-ui-components/C_Form'
 import { C_FormSearch } from '@robot-admin/naive-ui-components/C_FormSearch'
 import { C_Tree } from '@robot-admin/naive-ui-components/C_Tree'
 import { C_OrgChart } from '@robot-admin/naive-ui-components/C_OrgChart'
+import { C_UserPicker } from '@robot-admin/naive-ui-components/C_UserPicker'
+import { C_WorkFlow } from '@robot-admin/naive-ui-components/C_WorkFlow'
 import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
 import '@robot-admin/naive-ui-components/C_Select/style.css'
 import '@robot-admin/naive-ui-components/C_AutoComplete/style.css'
@@ -14,6 +16,8 @@ import '@robot-admin/naive-ui-components/C_Form/style.css'
 import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
 import '@robot-admin/naive-ui-components/C_Tree/style.css'
 import '@robot-admin/naive-ui-components/C_OrgChart/style.css'
+import '@robot-admin/naive-ui-components/C_UserPicker/style.css'
+import '@robot-admin/naive-ui-components/C_WorkFlow/style.css'
 import '@robot-admin/naive-ui-components/C_Table/style.css'
 
 const rows = [{ id: 0, name: 'Consumer', code: '001' }]
@@ -61,6 +65,8 @@ createApp({
         config: { pagination: false },
       }),
       h(C_Select, { source, modelValue: 0 }),
+      h(C_UserPicker, { source: { ...source, rowKey: 'id' }, modelValue: 0 }),
+      h(C_WorkFlow, { readonly: true }),
       h(C_AutoComplete, {
         source,
         modelValue: '',

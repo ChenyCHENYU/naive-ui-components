@@ -7,7 +7,12 @@
 -->
 
 <template>
-  <div class="approval-workflow-container">
+  <div
+    class="approval-workflow-container"
+    :style="workflowStyle"
+    tabindex="0"
+    @keydown="handleCanvasKeydown"
+  >
     <!-- 浮动工具栏 -->
     <div class="floating-toolbar">
       <NButton
@@ -81,6 +86,7 @@
     <!-- Vue Flow 画布 -->
     <VueFlow
       ref="vueFlowRef"
+      :is-valid-connection="validateCanvasConnection"
       v-model:nodes="nodes"
       v-model:edges="edges"
       :node-types="nodeTypes"
@@ -92,7 +98,7 @@
       :nodes-draggable="!readonly"
       :nodes-connectable="!readonly"
       :edges-updatable="!readonly"
-      :delete-key-code="readonly ? null : undefined"
+      :delete-key-code="null"
       :elements-selectable="true"
       @node-click="onNodeClick"
       @node-drag-stop="commitCanvasChange"
@@ -108,11 +114,15 @@
       <div
         v-show="showAddMenu"
         class="add-node-menu"
-        :style="{ left: menuPosition.x + 'px', top: menuPosition.y + 'px' }"
+        :style="{
+          ...workflowStyle,
+          left: menuPosition.x + 'px',
+          top: menuPosition.y + 'px',
+        }"
       >
         <div class="add-menu-content">
           <button
-            v-for="nodeType in NODE_TYPE_OPTIONS"
+            v-for="nodeType in paletteOptions"
             :key="nodeType.type"
             type="button"
             class="add-menu-item"
@@ -135,10 +145,15 @@
 
     <!-- 节点配置弹窗 - 拆分到独立组件 -->
     <NodeConfigModal
+      v-if="showNodeConfig"
       v-model:show="showNodeConfig"
       :current-node="currentNode"
       :users="users"
       :departments="departments"
+      :people="people"
+      :readonly="readonly"
+      :condition-fields="conditionFields"
+      :branch-targets="branchTargets"
       @save="handleConfigSave"
       @cancel="showNodeConfig = false"
     />
@@ -146,6 +161,7 @@
     <!-- 验证错误日志抽屉 -->
     <NDrawer
       v-model:show="showValidationErrors"
+      :style="workflowStyle"
       :width="450"
       placement="right"
     >
@@ -268,11 +284,12 @@
     <!-- 流程预览抽屉 -->
     <NDrawer
       v-model:show="showPreview"
+      :style="workflowStyle"
       :width="520"
       placement="right"
     >
       <NDrawerContent
-        title="流程预览"
+        title="流程设计预览"
         closable
       >
         <!-- 统计概览 -->
@@ -353,7 +370,7 @@
                   <template v-else-if="detail.type === 'users'">
                     <NTag
                       v-for="user in detail.users"
-                      :key="user.name"
+                      :key="user.id"
                       size="small"
                       :bordered="false"
                       round
@@ -403,6 +420,7 @@
             <NButton @click="closePreview">关闭</NButton>
             <NButton
               type="primary"
+              :disabled="readonly"
               @click="confirmAndSave"
             >
               <template #icon>
@@ -421,14 +439,28 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { ref, computed, provide, defineAsyncComponent } from 'vue'
   import { VueFlow } from '@vue-flow/core'
-  import { NButton, NDrawer, NDrawerContent, NTag } from 'naive-ui'
+  import {
+    NButton,
+    NDrawer,
+    NDrawerContent,
+    NTag,
+    useThemeVars,
+  } from 'naive-ui'
   import { C_Icon } from '../C_Icon'
   import { useComponentFeedback } from '../../config'
-  import type { WorkflowProps, WorkflowEmits, WorkflowExpose } from './types'
+  import type {
+    WorkflowProps,
+    WorkflowEmits,
+    WorkflowExpose,
+    WorkflowSlots,
+  } from './types'
   import { NODE_TYPE_OPTIONS } from './data'
-  import NodeConfigModal from './NodeConfigModal.vue'
+  const NodeConfigModal = defineAsyncComponent(
+    () => import('./NodeConfigModal.vue')
+  )
+  import { WORKFLOW_PRESENTATION } from './nodes/workflowPresentation'
   import { useWorkflowNodes } from './composables/useWorkflowNodes'
   import { useWorkflowValidation } from './composables/useWorkflowValidation'
   import { useWorkflowPreview } from './composables/useWorkflowPreview'
@@ -442,10 +474,53 @@
     departments: () => [],
     readonly: false,
     allowCycles: true,
-    theme: 'light',
   })
 
   const emit = defineEmits<WorkflowEmits>()
+  const slots = defineSlots<WorkflowSlots>()
+  const paletteOptions = computed(() =>
+    NODE_TYPE_OPTIONS.filter(
+      option =>
+        !props.allowedNodeTypes || props.allowedNodeTypes.includes(option.type)
+    )
+  )
+  const themeVars = useThemeVars()
+  const workflowStyle = computed(() => {
+    const theme = themeVars.value
+    const palettes = {
+      dark: {
+        surface: '#20252e',
+        background: '#171b22',
+        text: '#e8ebf0',
+        muted: '#aab1bd',
+        border: '#39414e',
+      },
+      light: {
+        surface: '#ffffff',
+        background: '#f2f5f9',
+        text: '#28323e',
+        muted: '#738094',
+        border: '#dfe5ed',
+      },
+    }
+    const palette = props.theme
+      ? palettes[props.theme]
+      : {
+          surface: theme.cardColor,
+          background: theme.bodyColor,
+          text: theme.textColor1,
+          muted: theme.textColor3,
+          border: theme.borderColor,
+        }
+    return {
+      '--workflow-surface': palette.surface,
+      '--workflow-background': palette.background,
+      '--workflow-text': palette.text,
+      '--workflow-muted': palette.muted,
+      '--workflow-border': palette.border,
+      '--workflow-accent': theme.primaryColor,
+    }
+  })
   const message = useComponentFeedback()
   const vueFlowRef = ref()
 
@@ -461,6 +536,8 @@
     workflowStats,
     commitCanvasChange,
     handleCanvasChanges,
+    handleCanvasKeydown,
+    validateCanvasConnection,
     connectNodes,
     updateConnection,
     addNode,
@@ -469,9 +546,32 @@
     handleConfigSave,
     resetNodes,
     getCurrentWorkflowData,
+    getNodeSnapshot,
     fitView,
     deleteNode,
   } = useWorkflowNodes(props, emit, vueFlowRef)
+
+  provide(WORKFLOW_PRESENTATION, {
+    readonly: computed(() => props.readonly),
+    renderer: computed(() => slots.node),
+    context: id => {
+      const node = getNodeSnapshot(id)
+      if (!node) return
+      return {
+        node,
+        readonly: props.readonly,
+        edit: () => onNodeClick({ node: { id } }),
+        remove: () => deleteNode(id),
+      }
+    },
+  })
+  const branchTargets = computed(() =>
+    nodes.value
+      .filter(
+        node => node.id !== currentNode.value?.id && node.type !== 'start'
+      )
+      .map(node => ({ value: node.id, label: node.data.title }))
+  )
 
   /* ─── 流程验证 ──────────────────────────────────────────── */
   const {
@@ -485,6 +585,7 @@
     resetValidation,
   } = useWorkflowValidation(nodes, edges, vueFlowRef, {
     allowCycles: () => props.allowCycles,
+    conditionFields: () => props.conditionFields,
     onShowNodeConfig: node => {
       if (props.readonly) return
       currentNode.value = node
@@ -502,8 +603,9 @@
     if (props.readonly) return
     const errors = validateWorkflow()
     validationErrors.value = errors
-    if (errors.length > 0) {
-      message.error(`工作流验证失败: ${errors[0].message}`)
+    const blocking = errors.filter(error => error.type !== 'warning')
+    if (blocking.length > 0) {
+      message.error(`工作流验证失败: ${blocking[0].message}`)
       showValidationErrors.value = true
       emit('validate-error', errors)
       return

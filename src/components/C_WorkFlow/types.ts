@@ -1,6 +1,8 @@
 /**
  * 工作流相关类型定义
  */
+import type { VNodeChild } from 'vue'
+import type { WorkflowPeopleOptions } from './people'
 
 /* 基础用户类型 */
 export interface User {
@@ -8,6 +10,8 @@ export interface User {
   name: string
   avatar?: string
   department: string
+  /** 优先按稳定部门键关联；未提供时仅兼容唯一部门名称。 */
+  departmentId?: string
   role: string
   email?: string
   phone?: string
@@ -36,6 +40,31 @@ export interface Condition {
   field: string
   operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains'
   value: string
+  /** 显式分支目标；不传时保留历史未绑定条件的读取行为。 */
+  targetNodeId?: string
+  /** 默认分支不求值，仅作为设计态兜底声明。 */
+  isDefault?: boolean
+  /** 非负整数；未指定时按条件数组的顺序展示。 */
+  priority?: number
+}
+
+export interface WorkflowConditionField {
+  key: string
+  label: string
+  type?: 'text' | 'number' | 'boolean' | 'date'
+  operators?: readonly Condition['operator'][]
+}
+
+export interface WorkflowNodeRenderContext {
+  node: WorkflowNode
+  readonly: boolean
+  edit: () => void
+  remove: () => void
+}
+
+export interface WorkflowSlots {
+  /** 替换节点内容，连接端口及编辑控件仍由组件管理。 */
+  node?: (context: WorkflowNodeRenderContext) => VNodeChild
 }
 
 /* 节点状态类型 */
@@ -179,6 +208,12 @@ export interface WorkflowProps {
   /** 是否允许循环连接，默认 true。无环审批流程应设为 false；执行规则由业务后端校验。 */
   allowCycles?: boolean
   theme?: 'light' | 'dark'
+  /** 显式条件字段目录；未提供继续使用旧字段。 */
+  conditionFields?: readonly WorkflowConditionField[]
+  /** 可用节点工具；未传保留原菜单。 */
+  allowedNodeTypes?: readonly NodeType[]
+  /** 人员候选与组织来源，按需打开配置面板时加载。 */
+  people?: WorkflowPeopleOptions
 }
 
 /* 组件Emits接口 */

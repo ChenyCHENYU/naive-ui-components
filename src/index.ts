@@ -85,6 +85,7 @@ import { C_ErrorSummary } from './components/C_ErrorSummary'
 import { C_Density } from './components/C_Density'
 import { C_SectionNav } from './components/C_SectionNav'
 import { C_DataPicker } from './components/C_DataPicker'
+import { C_UserPicker } from './components/C_UserPicker'
 import { C_BatchResult } from './components/C_BatchResult'
 
 // ====== 插件 ======
@@ -168,6 +169,7 @@ const components: Record<string, Component> = {
   C_Density,
   C_SectionNav,
   C_DataPicker,
+  C_UserPicker,
   C_BatchResult,
 }
 
@@ -233,6 +235,7 @@ export * from './components/C_ErrorSummary'
 export * from './components/C_Density'
 export * from './components/C_SectionNav'
 export * from './components/C_DataPicker'
+export * from './components/C_UserPicker'
 export * from './components/C_BatchResult'
 
 // ====== 工具函数（不属于任何组件的公共工具） ======

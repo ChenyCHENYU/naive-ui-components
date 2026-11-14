@@ -5,7 +5,12 @@
 
 import { ref, onBeforeUnmount, type Ref } from 'vue'
 import { useComponentFeedback } from '../../../config'
-import type { WorkflowNode, WorkflowEdge, ValidationError } from '../types'
+import type {
+  WorkflowNode,
+  WorkflowEdge,
+  ValidationError,
+  WorkflowConditionField,
+} from '../types'
 import { FIELD_DISPLAY_NAMES, ERROR_TYPE_TEXTS } from '../data'
 import { validateWorkflowStructure } from './workflowStructure'
 import { isCompleteCondition } from '../conditions'
@@ -17,6 +22,7 @@ export interface WorkflowValidationOptions {
   onValidateError?: (errors: ValidationError[]) => void
   /** 默认允许循环以兼容通用流程；审批业务可显式关闭。 */
   allowCycles?: boolean | (() => boolean)
+  conditionFields?: () => readonly WorkflowConditionField[] | undefined
 }
 
 /** 工作流验证 —— 封装流程校验逻辑、错误展示和节点定位 */
@@ -79,7 +85,8 @@ export function useWorkflowValidation(
           })
         } else {
           const incomplete = conditions.filter(
-            condition => !isCompleteCondition(condition)
+            condition =>
+              !isCompleteCondition(condition, options?.conditionFields?.())
           )
           if (incomplete.length > 0) {
             errors.push({
@@ -103,11 +110,15 @@ export function useWorkflowValidation(
     const errors = validateWorkflow()
     validationErrors.value = errors
 
+    const blocking = errors.filter(error => error.type !== 'warning')
     if (errors.length === 0) {
       message.success('流程结构和节点配置验证通过；执行规则由业务后端校验')
       showValidationErrors.value = false
+    } else if (!blocking.length) {
+      message.warning('结构检查通过，仍有兼容性提示可供完善')
+      showValidationErrors.value = true
     } else {
-      message.error(`发现 ${errors.length} 个问题，请查看详细错误`)
+      message.error(`发现 ${blocking.length} 个问题，请查看详细错误`)
       showValidationErrors.value = true
       options?.onValidateError?.(errors)
     }

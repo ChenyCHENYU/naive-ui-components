@@ -6,6 +6,7 @@
 
 <template>
   <div class="copy-node">
+    <WorkflowPorts />
     <div
       class="status-indicator"
       :class="data.status"
@@ -14,7 +15,8 @@
     <!-- 删除按钮 -->
     <button
       type="button"
-      class="delete-btn"
+      v-if="!readonly"
+      class="delete-btn nodrag nopan"
       @click="handleDelete"
       title="删除节点"
     >
@@ -24,46 +26,49 @@
       />
     </button>
 
-    <div class="node-card">
-      <div class="node-header">
-        <div class="node-icon">📋</div>
-        <span class="node-title">{{ data.title }}</span>
-        <div
-          class="node-badge"
-          v-if="copyCount > 0"
-          >{{ copyCount }}</div
-        >
-      </div>
-
-      <div class="node-content">
-        <div
-          v-if="copyCount > 0"
-          class="copy-users-list"
-        >
+    <WorkflowNodeBody :node-id="id">
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon">📋</div>
+          <span class="node-title">{{ data.title }}</span>
           <div
-            v-for="user in displayCopyUsers"
-            :key="user.id"
-            class="copy-user-tag"
-          >
-            {{ user.name }}
-          </div>
-          <div
-            v-if="moreCount > 0"
-            class="more-count"
-            >+{{ moreCount }}</div
+            class="node-badge"
+            v-if="copyCount > 0"
+            >{{ copyCount }}</div
           >
         </div>
-        <div
-          v-else
-          class="placeholder"
-          >请设置抄送人</div
-        >
+
+        <div class="node-content">
+          <div
+            v-if="copyCount > 0"
+            class="copy-users-list"
+          >
+            <div
+              v-for="user in displayCopyUsers"
+              :key="user.id"
+              class="copy-user-tag"
+            >
+              {{ user.name }}
+            </div>
+            <div
+              v-if="moreCount > 0"
+              class="more-count"
+              >+{{ moreCount }}</div
+            >
+          </div>
+          <div
+            v-else
+            class="placeholder"
+            >请设置抄送人</div
+          >
+        </div>
       </div>
-    </div>
+    </WorkflowNodeBody>
 
     <button
       type="button"
-      class="add-node-btn"
+      v-if="!readonly"
+      class="add-node-btn nodrag nopan"
       @click="showAddMenu"
       title="添加下一个节点"
     >
@@ -76,6 +81,9 @@
 </template>
 
 <script setup lang="ts">
+  import WorkflowPorts from './WorkflowPorts.vue'
+  import { WorkflowNodeBody, useWorkflowReadonly } from './workflowPresentation'
+  const readonly = useWorkflowReadonly()
   import { computed, inject } from 'vue'
   import { C_Icon } from '../../C_Icon'
 
@@ -196,7 +204,7 @@
   }
 
   .node-card {
-    background: white;
+    background: var(--workflow-surface, white);
     border-radius: 12px;
     min-width: 200px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -214,7 +222,7 @@
 
   .node-header {
     padding: 12px 16px;
-    background: #f6ffed;
+    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #52c41a);
     border-bottom: 1px solid #d9f7be;
     display: flex;
     align-items: center;
@@ -235,7 +243,7 @@
 
   .node-title {
     font-weight: 600;
-    color: #262626;
+    color: var(--workflow-text, #262626);
     font-size: 14px;
     flex: 1;
   }
@@ -266,7 +274,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #f6ffed;
+    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #52c41a);
     color: #52c41a;
     padding: 4px 8px;
     border-radius: 12px;
@@ -275,7 +283,7 @@
   }
 
   .more-count {
-    background: #f0f0f0;
+    background: var(--workflow-background, #f0f0f0);
     color: #8c8c8c;
     padding: 4px 8px;
     border-radius: 12px;

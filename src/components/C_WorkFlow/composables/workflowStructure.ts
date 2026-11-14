@@ -1,4 +1,5 @@
 import type { ValidationError, WorkflowEdge, WorkflowNode } from '../types'
+import { validateWorkflowBranches } from './workflowBranches'
 
 interface StructureOptions {
   allowCycles?: boolean
@@ -163,5 +164,5 @@ export function validateWorkflowStructure(
       )
     }
   }
-  return errors
+  return [...errors, ...validateWorkflowBranches(nodes, edges)]
 }

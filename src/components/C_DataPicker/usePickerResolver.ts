@@ -27,7 +27,11 @@ export function usePickerResolver<T extends object, F extends object>(
     pending.value = true
     let validating = false
     try {
-      const result = [...(await source.resolve(values, request.signal))]
+      const response =
+        props.scope === undefined
+          ? await source.resolve(values, request.signal)
+          : await source.resolve(values, request.signal, { scope: props.scope })
+      const result = [...response]
       if (request.signal.aborted || controller !== request) return
       validating = true
       validatePickerPage(
@@ -40,7 +44,11 @@ export function usePickerResolver<T extends object, F extends object>(
       )
       const valid = values.every(value => {
         const row = rows.get(value)
-        return row !== undefined && props.rowCheckable?.(row) !== false
+        return (
+          row !== undefined &&
+          props.rowCheckable?.(row) !== false &&
+          !props.disabledReason?.(row)
+        )
       })
       if (!valid) throw new Error('Selection is missing or no longer eligible')
       return rows

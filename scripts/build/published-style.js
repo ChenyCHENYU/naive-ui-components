@@ -10,6 +10,8 @@ export const SHARED_COMPONENT_STYLES = Object.freeze({
   C_Table: { imports: ['C_Form.css'], external: ['C_Form'] },
   C_FormModal: { imports: ['C_Form.css'], external: ['C_Form'] },
   C_DataPicker: { imports: ['C_Table.base.css'], external: ['C_Table'] },
+  C_UserPicker: { imports: ['C_DataPicker.css'], external: ['C_DataPicker'] },
+  C_WorkFlow: { imports: ['C_UserPicker.css'], external: ['C_UserPicker'] },
   C_BatchResult: { imports: ['C_Table.base.css'], external: ['C_Table'] },
 })
 

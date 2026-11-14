@@ -4,7 +4,7 @@
   width: 100%;
   height: 600px;
   position: relative;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--workflow-background, #f5f7fa);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -18,17 +18,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--n-card-color);
+  background: var(--workflow-surface, var(--n-card-color));
   backdrop-filter: blur(10px);
   padding: 8px 12px;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--n-border-color);
+  border: 1px solid var(--workflow-border, var(--n-border-color));
 
   .toolbar-divider {
     width: 1px;
     height: 20px;
-    background: var(--n-border-color);
+    background: var(--workflow-border, var(--n-border-color));
     margin: 0 4px;
   }
 }
@@ -44,11 +44,11 @@
   pointer-events: none;
 
   .add-menu-content {
-    background: var(--n-card-color);
+    background: var(--workflow-surface, var(--n-card-color));
     border-radius: 12px;
     padding: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--n-border-color);
+    border: 1px solid var(--workflow-border, var(--n-border-color));
     display: flex;
     gap: 8px;
     pointer-events: auto;
@@ -69,10 +69,14 @@
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 70px;
-  background: var(--n-color-embedded);
+  background: var(--workflow-background, var(--n-color-embedded));
 
   &:hover {
-    background: var(--n-color-hover);
+    background: color-mix(
+      in srgb,
+      var(--workflow-surface, white) 90%,
+      var(--workflow-accent, #2080f0)
+    );
   }
 
   &:focus-visible {
@@ -91,9 +95,15 @@
   margin-bottom: 6px;
   color: white;
 
-  &.approval-icon { background: linear-gradient(135deg, #1890ff, #722ed1); }
-  &.copy-icon { background: linear-gradient(135deg, #52c41a, #389e0d); }
-  &.condition-icon { background: linear-gradient(135deg, #fa8c16, #d48806); }
+  &.approval-icon {
+    background: linear-gradient(135deg, #1890ff, #722ed1);
+  }
+  &.copy-icon {
+    background: linear-gradient(135deg, #52c41a, #389e0d);
+  }
+  &.condition-icon {
+    background: linear-gradient(135deg, #fa8c16, #d48806);
+  }
 }
 
 .menu-text {
@@ -157,7 +167,7 @@
 
     p {
       margin: 0;
-      color: var(--n-text-color-2);
+      color: var(--workflow-text, var(--n-text-color-2));
       font-size: 14px;
     }
   }
@@ -206,13 +216,13 @@
 
         .error-node {
           display: block;
-          color: var(--n-text-color-1);
+          color: var(--workflow-text, var(--n-text-color-1));
           font-size: 14px;
           margin-bottom: 2px;
         }
 
         .error-field {
-          color: var(--n-text-color-3);
+          color: var(--workflow-muted, var(--n-text-color-3));
           font-size: 12px;
         }
       }
@@ -246,7 +256,7 @@
     }
 
     .error-message {
-      color: var(--n-text-color-2);
+      color: var(--workflow-text, var(--n-text-color-2));
       font-size: 13px;
       line-height: 1.5;
       margin-bottom: 12px;
@@ -275,7 +285,7 @@
     ul {
       margin: 0;
       padding-left: 16px;
-      color: var(--n-text-color-2);
+      color: var(--workflow-text, var(--n-text-color-2));
       font-size: 13px;
       line-height: 1.6;
 
@@ -283,7 +293,7 @@
         margin-bottom: 6px;
 
         strong {
-          color: var(--n-text-color-1);
+          color: var(--workflow-text, var(--n-text-color-1));
         }
       }
     }
@@ -297,18 +307,27 @@
 }
 
 /* 边的样式（Vue Flow） */
-:deep(.vue-flow__edge) {
-  stroke: #1890ff;
+/* 只描绘路径，避免整组 stroke 被标签文字和底板继承。 */
+:deep(.vue-flow__edge-path),
+:deep(.vue-flow__connection-path) {
+  stroke: var(--workflow-accent, #2080f0);
   stroke-width: 2px;
 }
 
-:deep(.vue-flow__edge-path) {
-  stroke: #1890ff;
-  stroke-width: 2px;
+:deep(.vue-flow__edge-text) {
+  fill: var(--workflow-text, #28323e);
+  stroke: none;
+  font-size: 12px;
+}
+
+:deep(.vue-flow__edge-textbg) {
+  fill: var(--workflow-surface, #fff);
+  stroke: var(--workflow-border, #dfe5ed);
+  stroke-width: 1px;
 }
 
 :deep(.vue-flow__arrowhead) {
-  fill: #1890ff;
+  fill: var(--workflow-accent, #2080f0);
 }
 
 :deep(.vue-flow__edge.animated) {
@@ -323,7 +342,7 @@
 }
 
 /* 暗色主题适配 */
-[data-theme="dark"] {
+[data-theme='dark'] {
   .approval-workflow-container {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -342,7 +361,7 @@
     }
 
     p {
-      color: var(--n-text-color-2);
+      color: var(--workflow-text, var(--n-text-color-2));
     }
   }
 
@@ -356,13 +375,13 @@
       }
 
       p {
-        color: var(--n-text-color-2);
+        color: var(--workflow-text, var(--n-text-color-2));
       }
     }
 
     .error-item {
-      background: var(--n-card-color);
-      border-color: var(--n-border-color);
+      background: var(--workflow-surface, var(--n-card-color));
+      border-color: var(--workflow-border, var(--n-border-color));
 
       &:hover {
         border-color: rgba(255, 255, 255, 0.2);
@@ -371,11 +390,11 @@
 
       .error-info {
         .error-node {
-          color: var(--n-text-color-1);
+          color: var(--workflow-text, var(--n-text-color-1));
         }
 
         .error-field {
-          color: var(--n-text-color-3);
+          color: var(--workflow-muted, var(--n-text-color-3));
         }
       }
 
@@ -402,7 +421,7 @@
       }
 
       .error-message {
-        color: var(--n-text-color-2);
+        color: var(--workflow-text, var(--n-text-color-2));
       }
     }
 
@@ -415,10 +434,10 @@
       }
 
       ul {
-        color: var(--n-text-color-2);
+        color: var(--workflow-text, var(--n-text-color-2));
 
         li strong {
-          color: var(--n-text-color-1);
+          color: var(--workflow-text, var(--n-text-color-1));
         }
       }
     }
@@ -438,21 +457,21 @@
     text-align: center;
     padding: 12px 8px;
     border-radius: 10px;
-    background: var(--n-action-color);
-    border: 1px solid var(--n-border-color);
+    background: var(--workflow-background, var(--n-action-color));
+    border: 1px solid var(--workflow-border, var(--n-border-color));
     transition: all 0.2s;
 
     .stat-value {
       display: block;
       font-size: 22px;
       font-weight: 700;
-      color: var(--n-text-color-1);
+      color: var(--workflow-text, var(--n-text-color-1));
     }
 
     .stat-label {
       display: block;
       font-size: 12px;
-      color: var(--n-text-color-3);
+      color: var(--workflow-muted, var(--n-text-color-3));
       margin-top: 4px;
     }
 
@@ -513,7 +532,7 @@
       width: 2px;
       flex: 1;
       min-height: 20px;
-      background: var(--n-border-color);
+      background: var(--workflow-border, var(--n-border-color));
     }
   }
 
@@ -547,7 +566,7 @@
 
       .step-order {
         font-size: 12px;
-        color: var(--n-text-color-3);
+        color: var(--workflow-muted, var(--n-text-color-3));
         font-weight: 500;
       }
 
@@ -555,28 +574,28 @@
         font-size: 11px;
         padding: 1px 8px;
         border-radius: 10px;
-        background: var(--n-action-color);
-        color: var(--n-text-color-2);
-        border: 1px solid var(--n-border-color);
+        background: var(--workflow-background, var(--n-action-color));
+        color: var(--workflow-text, var(--n-text-color-2));
+        border: 1px solid var(--workflow-border, var(--n-border-color));
       }
     }
 
     .step-title {
       font-size: 15px;
       font-weight: 600;
-      color: var(--n-text-color-1);
+      color: var(--workflow-text, var(--n-text-color-1));
       margin-bottom: 8px;
     }
 
     .step-details {
-      background: var(--n-action-color);
+      background: var(--workflow-background, var(--n-action-color));
       border-radius: 8px;
       padding: 10px 14px;
-      border: 1px solid var(--n-border-color);
+      border: 1px solid var(--workflow-border, var(--n-border-color));
 
       .step-detail-item {
         font-size: 13px;
-        color: var(--n-text-color-2);
+        color: var(--workflow-text, var(--n-text-color-2));
         line-height: 1.8;
         word-break: break-all;
         display: flex;
@@ -585,7 +604,8 @@
         gap: 4px;
 
         &:not(:last-child) {
-          border-bottom: 1px dashed var(--n-border-color);
+          border-bottom: 1px dashed
+            var(--workflow-border, var(--n-border-color));
           padding-bottom: 8px;
           margin-bottom: 8px;
         }
@@ -595,7 +615,7 @@
         }
 
         .detail-label {
-          color: var(--n-text-color-3);
+          color: var(--workflow-muted, var(--n-text-color-3));
           font-size: 12px;
           flex-shrink: 0;
           line-height: 24px;
@@ -650,7 +670,7 @@
 
   p {
     margin-top: 12px;
-    color: var(--n-text-color-3);
+    color: var(--workflow-muted, var(--n-text-color-3));
     font-size: 14px;
   }
 }

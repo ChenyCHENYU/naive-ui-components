@@ -86,6 +86,7 @@ const vendorStyles = {
   C_Map: ['leaflet/dist/leaflet.css'],
   C_Markdown: ['md-editor-v3/lib/style.css'],
   C_VideoPlayer: ['xgplayer/dist/index.min.css'],
+  C_WorkFlow: ['@vue-flow/core/dist/style.css'],
 }
 const fullStyleDependencies = {
   C_ActionBar: ['C_Icon'],
@@ -102,6 +103,7 @@ const fullStyleDependencies = {
   C_FormSearch: ['C_Select', 'C_AutoComplete'],
   C_FormModal: ['C_Form', 'C_ActionBar'],
   C_DataPicker: ['C_Table', 'C_Tree'],
+  C_UserPicker: ['C_DataPicker'],
   C_BatchResult: ['C_Table'],
   C_Guide: ['C_Icon'],
   C_Language: ['C_Icon'],
@@ -111,7 +113,7 @@ const fullStyleDependencies = {
   C_Theme: ['C_Icon'],
   C_Timeline: ['C_Icon'],
   C_Transfer: ['C_Icon'],
-  C_WorkFlow: ['C_Icon'],
+  C_WorkFlow: ['C_Icon', 'C_UserPicker'],
 }
 const baseStyleDependencies = {
   ...fullStyleDependencies,

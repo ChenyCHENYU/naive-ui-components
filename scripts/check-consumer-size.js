@@ -98,6 +98,27 @@ const cases = [
     budget: 215 * 1024,
     cssBudget: 17 * 1024,
   },
+  {
+    name: 'C_UserPicker',
+    component: 'C_UserPicker',
+    css: 'C_UserPicker.css',
+    props:
+      "{ source: { rowKey: 'id', label: row => row.name, request: async () => ({ rows: [], total: 0 }) } }",
+    budget: 170 * 1024,
+    cssBudget: 13 * 1024,
+    firstOpen: { module: /\/C_Table\d+\.js$/, budget: 105 * 1024 },
+    forbiddenComponents: /\/(?:C_WorkFlow|C_AntV)\d*\.js$/,
+  },
+  {
+    name: 'C_WorkFlow',
+    component: 'C_WorkFlow',
+    css: 'C_WorkFlow.css',
+    props: '{ readonly: true }',
+    budget: 165 * 1024,
+    cssBudget: 20 * 1024,
+    forbiddenComponents:
+      /\/(?:C_UserPicker|C_DataPicker|C_Table|C_AntV)\d*\.js$/,
+  },
 ]
 
 // Measure initial transfer and, where specified, the first deferred interaction.

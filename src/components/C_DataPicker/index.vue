@@ -2,7 +2,7 @@
   <div class="c-data-picker">
     <component
       :is="renderTrigger"
-      v-if="!popover || fullModal"
+      v-if="props.showTrigger !== false && (!popover || fullModal)"
     />
     <span
       v-if="labels.status.value === 'error'"
@@ -59,6 +59,15 @@
             name="navigation"
             v-bind="context"
         /></template>
+        <template
+          v-if="$slots.selected"
+          #selected="context"
+        >
+          <slot
+            name="selected"
+            v-bind="context"
+          />
+        </template>
       </PickerPanel>
     </component>
   </div>
@@ -83,15 +92,22 @@
   import { resolveComponentDensity } from '../../core/density'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
   import { useComponentLocale } from '../../composables/useComponentLocale'
-  import type { DataPickerProps, DataPickerEmits } from './types'
+  import type {
+    DataPickerProps,
+    DataPickerEmits,
+    DataPickerSelectionContext,
+  } from './types'
   import { useDataPicker } from './data'
   import PickerPanel from './PickerPanel.vue'
   defineOptions({ name: 'C_DataPicker' })
   const props = withDefaults(defineProps<DataPickerProps<T, TFilters>>(), {
     pageSize: 20,
+    showTrigger: true,
+    showActions: true,
   })
   const emit = defineEmits<DataPickerEmits<T>>()
   const slots = defineSlots<{
+    selected?(props: DataPickerSelectionContext<T>): unknown
     trigger?(props: {
       open: () => void
       disabled: boolean
@@ -155,9 +171,11 @@
     if (inline.value) void nextTick(() => panelRef.value?.focus())
   }
   function dismiss() {
+    const cancelled = opened.value
     clearTimeout(searchTimer)
     searchTimer = undefined
     close()
+    if (cancelled) emit('cancel')
     fullModal.value = false
     const previous = opener
     opener = null
@@ -173,8 +191,9 @@
     })
   }
   async function commit() {
-    await confirm()
-    if (!opened.value) dismiss()
+    const accepted = await confirm()
+    if (accepted) dismiss()
+    return accepted
   }
   function quickSearch(value: string) {
     if (blocked.value) return
@@ -347,7 +366,10 @@
         class: 'c-data-picker__inline',
         role: 'region',
         'aria-label': title,
-        title,
+        title:
+          props.showActions === false && props.showTrigger === false
+            ? undefined
+            : title,
         size: 'small',
         onKeydown: panelKeydown,
       }
@@ -357,13 +379,15 @@
       class: 'c-data-picker__modal',
       title,
       'aria-label': title,
-      style: { width: 'min(960px, calc(100vw - 24px))' },
+      style: {
+        width: `min(${slots.selected ? 1160 : 960}px, calc(100vw - 24px))`,
+      },
       'onUpdate:show': (show: boolean) => {
         if (!show) dismiss()
       },
     }
   })
-  defineExpose({ open, close: dismiss })
+  defineExpose({ open, close: dismiss, reset: state.reset, confirm: commit })
 </script>
 <style scoped lang="scss">
   @use './index.scss';

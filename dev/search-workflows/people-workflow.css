@@ -1,0 +1,232 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.pw-page {
+  --pw-bg: #f2f6fa;
+  --pw-card: #fff;
+  --pw-text: #263645;
+  --pw-muted: #728090;
+  --pw-border: #dfe7ed;
+  --pw-accent: #238878;
+  min-height: 100vh;
+  padding: 44px max(24px, calc((100vw - 1240px) / 2));
+  background: var(--pw-bg);
+  color: var(--pw-text);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+.pw-page--dark {
+  --pw-bg: #131c25;
+  --pw-card: #1c2834;
+  --pw-text: #e4edf5;
+  --pw-muted: #9dabb9;
+  --pw-border: #344351;
+  --pw-accent: #72cfbc;
+}
+.pw-heading,
+.pw-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.pw-heading {
+  align-items: flex-start;
+  margin-bottom: 30px;
+}
+.pw-heading a {
+  color: var(--pw-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+.pw-eyebrow {
+  letter-spacing: 0.18em;
+  color: var(--pw-accent);
+  font-size: 11px;
+  font-weight: 700;
+  margin: 30px 0 12px;
+}
+.pw-heading h1 {
+  font-size: clamp(26px, 3vw, 38px);
+  letter-spacing: -0.04em;
+  margin: 0 0 12px;
+}
+.pw-heading p:last-child,
+.pw-section-heading p {
+  color: var(--pw-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.pw-theme {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--pw-muted);
+  white-space: nowrap;
+}
+.pw-card {
+  padding: 26px;
+  border: 1px solid var(--pw-border);
+  background: var(--pw-card);
+  border-radius: 16px;
+  margin-bottom: 22px;
+  box-shadow: 0 8px 32px rgb(20 45 65 / 3%);
+  min-width: 0;
+}
+.pw-section-heading h2 {
+  display: inline;
+  font-size: 19px;
+  margin: 0;
+}
+.pw-number {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: color-mix(in srgb, var(--pw-accent) 9%, transparent);
+  color: var(--pw-accent);
+  border-radius: 9px;
+  font-weight: 700;
+  margin-right: 10px;
+  font-size: 12px;
+}
+.pw-section-heading p {
+  margin: 8px 0 0 40px;
+}
+.pw-picker-demo {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin: 26px 0 18px;
+  padding: 22px;
+  border: 1px solid var(--pw-border);
+  border-radius: 12px;
+}
+.pw-picker-control {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+}
+.pw-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pw-help,
+.pw-muted {
+  font-size: 12px;
+  color: var(--pw-muted);
+}
+.pw-source-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pw-selection {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 46px;
+  align-items: center;
+}
+.pw-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--pw-border);
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+.pw-person strong {
+  font-size: 13px;
+  display: block;
+}
+.pw-person small {
+  display: block;
+  color: var(--pw-muted);
+  margin-top: 3px;
+  font-size: 11px;
+}
+.pw-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--pw-accent);
+  background: color-mix(in srgb, var(--pw-accent) 12%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.pw-receipt {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--pw-muted);
+  padding: 12px 14px;
+  margin: 18px 0 0;
+  background: color-mix(in srgb, var(--pw-accent) 5%, var(--pw-card));
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.pw-flow {
+  height: 650px;
+  margin-top: 22px;
+  border: 1px solid var(--pw-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.pw-notes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+}
+.pw-notes strong {
+  font-size: 12px;
+  display: block;
+  margin-bottom: 6px;
+}
+.pw-notes span {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--pw-muted);
+}
+@media (max-width: 700px) {
+  .pw-page {
+    padding: 24px 14px;
+  }
+  .pw-heading,
+  .pw-section-heading,
+  .pw-picker-demo {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pw-card {
+    padding: 18px;
+  }
+  .pw-picker-control {
+    width: 100%;
+  }
+  .pw-notes {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .pw-section-heading p {
+    margin-left: 0;
+  }
+  .pw-picker-demo {
+    padding: 16px;
+  }
+  .pw-flow {
+    height: 600px;
+  }
+}

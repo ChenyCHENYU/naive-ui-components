@@ -21,27 +21,33 @@
             :submit="submitFilters"
             :loading="list.loading.value"
           >
-            <div
-              v-if="options.navigation?.title"
-              class="c-data-picker__navigation-title"
-              >{{ options.navigation.title }}</div
-            >
-            <NButton
-              text
-              @click="navigate(undefined)"
-              >{{ t('picker.allCategories') }}</NButton
-            >
-            <C_Tree
-              v-if="options.navigation"
-              :density="densityValue"
-              :data="[...options.navigation.options]"
-              key-field="key"
-              label-field="label"
-              :selected-keys="navigationKeys"
-              :addable="false"
-              :refreshable="false"
-              @node-select="(_node, keys) => navigate(keys[0])"
+            <component
+              v-if="options.navigation?.render"
+              :is="renderNavigation"
             />
+            <template v-else>
+              <div
+                v-if="options.navigation?.title"
+                class="c-data-picker__navigation-title"
+                >{{ options.navigation.title }}</div
+              >
+              <NButton
+                text
+                @click="navigate(undefined)"
+                >{{ t('picker.allCategories') }}</NButton
+              >
+              <C_Tree
+                v-if="options.navigation"
+                :density="densityValue"
+                :data="[...options.navigation.options]"
+                key-field="key"
+                label-field="label"
+                :selected-keys="navigationKeys"
+                :addable="false"
+                :refreshable="false"
+                @node-select="(_node, keys) => navigate(keys[0])"
+              />
+            </template>
           </slot>
         </aside>
         <div class="c-data-picker__main">
@@ -110,6 +116,18 @@
             @selection-change="selectPage"
           />
         </div>
+        <aside
+          v-if="$slots.selected"
+          class="c-data-picker__selected-panel"
+        >
+          <slot
+            name="selected"
+            :items="selectedItems"
+            :remove="remove"
+            :move="move"
+            :disabled="confirming"
+          />
+        </aside>
       </div>
       <div
         v-if="selectionError"
@@ -178,7 +196,7 @@
           }}</span>
           <span>{{ t('picker.selected', { count: selectedCount }) }}</span>
           <NTag
-            v-for="item in selected"
+            v-for="item in $slots.selected ? [] : selected"
             :key="`${typeof item.value}:${item.value}`"
             size="small"
             closable
@@ -186,7 +204,7 @@
             @close="remove(item.value)"
             >{{ item.label }}</NTag
           >
-          <span v-if="selectedCount > 30">{{
+          <span v-if="!$slots.selected && selectedCount > 30">{{
             t('picker.moreSelected', { count: selectedCount - 30 })
           }}</span>
         </div>
@@ -205,7 +223,10 @@
         </nav>
       </div>
     </div>
-    <div class="c-data-picker__footer">
+    <div
+      v-if="options.showActions !== false"
+      class="c-data-picker__footer"
+    >
       <div class="c-data-picker__actions">
         <NButton
           :size="density.size"
@@ -273,6 +294,8 @@
     rows,
     total,
     selected,
+    selectedItems,
+    move,
     selectedCount,
     canConfirm,
     columns,
@@ -311,6 +334,16 @@
     event.stopPropagation()
     query()
   }
+  const renderNavigation = () =>
+    props.options.navigation?.render?.({
+      value: navigationKeys.value[0],
+      select: navigate,
+      disabled:
+        confirming.value ||
+        !!props.options.disabled ||
+        !!props.options.readonly,
+      density: props.densityValue,
+    })
   const navigationKeys = computed(() => {
     const field = props.options.navigation?.field
     const value =

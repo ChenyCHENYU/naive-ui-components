@@ -25,9 +25,38 @@ const dependencies = [
   'md-editor-v3/lib/style.css',
   '@vavt/markdown-theme/css/all.css',
   'xgplayer/dist/index.min.css',
+  '@vue-flow/core/dist/style.css',
 ]
 
 describe('vendor style boundaries', () => {
+  test('流程基础定位与连接动画随包发布，并限定在设计器容器内', () => {
+    const output = readVendorStyles(
+      resolve('node_modules/@vue-flow/core/dist/style.css'),
+      '@vue-flow/core/dist/style.css'
+    )
+    expect(output).toContain(
+      '.approval-workflow-container .vue-flow__container'
+    )
+    expect(output).toContain('.approval-workflow-container .vue-flow__handle')
+    expect(output).toContain('position: absolute')
+    expect(output).toContain('c-vendor-workflow-dashdraw')
+    expect(output).not.toMatch(/@keyframes\s+dashdraw\b/)
+    parse(output).walkRules(rule => {
+      if (
+        rule.parent?.type === 'atrule' &&
+        rule.parent.name.endsWith('keyframes')
+      )
+        return
+      expect(
+        rule.selectors.every(selector =>
+          selector.startsWith('.approval-workflow-container ')
+        )
+      ).toBe(true)
+    })
+    expect(() =>
+      isolateVendorStyles('body{margin:0}', '@vue-flow/core/dist/style.css')
+    ).toThrow()
+  })
   test.each(dependencies)('%s 的实际依赖样式满足组件发布边界', dependency => {
     const source = readFileSync(`node_modules/${dependency}`, 'utf8')
     const isolated = isolateVendorStyles(source, dependency)

@@ -4,7 +4,12 @@
  */
 
 import { ref, type Ref } from 'vue'
-import type { WorkflowNode, WorkflowEdge, WorkflowNodeDataMap } from '../types'
+import type {
+  User,
+  WorkflowNode,
+  WorkflowEdge,
+  WorkflowNodeDataMap,
+} from '../types'
 
 /** 详情项类型 */
 export type DetailItemType = 'text' | 'mode' | 'users' | 'warning'
@@ -14,7 +19,7 @@ export interface DetailItem {
   type: DetailItemType
   label: string
   value?: string
-  users?: { name: string; department?: string }[]
+  users?: User[]
   modeKey?: string
 }
 
@@ -139,10 +144,19 @@ export function useWorkflowPreview(
     }
     return conditions.map((cond, i) => {
       const op = OPERATOR_LABELS[cond.operator] || cond.operator
+      const target =
+        cond.targetNodeId &&
+        nodes.value.find(node => node.id === cond.targetNodeId)
+      const route = cond.targetNodeId
+        ? ` → ${target ? target.data.title : `失效目标(${cond.targetNodeId})`}`
+        : '（未绑定目标）'
+      const rule = cond.isDefault
+        ? '默认分支'
+        : `${cond.field || '?'} ${op} ${cond.value || '?'}`
       return {
         type: 'text' as const,
         label: `分支 ${i + 1}`,
-        value: `${cond.name || '未命名'} — ${cond.field || '?'} ${op} ${cond.value || '?'}`,
+        value: `${cond.name || '未命名'} — ${rule}${route}`,
       }
     })
   }

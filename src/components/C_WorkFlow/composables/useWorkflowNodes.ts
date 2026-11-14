@@ -22,6 +22,11 @@ import type {
   EdgeChange,
 } from '@vue-flow/core'
 import { useComponentFeedback } from '../../../config'
+import {
+  hasBoundBranches,
+  isWorkflowConnectionAllowed,
+  retargetWorkflowBranch,
+} from './workflowBranches'
 import { cloneData, isDataEqual } from '../../../utils/data'
 import {
   getWorkflowFields,
@@ -63,6 +68,31 @@ type EmitFn = <Event extends keyof WorkflowEmits>(
   event: Event,
   ...args: WorkflowEmits[Event]
 ) => void
+
+function isCanvasDeleteKey(event: KeyboardEvent, readonly?: boolean): boolean {
+  if (
+    readonly ||
+    event.defaultPrevented ||
+    event.isComposing ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey
+  )
+    return false
+  if (event.key !== 'Backspace' && event.key !== 'Delete') return false
+  return !isInputTarget(event.target)
+}
+
+function isInputTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"]'
+      )
+    )
+  )
+}
 
 /** 工作流节点管理 —— 封装节点 CRUD、provide/inject、边重连、画布操作等逻辑 */
 export function useWorkflowNodes(
@@ -136,6 +166,16 @@ export function useWorkflowNodes(
     }
   }
 
+  const nodeIndex = computed(
+    () => new Map(nodes.value.map(node => [node.id, node]))
+  )
+  const getNodeSnapshot = (id: string) => {
+    const node = nodeIndex.value.get(id)
+    return node
+      ? snapshotWorkflowNode(node, declaredNodeFields.get(id))
+      : undefined
+  }
+
   /** 触发数据变更事件 */
   const emitChange = (): void => {
     const data = getCurrentWorkflowData()
@@ -174,20 +214,30 @@ export function useWorkflowNodes(
     connection: Connection,
     excludingEdgeId?: string
   ): boolean =>
-    nodes.value.some(node => node.id === connection.source) &&
-    nodes.value.some(node => node.id === connection.target) &&
-    !edges.value.some(
-      edge =>
-        edge.id !== excludingEdgeId &&
-        edge.source === connection.source &&
-        edge.target === connection.target
+    isWorkflowConnectionAllowed(
+      nodes.value,
+      edges.value,
+      connection,
+      props.allowCycles,
+      excludingEdgeId
     )
+  // Vue Flow 也用此回调解析已有 Edge；导入图必须交给显式校验，不能被重复边检查静默删除。
+  const validateCanvasConnection = (
+    connection: Connection | { id: string }
+  ): boolean => 'id' in connection || canConnect(connection)
   const connectNodes = (connection: Connection): void => {
     if (props.readonly || !canConnect(connection)) return
     edges.value = [
       ...edges.value,
-      createEdge(connection.source, connection.target),
+      {
+        ...createEdge(connection.source, connection.target),
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle,
+      },
     ]
+    const added = edges.value[edges.value.length - 1]
+    declaredEdgeFields.get(added.id)?.add('sourceHandle')
+    declaredEdgeFields.get(added.id)?.add('targetHandle')
     commitCanvasChange()
   }
   const updateConnection = ({ edge, connection }: EdgeUpdateEvent): void => {
@@ -197,16 +247,30 @@ export function useWorkflowNodes(
       !canConnect(connection, edge.id)
     )
       return
+    const previous = edges.value.find(item => item.id === edge.id)!
+    const source = nodes.value.find(node => node.id === previous.source)
+    if (
+      source &&
+      hasBoundBranches(source) &&
+      previous.source !== connection.source
+    ) {
+      message.warning('请先解除原条件分支绑定，再把连线移动到其他起点')
+      return
+    }
+    retargetWorkflowBranch(source, previous.target, connection.target)
+    declaredEdgeFields.get(edge.id)?.add('sourceHandle')
+    declaredEdgeFields.get(edge.id)?.add('targetHandle')
     edges.value = edges.value.map(item =>
-      item.id === edge.id
-        ? { ...item, source: connection.source, target: connection.target }
-        : item
+      item.id === edge.id ? { ...item, ...connection } : item
     )
     commitCanvasChange()
   }
 
   /** 延迟适应画布视图 */
-  const deferFitView = (padding = 60, duration = 400): void => {
+  const deferFitView = (
+    padding: `${number}px` = '60px',
+    duration = 400
+  ): void => {
     nextTick(() => {
       if (disposed) return
       schedule(() => {
@@ -230,6 +294,36 @@ export function useWorkflowNodes(
     showAddMenu.value = false
   }
 
+  const canBypassNode = (
+    nodeId: string,
+    incoming: WorkflowEdge[],
+    outgoing: WorkflowEdge[]
+  ): boolean => {
+    const remainingNodes = nodes.value.filter(node => node.id !== nodeId)
+    const remainingEdges = edges.value.filter(
+      edge => edge.source !== nodeId && edge.target !== nodeId
+    )
+    return incoming.every(before =>
+      outgoing.every(after => {
+        const connection = { source: before.source, target: after.target }
+        const exists = remainingEdges.some(
+          edge =>
+            edge.source === connection.source &&
+            edge.target === connection.target
+        )
+        return (
+          exists ||
+          isWorkflowConnectionAllowed(
+            remainingNodes,
+            remainingEdges,
+            connection,
+            props.allowCycles
+          )
+        )
+      })
+    )
+  }
+
   /* ─── 节点删除 ──────────────────────────────────────────── */
   const deleteNode = (nodeId: string): void => {
     if (props.readonly) return
@@ -241,8 +335,34 @@ export function useWorkflowNodes(
     }
 
     /* 收集上下游边，用于重连 */
-    const incomingEdges = edges.value.filter(e => e.target === nodeId)
-    const outgoingEdges = edges.value.filter(e => e.source === nodeId)
+    const incomingEdges = edges.value.filter(
+      e => e.target === nodeId && e.source !== nodeId
+    )
+    const outgoingEdges = edges.value.filter(
+      e => e.source === nodeId && e.target !== nodeId
+    )
+
+    if (!canBypassNode(nodeId, incomingEdges, outgoingEdges)) {
+      message.warning('删除后会产生无效连接，请先调整此节点的上下游连线')
+      return
+    }
+    if (
+      outgoingEdges.length > 1 &&
+      incomingEdges.some(edge => {
+        const source = nodes.value.find(node => node.id === edge.source)
+        return source && hasBoundBranches(source)
+      })
+    ) {
+      message.warning('此节点被条件分支引用且有多个下游，请先调整分支绑定')
+      return
+    }
+    if (outgoingEdges.length === 1)
+      for (const incoming of incomingEdges)
+        retargetWorkflowBranch(
+          nodes.value.find(node => node.id === incoming.source),
+          nodeId,
+          outgoingEdges[0].target
+        )
 
     /* 移除节点和关联边 */
     nodes.value.splice(nodeIndex, 1)
@@ -253,7 +373,29 @@ export function useWorkflowNodes(
     /* 重连上下游 */
     incomingEdges.forEach(inEdge => {
       outgoingEdges.forEach(outEdge => {
-        edges.value.push(createEdge(inEdge.source, outEdge.target))
+        if (
+          !edges.value.some(
+            edge =>
+              edge.source === inEdge.source && edge.target === outEdge.target
+          )
+        ) {
+          const connection = createEdge(inEdge.source, outEdge.target)
+          const reconnected: WorkflowEdge = {
+            ...connection,
+            ...snapshotWorkflowEdge(inEdge, declaredEdgeFields.get(inEdge.id)),
+            id: connection.id,
+            source: connection.source,
+            target: connection.target,
+            ...(declaredEdgeFields.get(outEdge.id)?.has('targetHandle') && {
+              targetHandle: outEdge.targetHandle,
+            }),
+          }
+          declaredEdgeFields.set(
+            reconnected.id,
+            new Set(Object.keys(reconnected))
+          )
+          edges.value.push(reconnected)
+        }
       })
     })
 
@@ -265,6 +407,30 @@ export function useWorkflowNodes(
     emitChange()
     message.success('节点已删除')
     deferFitView()
+  }
+
+  /** SDK 默认键盘删除会绕过节点约束，统一复用显式删除入口。 */
+  const handleCanvasKeydown = (event: KeyboardEvent): void => {
+    if (!isCanvasDeleteKey(event, props.readonly)) return
+    const selectedNodes = nodes.value.filter(
+      node => node.selected && node.deletable !== false
+    )
+    const selectedEdges = new Set(
+      edges.value
+        .filter(
+          edge =>
+            'selected' in edge &&
+            edge.selected === true &&
+            edge.deletable !== false
+        )
+        .map(edge => edge.id)
+    )
+    if (!selectedNodes.length && !selectedEdges.size) return
+    event.preventDefault()
+    selectedNodes.forEach(node => deleteNode(node.id))
+    if (!selectedEdges.size) return
+    edges.value = edges.value.filter(edge => !selectedEdges.has(edge.id))
+    commitCanvasChange()
   }
 
   /* ─── provide 注入给子节点组件 ───────────────────────────── */
@@ -329,7 +495,7 @@ export function useWorkflowNodes(
 
     /* 新节点 → 原下游 */
     outgoing.forEach(edge => {
-      edges.value.push(createEdge(newNode.id, edge.target))
+      edges.value.push({ ...edge, source: newNode.id, sourceHandle: null })
     })
   }
 
@@ -338,6 +504,14 @@ export function useWorkflowNodes(
     if (props.readonly) return
     try {
       const { targetNodeIndex, targetNode } = getTargetNodeInfo()
+      if (props.allowedNodeTypes && !props.allowedNodeTypes.includes(type))
+        return
+      if (targetNode && hasBoundBranches(targetNode)) {
+        message.warning(
+          '条件分支已绑定目标，请在具体下游节点添加，避免合并分支'
+        )
+        return
+      }
       const newNode = createNewNode(type, targetNode)
       declaredNodeFields.set(newNode.id, new Set(Object.keys(newNode)))
 
@@ -374,7 +548,12 @@ export function useWorkflowNodes(
   }
 
   const handleConfigSave = (configData: Record<string, unknown>): void => {
-    if (props.readonly || !currentNode.value) return
+    if (
+      props.readonly ||
+      !currentNode.value ||
+      !nodes.value.includes(currentNode.value)
+    )
+      return
 
     const nodeIndex = nodes.value.findIndex(n => n.id === currentNode.value!.id)
     if (nodeIndex !== -1) {
@@ -383,7 +562,10 @@ export function useWorkflowNodes(
         declaredNodeFields.get(currentNode.value.id)
       )
       Object.assign(updatedNode.data, cloneData(configData))
-      nodes.value.splice(nodeIndex, 1, updatedNode)
+      // SDK 按数组引用/长度同步节点；同长度 splice 只改快照而不会刷新画布。
+      nodes.value = nodes.value.map((node, index) =>
+        index === nodeIndex ? updatedNode : node
+      )
       currentNode.value = updatedNode
     }
 
@@ -402,7 +584,7 @@ export function useWorkflowNodes(
     nextTick(() => {
       if (disposed || vueFlowRef.value !== target) return
       target.fitView({
-        padding: 50,
+        padding: '50px',
         includeHiddenNodes: false,
         minZoom: 0.5,
         maxZoom: 1.5,
@@ -420,7 +602,7 @@ export function useWorkflowNodes(
     declaredNodeFields = getWorkflowFields(nodes.value)
     declaredEdgeFields.clear()
     emitChange()
-    deferFitView(80, 600)
+    deferFitView('80px', 600)
     message.success('画布已清空')
   }
 
@@ -439,6 +621,10 @@ export function useWorkflowNodes(
       )
         return
       modelRevision += 1
+      showNodeConfig.value = false
+      currentNode.value = null
+      showAddMenu.value = false
+      currentAddNodeId.value = null
       declaredNodeFields = getWorkflowFields(nextNodes)
       declaredEdgeFields = getWorkflowFields(nextEdges)
       nodes.value = cloneData(nextNodes)
@@ -448,13 +634,24 @@ export function useWorkflowNodes(
     { deep: true }
   )
 
+  watch(
+    () => props.readonly,
+    value => {
+      if (value) {
+        showNodeConfig.value = false
+        currentNode.value = null
+        showAddMenu.value = false
+      }
+    }
+  )
+
   onMounted(() => {
     disposed = false
     nextTick(() => {
       if (disposed) return
       schedule(() => {
         vueFlowRef.value?.fitView?.({
-          padding: 80,
+          padding: '80px',
           includeHiddenNodes: false,
           minZoom: 0.8,
           maxZoom: 1.2,
@@ -484,6 +681,9 @@ export function useWorkflowNodes(
     /* 方法 */
     commitCanvasChange,
     handleCanvasChanges,
+    handleCanvasKeydown,
+    canConnect,
+    validateCanvasConnection,
     connectNodes,
     updateConnection,
     addNode,
@@ -492,6 +692,7 @@ export function useWorkflowNodes(
     handleConfigSave,
     resetNodes,
     getCurrentWorkflowData,
+    getNodeSnapshot,
     fitView,
     deleteNode,
   }

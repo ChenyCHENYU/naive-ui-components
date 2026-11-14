@@ -127,12 +127,13 @@ Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`
 
 ## Business workspace components
 
-| Component        | Purpose                                                   |
-| ---------------- | --------------------------------------------------------- |
-| `C_Density`      | Regional density defaults without wrapper DOM             |
-| `C_SectionNav`   | Section navigation, error badges and keyboard focus       |
-| `C_ErrorSummary` | Navigable validation issues with bounded DOM              |
-| `C_DataPicker`   | Paged entity selection, cross-page draft and batch labels |
-| `C_BatchResult`  | Per-item results, filtering, paging and explicit retry    |
+| Component        | Purpose                                                        |
+| ---------------- | -------------------------------------------------------------- |
+| `C_Density`      | Regional density defaults without wrapper DOM                  |
+| `C_SectionNav`   | Section navigation, error badges and keyboard focus            |
+| `C_ErrorSummary` | Navigable validation issues with bounded DOM                   |
+| `C_DataPicker`   | Paged entity selection, cross-page draft and batch labels      |
+| `C_UserPicker`   | Organization-aware person selection, paging and ordered drafts |
+| `C_BatchResult`  | Per-item results, filtering, paging and explicit retry         |
 
 The [data/workflow guide](./guides/data-workflows.md) covers shared dictionaries, numeric codecs, dependent resources, validation scopes and repeatable forms.

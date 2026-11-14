@@ -4,6 +4,9 @@ export type {
   Role,
   Department,
   Condition,
+  WorkflowConditionField,
+  WorkflowNodeRenderContext,
+  WorkflowSlots,
   NodeStatus,
   NodeType,
   ApprovalMode,
@@ -31,6 +34,7 @@ export type {
   WorkflowApiResponse,
   WorkflowHistory,
 } from './types'
+export type { WorkflowPeopleOptions, WorkflowPeopleFilters } from './people'
 export { useWorkflowNodes } from './composables/useWorkflowNodes'
 export { useWorkflowPreview } from './composables/useWorkflowPreview'
 export { useWorkflowValidation } from './composables/useWorkflowValidation'

@@ -6,6 +6,7 @@
 
 <template>
   <div class="approval-node">
+    <WorkflowPorts />
     <div
       class="status-indicator"
       :class="data.status"
@@ -14,7 +15,8 @@
     <!-- 删除按钮 -->
     <button
       type="button"
-      class="delete-btn"
+      v-if="!readonly"
+      class="delete-btn nodrag nopan"
       @click="handleDelete"
       title="删除节点"
     >
@@ -24,78 +26,81 @@
       />
     </button>
 
-    <div class="node-card">
-      <div class="node-header">
-        <div class="node-icon">
-          <C_Icon
-            name="mdi:account"
-            :size="12"
-            color="white"
-          />
-        </div>
-        <span class="node-title">{{ data.title }}</span>
-        <div
-          class="node-badge"
-          v-if="approverCount > 0"
-        >
-          {{ approverCount }}
-        </div>
-        <div
-          class="approval-mode-badge"
-          v-if="data.approvalMode"
-        >
-          {{ getApprovalModeText(data.approvalMode) }}
-        </div>
-      </div>
-
-      <div class="node-content">
-        <div
-          v-if="approverCount > 0"
-          class="approvers-list"
-        >
+    <WorkflowNodeBody :node-id="id">
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon">
+            <C_Icon
+              name="mdi:account"
+              :size="12"
+              color="white"
+            />
+          </div>
+          <span class="node-title">{{ data.title }}</span>
           <div
-            v-for="approver in displayApprovers"
-            :key="approver.id"
-            class="approver-tag"
+            class="node-badge"
+            v-if="approverCount > 0"
           >
-            <div class="approver-info">
-              <div class="approver-avatar">
-                <NAvatar
-                  :src="approver.avatar"
-                  :fallback-src="getDefaultAvatar(approver.name)"
-                  size="small"
-                />
-              </div>
-              <div class="approver-details">
-                <span class="approver-name">{{ approver.name }}</span>
-                <span class="approver-dept">{{ approver.department }}</span>
-                <span class="approver-role">{{ approver.role }}</span>
-              </div>
-            </div>
+            {{ approverCount }}
           </div>
           <div
-            v-if="moreCount > 0"
-            class="more-count"
-            >+{{ moreCount }}</div
+            class="approval-mode-badge"
+            v-if="data.approvalMode"
           >
+            {{ getApprovalModeText(data.approvalMode) }}
+          </div>
         </div>
-        <div
-          v-else
-          class="placeholder"
-        >
-          <C_Icon
-            name="mdi:account-plus"
-            :size="24"
-            color="#9ca3af"
-          />
-          <span>请设置审批人</span>
+
+        <div class="node-content">
+          <div
+            v-if="approverCount > 0"
+            class="approvers-list"
+          >
+            <div
+              v-for="approver in displayApprovers"
+              :key="approver.id"
+              class="approver-tag"
+            >
+              <div class="approver-info">
+                <div class="approver-avatar">
+                  <NAvatar
+                    :src="approver.avatar || getDefaultAvatar(approver.name)"
+                    :fallback-src="getDefaultAvatar(approver.name)"
+                    size="small"
+                  />
+                </div>
+                <div class="approver-details">
+                  <span class="approver-name">{{ approver.name }}</span>
+                  <span class="approver-dept">{{ approver.department }}</span>
+                  <span class="approver-role">{{ approver.role }}</span>
+                </div>
+              </div>
+            </div>
+            <div
+              v-if="moreCount > 0"
+              class="more-count"
+              >+{{ moreCount }}</div
+            >
+          </div>
+          <div
+            v-else
+            class="placeholder"
+          >
+            <C_Icon
+              name="mdi:account-plus"
+              :size="24"
+              color="#9ca3af"
+            />
+            <span>请设置审批人</span>
+          </div>
         </div>
       </div>
-    </div>
+    </WorkflowNodeBody>
 
     <button
       type="button"
-      class="add-node-btn"
+      v-if="!readonly"
+      class="add-node-btn nodrag nopan"
       @click="showAddMenu"
       title="添加下一个节点"
     >
@@ -108,6 +113,9 @@
 </template>
 
 <script setup lang="ts">
+  import WorkflowPorts from './WorkflowPorts.vue'
+  import { WorkflowNodeBody, useWorkflowReadonly } from './workflowPresentation'
+  const readonly = useWorkflowReadonly()
   import { computed, inject } from 'vue'
   import { NAvatar } from 'naive-ui'
   import { C_Icon } from '../../C_Icon'
@@ -247,7 +255,7 @@
   }
 
   .node-card {
-    background: white;
+    background: var(--workflow-surface, white);
     border-radius: 12px;
     min-width: 240px;
     max-width: 300px;
@@ -266,7 +274,7 @@
 
   .node-header {
     padding: 12px 16px;
-    background: linear-gradient(135deg, #e6f7ff, #f0f9ff);
+    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #1890ff);
     border-bottom: 1px solid #91d5ff;
     display: flex;
     align-items: center;
@@ -287,7 +295,7 @@
 
   .node-title {
     font-weight: 600;
-    color: var(--n-text-color-1);
+    color: var(--workflow-text, #262626);
     font-size: 14px;
     flex: 1;
   }
@@ -304,8 +312,8 @@
   }
 
   .approval-mode-badge {
-    background: #f0f0f0;
-    color: #666;
+    background: var(--workflow-background, #f0f0f0);
+    color: var(--workflow-muted, #666);
     padding: 2px 6px;
     border-radius: 8px;
     font-size: 10px;
@@ -323,7 +331,7 @@
   }
 
   .approver-tag {
-    background: linear-gradient(135deg, #e6f7ff, #f0f9ff);
+    background: color-mix(in srgb, var(--workflow-surface, white) 90%, #1890ff);
     border: 1px solid #91d5ff;
     border-radius: 8px;
     padding: 8px 12px;
@@ -357,7 +365,7 @@
 
         .approver-dept {
           font-size: 11px;
-          color: #666;
+          color: var(--workflow-muted, #666);
           background: rgba(0, 0, 0, 0.05);
           padding: 1px 4px;
           border-radius: 4px;
@@ -366,14 +374,14 @@
 
         .approver-role {
           font-size: 10px;
-          color: #999;
+          color: var(--workflow-muted, #999);
         }
       }
     }
   }
 
   .more-count {
-    background: #f0f0f0;
+    background: var(--workflow-background, #f0f0f0);
     color: #8c8c8c;
     padding: 6px 8px;
     border-radius: 12px;
@@ -394,7 +402,7 @@
     padding: 20px 0;
     border: 1px dashed #d9d9d9;
     border-radius: 8px;
-    background: #fafafa;
+    background: var(--workflow-background, #fafafa);
 
     span {
       font-weight: 500;
