@@ -14,7 +14,8 @@ const exporter = vi.hoisted(() => ({
     (
       rows: DataRecord[],
       columns: TableColumn[],
-      config?: ExportConfig
+      config?: ExportConfig,
+      canDownload?: () => boolean
     ) => Promise<void>
   >(() => Promise.resolve()),
 }))
@@ -149,6 +150,152 @@ describe('table export scope and asynchronous ownership', () => {
     expect(request).toHaveBeenCalledTimes(2)
     expect(exporter.run).toHaveBeenCalledTimes(2)
   })
+
+  test.each(['source', 'page', 'selected'] as const)(
+    '%s request owns its starting schema, nested formatter, and file configuration across a report switch',
+    async scope => {
+      let resolveRequest!: (data: DataRecord[]) => void
+      const formatter = { currency: { prefix: 'Report A ', precision: 1 } }
+      const columns: TableColumn<Row>[] = [
+        {
+          type: 'group',
+          title: 'Report A',
+          children: [
+            {
+              key: 'id',
+              title: 'Amount A',
+              formatter: { type: 'currency', config: { suffix: ' A' } },
+            },
+          ],
+        },
+      ]
+      const config = {
+        scope,
+        filename: 'report-a',
+        format: 'csv' as const,
+        columnKeys: ['id'],
+        requestData: () =>
+          new Promise<DataRecord[]>(resolve => {
+            resolveRequest = resolve
+          }),
+      }
+      const wrapper = mount(C_Table<Row>, {
+        props: {
+          data: rows,
+          columns,
+          config: {
+            toolbar: { show: false },
+            pagination: false,
+            persistKey: 'report-a',
+            export: config,
+            formatterConfig: formatter,
+          },
+        },
+      })
+      const api = wrapper.vm as unknown as TableInstance<Row>
+      const pending = api.exportData()
+      config.columnKeys[0] = 'name'
+      formatter.currency.prefix = 'Mutated '
+      if (columns[0].type === 'group') {
+        columns[0].children[0].title = 'Mutated'
+        columns[0].children[0].formatter!.config!.suffix = ' Mutated'
+      }
+      await wrapper.setProps({
+        columns: [{ key: 'name', title: 'Report B' }],
+        config: {
+          toolbar: { show: false },
+          pagination: false,
+          persistKey: 'report-b',
+          export: { scope, filename: 'report-b', columnKeys: ['name'] },
+          formatterConfig: { currency: { prefix: 'Report B ' } },
+        },
+      })
+      resolveRequest([{ id: 99, name: 'A result' }])
+      await pending
+      const [exportRows, exportColumns, exportConfig] =
+        exporter.run.mock.calls[0]
+      expect(exportRows).toEqual([{ id: 99, name: 'A result' }])
+      expect(exportColumns).toEqual([
+        {
+          type: 'group',
+          title: 'Report A',
+          children: [
+            {
+              key: 'id',
+              title: 'Amount A',
+              formatter: { type: 'currency', config: { suffix: ' A' } },
+            },
+          ],
+        },
+      ])
+      expect(exportConfig).toMatchObject({
+        scope,
+        filename: 'report-a',
+        format: 'csv',
+        columnKeys: ['id'],
+        formatterConfig: {
+          currency: { prefix: 'Report A ', precision: 1 },
+        },
+      })
+      await api.exportData()
+      expect(exporter.run.mock.calls[1][1]).toEqual([
+        { key: 'name', title: 'Report B' },
+      ])
+      expect(exporter.run.mock.calls[1][2]?.filename).toBe('report-b')
+    }
+  )
+
+  test('unmount prevents a pending server result from starting a download', async () => {
+    let resolveRequest!: (data: DataRecord[]) => void
+    const requestData = vi.fn(
+      () =>
+        new Promise<DataRecord[]>(resolve => {
+          resolveRequest = resolve
+        })
+    )
+    const { wrapper, api } = mountExport({ requestData })
+    const pending = api.exportData()
+    wrapper.unmount()
+    resolveRequest([{ id: 99 }])
+    await pending
+    expect(exporter.run).not.toHaveBeenCalled()
+    await api.exportData()
+    expect(requestData).toHaveBeenCalledTimes(1)
+  })
+
+  test('unmount revokes download ownership already handed to a lazy exporter', async () => {
+    let finishDownload!: () => void
+    const downloading = new Promise<void>(resolve => {
+      finishDownload = resolve
+    })
+    exporter.run.mockImplementationOnce(() => downloading)
+    const { wrapper, api } = mountExport({ format: 'xlsx' })
+    const pending = api.exportData()
+    const canDownload = exporter.run.mock.calls[0][3]!
+    expect(canDownload()).toBe(true)
+    wrapper.unmount()
+    expect(canDownload()).toBe(false)
+    finishDownload()
+    await pending
+  })
+
+  test.each(['request', 'download'] as const)(
+    '%s failure rejects to the caller and unlocks a successful retry',
+    async failureAt => {
+      const failure = new Error(`${failureAt} failed`)
+      const request = vi.fn<() => Promise<DataRecord[]>>()
+      if (failureAt === 'request') request.mockRejectedValueOnce(failure)
+      else exporter.run.mockRejectedValueOnce(failure)
+      request.mockResolvedValue([{ id: 99 }])
+      const { api } = mountExport({ requestData: request })
+      await expect(api.exportData()).rejects.toBe(failure)
+      await api.exportData()
+      expect(request).toHaveBeenCalledTimes(2)
+      expect(exporter.run).toHaveBeenCalledTimes(
+        failureAt === 'request' ? 1 : 2
+      )
+    }
+  )
 })
 
 test('a cold date editor loads the actual Naive picker and saves its updated value', async () => {

@@ -33,7 +33,7 @@
 | Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.38.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.39.0**. See the [changelog](./CHANGELOG.md) for release details.
 
 0.33 adds optional remote tree paths, grouped options, search field settings and table editing contracts while retaining existing defaults. See the [compatibility and standalone demo guide](./docs/guides/component-contracts.md) (Chinese).
 
@@ -60,6 +60,10 @@ Set `searchOnReset: true` to run both search and reset through `onSearch`. Use `
 In narrow `C_Table` cells, edit actions wrap so the input stays visible. Utility columns remain compact; automatic business columns share available space proportionally to their measured header/content bases, and preserve their bases with horizontal scrolling when they do not fit. Explicit widths and saved width preferences remain effective.
 
 `C_Table` shows row numbers and a pager by default and centers all cells, including numbers. Use `:row-number="false"` and `:pagination="false"` to disable the automatic index and pager respectively. Bind server-provided columns and rows directly as shown in the [usage guide](./docs/guides/usage.en.md).
+
+Checked rows show a leading theme-colored marker; set `--c-table-selected-marker-width: 0px` to hide it. Async exports retain the columns, formatting and file settings captured at startup, and stop downloading after unmount. `createComponentTheme({ primary: '#409eff' })` uses a white foreground for filled buttons and checked controls by default; set `onSolid` centrally or override it through a local Provider. See the [theme guide](./docs/guides/theme.md).
+
+A `{ type: 'selection' }` column enables selection without repeating `selection: true`. Explicit global or local `selection: false` / `{ enabled: false }` still takes precedence, including when columns change dynamically.
 
 | Scenario              | Representative components                                        | Capabilities                                                                         |
 | --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -148,6 +152,7 @@ Register once when the app starts. `session` is your existing reactive identity 
 import { TABLE_GLOBAL_CONFIG_KEY } from '@robot-admin/naive-ui-components/config'
 
 app.provide(TABLE_GLOBAL_CONFIG_KEY, {
+  defaults: { density: 'compact' },
   get persistPrefix() {
     const scope = session.value
     return scope
@@ -157,7 +162,7 @@ app.provide(TABLE_GLOBAL_CONFIG_KEY, {
 })
 ```
 
-Each page only supplies a stable table ID, such as `config: { persistKey: 'shipping' }`. Column visibility, order and widths are stored per scope without mutating business column definitions, including inside `C_Density`. The lightweight `/config` entry exports the same configuration key as `/C_Table`.
+Each page only supplies a stable table ID, such as `config: { persistKey: 'shipping' }`. The compact default applies to headers, regular cells, actions and editors; a regional `C_Density` or local config can override it. Column visibility, order and widths are stored per scope without mutating business column definitions. The lightweight `/config` entry exports the same configuration key as `/C_Table`.
 
 Declare the getter at startup and change its reactive value when accounts change; do not remove the field. An explicitly configured prefix that is `undefined`, empty or whitespace disables preference reads and writes, without falling back to legacy caches. Omitting `persistPrefix` retains legacy keys. Tables without `persistKey` keep settings only in memory and clear them on scope changes. See the [scope guide](./docs/guides/table-density.md#表格偏好与作用域) (Chinese).
 

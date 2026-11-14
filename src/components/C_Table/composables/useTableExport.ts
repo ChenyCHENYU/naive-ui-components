@@ -102,7 +102,8 @@ function getSafeFilename(filename: string | undefined): string {
 function exportCSV(
   data: DataRecord[],
   columns: TableColumn[],
-  config: ExportConfig
+  config: ExportConfig,
+  canDownload: () => boolean
 ): void {
   const sep = config.csvSeparator ?? ','
   const preventFormulaInjection = config.preventFormulaInjection !== false
@@ -129,6 +130,7 @@ function exportCSV(
   }
 
   // BOM + UTF-8
+  if (!canDownload()) return
   const blob = new Blob(['\uFEFF' + lines.join('\n')], {
     type: 'text/csv;charset=utf-8;',
   })
@@ -141,7 +143,8 @@ function exportCSV(
 async function exportXLSX(
   data: DataRecord[],
   columns: TableColumn[],
-  config: ExportConfig
+  config: ExportConfig,
+  canDownload: () => boolean
 ): Promise<void> {
   const exportCols = getExportColumns(columns, config.columnKeys)
 
@@ -149,11 +152,14 @@ async function exportXLSX(
   try {
     XLSX = await import('xlsx')
   } catch (error) {
+    if (!canDownload()) return
     // xlsx 未安装时降级到 CSV
     config.onFallback?.('xlsx', 'csv', error)
-    exportCSV(data, columns, { ...config, format: 'csv' })
+    exportCSV(data, columns, { ...config, format: 'csv' }, canDownload)
     return
   }
+
+  if (!canDownload()) return
 
   const headers = exportCols.map(col => col.title ?? col.key ?? '')
   const rows = data.map(row =>
@@ -165,7 +171,8 @@ async function exportXLSX(
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
 
-  XLSX.writeFile(wb, `${getSafeFilename(config.filename)}.xlsx`)
+  if (canDownload())
+    XLSX.writeFile(wb, `${getSafeFilename(config.filename)}.xlsx`)
 }
 
 /* ================= 下载工具 ================= */
@@ -191,11 +198,13 @@ function downloadBlob(blob: Blob, filename: string): void {
 export async function exportTableData(
   data: DataRecord[],
   columns: TableColumn[],
-  config: ExportConfig = {}
+  config: ExportConfig = {},
+  canDownload: () => boolean = () => true
 ): Promise<void> {
+  if (!canDownload()) return
   if (config.format === 'xlsx') {
-    await exportXLSX(data, columns, config)
+    await exportXLSX(data, columns, config, canDownload)
   } else {
-    exportCSV(data, columns, config)
+    exportCSV(data, columns, config, canDownload)
   }
 }

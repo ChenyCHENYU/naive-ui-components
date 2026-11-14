@@ -3,11 +3,16 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
 import {
   NButton,
+  NCheckbox,
   NConfigProvider,
   NDataTable,
   NInput,
   NSkeleton,
   NSelect,
+  NRadio,
+  NRadioButton,
+  NRadioGroup,
+  NSwitch,
   NTabPane,
   NTabs,
 } from 'naive-ui'
@@ -54,6 +59,7 @@ test.each(['light', 'dark'] as const)(
             createComponentTheme({
               mode,
               primary: '#ffff00',
+              onSolid: '#000000',
               warning: '#101010',
               bgCard: '#223344',
               bgMuted: '#334455',
@@ -164,7 +170,7 @@ test.each(['light', 'dark'] as const)(
     expect(
       wrapper.get<HTMLButtonElement>('.disabled-brand-button').element.disabled
     ).toBe(true)
-    expectColor(style('.warning-button', '--n-text-color'), '#ffffff')
+    expectColor(style('.warning-button', '--n-text-color'), '#000000')
     expectColor(style('.native-table', '--n-td-color'), '#223344')
     expectColor(style('.native-table', '--n-th-color'), '#334455')
     expectColor(style('.native-table', '--n-td-color-hover'), '#445566')
@@ -179,6 +185,109 @@ test.each(['light', 'dark'] as const)(
       ).backgroundColor,
       getComputedStyle(wrapper.get('.native-skeleton').element).backgroundColor
     )
+  }
+)
+
+test.each(['light', 'dark'] as const)(
+  '%s filled controls use white foregrounds while text and ghost buttons retain their semantic color',
+  async mode => {
+    const foreground = ref('#ffffff')
+    const types = ['primary', 'success', 'warning', 'error', 'info'] as const
+    const wrapper = mount(
+      defineComponent({
+        setup: () => () =>
+          h(
+            NConfigProvider,
+            createComponentTheme({
+              mode,
+              primary: '#409eff',
+              onSolid: foreground.value,
+            }),
+            () => [
+              ...types.map(type =>
+                h(
+                  NButton,
+                  { class: `solid-${type}`, type },
+                  {
+                    default: () => type,
+                    icon: () =>
+                      h('svg', { viewBox: '0 0 16 16', fill: 'currentColor' }),
+                  }
+                )
+              ),
+              h(
+                NButton,
+                { class: 'text-primary', type: 'primary', text: true },
+                () => 'Text'
+              ),
+              h(
+                NButton,
+                { class: 'ghost-primary', type: 'primary', ghost: true },
+                () => 'Ghost'
+              ),
+              h(
+                NCheckbox,
+                { class: 'checked-checkbox', checked: true },
+                () => 'Checked'
+              ),
+              h(
+                NCheckbox,
+                { class: 'disabled-checkbox', checked: true, disabled: true },
+                () => 'Disabled'
+              ),
+              h(NRadio, { class: 'checked-radio', checked: true }),
+              h(NRadioGroup, { value: 'one' }, () =>
+                h(
+                  NRadioButton,
+                  { class: 'checked-radio-button', value: 'one' },
+                  () => 'One'
+                )
+              ),
+              h(
+                NSwitch,
+                { class: 'checked-switch', value: true },
+                { checked: () => 'On' }
+              ),
+            ]
+          ),
+      }),
+      { attachTo: document.body }
+    )
+    await flushPromises()
+    const value = (selector: string, name: string) =>
+      wrapper.get<HTMLElement>(selector).element.style.getPropertyValue(name)
+    const checkSolid = (expected: string) => {
+      for (const type of types)
+        for (const state of ['', '-hover', '-pressed', '-focus', '-disabled'])
+          expectColor(
+            value(`.solid-${type}`, `--n-text-color${state}`),
+            expected
+          )
+      expectColor(value('.checked-checkbox', '--n-check-mark-color'), expected)
+      expectColor(
+        value('.disabled-checkbox', '--n-check-mark-color-disabled-checked'),
+        expected
+      )
+      expectColor(value('.checked-radio', '--n-dot-color-active'), expected)
+      expectColor(
+        value('.n-radio-group', '--n-button-text-color-active'),
+        expected
+      )
+      expectColor(value('.checked-switch', '--n-text-color'), expected)
+    }
+    checkSolid('#ffffff')
+    expectColor(value('.checked-radio', '--n-color-active'), '#409eff')
+    expectColor(value('.n-radio-group', '--n-button-color-active'), '#409eff')
+    expectColor(value('.text-primary', '--n-text-color'), '#409eff')
+    expectColor(value('.ghost-primary', '--n-text-color'), '#409eff')
+    expect(
+      wrapper.findAll('.n-button__icon svg[fill="currentColor"]')
+    ).toHaveLength(5)
+    foreground.value = '#000000'
+    await flushPromises()
+    checkSolid('#000000')
+    expectColor(value('.text-primary', '--n-text-color'), '#409eff')
+    expectColor(value('.ghost-primary', '--n-text-color'), '#409eff')
   }
 )
 

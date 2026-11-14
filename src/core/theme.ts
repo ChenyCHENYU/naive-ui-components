@@ -8,6 +8,8 @@ export interface ComponentThemeColors {
   warning: string
   error: string
   info: string
+  /** 品牌/语义实色面上的文字与图标，默认白色；亮色品牌可显式设黑色。 */
+  onSolid: string
   bgBody: string
   bgCard: string
   bgSurface: string
@@ -43,6 +45,7 @@ export const COMPONENT_COLOR_PALETTES = Object.freeze({
     warning: '#b45309',
     error: '#b91c1c',
     info: '#0369a1',
+    onSolid: '#ffffff',
     bgBody: '#f6f8fc',
     bgCard: '#ffffff',
     bgSurface: '#ffffff',
@@ -62,6 +65,7 @@ export const COMPONENT_COLOR_PALETTES = Object.freeze({
     warning: '#fbbf24',
     error: '#f87171',
     info: '#38bdf8',
+    onSolid: '#ffffff',
     bgBody: '#111827',
     bgCard: '#1f2937',
     bgSurface: '#253246',
@@ -85,6 +89,7 @@ export const COMPONENT_SEMANTIC_ROLES = Object.freeze([
   'warning',
   'error',
   'info',
+  'on-solid',
   'bg-body',
   'bg-card',
   'bg-surface',
@@ -153,7 +158,7 @@ export function mixThemeColor(
   return `#${result.join('')}`
 }
 
-/** 自动选择实色按钮的前景；不通过改变用户品牌色获得对比度。 */
+/** 为需要自动对比度的调用方计算黑/白前景；主题工厂使用显式 onSolid。 */
 export function themeForeground(value: string): '#ffffff' | '#000000' {
   const color = normalizeThemeColor(value).slice(1)
   const luminance = [0, 2, 4]

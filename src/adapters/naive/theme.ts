@@ -7,7 +7,6 @@ import {
   COMPONENT_CONTROL_HEIGHTS,
   mixThemeColor,
   resolveComponentThemeColors,
-  themeForeground,
   type ComponentThemeOptions,
 } from '../../core/theme'
 
@@ -15,6 +14,7 @@ import {
 declare module 'naive-ui' {
   interface CustomThemeCommonVars {
     robotComponentSkeletonColor?: string
+    robotComponentOnSolidColor?: string
   }
 }
 
@@ -86,6 +86,7 @@ export function createComponentTheme(
     hoverColor: palette.bgHover,
     pressedColor: palette.bgActive,
     robotComponentSkeletonColor: palette.skeletonBg,
+    robotComponentOnSolidColor: palette.onSolid,
     borderColor: palette.border,
     dividerColor: palette.border,
     textColor1: palette.text1,
@@ -127,32 +128,43 @@ export function createComponentTheme(
       InternalSelection: {
         border: controlBorder,
       },
+      Checkbox: {
+        checkMarkColor: palette.onSolid,
+        checkMarkColorDisabledChecked: palette.onSolid,
+      },
+      Radio: {
+        colorActive: primary,
+        dotColorActive: palette.onSolid,
+        buttonColorActive: primary,
+        buttonTextColorActive: palette.onSolid,
+      },
+      Switch: { textColor: palette.onSolid },
       Button: {
-        textColorPrimary: themeForeground(primary),
-        textColorDisabledPrimary: themeForeground(primary),
-        textColorHoverPrimary: themeForeground(common.primaryColorHover),
-        textColorPressedPrimary: themeForeground(common.primaryColorPressed),
-        textColorFocusPrimary: themeForeground(common.primaryColorHover),
-        textColorSuccess: themeForeground(success),
-        textColorDisabledSuccess: themeForeground(success),
-        textColorHoverSuccess: themeForeground(common.successColorHover),
-        textColorPressedSuccess: themeForeground(common.successColorPressed),
-        textColorFocusSuccess: themeForeground(common.successColorHover),
-        textColorWarning: themeForeground(warning),
-        textColorDisabledWarning: themeForeground(warning),
-        textColorHoverWarning: themeForeground(common.warningColorHover),
-        textColorPressedWarning: themeForeground(common.warningColorPressed),
-        textColorFocusWarning: themeForeground(common.warningColorHover),
-        textColorError: themeForeground(error),
-        textColorDisabledError: themeForeground(error),
-        textColorHoverError: themeForeground(common.errorColorHover),
-        textColorPressedError: themeForeground(common.errorColorPressed),
-        textColorFocusError: themeForeground(common.errorColorHover),
-        textColorInfo: themeForeground(info),
-        textColorDisabledInfo: themeForeground(info),
-        textColorHoverInfo: themeForeground(common.infoColorHover),
-        textColorPressedInfo: themeForeground(common.infoColorPressed),
-        textColorFocusInfo: themeForeground(common.infoColorHover),
+        textColorPrimary: palette.onSolid,
+        textColorDisabledPrimary: palette.onSolid,
+        textColorHoverPrimary: palette.onSolid,
+        textColorPressedPrimary: palette.onSolid,
+        textColorFocusPrimary: palette.onSolid,
+        textColorSuccess: palette.onSolid,
+        textColorDisabledSuccess: palette.onSolid,
+        textColorHoverSuccess: palette.onSolid,
+        textColorPressedSuccess: palette.onSolid,
+        textColorFocusSuccess: palette.onSolid,
+        textColorWarning: palette.onSolid,
+        textColorDisabledWarning: palette.onSolid,
+        textColorHoverWarning: palette.onSolid,
+        textColorPressedWarning: palette.onSolid,
+        textColorFocusWarning: palette.onSolid,
+        textColorError: palette.onSolid,
+        textColorDisabledError: palette.onSolid,
+        textColorHoverError: palette.onSolid,
+        textColorPressedError: palette.onSolid,
+        textColorFocusError: palette.onSolid,
+        textColorInfo: palette.onSolid,
+        textColorDisabledInfo: palette.onSolid,
+        textColorHoverInfo: palette.onSolid,
+        textColorPressedInfo: palette.onSolid,
+        textColorFocusInfo: palette.onSolid,
       },
     },
   }

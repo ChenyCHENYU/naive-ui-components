@@ -11,6 +11,20 @@
   position: relative;
 }
 
+// Naive 没有 checked 行类；只观察本行直属选择单元格，展开子表不会点亮父行。
+// 内阴影不占列宽，也不使用固定列的 ::before/::after 或控件焦点层。
+.c-table-wrapper
+  :deep(
+    tr:has(
+        > .n-data-table-td--selection
+          > :is(.n-checkbox--checked, .n-radio--checked)
+      )
+      > :first-child
+  ) {
+  box-shadow: inset var(--c-table-selected-marker-width, 2px) 0
+    var(--c-primary, var(--c-theme-primary, #2080f0));
+}
+
 // 显式密度才覆盖既有布局，变量停留在当前表格实例。
 .c-table-wrapper--compact {
   --c-table-gap: 8px;
@@ -181,10 +195,10 @@
   padding-inline: 8px;
 }
 
-// 操作列保持独立内距；窄列动作组自然换行，不能越过单元格边界。
+// 操作列随当前密度缩减内距；窄列动作组自然换行，不能越过单元格边界。
 :deep(.c-table-actions-column) {
   text-align: center !important;
-  padding: 8px 12px !important;
+  padding: var(--c-table-cell-padding, 8px 12px) !important;
 }
 
 // 操作按钮容器居中

@@ -31,7 +31,7 @@ import {
 import { applyFormatter } from './useTableGlobalConfig'
 import { renderEditComponent } from '../editRenderer'
 export { renderEditComponent } from '../editRenderer'
-import { flattenTableColumns } from '../helpers'
+import { flattenTableColumns, mapTableColumnLeaves } from '../helpers'
 import C_Icon from '../../C_Icon/index.vue'
 import { columnPixels, allocateColumnWidths } from './columnLayout'
 import { nativeCellEllipsis } from './nativeCellEllipsis'
@@ -710,6 +710,14 @@ export function useTableColumns(
       cols = tableManager.expandState.getTableColumns(
         cols as unknown as TableColumn[]
       ) as unknown as DataTableColumn[]
+    }
+    if (!config.value.enableSelection) {
+      // 显式禁用只置灰选择叶列，不介入原生展开渲染或修改调用方列定义。
+      cols = mapTableColumnLeaves(cols, column =>
+        column.type === 'selection'
+          ? { ...column, disabled: () => true }
+          : column
+      )
     }
 
     if (showActionsColumn.value) {
