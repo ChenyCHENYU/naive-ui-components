@@ -26,10 +26,14 @@ export const getFixedOptions = (column: TableColumn) => [
 ]
 
 /** 不可操作的特殊列 key */
-export const SPECIAL_COLUMN_KEYS = ['_actions'] as const
+export const SPECIAL_COLUMN_KEYS = [
+  '_actions',
+  '_index',
+  '_radio_selection',
+] as const
 
 /** 不可拖拽的列 type */
-export const SPECIAL_COLUMN_TYPES = ['selection', 'expand'] as const
+export const SPECIAL_COLUMN_TYPES = ['selection', 'expand', 'index'] as const
 
 /** 判断是否为特殊列（不可调宽、不可拖拽） */
 export const isSpecialColumn = (column: TableColumn): boolean =>

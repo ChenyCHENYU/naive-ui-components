@@ -8,6 +8,7 @@ import {
   h,
   ref,
   shallowRef,
+  shallowReactive,
   watch,
   computed,
   type Ref,
@@ -30,8 +31,9 @@ import {
 import { applyFormatter } from './useTableGlobalConfig'
 import { renderEditComponent } from '../editRenderer'
 export { renderEditComponent } from '../editRenderer'
-import { flattenTableColumns, mapTableColumnLeaves } from '../helpers'
+import { flattenTableColumns } from '../helpers'
 import C_Icon from '../../C_Icon/index.vue'
+import { columnPixels, allocateColumnWidths } from './columnLayout'
 
 /* ================= 内部辅助类型 ================= */
 
@@ -239,6 +241,9 @@ export interface UseTableColumnsOptions {
   columnWidth: number
   /** 区分使用侧显式统一列宽与内部默认值，不把默认值强加给弹性业务列。 */
   columnWidthExplicit?: boolean
+  /** body 可用宽用于分配；外宽用于区分容器变化与滚动条 gutter。 */
+  viewportWidth?: Readonly<Ref<{ width: number; outerWidth: number }>>
+  nativeLayout?: () => boolean
   /** 用户设定的 scrollX */
   scrollX?: number | string
   /** 行键获取函数 */
@@ -285,17 +290,6 @@ const isUtilityColumn = (column: DataTableColumn) =>
   column.key === '_radio_selection' ||
   column.key === '_actions'
 
-const columnPixels = (column: DataTableColumn): number | undefined => {
-  const { width } = column
-  const pixels =
-    typeof width === 'number'
-      ? width
-      : typeof width === 'string' && /^\s*\d+(?:\.\d+)?(?:px)?\s*$/.test(width)
-        ? Number.parseFloat(width)
-        : NaN
-  return Number.isFinite(pixels) && pixels >= 0 ? pixels : undefined
-}
-
 /**
  * 表格列处理引擎
  */
@@ -321,12 +315,16 @@ export function useTableColumns(
       ? `c_table_cols_${config.value.persistKey}`
       : undefined
   )
-  const pendingWidths = new Map<DataTableRowKey, number>()
+  const pendingWidths = shallowReactive(new Map<DataTableRowKey, number>())
+  // 手动调宽后保留其余列的实际宽度，直到真实容器外宽改变；150ms 只负责存偏好。
+  let frozenWidths: Map<DataTableRowKey, number> | undefined
+  let frozenOuterWidth = 0
   let resizeTimer: ReturnType<typeof setTimeout> | undefined
 
   watch(
     storageKey,
     (key, previousKey) => {
+      frozenWidths = undefined
       flushColumnWidths(previousKey)
       let stored: string | null = null
       try {
@@ -363,8 +361,9 @@ export function useTableColumns(
     set: handleColumnChange,
   })
   watch(
-    [rawColumns, storageKey],
+    [rawColumns, storageKey, () => options.nativeLayout?.()],
     ([columns, key], [previous, previousKey]) => {
+      frozenWidths = undefined
       if (!columns.length || (key !== previousKey && columns === previous))
         return
       // An empty loading schema can be temporary. A committed schema drops deleted keys.
@@ -609,10 +608,8 @@ export function useTableColumns(
 
     if (column.fixed) base.fixed = column.fixed
 
-    if (column.resizable && typeof base.width === 'number') {
-      base.resizable = true
-      base.maxWidth = Math.max(base.minWidth as number, column.maxWidth ?? 500)
-    }
+    base.resizable =
+      column.resizable ?? !isUtilityColumn(column as DataTableColumn)
 
     return base as unknown as DataTableColumn
   }
@@ -624,7 +621,6 @@ export function useTableColumns(
     let bodyFont: string | undefined
     let hasHeaderFloor = false
     let hasAutomatic = false
-    let flexibleKey: DataTableRowKey | undefined
     // Web 字体加载完后，CSS 字体声明可能不变，实际字宽会变化。
     const fontRevision = options.fontRevision?.value
     const getHeaderFloor = (column: TableColumn) => {
@@ -640,14 +636,6 @@ export function useTableColumns(
     }
     const getContentWidth = (column: TableColumn) => {
       hasAutomatic = true
-      const col = column as ColumnWithKey
-      if (
-        flexibleKey === undefined &&
-        !col.fixed &&
-        col.maxWidth === undefined &&
-        !isUtilityColumn(col as DataTableColumn)
-      )
-        flexibleKey = col.key
       bodyFont ??= options.getFont?.() ?? '13px sans-serif'
       return contentWidth(column, bodyFont, fontRevision)
     }
@@ -733,16 +721,56 @@ export function useTableColumns(
       })
     }
 
-    return { columns: cols, hasHeaderFloor, hasAutomatic, flexibleKey }
+    return { columns: cols, hasHeaderFloor, hasAutomatic }
   })
-  const computedColumns = computed(() => columnLayout.value.columns)
+  const usesNativeWidths = computed(() => {
+    if (options.nativeLayout?.()) return true
+    const visibleKeys = new Set(
+      flattenTableColumns(reactiveColumns.value, true).map(column => column.key)
+    )
+    // 隐藏列不影响当前布局；原始百分比声明在手动拖宽后仍保留原生兼容。
+    return flattenTableColumns(rawColumns.value, true).some(
+      column =>
+        visibleKeys.has(column.key) &&
+        column.width !== undefined &&
+        columnPixels(column) === undefined
+    )
+  })
+  const computedColumns = computed(() => {
+    const { columns } = columnLayout.value
+    const viewport = options.viewportWidth?.value
+    if (frozenWidths && (viewport?.outerWidth ?? 0) !== frozenOuterWidth)
+      frozenWidths = undefined
+    const native = usesNativeWidths.value
+    if (native) frozenWidths = undefined
+    const automatic = new Set(
+      flattenTableColumns(reactiveColumns.value)
+        .filter(
+          column =>
+            !column.type &&
+            column.key !== undefined &&
+            !isUtilityColumn(column as DataTableColumn) &&
+            column.width === undefined &&
+            column.autoWidth !== false &&
+            !options.columnWidthExplicit
+        )
+        .map(column => column.key!)
+    )
+    return allocateColumnWidths(columns, {
+      available: native ? 0 : (viewport?.width ?? 0),
+      automatic,
+      pending: pendingWidths,
+      frozen: frozenWidths,
+    })
+  })
 
   /* ================= 横向滚动 ================= */
 
   const computedScrollX = computed(() => {
     if (options.scrollX !== undefined) return options.scrollX
 
-    const { columns, hasHeaderFloor, hasAutomatic } = columnLayout.value
+    const { hasHeaderFloor, hasAutomatic } = columnLayout.value
+    const columns = computedColumns.value
     const leaves = flattenTableColumns(columns)
     const hasFixed =
       columns.some(col => col.fixed) || leaves.some(col => col.fixed)
@@ -762,34 +790,20 @@ export function useTableColumns(
     )
   })
 
-  // 保留原有测宽与偏好，原生布局只让一列未锁定的自动业务列吸收余量。
-  // 没有弹性业务列时按总列宽呈现，避免选择、展开、序号列被原生表格拉宽。
+  // 全数值列以最终列宽总和布局，不让 scrollX 的最小画布反向撑大任意列。
+  // 原生百分比等非数值宽度保留 Naive 布局；显式 table-layout 在组件层单独转发。
   const nativeLayout = computed(() => {
-    const { columns, flexibleKey } = columnLayout.value
-    const width = computedScrollX.value
+    const columns = computedColumns.value
     const leaves = flattenTableColumns(columns)
-    if (
-      typeof width !== 'number' ||
-      !leaves.some(isUtilityColumn) ||
-      leaves.some(col => columnPixels(col) === undefined)
-    )
-      return { columns }
-
-    if (flexibleKey === undefined)
-      return {
-        columns,
-        width: options.scrollX === undefined ? width : undefined,
-      }
+    const widths = leaves.map(columnPixels)
     return {
-      columns: mapTableColumnLeaves(columns, col =>
-        'key' in col && col.key === flexibleKey
-          ? {
-              ...col,
-              width: undefined,
-              minWidth: columnPixels(col),
-            }
-          : col
-      ),
+      columns,
+      width:
+        !usesNativeWidths.value &&
+        widths.length &&
+        widths.every(width => width !== undefined)
+          ? widths.reduce<number>((sum, width) => sum + width!, 0)
+          : undefined,
     }
   })
 
@@ -823,12 +837,34 @@ export function useTableColumns(
 
   const rememberColumnWidth = (key: DataTableRowKey, width: number) => {
     if (!Number.isFinite(width) || width < 0) return
+    const current = flattenTableColumns(computedColumns.value)
+    if (
+      current.some(
+        column =>
+          'key' in column &&
+          column.key === key &&
+          columnPixels(column) === width
+      )
+    )
+      return
+    if (!frozenWidths) {
+      frozenWidths = new Map(
+        current.flatMap(column => {
+          const pixels = columnPixels(column)
+          return 'key' in column && pixels !== undefined
+            ? [[column.key, pixels] as const]
+            : []
+        })
+      )
+      frozenOuterWidth = options.viewportWidth?.value.outerWidth ?? 0
+    }
     pendingWidths.set(key, width)
     clearTimeout(resizeTimer)
     resizeTimer = setTimeout(() => flushColumnWidths(storageKey.value), 150)
   }
 
   function handleColumnChange(columns: TableColumn[]) {
+    frozenWidths = undefined
     const updated = columns.map(column => {
       const width =
         column.key == null ? undefined : pendingWidths.get(column.key)
@@ -842,6 +878,7 @@ export function useTableColumns(
     )
   }
   const resetColumnPreferences = () => {
+    frozenWidths = undefined
     clearTimeout(resizeTimer)
     pendingWidths.clear()
     savePreferences({ columns: [] }, storageKey.value)

@@ -52,6 +52,10 @@ describe('C_Table combined feature contracts', () => {
     const [first, second] = wrapper
       .findAll('button')
       .filter(button => button.text() === '编辑')
+    // 受限操作列仍允许自然换行，避免文本动作越过单元格右侧。
+    expect(
+      (first!.element.closest('.n-space') as HTMLElement).style.flexWrap
+    ).toBe('wrap')
     expect(first!.find('svg[aria-hidden="true"] path').exists()).toBe(true)
     expect(second!.attributes('disabled')).toBeDefined()
     await first!.trigger('click')

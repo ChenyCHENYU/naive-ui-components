@@ -349,6 +349,7 @@ export function useTableActions<T extends object = DataRecord>(
           NButton,
           {
             key: entry.key,
+            class: 'c-table-inline-action',
             text: true,
             size: config.value.controlSize ?? 'small',
             type: entry.type,
@@ -412,9 +413,7 @@ export function useTableActions<T extends object = DataRecord>(
       isRowEditMode &&
       tableManager.editStates.rowEdit.isEditingRow(rowKeyValue)
     ) {
-      return h(NSpace, { size: 2, wrap: false }, () =>
-        renderRowEditButtons(rowKeyValue)
-      )
+      return h(NSpace, { size: 8 }, () => renderRowEditButtons(rowKeyValue))
     }
 
     const hasCustomEditAction = isValidApiFunction(actions.value?.edit)
@@ -429,7 +428,7 @@ export function useTableActions<T extends object = DataRecord>(
     const dropdown = renderCustomDropdown(row, index)
     if (dropdown) allButtons.push(dropdown)
 
-    return h(NSpace, { size: 2, wrap: false }, () => allButtons)
+    return h(NSpace, { size: 8 }, () => allButtons)
   }
 
   return { renderActions, isActionEnabled }

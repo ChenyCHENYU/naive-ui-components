@@ -154,7 +154,7 @@
   padding-inline: 8px;
 }
 
-// 操作列固定宽度（适应4个按钮的布局）
+// 操作列保持独立内距；窄列动作组自然换行，不能越过单元格边界。
 :deep(.c-table-actions-column) {
   text-align: center !important;
   padding: 8px 12px !important;
@@ -366,8 +366,8 @@
     margin-right: 4px !important;
   }
 
-  // 小尺寸按钮优化
-  &.n-button--small-type {
+  // 行内文本动作沿用 Naive 的无内边距尺寸，避免窄操作列被额外 padding 撑出。
+  &.n-button--small-type:not(.c-table-inline-action) {
     padding: 4px 8px;
     height: 28px;
     line-height: 20px;
@@ -448,7 +448,9 @@
   // 按钮在移动端的优化
   :deep(.n-button) {
     font-size: 11px !important;
-    padding: 3px 6px;
+    &:not(.c-table-inline-action) {
+      padding: 3px 6px;
+    }
 
     .n-icon {
       margin-right: 2px !important;

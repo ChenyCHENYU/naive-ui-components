@@ -153,6 +153,9 @@
       v-bind="{
         ...computedTableProps,
         ...$attrs,
+        tableLayout: ($attrs.tableLayout ??
+          $attrs['table-layout'] ??
+          computedTableProps.tableLayout) as DataTableProps['tableLayout'],
         onUnstableColumnResize: onNativeColumnResize,
       }"
       :flex-height="flexHeight"
@@ -171,7 +174,7 @@
       :checked-row-keys="crossPageCheckedKeys ?? tableManager.checkedKeys.value"
       @update:expanded-row-keys="tableManager.expandState?.handleExpandChange"
       @update:checked-row-keys="handleCheckedKeysChange"
-      :scroll-x="computedScrollX"
+      :scroll-x="nativeLayout.width ?? computedScrollX"
       :virtual-scroll="resolved.virtualScroll"
       :virtual-scroll-x="props.virtualScrollX"
       :min-row-height="
@@ -304,6 +307,8 @@
     onBeforeUnmount,
     useAttrs,
   } from 'vue'
+  import { useTableWidth } from './composables/useTableWidth'
+  import { isColumnWidthStale } from './composables/columnLayout'
   import type { SortableEvent } from 'sortablejs'
   import type Sortable from 'sortablejs'
   import {
@@ -384,6 +389,8 @@
   }[keyof TableEmits]
   const emit = publicEmit as unknown as (...event: InternalTableEvent) => void
   const tableRef = ref<DataTableInst | null>(null)
+  const tableWrapperRef = ref<HTMLElement>()
+  const attrs = useAttrs()
   const nativeTableVersion = ref(0)
 
   /* ================= CRUD 桥接 ================= */
@@ -597,7 +604,14 @@
     columnFontRevision.value++
   }
   let columnFontSet: FontFaceSet | undefined
+  const columnViewport = useTableWidth(tableWrapperRef, () => [
+    tableRef.value,
+    resolved.value.error?.show,
+  ])
   const columnState = useTableColumns({
+    viewportWidth: columnViewport,
+    nativeLayout: () =>
+      attrs.tableLayout != null || attrs['table-layout'] != null,
     rawColumns: effectiveColumns,
     data: normalizedData,
     fontRevision: columnFontRevision,
@@ -674,7 +688,6 @@
   })
   /* ================= 行拖拽（可选） ================= */
 
-  const attrs = useAttrs()
   const rowDragEnabled = computed(
     () =>
       resolved.value.rowDrag !== undefined &&
@@ -896,7 +909,6 @@
 
   /* ================= 列拖拽排序 ================= */
 
-  const tableWrapperRef = ref<HTMLElement>()
   const columnByKey = computed(
     () =>
       new Map(
@@ -1034,24 +1046,19 @@
     singleLine: resolved.value.singleLine,
     size: resolved.value.size,
     maxHeight: resolved.value.maxHeight,
-    // 自动测宽使用固定布局和实际 scrollX，长内容只在单元格内省略。
+    // 数值内容列由同一总宽驱动固定布局，长内容只在单元格内省略。
     // 原生 table-layout 仍允许通过 $attrs 显式覆盖。
     tableLayout:
-      computedScrollX.value !== undefined ? ('fixed' as const) : undefined,
+      nativeLayout.value.width !== undefined ||
+      computedScrollX.value !== undefined
+        ? ('fixed' as const)
+        : undefined,
   }))
 
   const nativeLayout = computed(() =>
-    attrs.tableLayout !== undefined || attrs['table-layout'] !== undefined
+    attrs.tableLayout != null || attrs['table-layout'] != null
       ? { columns: computedColumns.value }
-      : props.virtualScrollX
-        ? {
-            columns: computedColumns.value,
-            width:
-              typeof computedScrollX.value === 'number'
-                ? computedScrollX.value
-                : undefined,
-          }
-        : columnState.nativeLayout.value
+      : columnState.nativeLayout.value
   )
 
   /* ================= 编辑弹窗 ================= */
@@ -1188,7 +1195,7 @@
       )
     )
   let schemaColumnKeys = getSchemaColumnKeys(effectiveColumns.value)
-  watch(effectiveColumns, columns => {
+  watch([effectiveColumns, computedColumns], ([columns]) => {
     if (!columns.length) return
     const keys = getSchemaColumnKeys(columns)
     const removed = new Set([...schemaColumnKeys].filter(key => !keys.has(key)))
@@ -1202,13 +1209,7 @@
     )
     // A cached width overrides native CSS min/max. Refresh the cache only when invalid.
     for (const [key, width] of nativeResizedWidths) {
-      const column = displayed.get(key)
-      if (
-        !keys.has(key) ||
-        (column &&
-          (width < Number(column.minWidth ?? 0) ||
-            width > Number(column.maxWidth ?? Infinity)))
-      ) {
+      if (!keys.has(key) || isColumnWidthStale(displayed.get(key), width)) {
         renewNativeTable()
         break
       }

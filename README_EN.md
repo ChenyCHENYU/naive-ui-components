@@ -33,7 +33,7 @@
 | Selective loading       | 62 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.34.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.35.0**. See the [changelog](./CHANGELOG.md) for release details.
 
 0.33 adds optional remote tree paths, grouped options, search field settings and table editing contracts while retaining existing defaults. See the [compatibility and standalone demo guide](./docs/guides/component-contracts.md) (Chinese).
 
@@ -55,7 +55,7 @@ Set `searchOnReset: true` to run both search and reset through `onSearch`. Use `
 
 `C_Table` retains the native Naive UI empty state, including provider theme, locale and `componentOptions.DataTable.renderEmpty`. Use `#empty` to replace the content of one table.
 
-In narrow `C_Table` cells, edit actions wrap so the input stays visible. Utility columns retain compact widths; an ordinary automatic column absorbs spare space. Explicit widths and saved width preferences remain effective.
+In narrow `C_Table` cells, edit actions wrap so the input stays visible. Utility columns remain compact; automatic business columns share available space proportionally to their measured header/content bases, and preserve their bases with horizontal scrolling when they do not fit. Explicit widths and saved width preferences remain effective.
 
 `C_Table` shows row numbers and a pager by default and centers all cells, including numbers. Use `:row-number="false"` and `:pagination="false"` to disable the automatic index and pager respectively. Bind server-provided columns and rows directly as shown in the [usage guide](./docs/guides/usage.en.md).
 
@@ -236,10 +236,12 @@ See [development and build](./docs/engineering.en.md) for individual checks and 
 
 ## Content widths and status columns (0.24)
 
-Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted values and status labels. Automatic widths default to 80–360px; use `minWidth/maxWidth` to adjust. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
+Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted values and status labels. Content measurement bases default to 80–360px; final automatic widths may grow proportionally to fill available space. Use `minWidth/maxWidth` to adjust the bounds. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
 
 Use `{ key: 'status', status: true }` for themed status tags, or `status: { S1B: { label: 'Review', color: 'danger' }, S1C: 'success' }`. Semantic colors and CSS colors are supported. Unknown codes stay neutral, zero/false stay valid, and explicit render functions win. Display changes never rewrite data or export policy. Measurement does not invoke render functions; give graphical/custom columns explicit widths. Data and column updates remeasure a bounded sample; all caches remain component-local.
 
 Headers display their full text by default, independently of cell ellipsis. Initial layout, explicit or restored narrow widths, and interactive resizing share a minimum that includes the entire title and its sort/filter controls. The 360px measurement cap applies only to cell content; longer headers use internal horizontal scrolling. Custom header content should declare an appropriate minWidth.
 
 Compact forms and searches use a 4px row gap and a 2px empty feedback reserve; validation messages grow naturally. Compact form dialogs use tighter padding and internal scrolling. Per-field entrance and layout-size animations have been removed.
+
+The default adaptive layout distributes spare viewport space proportionally among automatic business columns; crowded tables keep their measured bases and scroll horizontally. Utility, explicit-width and manually resized columns retain their widths. Resolved numeric widths drive both the table and horizontal scroll range. Resizing changes only the target column, including after preferences are committed. Explicit native `table-layout` attributes or nonnumeric widths retain Naive UI layout semantics and its `scrollX` minimum.

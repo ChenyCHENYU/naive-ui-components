@@ -32,7 +32,7 @@ test('default auxiliary widths stay compact while an undeclared business width i
   })
   await flushPromises()
   const columns = finalColumns(wrapper)
-  expect(columns.map(column => column.width)).toEqual([40, 40, 50, undefined])
+  expect(columns.map(column => column.width)).toEqual([40, 40, 50, 80])
   expect(columns[3].minWidth).toBe(80)
   expect(wrapper.getComponent(NDataTable).props('tableLayout')).toBe('fixed')
   // 横向滚动预算使用真实辅助列与内容测量结果。
@@ -59,7 +59,7 @@ test('native horizontal virtualization retains numeric defaults and reacts when 
   expect(wrapper.attributes('style')).toContain('--c-table-native-width: 130px')
   await wrapper.setProps({ virtualScrollX: false })
   expect(wrapper.getComponent(NDataTable).props('virtualScrollX')).toBe(false)
-  expect(finalColumns(wrapper).map(col => col.width)).toEqual([50, undefined])
+  expect(finalColumns(wrapper).map(col => col.width)).toEqual([50, 80])
   expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(130)
 })
 
@@ -156,7 +156,7 @@ test.each(['table-layout', 'tableLayout'])(
   }
 )
 
-test('fixed table scrolling counts the preferred minimum of a naturally flexible business column', async () => {
+test('fixed table scrolling uses the measured minimum as a numeric business width', async () => {
   const wrapper = mount(C_Table<DataRecord>, {
     props: {
       data,
@@ -170,9 +170,7 @@ test('fixed table scrolling counts the preferred minimum of a naturally flexible
   })
   await flushPromises()
   expect(finalColumns(wrapper).map(column => column.width)).toEqual([
-    50,
-    undefined,
-    90,
+    50, 260, 90,
   ])
   expect(finalColumns(wrapper)[1].minWidth).toBe(260)
   expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(400)
@@ -198,7 +196,7 @@ test('reactive width policy changes retain rendering metadata and never mutate t
     props: { data, columns, config: baseConfig },
   })
   await flushPromises()
-  expect(finalColumns(wrapper)[1].width).toBeUndefined()
+  expect(finalColumns(wrapper)[1].width).toBe(96)
   expect(finalColumns(wrapper)[1].minWidth).toBe(96)
   expect(wrapper.getComponent(NDataTable).props('tableLayout')).toBe('fixed')
   await wrapper.setProps({
@@ -209,7 +207,7 @@ test('reactive width policy changes retain rendering metadata and never mutate t
   await wrapper.setProps({ config: baseConfig })
   const restored = finalColumns(wrapper)
   expect(restored[1]).toMatchObject({
-    width: undefined,
+    width: 96,
     minWidth: 96,
     align: 'left',
     titleAlign: 'right',

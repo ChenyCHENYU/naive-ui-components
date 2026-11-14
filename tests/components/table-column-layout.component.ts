@@ -17,7 +17,7 @@ const finalColumns = (wrapper: VueWrapper) =>
   >[]
 
 describe('table column layout contracts', () => {
-  test('numeric scrollX keeps its public canvas size without stretching utility columns', async () => {
+  test('numeric content columns own the canvas without stretching utility columns', async () => {
     const wrapper = mount(C_Table<DataRecord>, {
       props: {
         data,
@@ -32,23 +32,20 @@ describe('table column layout contracts', () => {
     })
     await flushPromises()
     expect(finalColumns(wrapper).map(column => column.width)).toEqual([
-      40,
-      40,
-      50,
-      undefined,
+      40, 40, 50, 150,
     ])
     expect(finalColumns(wrapper)[3].minWidth).toBe(150)
-    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(600)
+    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(280)
     await wrapper.setProps({
       columns: [{ key: 'name', title: 'Name', width: 150 }],
     })
     expect(finalColumns(wrapper).map(column => column.width)).toEqual([50, 150])
     expect(wrapper.attributes('style')).toContain(
-      '--c-table-native-width: 100%'
+      '--c-table-native-width: 200px'
     )
   })
 
-  test('keeps utility widths while only an unlocked automatic business column absorbs spare space', async () => {
+  test('keeps measured business widths numeric instead of assigning spare space to one column', async () => {
     const columns: TableColumn[] = [
       { key: 'hidden', title: 'Hidden', visible: false },
       { type: 'selection' },
@@ -65,19 +62,13 @@ describe('table column layout contracts', () => {
     await flushPromises()
     const result = finalColumns(wrapper)
     expect(result.map(column => column.width)).toEqual([
-      40,
-      40,
-      50,
-      120,
-      90,
-      undefined,
-      100,
+      40, 40, 50, 120, 90, 150, 100,
     ])
     expect(result[5].minWidth).toBe(150)
     expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(590)
     expect(columns[6].width).toBeUndefined()
     expect(wrapper.attributes('style')).toContain(
-      '--c-table-native-width: 100%'
+      '--c-table-native-width: 590px'
     )
   })
 
@@ -351,7 +342,7 @@ describe('table column layout contracts', () => {
     })
   })
 
-  test('reacts to display columnWidth and explicit scrollX updates without remounting', async () => {
+  test('reacts to columnWidth while numeric content retains its own scroll budget', async () => {
     const columns: TableColumn[] = [
       { type: 'index' },
       { key: 'id', title: 'ID', fixed: 'left' },
@@ -368,7 +359,7 @@ describe('table column layout contracts', () => {
     expect(finalColumns(wrapper).map(column => column.width)).toEqual([
       50, 120, 72,
     ])
-    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(600)
+    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(242)
     await wrapper.setProps({
       config: { ...baseConfig, display: { columnWidth: 88, scrollX: '60vw' } },
     })
@@ -376,7 +367,7 @@ describe('table column layout contracts', () => {
     expect(finalColumns(wrapper).map(column => column.width)).toEqual([
       50, 88, 72,
     ])
-    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe('60vw')
+    expect(wrapper.getComponent(NDataTable).props('scrollX')).toBe(210)
     await wrapper.setProps({
       config: { ...baseConfig, display: { columnWidth: 88 } },
     })
