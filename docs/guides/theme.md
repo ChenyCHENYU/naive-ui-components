@@ -58,6 +58,8 @@
 
 圆角按角色区分：控件使用 `radius`，小工具使用 `radius-sm`，面板使用 `radius-panel`，大卡片使用 `radius-lg`。分割手柄、头像、聊天气泡、流程节点保留自己的形状，避免机械地统一成同一种圆角。
 
+步骤条 `icon` 可直接传 `mdi:account`，也兼容单个 `i-mdi:account`。这两种写法使用共享图标组件；已有自定义 CSS 类和组合类仍按原方式渲染。自定义 Iconify 图标沿用 `C_Icon` 的本地注册与加载机制，不要求业务生成 UnoCSS 图标类。
+
 ## 局部覆盖与边界
 
 公开的 `--c-primary`、`--c-bg-card`、`--c-text-1`、`--c-border`、`--c-radius` 等 CSS 变量可以局部覆盖自绘区域。内部 `--c-theme-*` 只提供来自 Provider 的默认值，不应由业务代码依赖。公开变量优先于内部默认值。

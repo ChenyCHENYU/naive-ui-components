@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.37.1
+
+### Patch Changes
+
+- 步骤条的单个 Iconify 名称和 `i-` 前缀图标通过共享图标组件渲染，不再要求宿主生成对应 CSS；只在使用这类图标时加载图标运行时，默认步骤与旧 CSS 类用法保持轻量。原有组合类、步骤状态与点击行为继续兼容。
+
 ## 0.37.0
 
 ### Minor Changes

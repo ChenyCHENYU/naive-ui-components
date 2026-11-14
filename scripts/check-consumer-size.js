@@ -31,6 +31,14 @@ const cases = [
     forbiddenComponents: /\/C_Tree\d*\.js$/,
   },
   {
+    name: 'C_Steps',
+    component: 'C_Steps',
+    css: 'C_Steps.css',
+    props: "{ steps: [{ title: 'Draft' }, { title: 'Review' }] }",
+    budget: 45 * 1024,
+    forbiddenComponents: /\/C_Icon\d*\.js$/,
+  },
+  {
     name: 'C_Form/base',
     component: 'C_Form',
     css: 'C_Form.base.css',

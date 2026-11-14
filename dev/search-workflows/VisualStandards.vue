@@ -142,8 +142,16 @@
   ]
   const step = ref(1)
   const steps = [
-    { title: '基础资料', description: '保持字段清晰可读' },
-    { title: '协作配置', description: '确认当前处理阶段' },
+    {
+      title: '基础资料',
+      description: '保持字段清晰可读',
+      icon: 'mdi:form-select',
+    },
+    {
+      title: '协作配置',
+      description: '确认当前处理阶段',
+      icon: 'i-mdi:tune-variant',
+    },
     { title: '完成发布', description: '让结果有明确反馈' },
   ]
   const activeTab = ref<TabsValue>('overview')

@@ -27,13 +27,21 @@
     >
       <div class="step-indicator">
         <div class="step-icon">
+          <C_Icon
+            v-if="iconNames[index]"
+            :name="iconNames[index]"
+            :size="16"
+            aria-hidden="true"
+          />
           <i
-            v-if="step.icon"
+            v-else-if="step.icon"
             :class="step.icon"
+            aria-hidden="true"
           ></i>
           <i
             v-else-if="getStatus(index) === 'finish'"
             class="i-mdi:check"
+            aria-hidden="true"
           ></i>
           <span
             v-else
@@ -65,11 +73,14 @@
 </template>
 
 <script setup lang="ts">
+  import { computed, defineAsyncComponent } from 'vue'
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import type { StepItem } from './types'
 
   defineOptions({ name: 'C_Steps' })
   const themeStyle = useComponentTheme()
+  // 默认数字与历史 CSS 图标不加载 Iconify；只有命中的自定义图标才实例化。
+  const C_Icon = defineAsyncComponent(() => import('../C_Icon/index.vue'))
 
   interface LegacyStepItem extends StepItem {
     title: string
@@ -102,6 +113,16 @@
     'update:current': [number]
     change: [number]
   }>()
+
+  // 只识别单个 Iconify 标识；旧 CSS 类及组合类继续按原样交给宿主样式。
+  const iconNames = computed(() =>
+    props.steps.map(step => {
+      const name = step.icon?.replace(/^i-/, '') ?? ''
+      return /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
+        ? name
+        : ''
+    })
+  )
 
   const getStatus = (index: number) => {
     if (props.steps[index].status) {
