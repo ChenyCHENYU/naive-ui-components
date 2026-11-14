@@ -1,6 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import fs from 'node:fs'
-import path from 'node:path'
 import { computed, effectScope, h, nextTick, ref, type VNode } from 'vue'
 import { useCellEdit } from '../src/components/C_Table/composables/useCellEdit'
 import { useCrossPageSelection } from '../src/components/C_Table/composables/useCrossPageSelection'
@@ -10,6 +8,7 @@ import { useRowEdit } from '../src/components/C_Table/composables/useRowEdit'
 import { useTableQuery } from '../src/components/C_Table/composables/useTableQuery'
 import { useTableExpand } from '../src/components/C_Table/composables/useTableExpand'
 import { useTableActions } from '../src/components/C_Table/composables/useTableActions'
+import { nativeSummary } from '../src/components/C_Table/composables/nativeColumnLayout'
 import {
   collectTreeBranchKeys,
   validateTableRowKeys,
@@ -88,13 +87,26 @@ describe('C_Table row-key contract', () => {
 
 describe('C_Table summary contract', () => {
   test('passes the keyed summary row directly to Naive UI', () => {
-    const source = fs.readFileSync(
-      path.resolve(import.meta.dir, '../src/components/C_Table/index.vue'),
-      'utf8'
-    )
-    expect(source).toContain(
-      'const summaryFn = computed(() => resolved.value.summaryRender)'
-    )
+    const result = { name: { value: '合计' }, amount: { value: 0 } }
+    const render = () => result
+    const summary = nativeSummary(render, undefined)!
+    expect(summary).toBe(render)
+    expect(summary([{ id: 1 }])).toBe(result)
+  })
+
+  test('preserves keyed totals and original spans when the native canvas has a gap', () => {
+    const result = { name: { value: '合计', colSpan: 2 }, amount: { value: 0 } }
+    const summary = nativeSummary(() => result, {
+      index: 1,
+      keys: ['name', 'amount'],
+    })!
+    const projected = summary([{ id: 1 }])
+    expect(projected).toEqual({
+      name: { value: '合计', colSpan: 3 },
+      amount: { value: 0 },
+    })
+    expect(result.name.colSpan).toBe(2)
+    expect(projected).not.toBe(result)
   })
 })
 

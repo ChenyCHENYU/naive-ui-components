@@ -33,7 +33,7 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.37.1**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.37.2**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.33 增强树的远程路径定位、分组选项、搜索字段设置和表格编辑契约，并保留原有默认用法。见[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 
@@ -139,6 +139,27 @@ bun add vue@^3.5.3 naive-ui@^2.35.0
 ```
 
 表单内置提交、重置与校验流程。实际保存时，将异步请求放入 `config.onSubmit` 并等待完成；`@submit` 用于完成通知。表单布局、验证规则、弹窗与远程表格示例见[使用指南](./docs/guides/usage.md)。
+
+### 表格偏好按账号隔离
+
+应用启动时注册一次。`session` 是项目已有的响应式身份状态，未登录或身份尚未就绪时为 `undefined`：
+
+```ts
+import { TABLE_GLOBAL_CONFIG_KEY } from '@robot-admin/naive-ui-components/config'
+
+app.provide(TABLE_GLOBAL_CONFIG_KEY, {
+  get persistPrefix() {
+    const scope = session.value
+    return scope
+      ? JSON.stringify([scope.tenantId, scope.companyId, scope.userId])
+      : undefined
+  },
+})
+```
+
+页面只配置稳定表 ID，如 `config: { persistKey: 'shipping' }`。组件分别保存各范围的列显隐、顺序和宽度，不改写业务列定义；`C_Density` 内同样生效。`/config` 是轻量入口，与 `/C_Table` 导出同一个配置键。
+
+启动时就声明该 getter；切换账号只更新响应式身份值，不删除字段。显式 `persistPrefix` 为 `undefined`、空串或空白时不读取、写入偏好，也不回退旧缓存。未配置 `persistPrefix` 的项目保留旧键；没有 `persistKey` 的表格仅保留临时设置，并在范围变化时清空。详见[表格偏好与作用域](./docs/guides/table-density.md#表格偏好与作用域)。
 
 ## 按需加载与样式
 
@@ -260,10 +281,10 @@ const columns = [
 
 状态列复用 Naive UI 标签和主题。支持 `success/warning/danger/info/neutral`，也支持 Naive 的 `error/default/primary` 和 CSS 颜色。未知代码保持中性；`0/false` 是有效值，空值保留空态。显式 render 优先；formatter 文字会用于默认颜色判断和测宽。状态配置只改变展示，不会改写数据、排序、筛选或导出。
 
-默认智能布局会在缓存的内容基准上分配可用宽度；空间充足时自动业务列按基准比例铺满，空间不足时不压缩表头。最终数值列宽总和同时决定表格与横向滚动范围，`scrollX` 不再挑某一列单独撑大。拖动只改变目标列，偏好提交后不重新分配余量。需要 Naive UI 原生铺满或强制最小滚动宽度时，显式传 `table-layout="fixed"` / `table-layout="auto"`；百分比等非数值列宽也沿用原生布局。
+默认智能布局会在缓存的内容基准上分配可用宽度；空间充足时自动业务列按基准比例铺满，空间不足时不压缩表头。数值列宽控制业务列与横向滚动，`scrollX` 不再挑某一列单独撑大。拖动只改变目标列，保存后继续保留原来的单行省略、提示和默认下限。操作列默认固定右侧；缩列后空余画布由包内承接，右固定区持续贴住视口，其他业务列保持原宽。需要 Naive UI 原生铺满或强制最小滚动宽度时，显式传 `table-layout="fixed"` / `table-layout="auto"`；百分比等非数值列宽也沿用原生布局。
 
 测宽不额外挂载或执行 render；图标、进度条和复杂自定义内容请显式指定 width。数据与列配置更新会触发新的有界测量，配置和缓存只属于当前组件实例。此版本将未声明宽度的业务列由自然布局改为有界内容宽度；既有显式布局及原生 table-layout 覆盖仍保留。
 
-表头默认完整展示，不随单元格 ellipsis 配置省略。所有业务列的最小宽度计入完整标题及排序/筛选控件；初始布局、显式窄列宽、恢复列设置与拖拽缩列均受此下限保护。360px 仅限制数据内容测宽；标题更长时允许超过该值，并使用表格内部横向滚动。复杂自定义标题请配置 minWidth。
+表头默认完整展示，不随单元格 ellipsis 配置省略。所有业务列的最小宽度计入完整标题及排序/筛选控件；初始布局、显式窄列宽、恢复列设置与拖拽缩列均受此下限保护。360px 仅限制数据内容测宽；标题更长时允许超过该值，并使用表格内部横向滚动。复杂自定义标题请配置 minWidth。 自动列内的原生链接、按钮随省略容器收缩，悬停可查看完整内容；明确配置 `ellipsis: false` 时保留多行呈现。
 
 紧凑表单与搜索的纵向间距收紧至 4px，空反馈区 2px，校验按内容自然撑高。表单弹窗同步收紧并支持内部滚动；移除逐字段排队入场和布局尺寸动画。详情的左右同排展示见 Robot_Admin 产销模块。

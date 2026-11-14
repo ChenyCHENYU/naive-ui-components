@@ -293,3 +293,142 @@ test('resizing does not resample offscreen values in untouched automatic columns
   await flushPromises()
   expect(sampled).toBe(initial)
 })
+
+test('saving a manual width never removes an automatic column single-line display or its baseline minimum', async () => {
+  vi.useFakeTimers()
+  const wrapper = mount(C_Table<DataRecord>, {
+    props: {
+      data: rows,
+      columns,
+      config: { ...baseConfig, persistKey: 'display-policy' },
+    },
+  })
+  await flushPromises()
+  const target = leaves(wrapper)[2]
+  expect(target.minWidth).toBe(80)
+  expect(target.ellipsis).toEqual({ tooltip: true })
+  const resize = wrapper
+    .getComponent(NDataTable)
+    .props('onUnstableColumnResize')!
+  resize(112, 112, target as Parameters<typeof resize>[2], () =>
+    Number(target.width)
+  )
+  await flushPromises()
+  await vi.advanceTimersByTimeAsync(149)
+  expect(leaves(wrapper)[2]).toMatchObject({
+    minWidth: 80,
+    ellipsis: { tooltip: true },
+  })
+  await vi.advanceTimersByTimeAsync(1)
+  await flushPromises()
+  expect(leaves(wrapper)[2]).toMatchObject({
+    minWidth: 80,
+    ellipsis: { tooltip: true },
+  })
+})
+
+test('restoring a nested column preference preserves its display policy and lower bound on a second gesture', async () => {
+  vi.useFakeTimers()
+  localStorage.setItem(
+    'c_table_cols_display-restore',
+    JSON.stringify({ columns: [{ key: 'grade', width: 112 }] })
+  )
+  const wrapper = mount(C_Table<DataRecord>, {
+    props: {
+      data: rows,
+      columns: [{ type: 'group', title: '物料', children: columns }],
+      config: { ...baseConfig, persistKey: 'display-restore' },
+    },
+  })
+  await flushPromises()
+  const target = leaves(wrapper)[2]
+  expect(target).toMatchObject({
+    width: 112,
+    minWidth: 80,
+    ellipsis: { tooltip: true },
+  })
+  const resize = wrapper
+    .getComponent(NDataTable)
+    .props('onUnstableColumnResize')!
+  const limited = Math.max(40, Number(target.minWidth))
+  resize(40, limited, target as Parameters<typeof resize>[2], () => 112)
+  await flushPromises()
+  await vi.advanceTimersByTimeAsync(150)
+  await flushPromises()
+  expect(leaves(wrapper)[2]).toMatchObject({
+    width: 80,
+    minWidth: 80,
+    ellipsis: { tooltip: true },
+  })
+  wrapper.unmount()
+  const restored = mount(C_Table<DataRecord>, {
+    props: {
+      data: rows,
+      columns,
+      config: { ...baseConfig, persistKey: 'display-restore' },
+    },
+  })
+  await flushPromises()
+  expect(leaves(restored)[2]).toMatchObject({
+    width: 80,
+    minWidth: 80,
+    ellipsis: { tooltip: true },
+  })
+})
+
+test.each([{ width: 110 }, { ellipsis: false }, { autoWidth: false }])(
+  'manual preferences respect declared wrapping/display policy: %j',
+  async declaration => {
+    vi.useFakeTimers()
+    const declared: TableColumn[] = [
+      { key: 'grade', title: '钢种', ...declaration },
+    ]
+    const wrapper = mount(C_Table<DataRecord>, {
+      props: {
+        data: rows,
+        columns: declared,
+        config: { ...baseConfig, persistKey: 'explicit-display' },
+      },
+    })
+    await flushPromises()
+    const target = leaves(wrapper)[1]
+    const policy = { minWidth: target.minWidth, ellipsis: target.ellipsis }
+    const resize = wrapper
+      .getComponent(NDataTable)
+      .props('onUnstableColumnResize')!
+    resize(140, 140, target as Parameters<typeof resize>[2], () =>
+      Number(target.width)
+    )
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(150)
+    await flushPromises()
+    expect({
+      minWidth: leaves(wrapper)[1].minWidth,
+      ellipsis: leaves(wrapper)[1].ellipsis,
+    }).toEqual(policy)
+  }
+)
+
+test('an explicit schema width can replace the automatic display policy without stale metadata', async () => {
+  localStorage.setItem(
+    'c_table_cols_schema-display',
+    JSON.stringify({ columns: [{ key: 'grade', width: 112 }] })
+  )
+  const wrapper = mount(C_Table<DataRecord>, {
+    props: {
+      data: rows,
+      columns,
+      config: { ...baseConfig, persistKey: 'schema-display' },
+    },
+  })
+  await flushPromises()
+  expect(leaves(wrapper)[2].ellipsis).toEqual({ tooltip: true })
+  await wrapper.setProps({
+    columns: columns.map(column =>
+      column.key === 'grade' ? { ...column, width: 120 } : column
+    ),
+  })
+  expect(leaves(wrapper)[2].ellipsis).toBeUndefined()
+  await wrapper.setProps({ columns })
+  expect(leaves(wrapper)[2].ellipsis).toEqual({ tooltip: true })
+})

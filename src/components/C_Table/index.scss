@@ -144,6 +144,29 @@
   width: var(--c-table-native-width, 100%);
 }
 
+// 装饰空隙只补足固定右区前的画布，保留原生行背景、边框和悬停。
+:deep(.c-table-layout-gap) {
+  padding-inline: 0 !important;
+  border-inline: 0 !important;
+}
+
+// 原生链接/按钮也在省略容器内收缩，避免只裁掉自定义渲染内容。
+.c-table-wrapper
+  :deep(
+    .n-data-table-td
+      .n-ellipsis:not(.n-ellipsis--line-clamp)
+      > span
+      > :is(button, a):not(.n-button)
+  ) {
+  display: inline-block;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 // 分页组件样式
 .pagination-wrapper {
   margin-top: var(--c-table-gap, 16px);

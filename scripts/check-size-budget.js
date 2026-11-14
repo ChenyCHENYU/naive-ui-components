@@ -16,7 +16,7 @@ const budgets = {
   'style.css': { min: 430 * 1024, max: 688 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
-  'C_Table.base.css': { min: 30 * 1024, max: 65 * 1024 },
+  'C_Table.base.css': { min: 30 * 1024, max: 66 * 1024 },
   'C_Table.css': { min: 90 * 1024, max: 148 * 1024 },
 }
 
@@ -70,7 +70,10 @@ const totalSize = files.reduce(
 // 0.36 人员选择、端口/分支校验、声明和流程基础 CSS 共约 96.1 KiB，追加 100 KiB。
 // 每个公开入口的首屏/按需加载预算保持不变，由 check:consumer-size 独立约束。
 // 0.37 相对官方 0.36.0 增加约 118.7 KiB（CSS 约 69.2 KiB）；消耗既有余量并追加 116 KiB。
-const totalLimit = 4 * 1024 * 1024 + 640 * 1024
+// 0.37.2 缩列展示、右区投影和偏好范围隔离相对官方 0.37.1 净增 8416 B；
+// 消耗原余量 554 B 后追加 8 KiB。表格基础样式闭包仅增加 424 B，限额追加 1 KiB；
+// 首屏/按需 gzip、懒加载和性能限额保持不变。
+const totalLimit = 4 * 1024 * 1024 + 648 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

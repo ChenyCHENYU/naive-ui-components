@@ -5,6 +5,11 @@ export type {
   ComponentLocale,
   ComponentLocaleName,
 } from './core/contracts'
-export { COMPONENT_FEEDBACK_KEY, COMPONENT_LOCALE_KEY } from './context'
+export {
+  COMPONENT_FEEDBACK_KEY,
+  COMPONENT_LOCALE_KEY,
+  TABLE_GLOBAL_CONFIG_KEY,
+} from './context'
+export type { TableGlobalConfig } from './context'
 export { useComponentLocale } from './composables/useComponentLocale'
 export { useComponentFeedback } from './adapters/naive/feedback'

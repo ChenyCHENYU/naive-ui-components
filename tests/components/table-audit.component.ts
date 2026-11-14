@@ -299,3 +299,58 @@ test('column drag maps actual headers to business columns and restores DOM befor
     'B',
   ])
 })
+
+test('decorative canvas gap cannot be dragged or corrupt a business drop before the fixed-right region', async () => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    () => new DOMRect(0, 0, 900, 200)
+  )
+  const columns: TableColumn[] = [
+    { key: 'a', title: 'A', width: 100 },
+    { key: 'b', title: 'B', width: 100 },
+    { key: 'c', title: 'C', width: 100 },
+    { key: '_actions', title: '操作', width: 124 },
+  ]
+  const wrapper = mount(C_Table<DataRecord>, {
+    props: {
+      columns,
+      rowNumber: false,
+      data: [{ id: 1, a: 'A', b: 'B', c: 'C' }],
+      config: {
+        toolbar: { show: false },
+        pagination: false,
+        columnDrag: true,
+        actions: { detail: () => undefined },
+      },
+    },
+  })
+  await flushPromises()
+  const header = wrapper.get('.n-data-table-thead tr').element as HTMLElement
+  await vi.waitFor(() => expect(Sortable.get(header)).toBeTruthy())
+  const sortable = Sortable.get(header)!
+  const gap = wrapper.get('th.c-table-layout-gap').element as HTMLElement
+  const cells = [...header.children] as HTMLElement[]
+  const filter = sortable.option('filter') as (
+    event: Event,
+    target: HTMLElement,
+    instance: Sortable
+  ) => boolean
+  expect(filter(new Event('mousedown'), gap, sortable)).toBe(true)
+  const event = {
+    item: cells[0],
+    from: header,
+    to: header,
+    oldIndex: 0,
+    newIndex: 2,
+  } as SortableEvent
+  sortable.option('onStart')?.(event)
+  header.insertBefore(event.item, gap)
+  sortable.option('onEnd')?.(event)
+  expect([...header.children]).toEqual(cells)
+  const moved = wrapper.emitted('column-change')!.at(-1)![0] as TableColumn[]
+  expect(moved.map(column => column.key)).toEqual(['b', 'c', 'a', '_actions'])
+  expect(moved).not.toContainEqual(
+    expect.objectContaining({ className: 'c-table-layout-gap' })
+  )
+  expect(columns.map(column => column.key)).toEqual(['a', 'b', 'c', '_actions'])
+})

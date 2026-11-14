@@ -34,6 +34,7 @@ export { renderEditComponent } from '../editRenderer'
 import { flattenTableColumns } from '../helpers'
 import C_Icon from '../../C_Icon/index.vue'
 import { columnPixels, allocateColumnWidths } from './columnLayout'
+import { nativeCellEllipsis } from './nativeCellEllipsis'
 
 /* ================= 内部辅助类型 ================= */
 
@@ -244,6 +245,8 @@ export interface UseTableColumnsOptions {
   /** body 可用宽用于分配；外宽用于区分容器变化与滚动条 gutter。 */
   viewportWidth?: Readonly<Ref<{ width: number; outerWidth: number }>>
   nativeLayout?: () => boolean
+  /** @internal 应用级范围变化也清理未启用存储的列偏好。 */
+  preferenceScope?: () => string | undefined
   /** 用户设定的 scrollX */
   scrollX?: number | string
   /** 行键获取函数 */
@@ -322,8 +325,8 @@ export function useTableColumns(
   let resizeTimer: ReturnType<typeof setTimeout> | undefined
 
   watch(
-    storageKey,
-    (key, previousKey) => {
+    [storageKey, () => options.preferenceScope?.()],
+    ([key], [previousKey]) => {
       frozenWidths = undefined
       flushColumnWidths(previousKey)
       let stored: string | null = null
@@ -346,16 +349,33 @@ export function useTableColumns(
     const actions = columns.find(column => column.key === '_actions')
     return [
       ...regular,
-      actions ?? {
-        key: '_actions',
-        title: '操作',
-        width: 180,
-        editable: false,
-        visible: true,
-        fixed: 'right',
-      },
+      actions
+        ? { ...actions, fixed: actions.fixed ?? 'right' }
+        : {
+            key: '_actions',
+            title: '操作',
+            width: 180,
+            editable: false,
+            visible: true,
+            fixed: 'right',
+          },
     ]
   })
+  // 宽度偏好只改变几何尺寸；单行展示和默认下限由原始声明决定。
+  const automaticColumnKeys = computed(
+    () =>
+      new Set(
+        flattenTableColumns(rawColumns.value)
+          .filter(
+            column =>
+              !column.type &&
+              column.width === undefined &&
+              column.autoWidth !== false &&
+              !options.columnWidthExplicit
+          )
+          .map(column => column.key)
+      )
+  )
   const reactiveColumns = computed({
     get: () => mergeColumnPreferences(baseColumns.value, preferences.value),
     set: handleColumnChange,
@@ -589,7 +609,7 @@ export function useTableColumns(
   ): DataTableColumn => {
     const col = column as ColumnWithKey
     const autoWidth = !options.columnWidthExplicit && col.autoWidth !== false
-    const automatic = col.width === undefined && autoWidth
+    const automatic = automaticColumnKeys.value.has(col.key)
     const width =
       col.width ??
       (autoWidth ? getContentWidth(column) : (options.columnWidth ?? 180))
@@ -602,8 +622,12 @@ export function useTableColumns(
       ellipsis: col.ellipsis ?? (automatic ? { tooltip: true } : undefined),
       titleAlign: col.titleAlign || ('center' as const),
       align: col.align || ('center' as const),
-      render: (rowData: DataRecord, rowIndex: number) =>
-        renderCell(column, rowData, rowIndex),
+      render: (rowData: DataRecord, rowIndex: number) => {
+        const cell = renderCell(column, rowData, rowIndex)
+        return automatic && col.ellipsis === undefined
+          ? nativeCellEllipsis(cell)
+          : cell
+      },
     }
 
     if (column.fixed) base.fixed = column.fixed

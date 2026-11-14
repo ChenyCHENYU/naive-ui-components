@@ -2,6 +2,7 @@ import type { InjectionKey, ComputedRef } from 'vue'
 import type { ComponentDensity } from './core/density'
 import type { FormConfig } from './components/C_Form/composables/useFormConfig'
 import type { ComponentFeedback, ComponentLocale } from './core/contracts'
+import type { TableGlobalConfig } from './components/C_Table/composables/useTableGlobalConfig'
 // 按需安装共享组件自身配置，不加载组件或 Naive UI 反馈适配器。
 export type {
   ConfirmOptions,
@@ -28,3 +29,9 @@ export const FORM_GLOBAL_CONFIG_KEY: InjectionKey<FormConfig> = Symbol(
 )
 
 export type { FormConfig } from './components/C_Form/composables/useFormConfig'
+
+/** 表格默认配置与独立入口共享同一协议，不加载表格渲染代码。 */
+export const TABLE_GLOBAL_CONFIG_KEY: InjectionKey<TableGlobalConfig> = Symbol(
+  'C_TABLE_GLOBAL_CONFIG'
+)
+export type { TableGlobalConfig } from './components/C_Table/composables/useTableGlobalConfig'

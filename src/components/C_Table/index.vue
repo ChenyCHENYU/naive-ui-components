@@ -311,6 +311,11 @@
   } from 'vue'
   import { useTableWidth } from './composables/useTableWidth'
   import { isColumnWidthStale } from './composables/columnLayout'
+  import {
+    nativeColumnLayout,
+    nativeSummary,
+    type NativeColumnLayout,
+  } from './composables/nativeColumnLayout'
   import type { SortableEvent } from 'sortablejs'
   import type Sortable from 'sortablejs'
   import {
@@ -614,6 +619,7 @@
   ])
   const columnState = useTableColumns({
     viewportWidth: columnViewport,
+    preferenceScope: () => globalConfig.persistPrefix,
     nativeLayout: () =>
       attrs.tableLayout != null || attrs['table-layout'] != null,
     rawColumns: effectiveColumns,
@@ -909,7 +915,16 @@
 
   /* ================= 合计行 ================= */
 
-  const summaryFn = computed(() => resolved.value.summaryRender)
+  const summaryGap = computed(() => nativeLayout.value.gap)
+  const summaryFn = computed(() => {
+    const summary = resolved.value.summaryRender ?? attrs.summary
+    return nativeSummary(
+      typeof summary === 'function'
+        ? (summary as NonNullable<DataTableProps['summary']>)
+        : undefined,
+      summaryGap.value
+    )
+  })
 
   /* ================= 列拖拽排序 ================= */
 
@@ -950,8 +965,28 @@
         const source = columnByKey.value.get(column.key)
         return source?.type ? undefined : source
       }
-      const headerIndex = (element: HTMLElement) =>
-        [...headerRow.children].indexOf(element.closest('[data-col-key]')!)
+      const headerIndex = (element: HTMLElement) => {
+        const key = element
+          .closest('[data-col-key]')
+          ?.getAttribute('data-col-key')
+        return computedColumns.value.findIndex(
+          column => 'key' in column && String(column.key) === key
+        )
+      }
+      // Sortable 已移动 item；落点取其后继的原逻辑位置，装饰列不参与排序。
+      const dropHeaderIndex = (
+        item: HTMLElement,
+        from: number,
+        count: number
+      ) => {
+        let next = item.nextElementSibling as HTMLElement | null
+        while (next) {
+          const index = headerIndex(next)
+          if (index >= 0) return index - (from < index ? 1 : 0)
+          next = next.nextElementSibling as HTMLElement | null
+        }
+        return count - 1
+      }
       const canMoveHeaders = (
         from: number,
         to: number,
@@ -1010,7 +1045,11 @@
         onEnd: (evt: SortableEvent) => {
           const snapshot = dragSnapshot
           if (!snapshot) return
-          const toHeaderIndex = headerIndex(evt.item)
+          const toHeaderIndex = dropHeaderIndex(
+            evt.item,
+            snapshot.fromIndex,
+            snapshot.rendered.length
+          )
           // Vue 仍持有拖动前的 VNode 顺序，先还原 Sortable 修改的 DOM 再提交列状态。
           cancelColumnGesture?.()
           cancelColumnGesture = undefined
@@ -1059,10 +1098,14 @@
         : undefined,
   }))
 
-  const nativeLayout = computed(() =>
-    attrs.tableLayout != null || attrs['table-layout'] != null
-      ? { columns: computedColumns.value }
-      : columnState.nativeLayout.value
+  const nativeLayout = computed<NativeColumnLayout>(previous =>
+    nativeColumnLayout(
+      attrs.tableLayout != null || attrs['table-layout'] != null
+        ? { columns: computedColumns.value }
+        : columnState.nativeLayout.value,
+      columnViewport.value.width,
+      previous?.gap
+    )
   )
 
   /* ================= 编辑弹窗 ================= */
@@ -1186,11 +1229,12 @@
   }
   // Naive UI caches dragged widths by key. A different report gets its own table cache.
   watch(
-    () => resolved.value.persistKey,
+    [() => resolved.value.persistKey, () => globalConfig.persistPrefix],
     () => {
       viewport.resetReport()
       renewNativeTable()
-    }
+    },
+    { flush: 'sync' }
   )
   const getSchemaColumnKeys = (columns: TableColumn[]) =>
     new Set(

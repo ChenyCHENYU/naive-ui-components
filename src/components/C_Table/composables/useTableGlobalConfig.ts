@@ -3,7 +3,9 @@
  * Copyright (c) 2025 by CHENY, All Rights Reserved.
  */
 
-import { getCurrentInstance, inject, type InjectionKey } from 'vue'
+import { getCurrentInstance, inject } from 'vue'
+import { TABLE_GLOBAL_CONFIG_KEY } from '../../../context'
+export { TABLE_GLOBAL_CONFIG_KEY } from '../../../context'
 import type { TableConfig, DisplayConfig } from './useTableConfig'
 import type { DataRecord } from '../types'
 
@@ -49,17 +51,11 @@ export interface TableGlobalConfig {
   emptyText?: string
   /** 全局格式化配置 */
   formatter?: FormatterConfig
-  /** 列配置持久化前缀 */
+  /** 应用级偏好范围；启动时声明响应式 getter，显式空值禁存，省略则兼容旧键。 */
   persistPrefix?: string
   /** 默认导出文件名 */
   exportFilename?: string
 }
-
-/* ================= Injection Key ================= */
-
-export const TABLE_GLOBAL_CONFIG_KEY: InjectionKey<TableGlobalConfig> = Symbol(
-  'C_TABLE_GLOBAL_CONFIG'
-)
 
 /* ================= 格式化引擎 ================= */
 
@@ -173,6 +169,15 @@ const mergeSection = (globalValue: unknown, localValue: unknown) => {
   return globalValue
 }
 
+// 显式启用范围后，身份未就绪时禁存；范围与表 ID 独立编码，避免拼接碰撞。
+const scopedPersistKey = (
+  prefix: string | undefined,
+  key: string | undefined
+) =>
+  typeof prefix === 'string' && prefix.trim() && key
+    ? JSON.stringify([prefix, key])
+    : undefined
+
 /** 合并全局配置到 TableConfig（局部 > 全局 > 默认） */
 export function mergeGlobalConfig(
   local: TableConfig,
@@ -221,5 +226,10 @@ export function mergeGlobalConfig(
     }
   }
 
+  if ('persistPrefix' in global)
+    merged.persistKey = scopedPersistKey(
+      global.persistPrefix,
+      merged.persistKey
+    )
   return merged
 }

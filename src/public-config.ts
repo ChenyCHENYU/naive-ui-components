@@ -3,6 +3,7 @@ export {
   COMPONENT_FEEDBACK_KEY,
   COMPONENT_LOCALE_KEY,
   FORM_GLOBAL_CONFIG_KEY,
+  TABLE_GLOBAL_CONFIG_KEY,
 } from './context'
 export type {
   ComponentFeedback,
@@ -10,6 +11,7 @@ export type {
   ComponentLocaleName,
   ConfirmOptions,
   FormConfig,
+  TableGlobalConfig,
 } from './context'
 export { createComponentTheme } from './adapters/naive/theme'
 export type { ComponentThemeConfig } from './adapters/naive/theme'

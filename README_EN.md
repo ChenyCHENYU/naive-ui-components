@@ -33,7 +33,7 @@
 | Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.37.1**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.37.2**. See the [changelog](./CHANGELOG.md) for release details.
 
 0.33 adds optional remote tree paths, grouped options, search field settings and table editing contracts while retaining existing defaults. See the [compatibility and standalone demo guide](./docs/guides/component-contracts.md) (Chinese).
 
@@ -140,6 +140,27 @@ Place this example in `App.vue`. It uses a component subpath and its CSS entry, 
 
 The form includes submission, reset and validation. For persistence, await your async request inside `config.onSubmit`; use `@submit` for completion notifications. See the [usage guide](./docs/guides/usage.en.md) for layouts, validation rules, dialogs and remote tables.
 
+### Scope table preferences per account
+
+Register once when the app starts. `session` is your existing reactive identity state; keep it `undefined` until the identity is fully resolved:
+
+```ts
+import { TABLE_GLOBAL_CONFIG_KEY } from '@robot-admin/naive-ui-components/config'
+
+app.provide(TABLE_GLOBAL_CONFIG_KEY, {
+  get persistPrefix() {
+    const scope = session.value
+    return scope
+      ? JSON.stringify([scope.tenantId, scope.companyId, scope.userId])
+      : undefined
+  },
+})
+```
+
+Each page only supplies a stable table ID, such as `config: { persistKey: 'shipping' }`. Column visibility, order and widths are stored per scope without mutating business column definitions, including inside `C_Density`. The lightweight `/config` entry exports the same configuration key as `/C_Table`.
+
+Declare the getter at startup and change its reactive value when accounts change; do not remove the field. An explicitly configured prefix that is `undefined`, empty or whitespace disables preference reads and writes, without falling back to legacy caches. Omitting `persistPrefix` retains legacy keys. Tables without `persistKey` keep settings only in memory and clear them on scope changes. See the [scope guide](./docs/guides/table-density.md#表格偏好与作用域) (Chinese).
+
 ## Imports and styles
 
 ### Choose an import strategy
@@ -239,7 +260,7 @@ See [development and build](./docs/engineering.en.md) for individual checks and 
 
 ## Content widths and status columns (0.24)
 
-Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted values and status labels. Content measurement bases default to 80–360px; final automatic widths may grow proportionally to fill available space. Use `minWidth/maxWidth` to adjust the bounds. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
+Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted values and status labels. Content measurement bases default to 80–360px; final automatic widths may grow proportionally to fill available space. Saving a manual width preserves the original ellipsis, tooltip and default minimum. Action columns default to the right edge; the internal canvas absorbs spare space after shrinking without resizing peer business columns. Native links and buttons inside an ellipsis cell also shrink with a trailing ellipsis. Use `minWidth/maxWidth` to adjust the bounds. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
 
 Use `{ key: 'status', status: true }` for themed status tags, or `status: { S1B: { label: 'Review', color: 'danger' }, S1C: 'success' }`. Semantic colors and CSS colors are supported. Unknown codes stay neutral, zero/false stay valid, and explicit render functions win. Display changes never rewrite data or export policy. Measurement does not invoke render functions; give graphical/custom columns explicit widths. Data and column updates remeasure a bounded sample; all caches remain component-local.
 
