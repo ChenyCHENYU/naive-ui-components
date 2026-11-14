@@ -33,9 +33,9 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.39.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
-0.33 增强树的远程路径定位、分组选项、搜索字段设置和表格编辑契约，并保留原有默认用法。见[兼容接入与独立演示](./docs/guides/component-contracts.md)。
+0.40 新增 `edit: 'inline'` 常显连续录入，收敛动态表单显隐、流程缓存会话与分类查询组合。见[表格编辑指南](./docs/guides/table-editing.md)和[真实业务场景对照](./docs/wl-business-scenario-parity.md)；已有项目可参考[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 
 0.34 完善树的动态图标、自定义节点状态与操作配置，以及组织架构图的数据映射、受控交互和连线。目录选择使用 `C_Tree`，卡片式汇报关系使用独立的 `C_OrgChart`。见[组织场景示例](./docs/guides/tree-org-examples.md)。
 
@@ -65,16 +65,16 @@
 
 列中声明 `{ type: 'selection' }` 即启用多选，无需再写 `selection: true`。显式全局或单表 `selection: false` / `{ enabled: false }` 继续优先，动态列沿用同一规则。
 
-| 场景       | 代表组件                                                         | 覆盖能力                                                 |
-| ---------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
-| 数据录入   | `C_Form` · `C_FormModal` · `C_FormSearch`                        | 动态字段、校验、异步提交、搜索与新增／编辑弹窗           |
-| 数据操作   | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | 分页、树形数据、行／单元格编辑、跨页选择、导出与批量操作 |
-| 专业编辑   | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | 富文本、Markdown、Cron 预览、公式编辑与本地试算          |
-| 流程与计划 | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER／BPMN／UML、审批流程、甘特与日历                      |
-| 文件与媒体 | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | 分片上传、PDF／Word／Excel 预览、音视频播放              |
-| 图像与空间 | `C_Signature` · `C_ImageCropper` · `C_QRCode` · `C_Map`          | 签名、裁剪、二维码、OpenStreetMap／高德地图              |
-| 工作空间   | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | 菜单、场景切换、多标签导航、全局搜索                     |
-| 通用交互   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | 登录、人机验证、功能引导、页面切换反馈                   |
+| 场景       | 代表组件                                                         | 覆盖能力                                                           |
+| ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 数据录入   | `C_Form` · `C_FormModal` · `C_FormSearch`                        | 动态字段、校验、异步提交、搜索与新增／编辑弹窗                     |
+| 数据操作   | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | 分页、树形数据、常显录入、行／单元格编辑、跨页选择、导出与批量操作 |
+| 专业编辑   | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | 富文本、Markdown、Cron 预览、公式编辑与本地试算                    |
+| 流程与计划 | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER／BPMN／UML、审批流程、甘特与日历                                |
+| 文件与媒体 | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | 分片上传、PDF／Word／Excel 预览、音视频播放                        |
+| 图像与空间 | `C_Signature` · `C_ImageCropper` · `C_QRCode` · `C_Map`          | 签名、裁剪、二维码、OpenStreetMap／高德地图                        |
+| 工作空间   | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | 菜单、场景切换、多标签导航、全局搜索                               |
+| 通用交互   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | 登录、人机验证、功能引导、页面切换反馈                             |
 
 查看 [全部 63 个组件与依赖](./docs/components.md)，或在 [Robot Admin](https://robotadmin.cn) 中体验组件场景。Cron 预览只计算时间，公式只进行本地试算；生产人机验证需接入服务端校验，详见[使用指南](./docs/guides/usage.md)。
 

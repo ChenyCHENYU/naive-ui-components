@@ -33,9 +33,9 @@
 | Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.39.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.0**. See the [changelog](./CHANGELOG.md) for release details.
 
-0.33 adds optional remote tree paths, grouped options, search field settings and table editing contracts while retaining existing defaults. See the [compatibility and standalone demo guide](./docs/guides/component-contracts.md) (Chinese).
+0.40 adds continuous input with `edit: 'inline'` and fixes dynamic form visibility, cached workflow sessions and combined category searches. See the [table editing guide](./docs/guides/table-editing.md), [business scenario comparison](./docs/wl-business-scenario-parity.md) and [compatibility guide](./docs/guides/component-contracts.md) (Chinese).
 
 0.34 adds state-aware tree icons, richer node contexts and action states, plus organization-chart field mapping, controlled interaction and measured connectors. Use `C_Tree` for hierarchical selection and the independent `C_OrgChart` for reporting relationships. See the [organization examples](./docs/guides/tree-org-examples.md) (Chinese).
 
@@ -65,16 +65,16 @@ Checked rows show a leading theme-colored marker; set `--c-table-selected-marker
 
 A `{ type: 'selection' }` column enables selection without repeating `selection: true`. Explicit global or local `selection: false` / `{ enabled: false }` still takes precedence, including when columns change dynamically.
 
-| Scenario              | Representative components                                        | Capabilities                                                                         |
-| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Data entry            | `C_Form` · `C_FormModal` · `C_FormSearch`                        | Dynamic fields, validation, async submission, search and create/edit dialogs         |
-| Data operations       | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | Pagination, trees, row/cell editing, cross-page selection, exports and batch actions |
-| Editing               | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | Rich text, Markdown, Cron previews and local formula evaluation                      |
-| Workflow and planning | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER/BPMN/UML, approval flows, Gantt charts and calendars                              |
-| Files and media       | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | Chunked uploads, PDF/Word/Excel previews and audio/video playback                    |
-| Images and maps       | `C_Signature` · `C_ImageCropper` · `C_QRCode` · `C_Map`          | Signatures, cropping, QR codes, OpenStreetMap and AMap                               |
-| Workspace             | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | Menus, view switching, tab navigation and global search                              |
-| Common interactions   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | Login UI, human verification, onboarding and navigation feedback                     |
+| Scenario              | Representative components                                        | Capabilities                                                                                |
+| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Data entry            | `C_Form` · `C_FormModal` · `C_FormSearch`                        | Dynamic fields, validation, async submission, search and create/edit dialogs                |
+| Data operations       | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | Pagination, trees, inline/row/cell editing, cross-page selection, exports and batch actions |
+| Editing               | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | Rich text, Markdown, Cron previews and local formula evaluation                             |
+| Workflow and planning | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER/BPMN/UML, approval flows, Gantt charts and calendars                                     |
+| Files and media       | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | Chunked uploads, PDF/Word/Excel previews and audio/video playback                           |
+| Images and maps       | `C_Signature` · `C_ImageCropper` · `C_QRCode` · `C_Map`          | Signatures, cropping, QR codes, OpenStreetMap and AMap                                      |
+| Workspace             | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | Menus, view switching, tab navigation and global search                                     |
+| Common interactions   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | Login UI, human verification, onboarding and navigation feedback                            |
 
 Browse [all 63 components and dependencies](./docs/components.en.md), or explore scenarios in [Robot Admin](https://robotadmin.cn). Cron previews calculate times only; formulas run locally. Production human verification requires server validation. See the [usage guide](./docs/guides/usage.en.md).
 

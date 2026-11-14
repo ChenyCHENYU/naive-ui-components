@@ -16,7 +16,8 @@ const budgets = {
   'style.css': { min: 430 * 1024, max: 688 * 1024 },
   'C_Form.base.css': { min: 20 * 1024, max: 45 * 1024 },
   'C_Form.css': { min: 80 * 1024, max: 120 * 1024 },
-  'C_Table.base.css': { min: 30 * 1024, max: 66 * 1024 },
+  // 0.40 的 inline 模式字面量产生两条 scoped 工具类，闭包实增 84 B；保留 1 KiB 有界余量。
+  'C_Table.base.css': { min: 30 * 1024, max: 67 * 1024 },
   'C_Table.css': { min: 90 * 1024, max: 148 * 1024 },
 }
 
@@ -75,7 +76,9 @@ const totalSize = files.reduce(
 // 首屏/按需 gzip、懒加载和性能限额保持不变。
 // 0.38 扁平色板配置、原生映射与遗漏区域的语义样式相对官方 0.37.2 增加约 11.8 KiB；
 // 仅为双格式物理产物追加 16 KiB，原有 CSS 闭包及首屏/按需加载限额保持不变。
-const totalLimit = 4 * 1024 * 1024 + 664 * 1024
+// 0.40 常显录入、会话保护、按需候选渲染和菜单边界相对官方 0.39.0 增加 8625 B；
+// 消耗既有余量后，为 ESM/CJS、声明与物理 CSS 追加 8 KiB。首屏/首开预算保持不变。
+const totalLimit = 4 * 1024 * 1024 + 672 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`
