@@ -33,6 +33,7 @@
     :mode="mode"
     :collapsed="collapsed"
     :collapsed-width="collapsedWidth"
+    :icon-size="iconSize"
     :collapsed-icon-size="collapsedIconSize"
     :inverted="inverted"
     :theme-overrides="themeOverrides"

@@ -33,7 +33,7 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.0**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.1**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.40 新增 `edit: 'inline'` 常显连续录入，收敛动态表单显隐、流程缓存会话与分类查询组合。见[表格编辑指南](./docs/guides/table-editing.md)和[真实业务场景对照](./docs/wl-business-scenario-parity.md)；已有项目可参考[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 

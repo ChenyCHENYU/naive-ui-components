@@ -33,7 +33,7 @@
 | Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.0**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.1**. See the [changelog](./CHANGELOG.md) for release details.
 
 0.40 adds continuous input with `edit: 'inline'` and fixes dynamic form visibility, cached workflow sessions and combined category searches. See the [table editing guide](./docs/guides/table-editing.md), [business scenario comparison](./docs/wl-business-scenario-parity.md) and [compatibility guide](./docs/guides/component-contracts.md) (Chinese).
 

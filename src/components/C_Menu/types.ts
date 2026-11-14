@@ -1,4 +1,9 @@
-import type { DropdownProps, MenuInst, MenuOption } from 'naive-ui'
+import type {
+  DropdownProps,
+  MenuInst,
+  MenuOption,
+  MenuProps as NaiveMenuProps,
+} from 'naive-ui'
 import type { MenuAdapterConfig, RouteItem } from '../_shared/public'
 
 export type MenuKey = string | number
@@ -48,9 +53,12 @@ export interface MenuProps<
   mode?: 'vertical' | 'horizontal'
   collapsed?: boolean
   collapsedWidth?: number
+  /** 常态图标尺寸；未配置时使用 Naive UI 默认值。 */
+  iconSize?: number
   collapsedIconSize?: number
   inverted?: boolean
-  themeOverrides?: Record<string, any>
+  /** 沿用原生主题契约，公共色和浮层主题可直接复用。 */
+  themeOverrides?: NaiveMenuProps['themeOverrides']
   indent?: number
   rootIndent?: number
   dropdownProps?: DropdownProps

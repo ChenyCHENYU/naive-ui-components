@@ -1,5 +1,15 @@
 # @robot-admin/naive-ui-components
 
+## 0.40.1
+
+### Patch Changes
+
+- 补齐 C_Menu 原生 icon-size 接入的显式属性和公开类型，常态图标可通过 iconSize 配置；未配置时继续使用 Naive UI 默认尺寸，收起态 collapsedIconSize 保持独立。
+
+  将 themeOverrides 收敛为 Naive UI 原生菜单主题契约，保留 common 公共色与 peers 浮层主题的直接复用，识别误写的主题字段和错误值类型。
+
+  补充真实 NMenu 尺寸转发、响应更新与恢复默认回归，以及消费者类型正反例；菜单数据、路由和展开行为保持兼容。
+
 ## 0.40.0
 
 ### Minor Changes
