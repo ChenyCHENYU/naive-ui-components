@@ -40,13 +40,13 @@
           @dropdown-select="item => handleDropdownClick(item, entry)"
         />
         <NDivider
-          v-if="
-            finalConfig.showDivider &&
-            index < leftButtonList.length - 1 &&
-            finalConfig.dividerType === 'vertical'
-          "
-          vertical
+          v-if="finalConfig.showDivider && index < leftButtonList.length - 1"
+          :vertical="finalConfig.dividerType === 'vertical'"
           class="action-divider"
+          :class="{
+            'action-divider--horizontal':
+              finalConfig.dividerType === 'horizontal',
+          }"
         />
       </template>
     </div>
@@ -74,13 +74,13 @@
           @dropdown-select="item => handleDropdownClick(item, entry)"
         />
         <NDivider
-          v-if="
-            finalConfig.showDivider &&
-            index < rightButtonList.length - 1 &&
-            finalConfig.dividerType === 'vertical'
-          "
-          vertical
+          v-if="finalConfig.showDivider && index < rightButtonList.length - 1"
+          :vertical="finalConfig.dividerType === 'vertical'"
           class="action-divider"
+          :class="{
+            'action-divider--horizontal':
+              finalConfig.dividerType === 'horizontal',
+          }"
         />
       </template>
     </div>

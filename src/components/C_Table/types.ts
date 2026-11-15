@@ -724,6 +724,11 @@ export interface UseTableExpandReturn<
   clearSelection: () => void
   clearAllSelections: () => void
   handleSelectionChange: (keys: DataTableRowKey[]) => void
+  /** 原生子表与公开选择方法共用的资格校验、父子联动和事件提交入口。 */
+  handleChildSelectionChange: (
+    parentKey: DataTableRowKey,
+    childKeys: DataTableRowKey[]
+  ) => void
   getTableColumns: (originalColumns: TableColumn<T>[]) => unknown[]
 }
 

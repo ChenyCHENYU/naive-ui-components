@@ -168,6 +168,7 @@ export function useCollapsePanel(options: UseCollapsePanelOptions) {
 
   /* ─── 键盘导航 ────────────────────────────────── */
   const handleKeyDown = (e: KeyboardEvent, key: string) => {
+    if (e.defaultPrevented || e.target !== e.currentTarget) return
     if (['Enter', ' '].includes(e.key)) {
       e.preventDefault()
       toggle(key)

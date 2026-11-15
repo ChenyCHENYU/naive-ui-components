@@ -561,6 +561,16 @@ export function useWorkflowNodes(
     )
   }
 
+  const onEdgeClick = (event: { edge: { id: string } }): void => {
+    if (!active) return
+    const edge = edges.value.find(item => item.id === event.edge.id)
+    if (edge)
+      emit(
+        'edge-click',
+        snapshotWorkflowEdge(edge, declaredEdgeFields.get(edge.id))
+      )
+  }
+
   const handleConfigSave = (configData: Record<string, unknown>): void => {
     if (
       props.readonly ||
@@ -719,6 +729,7 @@ export function useWorkflowNodes(
     updateConnection,
     addNode,
     onNodeClick,
+    onEdgeClick,
     closeAddMenu,
     handleConfigSave,
     resetNodes,

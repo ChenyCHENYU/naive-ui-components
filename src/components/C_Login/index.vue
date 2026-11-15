@@ -39,7 +39,7 @@
 
     <!-- ===== 密码登录表单（默认视图） ===== -->
     <NForm
-      v-show="activeTab === 'password'"
+      v-show="activeTab === 'password' && feat.passwordLogin"
       ref="passwordFormRef"
       :model="passwordForm"
       :rules="passwordRules"
@@ -107,13 +107,14 @@
         >
           {{ t('cl_remember', '记住我') }}
         </NCheckbox>
-        <NText
+        <button
+          type="button"
           v-if="feat.forgotPassword"
           class="c-login__forgot"
           @click="emit('forgot-password')"
         >
           {{ t('cl_forgot', '忘记密码？') }}
-        </NText>
+        </button>
       </div>
     </NForm>
 
@@ -231,7 +232,7 @@
       v-if="activeTab === 'captcha'"
       block
       class="c-login__back-btn"
-      @click="activeTab = 'password'"
+      @click="activeTab = defaultMode"
     >
       {{ t('cl_back', '返回') }}
     </NButton>
@@ -295,7 +296,7 @@
       v-if="activeTab === 'qrcode'"
       block
       class="c-login__back-btn"
-      @click="activeTab = 'password'"
+      @click="activeTab = defaultMode"
     >
       {{ t('cl_back', '返回') }}
     </NButton>
@@ -421,18 +422,25 @@
       v-if="activeTab === 'register'"
       block
       class="c-login__back-btn"
-      @click="activeTab = 'password'"
+      @click="activeTab = defaultMode"
     >
       {{ t('cl_back', '返回') }}
     </NButton>
 
     <!-- ===== 登录方式切换（仅密码登录默认视图显示） ===== -->
     <div
-      v-if="activeTab === 'password' && (feat.captchaLogin || feat.qrcodeLogin)"
+      v-if="activeTab !== 'register' && switchModes.length > 0"
       class="c-login__mode-switch"
     >
       <NButton
-        v-if="feat.captchaLogin"
+        v-if="feat.passwordLogin && activeTab !== 'password'"
+        class="c-login__mode-btn"
+        size="small"
+        @click="activeTab = 'password'"
+        >{{ t('cl_password_login', '密码登录') }}</NButton
+      >
+      <NButton
+        v-if="feat.captchaLogin && activeTab !== 'captcha'"
         class="c-login__mode-btn"
         size="small"
         @click="activeTab = 'captcha'"
@@ -440,7 +448,7 @@
         {{ t('cl_captcha_login', '验证码登录') }}
       </NButton>
       <NButton
-        v-if="feat.qrcodeLogin"
+        v-if="feat.qrcodeLogin && activeTab !== 'qrcode'"
         class="c-login__mode-btn"
         size="small"
         @click="activeTab = 'qrcode'"
@@ -466,6 +474,7 @@
           <template #trigger>
             <NButton
               circle
+              :aria-label="provider.label"
               class="c-login__social-btn"
               @click="emit('social-login', provider.key)"
             >
@@ -484,18 +493,19 @@
 
     <!-- ===== 注册入口（仅密码登录默认视图显示） ===== -->
     <div
-      v-if="activeTab === 'password' && feat.register"
+      v-if="activeTab !== 'register' && feat.register"
       class="c-login__register-row"
     >
       <NText class="c-login__register-hint">{{
         t('cl_no_account', '还没有账号？')
       }}</NText>
-      <NText
+      <button
+        type="button"
         class="c-login__register-link"
         @click="activeTab = 'register'"
       >
         {{ t('cl_register', '注册账号') }}
-      </NText>
+      </button>
     </div>
   </div>
 </template>
@@ -512,6 +522,7 @@
   } from 'vue'
   import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
   import C_Icon from '../C_Icon/index.vue'
+  import { useLoginLocale } from './locale'
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import C_Captcha from '../C_Captcha/index.vue'
   import type { CaptchaSuccessPayload } from '../C_Captcha/types'
@@ -530,16 +541,7 @@
   // 玻璃中性色保留领域外观，品牌强调来自当前 Provider。
   const themeStyle = useComponentTheme()
 
-  // ===== i18n helper =====
-  type GlobalTranslator = (
-    key: string,
-    fallback: string,
-    namespace: string
-  ) => string
-  const t = (key: string, fallback: string) => {
-    const translator = (globalThis as { $t?: GlobalTranslator }).$t
-    return translator?.(key, fallback, 'robot_admin') ?? fallback
-  }
+  const { t } = useLoginLocale()
 
   const createLoginRules = (
     field: string,
@@ -548,7 +550,7 @@
   ): FormItemRule[] => [
     {
       required: true,
-      message: `${field}不能为空`,
+      message: t('cl_required', `${field}不能为空`, { field }),
       trigger: 'blur',
     },
     {
@@ -565,7 +567,6 @@
 
   // ===== Props & Emits =====
   const props = withDefaults(defineProps<LoginProps>(), {
-    title: '欢迎回来',
     loading: false,
     storageKey: 'c_login_remember',
     defaultUsername: '',
@@ -591,6 +592,7 @@
   // ===== 合并 Props（填充默认值） =====
   const mergedProps = computed(() => ({
     ...props,
+    title: props.title ?? t('cl_welcome', '欢迎回来'),
     features: { ...DEFAULT_FEATURES, ...props.features },
     socialProviders: props.socialProviders ?? DEFAULT_SOCIAL_PROVIDERS,
   }))
@@ -600,20 +602,52 @@
   )
   const socialList = computed(() => mergedProps.value.socialProviders!)
 
-  // ===== Tab（默认密码登录） =====
-  const activeTab = ref<'password' | 'captcha' | 'qrcode' | 'register'>(
-    'password'
+  type LoginMode = 'password' | 'captcha' | 'qrcode' | 'register'
+  type SubmissionMode = Exclude<LoginMode, 'qrcode'>
+  const activeTab = ref<LoginMode | null>('password')
+  const modeEnabled = (mode: LoginMode) => {
+    if (mode === 'register') return feat.value.register
+    return mode === 'password'
+      ? feat.value.passwordLogin
+      : mode === 'captcha'
+        ? feat.value.captchaLogin
+        : feat.value.qrcodeLogin
+  }
+  const primaryModes: readonly LoginMode[] = ['password', 'captcha', 'qrcode']
+  const defaultMode = computed(
+    () =>
+      primaryModes.find(modeEnabled) ??
+      (feat.value.register ? 'register' : null)
   )
-  type SubmissionMode = 'password' | 'captcha' | 'register'
+  const switchModes = computed(() =>
+    primaryModes.filter(mode => mode !== activeTab.value && modeEnabled(mode))
+  )
   const submitTasks = useActionTask<string>()
-  const submitting = computed(() => submitTasks.isRunning(activeTab.value))
+  const submitting = computed(
+    () => activeTab.value !== null && submitTasks.isRunning(activeTab.value)
+  )
   let disposed = false
   let tabVersion = 0
   watch(activeTab, () => tabVersion++, { flush: 'sync' })
+  // 同步确认功能开关，旧表单在本轮渲染前也不能通过回车继续提交。
+  watch(
+    () => [
+      feat.value.passwordLogin,
+      feat.value.captchaLogin,
+      feat.value.qrcodeLogin,
+      feat.value.register,
+    ],
+    () => {
+      if (!activeTab.value || !modeEnabled(activeTab.value))
+        activeTab.value = defaultMode.value
+    },
+    { immediate: true, flush: 'sync' }
+  )
 
   const canSubmit = (mode: SubmissionMode) =>
     !disposed &&
     activeTab.value === mode &&
+    modeEnabled(mode) &&
     !props.loading &&
     !props.submitDisabled &&
     (mode !== 'password' || !feat.value.captchaVerify || captchaValid.value)
@@ -658,7 +692,7 @@
     password: props.defaultPassword ?? '',
   })
 
-  const passwordRules: FormRules = {
+  const passwordRules = computed<FormRules>(() => ({
     username: [
       {
         required: true,
@@ -673,7 +707,7 @@
         trigger: 'blur',
       },
     ],
-  }
+  }))
 
   // 初始预填、记住的账号和每次输入使用同一事件，宿主可同步扩展字段。
   watch(
@@ -723,8 +757,12 @@
   const countdown = ref(0)
   let countdownTimer: ReturnType<typeof setInterval> | null = null
 
-  const captchaRules: FormRules = {
-    account: createLoginRules('手机号', MOBILE_PATTERN, '手机号格式错误'),
+  const captchaRules = computed<FormRules>(() => ({
+    account: createLoginRules(
+      t('cl_phone', '手机号'),
+      MOBILE_PATTERN,
+      t('cl_phone_format', '手机号格式错误')
+    ),
     code: [
       {
         required: true,
@@ -732,7 +770,7 @@
         trigger: 'blur',
       },
     ],
-  }
+  }))
 
   // ===== 人机验证 =====
   const captchaRef = ref<InstanceType<typeof C_Captcha>>()
@@ -813,8 +851,12 @@
   const regCountdown = ref(0)
   let regCountdownTimer: ReturnType<typeof setInterval> | null = null
 
-  const registerRules: FormRules = {
-    phone: createLoginRules('手机号', MOBILE_PATTERN, '手机号格式错误'),
+  const registerRules = computed<FormRules>(() => ({
+    phone: createLoginRules(
+      t('cl_phone', '手机号'),
+      MOBILE_PATTERN,
+      t('cl_phone_format', '手机号格式错误')
+    ),
     code: [
       {
         required: true,
@@ -823,9 +865,9 @@
       },
     ],
     password: createLoginRules(
-      '密码',
+      t('cl_password', '密码'),
       PASSWORD_PATTERN,
-      '密码必须包含大小写字母和数字，长度6-20位'
+      t('cl_password_format', '密码必须包含大小写字母和数字，长度6-20位')
     ),
     confirmPassword: [
       {
@@ -843,7 +885,7 @@
         trigger: 'blur',
       },
     ],
-  }
+  }))
 
   const handleRegSendCode = () => {
     const phone = registerForm.phone.trim()

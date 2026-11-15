@@ -65,7 +65,7 @@
           :type="mergedProps.overflowClickable ? 'button' : undefined"
           :aria-label="
             mergedProps.overflowClickable
-              ? `显示另外 ${overflowCount} 个头像`
+              ? t('avatarGroup.more', { count: overflowCount })
               : undefined
           "
           class="c-avatar-group__overflow"
@@ -97,6 +97,7 @@
 <script setup lang="ts">
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import { computed } from 'vue'
+  import { useAvatarGroupLocale } from './locale'
   import {
     DEFAULT_AVATAR_GROUP_PROPS,
     getInitials,
@@ -107,6 +108,7 @@
 
   defineOptions({ name: 'C_AvatarGroup' })
   const themeStyle = useComponentTheme()
+  const { t } = useAvatarGroupLocale()
 
   const props = withDefaults(
     defineProps<{

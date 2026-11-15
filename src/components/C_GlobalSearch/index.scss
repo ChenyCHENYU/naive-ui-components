@@ -1127,3 +1127,7 @@
     transform: none;
   }
 }
+
+.robot-history-item:focus-within .robot-history-delete {
+  opacity: 1;
+}

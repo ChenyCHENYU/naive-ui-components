@@ -45,7 +45,11 @@
     </div>
 
     <!-- 内容 -->
-    <div class="notification-item__body">
+    <button
+      type="button"
+      class="notification-item__body"
+      @click.stop="$emit('click', message)"
+    >
       <div class="notification-item__header">
         <span class="notification-item__title">{{ message.title }}</span>
         <NTag
@@ -70,7 +74,7 @@
           {{ message.sender.name }}
         </span>
       </div>
-    </div>
+    </button>
 
     <!-- 操作区 -->
     <div
@@ -276,6 +280,18 @@
     }
 
     &__body {
+      appearance: none;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      &:focus-visible {
+        outline: 2px solid var(--c-primary, var(--c-theme-primary));
+        outline-offset: 3px;
+      }
       flex: 1;
       min-width: 0;
     }

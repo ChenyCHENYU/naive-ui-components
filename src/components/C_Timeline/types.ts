@@ -22,7 +22,7 @@ export interface TimelineItem {
   collapsible?: boolean
   /** 初始是否展开 */
   defaultExpanded?: boolean
-  /** 附加标签组 */
+  /** 附加标签；type 支持 default/success/warning/error/info，其他字符串沿用默认主色。 */
   tags?: Array<{ text: string; type?: string }>
   /** 自定义额外数据 */
   extra?: Record<string, unknown>

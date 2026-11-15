@@ -81,7 +81,7 @@ app.provide(COMPONENT_FEEDBACK_KEY, {
 })
 ```
 
-默认中文，内置支持 `zh-CN` / `en-US`，自定义 `messages` 或 `t` 沿用现有协议。需要动态切换时提供响应式对象或 `locale` getter。Tree、Transfer、SplitPane、Chat、NotificationCenter、Theme、Language、Skeleton、Timeline、Upload 的内置文案与已有 Form/Table/Search/Breadcrumb 一起使用该上下文；DataPicker 的局部语言也传给内嵌分类树。业务标题、菜单名称和显式传入的文案由宿主管理，上传文件名和服务端错误保持原文。
+默认中文，内置支持 `zh-CN` / `en-US`，自定义 `messages` 或 `t` 沿用现有协议。需要动态切换时提供响应式对象或 `locale` getter。Tree、Transfer、SplitPane、Chat、NotificationCenter、Theme、Language、Skeleton、Timeline、Upload、AvatarGroup、City、GlobalSearch、Guide、Login 的内置文案与已有 Form/Table/Search/Breadcrumb 一起使用该上下文；DataPicker 的局部语言也传给内嵌分类树。业务标题、菜单名称和显式传入的文案由宿主管理，上传文件名和服务端错误保持原文。
 
 ### Composables 单独使用
 
@@ -505,9 +505,15 @@ const config = defineTableConfig({
 
 选择列须显式配置 `{ type: 'selection' }`，通过 `@selection-change="(keys, rows) => ..."` 接收结果；主动清空时使用公开实例方法 `clearSelection()`，不观察内部 manager 状态。
 
+展开子表的 `selectChildRow`、`unselectChildRow`、`selectAllChildren`、`clearChildrenSelection` 与界面勾选遵循同一规则：只处理已加载且允许选择的子行，并复用父子联动及父表数量上限。`child-selection-change` 同时提供当前选中子行的 key 和完整记录；重复选择或无效 key 不产生额外事件。
+
+`C_ActionBar` 的 `config.showDivider` 默认关闭。开启后，`dividerType: 'vertical'` 使用按钮间竖线，`'horizontal'` 使用 20px 短横线；两者均不改变按钮排列，也不在每组末尾添加分割线。
+
 `C_Table` 继续由当前 Naive UI 表格实现负责；需要 MachTable 时应由业务入口完整渲染 MachTable 及其原生配置，避免在两套列定义、事件和实例 API 之间做隐式转换。二者只共享 `C_ActionBar` 这类框架无关的页面动作模型，不互相污染。
 
 ## 常用组件约定
+
+`C_Cascade` 的三级字段配置可直接使用子路径导出的 `CascadeProps`，例如 `const regionConfig = { data: regions, density: 'compact' } satisfies CascadeProps`；绑定值使用已有 `CascadeValue`。该类型与组件 Props 共用同一声明，无需从组件实例反推。
 
 ### 表单读写与校验
 
@@ -885,3 +891,20 @@ Draggable 默认只在自身排序。需要跨列表拖动时，在相关实例�
 `C_NotificationCenter.categoryOptions` 只定制已有 `all/system/business/alarm` 分类的标签和顺序，不扩展消息领域协议。`filters` 插槽提供 `{ controller }`，`item` / `item-actions` 提供 `{ message, index, busy, select, read, remove }`，可组合独立筛选和业务操作。异步操作应沿用提供的回调以保留 busy/错误处理。
 
 审批命令、租户、权限和后端协议由宿主管理。Robot_Admin 的企业消息使用领域 Store 与自己的通知铃铛；本包提供可复用的通知展示与交互，二者的能力边界不同。
+
+### 简单组件配置与瀑布流业务类型
+
+`BarcodeProps`、`CascadeProps`、`ProgressProps`、`StepsProps`、`CodeProps`、`EditorProps`、`MarkdownProps` 与组件共用同一份声明，可从根入口或各组件子路径导入。提取公共配置时直接使用 `satisfies`，不必从组件实例反推类型，也不需要配置工厂：
+
+```typescript
+import type { CodeProps } from '@robot-admin/naive-ui-components/C_Code'
+const code = {
+  code: 'const value = 1',
+  language: 'typescript',
+} satisfies CodeProps
+// <C_Code v-bind="code" />
+```
+
+`C_WaterFall` 从 `items` 自动推导事件和 `item` 插槽的业务字段；普通业务接口无需索引签名或额外类型转换。`useWaterFallLayout` 保留来源业务类型，并沿用原有深只读代理和嵌套 Ref 解包行为，事件、插槽与布局读取保持一致。`WaterFallProps<T>` / `WaterFallEmits<T>` / `WaterFallSlots<T>` 可用于提取配置或封装，常规模板无需显式填写泛型。`footer` 插槽继续提供 `status`、`paused`、`loadMore`。
+
+时间线标签的 `type` 支持 `default/success/warning/error/info`，颜色跟随当前主题；未指定和历史自定义字符串保留默认主色。`C_Skeleton.repeat` 用于 `text/card/image`，列表数量继续由 `list.items` 控制。

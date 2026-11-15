@@ -390,7 +390,13 @@ Add `{ type: 'selection' }` explicitly. Receive keys and rows through `@selectio
 
 `C_Table` remains owned by its current Naive UI table implementation. A MachTable mode should render MachTable with its native columns, events, and instance API as a complete engine boundary rather than translating between the two engines. They only share engine-neutral page actions such as `C_ActionBar`.
 
+Expanded child tables use the same selection rules for `selectChildRow`, `unselectChildRow`, `selectAllChildren`, `clearChildrenSelection`, and checkbox interaction: only loaded, eligible children are selected, with the configured parent linkage and parent selection limit. `child-selection-change` includes selected keys and complete child records. Duplicate selections and invalid keys do not emit extra events.
+
+`C_ActionBar` leaves `config.showDivider` off by default. When enabled, `dividerType: 'vertical'` renders vertical separators and `'horizontal'` renders 20px horizontal separators between buttons. Neither option changes button direction or adds a separator after the last action in a group.
+
 ## Common component contracts
+
+For `C_Cascade`, import `CascadeProps` from its component subpath when extracting configuration, for example `const regionConfig = { data: regions, density: 'compact' } satisfies CascadeProps`. Keep using `CascadeValue` for the model. The exported type is the component's own Props declaration, so consumers do not need instance-type extraction.
 
 ### Form values and validation
 
@@ -687,7 +693,7 @@ Parent buttons open a themed directory panel with page counts and current-page f
 
 ## Configuration and behavior contracts (0.21)
 
-Use `@robot-admin/naive-ui-components/config` to import shared injection keys, protocol types, palettes and the theme factory. This entry shares injection identities with the root entry without registering components or importing the router or message/dialog feedback adapter. The theme factory uses Naive UI's public theme API; native CJS imports load Naive UI. Provide a reactive configuration or locale getter for language changes. Built-in `zh-CN`/`en-US` text covers Tree, Transfer, SplitPane, Chat, NotificationCenter, Theme, Language, Skeleton, Timeline and Upload alongside Form/Table/Search/Breadcrumb. DataPicker's local locale also reaches its category tree. Explicit labels, file names and server error messages remain application-owned.
+Use `@robot-admin/naive-ui-components/config` to import shared injection keys, protocol types, palettes and the theme factory. This entry shares injection identities with the root entry without registering components or importing the router or message/dialog feedback adapter. The theme factory uses Naive UI's public theme API; native CJS imports load Naive UI. Provide a reactive configuration or locale getter for language changes. Built-in `zh-CN`/`en-US` text covers Tree, Transfer, SplitPane, Chat, NotificationCenter, Theme, Language, Skeleton, Timeline, Upload, AvatarGroup, City, GlobalSearch, Guide and Login alongside Form/Table/Search/Breadcrumb. DataPicker's local locale also reaches its category tree. Explicit labels, file names and server error messages remain application-owned.
 
 Form action slots receive the current model, including a normal business field named `value`. Collapsed search fields remain mounted and validated; errors expand the form. `show: false` excludes a field. Table expansion discards stale completions after dataset changes, and nested selection honors eligibility, parent limits and consistent events. Native Menu options preserve string/number keys; route-mode callbacks remain string paths. Chat drafts belong to the contact and retain at most 50 nonempty inactive drafts. ER and Workflow emit user-completed canvas edits without echoing parent updates. Human verification gates password login; SMS uses its own validation.
 
@@ -706,3 +712,11 @@ WaterFall fills a visible sentinel for at most five consecutive pages, then expo
 Video supports MP4/HLS by default. DASH/FLV require a `sourceAdapters` loader returning a compatible xgplayer constructor; missing adapters enter the error state and emit `error`. Protocol SDK installation remains opt-in.
 
 Notification `categoryOptions` customizes labels/order of existing `all/system/business/alarm` categories. It does not add domain enums. The `filters` slot receives `{ controller }`; `item` and `item-actions` receive `{ message, index, busy, select, read, remove }`. Use supplied callbacks to retain busy/error handling. Approval commands, tenancy, authorization and backend contracts remain application-owned; Robot_Admin's enterprise notification store is not bundled into this preview component.
+
+### Shared component configuration and WaterFall business types
+
+`BarcodeProps`, `CascadeProps`, `ProgressProps`, `StepsProps`, `CodeProps`, `EditorProps` and `MarkdownProps` are the same declarations used by their components. Import from the root or component subpath and use `satisfies` for extracted configuration; no instance-type extraction or builder is required.
+
+`C_WaterFall` infers business fields from `items` into events and its `item` slot. `useWaterFallLayout` retains those fields and the existing deep-readonly/nested-Ref unwrapping behavior. `WaterFallProps<T>`, `WaterFallEmits<T>` and `WaterFallSlots<T>` support wrappers; ordinary templates need no explicit generic or conversion. The footer still receives `status`, `paused` and `loadMore`.
+
+Timeline tag types `default/success/warning/error/info` follow theme colors. Missing or historical custom strings retain the default primary color. Skeleton `repeat` applies to `text/card/image`; lists continue using `list.items`.

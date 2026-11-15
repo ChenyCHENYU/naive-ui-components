@@ -199,22 +199,11 @@
     name: 'CCode',
   })
 
-  interface Props {
-    code: string
-    language?: string
-    title?: string
-    showHeader?: boolean
-    showLineNumbers?: boolean
-    wordWrap?: boolean
-    trim?: boolean
-    showFullscreen?: boolean
-    maxHeight?: string | number
-    autoLoadLanguage?: boolean
-  }
+  import type { CodeProps } from './types'
 
   const themeStyle = useComponentTheme()
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<CodeProps>(), {
     code: '',
     language: 'text',
     showHeader: true,

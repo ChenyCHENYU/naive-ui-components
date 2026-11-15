@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, shallowRef, isReadonly, isRef } from 'vue'
 import { useWaterFallLayout } from '../src/components/C_WaterFall/composables/useWaterFallLayout'
 
 describe('C_WaterFall image layout', () => {
@@ -62,4 +62,19 @@ describe('C_WaterFall image layout', () => {
     await nextTick()
     expect(layout.containerHeight.value).toBe(100)
   })
+})
+
+test('layout keeps the existing deep readonly and nested Ref unwrapping contract', async () => {
+  const price = ref(12.5)
+  const products = shallowRef([
+    { id: 1, src: '/one.png', width: 1, height: 1, price },
+  ])
+  const layout = useWaterFallLayout(products, ref(1), ref(100), ref(0))
+  expect(isRef(products.value[0].price)).toBe(true)
+  expect(isReadonly(layout.layoutItems.value[0].item)).toBe(true)
+  expect(isRef(layout.layoutItems.value[0].item.price)).toBe(false)
+  expect(layout.layoutItems.value[0].item.price).toBe(12.5)
+  price.value = 18.75
+  await nextTick()
+  expect(layout.layoutItems.value[0].item.price).toBe(18.75)
 })

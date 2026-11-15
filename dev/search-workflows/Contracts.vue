@@ -14,15 +14,38 @@
   import { C_Select } from '@robot-admin/naive-ui-components/C_Select'
   import { C_FormSearch } from '@robot-admin/naive-ui-components/C_FormSearch'
   import { C_GlobalSearch } from '@robot-admin/naive-ui-components/C_GlobalSearch'
+  import {
+    C_Timeline,
+    type TimelineItem,
+  } from '@robot-admin/naive-ui-components/C_Timeline'
+  import { C_Progress } from '@robot-admin/naive-ui-components/C_Progress'
   import { useContractDemo } from './contracts-data'
   import '@robot-admin/naive-ui-components/C_Tree/style.css'
   import '@robot-admin/naive-ui-components/C_Table/style.css'
   import '@robot-admin/naive-ui-components/C_Select/style.css'
   import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
   import '@robot-admin/naive-ui-components/C_GlobalSearch/style.css'
+  import '@robot-admin/naive-ui-components/C_Timeline/style.css'
   import './style.css'
   import './contracts.css'
   defineOptions({ name: 'ContractWorkflows' })
+  const percentage = ref(12.5)
+  const timelineItems = ref<TimelineItem[]>([
+    {
+      id: 'contract',
+      title: '显示契约',
+      content:
+        '<strong class="safe-body">净化后的内容</strong><a href="javascript:void(0)" onclick="window.__timelineUnsafe = true">链接</a><script>window.__timelineUnsafe = true</' +
+        'script>',
+      tags: [{ text: '已校验', type: 'success' }],
+    },
+  ])
+  function updateDisplay() {
+    percentage.value = 24.125
+    timelineItems.value[0].content =
+      '<strong class="safe-body">更新后的内容</strong><a onclick="window.__timelineUnsafe = true">链接</a>'
+    timelineItems.value[0].tags = [{ text: '需关注', type: 'warning' }]
+  }
   const openedMenu = ref('尚未选择菜单')
   const demo = useContractDemo()
   const {
@@ -209,6 +232,19 @@
                 pagination: false,
               }"
           /></section>
+          <section
+            class="contract-card"
+            data-testid="display-contracts"
+          >
+            <h2>动画精度与内容更新</h2>
+            <C_Progress
+              :percentage="percentage"
+              is-animation
+              :time="80"
+            />
+            <C_Timeline :items="timelineItems" />
+            <NButton @click="updateDisplay">更新显示数据</NButton>
+          </section>
           <footer class="contract-footer"
             ><a href="./index.html">返回搜索与实体选择演示</a></footer
           >

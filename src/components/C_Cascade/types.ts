@@ -6,6 +6,18 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
  */
 
+import type { ComponentDensity } from '../../core/density'
+
+export interface CascadeProps {
+  data: CascadeItem[]
+  placeholders?: string[]
+  modelValue?: CascadeValue
+  disabled?: boolean
+  readonly?: boolean
+  size?: 'small' | 'medium' | 'large'
+  density?: ComponentDensity
+}
+
 export interface CascadeItem {
   label: string
   value: string | number

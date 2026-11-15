@@ -37,17 +37,11 @@
 
   defineOptions({ name: 'C_Language' })
 
-  interface LegacyLanguageOption extends LanguageOption {
-    key: string
-    label: string
-    iconClass?: string
-  }
-
   const { t } = useComponentLocale()
   const props = withDefaults(
     defineProps<{
       modelValue?: string
-      options?: LegacyLanguageOption[]
+      options?: LanguageOption[]
       /** Tooltip 文案，默认 "语言切换" */
       tooltip?: string
     }>(),

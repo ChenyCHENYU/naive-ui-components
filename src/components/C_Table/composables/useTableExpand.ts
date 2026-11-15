@@ -779,6 +779,7 @@ export function useTableExpand<T extends object = DataRecord, C = DataRecord>(
     clearSelection: selectionLogic.clearSelection,
     clearAllSelections: childLogic.clearAllSelections,
     handleSelectionChange: selectionLogic.handleSelectionChange,
+    handleChildSelectionChange: childLogic.handleChildSelectionChange,
 
     getTableColumns: renderer.getTableColumns,
 

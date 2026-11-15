@@ -15,3 +15,13 @@ export interface StepItem {
   disabled?: boolean
   detail?: string
 }
+
+/** 步骤数据与常用展示配置；只读数组可直接来自共享配置。 */
+export interface StepsProps {
+  steps: readonly StepItem[]
+  current?: number
+  direction?: 'horizontal' | 'vertical'
+  clickable?: boolean
+  /** 水平连接线是否贴近图标；默认保留两端间距。 */
+  connected?: boolean
+}

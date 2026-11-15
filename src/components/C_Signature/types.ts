@@ -49,6 +49,8 @@ export interface SignatureStroke {
   width: number
   opacity: number
   mode: PenMode
+  /** 新橡皮笔画的实际尺寸；旧快照省略时保持原有 20px 擦除效果。 */
+  eraserSize?: number
 }
 
 /** 签名历史快照 */

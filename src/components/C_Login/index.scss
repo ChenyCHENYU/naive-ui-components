@@ -658,3 +658,16 @@
   --cl-link-color: #888;
   --cl-link-hover: var(--c-primary-hover, var(--c-theme-primary-hover));
 }
+
+.c-login__forgot,
+.c-login__register-link {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  &:focus-visible {
+    outline: 2px solid var(--c-primary, var(--c-theme-primary));
+    outline-offset: 3px;
+  }
+}

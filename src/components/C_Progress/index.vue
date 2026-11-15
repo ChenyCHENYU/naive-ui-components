@@ -28,38 +28,14 @@
     useSlots,
     onMounted,
     onBeforeUnmount,
-    type CSSProperties,
   } from 'vue'
   import { NProgress } from 'naive-ui'
 
   defineOptions({ name: 'C_Progress' })
 
-  type CSS = CSSProperties | string
+  import type { ProgressProps } from './types'
 
-  interface Props {
-    percentage: number | number[]
-    isAnimation?: boolean
-    time?: number
-    type?: 'line' | 'circle' | 'multiple-circle' | 'dashboard'
-    borderRadius?: number | string
-    circleGap?: number
-    color?: string | string[] | { stops: string[] } | Array<{ stops: string[] }>
-    fillBorderRadius?: number | string
-    gapDegree?: number
-    gapOffsetDegree?: number
-    height?: number
-    indicatorPlacement?: 'inside' | 'outside'
-    indicatorTextColor?: string
-    offsetDegree?: number
-    railColor?: string | string[]
-    railStyle?: string | CSS | Array<string | CSS>
-    showIndicator?: boolean
-    status?: 'default' | 'success' | 'error' | 'warning' | 'info'
-    strokeWidth?: number
-    unit?: string
-  }
-
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<ProgressProps>(), {
     percentage: 0,
     isAnimation: false,
     time: 3000,
@@ -127,7 +103,11 @@
 
     function tick(now: number) {
       const progress = Math.min(Math.max((now - startTime) / duration, 0), 1)
-      p.value = Math.round(startValue + (targetValue - startValue) * progress)
+      // 只在过渡帧取整；结束值必须保留调用方给定的小数精度。
+      p.value =
+        progress === 1
+          ? targetValue
+          : Math.round(startValue + (targetValue - startValue) * progress)
       if (progress < 1) animationFrame = requestAnimationFrame(tick)
       else animationFrame = null
     }

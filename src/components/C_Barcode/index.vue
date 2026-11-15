@@ -36,30 +36,9 @@
   defineOptions({ name: 'C_Barcode' })
   const themeStyle = useComponentTheme()
 
-  interface Props {
-    value: string
-    format?:
-      | 'CODE128'
-      | 'CODE39'
-      | 'EAN13'
-      | 'EAN8'
-      | 'UPC'
-      | 'ITF14'
-      | 'MSI'
-      | 'pharmacode'
-    width?: number
-    height?: number
-    showText?: boolean
-    fontSize?: number
-    textPosition?: 'bottom' | 'top'
-    lineColor?: string
-    background?: string
-    showBorder?: boolean
-    label?: string
-    showLabel?: boolean
-  }
+  import type { BarcodeProps } from './types'
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<BarcodeProps>(), {
     format: 'CODE128',
     width: 2,
     height: 80,

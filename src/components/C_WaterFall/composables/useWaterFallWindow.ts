@@ -9,7 +9,7 @@ import {
   watch,
   type Ref,
 } from 'vue'
-import type { WaterFallLayoutItem } from '../types'
+import type { WaterFallItem, WaterFallLayoutItem } from '../types'
 import { findWaterFallWindow, indexWaterFallLayout } from './waterfallWindow'
 
 const WINDOW_THRESHOLD = 100
@@ -33,9 +33,9 @@ function clippingAncestors(element: HTMLElement) {
 }
 
 /** Follow the real clipping viewport without scanning the full layout on scroll. */
-export function useWaterFallWindow(
+export function useWaterFallWindow<T extends WaterFallItem = WaterFallItem>(
   container: Ref<HTMLElement | undefined>,
-  layouts: Readonly<Ref<readonly WaterFallLayoutItem[]>>,
+  layouts: Readonly<Ref<readonly WaterFallLayoutItem<T>[]>>,
   enabled: Readonly<Ref<boolean>>
 ) {
   const index = computed(() => indexWaterFallLayout(layouts.value))

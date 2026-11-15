@@ -58,7 +58,13 @@
               :size="12"
             />
           </template>
-          {{ tag.title }}
+          <a
+            class="tag-navigation"
+            :href="router.resolve(getTagLocation(tag)).href"
+            :aria-current="isActive(tag) ? 'page' : undefined"
+            @click.stop="handleTagLinkClick($event, tag)"
+            >{{ tag.title }}</a
+          >
         </NTag>
       </div>
     </div>
@@ -95,14 +101,6 @@
   defineOptions({ name: 'C_TagsView' })
   const themeStyle = useComponentTheme()
 
-  interface LegacyContextMenuLabels extends ContextMenuLabels {
-    close?: string
-    closeOthers?: string
-    closeLeft?: string
-    closeRight?: string
-    closeAll?: string
-  }
-
   const props = withDefaults(
     defineProps<{
       /**
@@ -118,7 +116,7 @@
       /** 持久化 localStorage key，传空字符串禁用 */
       persistKey?: string
       /** 右键菜单文案（国际化适配） */
-      contextMenuLabels?: LegacyContextMenuLabels
+      contextMenuLabels?: ContextMenuLabels
       /** useTagsView 配置项（优先级最高） */
       tagsViewOptions?: UseTagsViewOptions
     }>(),
@@ -236,6 +234,20 @@
       void router.push(location).catch(() => undefined)
     }
     scrollToTag(tag.path)
+  }
+
+  const handleTagLinkClick = (event: MouseEvent, tag: TagItem) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return
+    event.preventDefault()
+    navigateToTag(tag)
   }
 
   let closeVersion = 0

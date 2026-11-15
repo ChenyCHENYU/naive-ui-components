@@ -394,3 +394,139 @@ test.each(['uml', 'bpmn'] as const)(
     expect(graph.getEdges()).toHaveLength(0)
   }
 )
+
+test('ER old draft cannot overwrite a replaced same-ID table', async () => {
+  const wrapper = mount(ER, { props: { data: erData(), showToolbar: false } })
+  await flushPromises()
+  const graph = wrapper.vm.getGraph()!
+  graph.trigger('node:dblclick', { node: graph.getCellById('table_123') })
+  await flushPromises()
+  const editor = wrapper.findComponent(ERTableEditor)
+  editor.props('editingTable')!.name = 'Draft A'
+  const replacement = erData()
+  replacement.tables[0].name = 'Fresh B'
+  await wrapper.setProps({ data: replacement })
+  editor.vm.$emit('save')
+  await flushPromises()
+  const after = wrapper.vm.getData().tables[0].name
+  expect(after).toBe('Fresh B')
+  wrapper.unmount()
+})
+
+test.each(['save', 'delete'] as const)(
+  'UML old %s cannot modify a replaced same-ID class',
+  async action => {
+    const wrapper = mount(UML, {
+      props: { data: umlData(), showToolbar: false },
+    })
+    await flushPromises()
+    const graph = wrapper.vm.getGraph()!
+    graph.trigger('node:dblclick', { node: graph.getCellById('class_a') })
+    await flushPromises()
+    const editor = wrapper.findComponent(UMLClassEditor)
+    editor.props('editingClass')!.name = 'Draft A'
+    const replacement = umlData()
+    replacement.classes[0].name = 'Fresh B'
+    await wrapper.setProps({ data: replacement })
+    editor.vm.$emit(action)
+    await flushPromises()
+    expect(wrapper.vm.getData().classes.map(c => c.name)).toEqual(['Fresh B'])
+    wrapper.unmount()
+  }
+)
+
+test.each(['save', 'delete'] as const)(
+  'BPMN old %s cannot modify a replaced same-ID activity',
+  async action => {
+    const entry = (label: string) => [
+      {
+        id: 'task_a',
+        shape: 'activity',
+        x: 0,
+        y: 0,
+        label,
+        data: { description: label, assignee: label },
+      },
+    ]
+    const wrapper = mount(BPMN, {
+      props: { data: entry('Original A'), showToolbar: false },
+    })
+    await flushPromises()
+    const graph = wrapper.vm.getGraph()!
+    graph.trigger('node:dblclick', { node: graph.getCellById('task_a') })
+    await flushPromises()
+    const editor = wrapper.findComponent(BPMNPropertyEditor)
+    editor.props('editingElement')!.label = 'Draft A'
+    await wrapper.setProps({ data: entry('Fresh B') })
+    editor.vm.$emit(action)
+    await flushPromises()
+    const names = wrapper.vm.getData().map(c => c.label)
+    expect(names).toEqual(['Fresh B'])
+    wrapper.unmount()
+  }
+)
+
+test('ER preserves an open draft across an equal echo or unrelated table update and commits only once', async () => {
+  const wrapper = mount(ER, { props: { data: erData(), showToolbar: false } })
+  await flushPromises()
+  const graph = wrapper.vm.getGraph()!
+  graph.trigger('node:dblclick', { node: graph.getCellById('table_123') })
+  await flushPromises()
+  const editor = wrapper.getComponent(ERTableEditor)
+  editor.props('editingTable')!.name = 'Draft'
+  await wrapper.setProps({ data: erData() })
+  expect(editor.props('show')).toBe(true)
+  const unrelated = erData()
+  unrelated.tables[1].name = 'Other updated'
+  await wrapper.setProps({ data: unrelated })
+  expect(editor.props('show')).toBe(true)
+  const before = wrapper.emitted('data-change')?.length ?? 0
+  editor.vm.$emit('save')
+  editor.vm.$emit('save')
+  expect(wrapper.emitted('data-change')).toHaveLength(before + 1)
+  expect(wrapper.vm.getData().tables.map(row => row.name)).toEqual([
+    'Draft',
+    'Other updated',
+  ])
+})
+
+test('UML accepts an equal parent echo without losing nested editor changes', async () => {
+  const wrapper = mount(UML, { props: { data: umlData(), showToolbar: false } })
+  await flushPromises()
+  const graph = wrapper.vm.getGraph()!
+  graph.trigger('node:dblclick', { node: graph.getCellById('class_a') })
+  await flushPromises()
+  const editor = wrapper.getComponent(UMLClassEditor)
+  editor.props('editingClass')!.methods[0].parameters = ['draft']
+  await wrapper.setProps({ data: umlData() })
+  expect(editor.props('show')).toBe(true)
+  editor.vm.$emit('save')
+  expect(wrapper.vm.getData().classes[0].methods[0].parameters).toEqual([
+    'draft',
+  ])
+})
+
+test('BPMN accepts an equal parent echo and consumes deletion only once', async () => {
+  const data = [
+    {
+      id: 'task',
+      shape: 'activity',
+      x: 0,
+      y: 0,
+      data: { description: 'original' },
+    },
+  ]
+  const wrapper = mount(BPMN, { props: { data, showToolbar: false } })
+  await flushPromises()
+  const graph = wrapper.vm.getGraph()!
+  graph.trigger('node:dblclick', { node: graph.getCellById('task') })
+  await flushPromises()
+  const editor = wrapper.getComponent(BPMNPropertyEditor)
+  await wrapper.setProps({ data: structuredClone(data) })
+  expect(editor.props('show')).toBe(true)
+  const before = wrapper.emitted('data-change')?.length ?? 0
+  editor.vm.$emit('delete')
+  editor.vm.$emit('delete')
+  expect(wrapper.vm.getData()).toEqual([])
+  expect(wrapper.emitted('data-change')).toHaveLength(before + 1)
+})

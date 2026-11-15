@@ -93,6 +93,7 @@
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
   import { bindReadonlyGuard } from '../../composables/readonlyGraph'
   import { cloneData } from '../../../../utils/data'
+  import { createGraphEditSession } from '../../composables/graphEditSession'
   import type { UMLClass, UMLDiagramData, UMLRelation } from '../../types'
   import UMLClassEditor from './components/UMLClassEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
@@ -147,6 +148,14 @@
   // ==================== 编辑器状态 ====================
   const showEditor = ref(false)
   const editingClass = ref<UMLClass>()
+  const editSession = createGraphEditSession(
+    id => getCurrentData().classes.find(item => item.id === id),
+    id => props.data?.classes.find(item => item.id === id),
+    () => {
+      showEditor.value = false
+      editingClass.value = undefined
+    }
+  )
 
   // ==================== 节点注册 ====================
   const registerNodes = () => {
@@ -278,25 +287,26 @@
   const editClass = (umlClass: UMLClass) => {
     if (props.readonly) return
     // 方法参数、属性对象和位置都属于草稿，取消时不能修改图模型。
+    editSession.begin(umlClass.id)
     editingClass.value = cloneData(umlClass)
     showEditor.value = true
   }
 
   const saveClass = () => {
-    if (props.readonly || !graph.value || !editingClass.value) return
-    const node = graph.value.getCellById(editingClass.value.id) as Node
-    if (node) {
-      node.setData(cloneData(editingClass.value))
-      node.prop(formatClassDisplay(editingClass.value))
-    }
-    showEditor.value = false
+    const draft = editingClass.value
+    if (props.readonly || !showEditor.value || !graph.value || !draft) return
+    if (!editSession.consume(draft.id)) return
+    const node = graph.value.getCellById(draft.id) as Node
+    node.setData(cloneData(draft))
+    node.prop(formatClassDisplay(draft))
     emitDataChange()
   }
 
   const deleteClass = () => {
-    if (props.readonly || !graph.value || !editingClass.value) return
-    graph.value.getCellById(editingClass.value.id)?.remove()
-    showEditor.value = false
+    const draft = editingClass.value
+    if (props.readonly || !showEditor.value || !graph.value || !draft) return
+    if (!editSession.consume(draft.id)) return
+    graph.value.getCellById(draft.id)?.remove()
     emitDataChange()
   }
 
@@ -401,7 +411,10 @@
   watch(
     () => props.data,
     newData => {
-      if (graph.value && newData) loadUmlData(newData)
+      if (graph.value && newData) {
+        loadUmlData(newData)
+        editSession.validate()
+      }
     },
     { deep: true }
   )
@@ -410,8 +423,7 @@
     () => props.readonly,
     readonly => {
       if (!readonly) return
-      showEditor.value = false
-      editingClass.value = undefined
+      editSession.close()
     },
     { flush: 'sync' }
   )

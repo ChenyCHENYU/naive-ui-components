@@ -122,7 +122,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends WaterFallItem = WaterFallItem">
   import {
     ref,
     computed,
@@ -138,6 +138,9 @@
     WaterFallItem,
     WaterFallLayoutItem,
     WaterFallProps,
+    WaterFallEmits,
+    WaterFallSlots,
+    WaterFallRenderedItem,
     WaterFallExpose,
     WaterFallBreakpoint,
   } from './types'
@@ -155,7 +158,7 @@
   defineOptions({ name: 'C_WaterFall' })
   const componentTheme = useComponentTheme()
 
-  const props = withDefaults(defineProps<WaterFallProps>(), {
+  const props = withDefaults(defineProps<WaterFallProps<T>>(), {
     columns: undefined,
     gap: DEFAULT_GAP,
     lazy: true,
@@ -169,12 +172,8 @@
     noMore: false,
   })
 
-  const emit = defineEmits<{
-    'load-more': []
-    'item-click': [item: WaterFallItem, index: number]
-    'image-loaded': [item: WaterFallItem]
-    'image-error': [item: WaterFallItem]
-  }>()
+  const emit = defineEmits<WaterFallEmits<T>>()
+  defineSlots<WaterFallSlots<T>>()
 
   const containerRef = ref<HTMLElement>()
   const sentinelRef = ref<HTMLElement>()
@@ -322,7 +321,10 @@
     () => emit('load-more')
   )
 
-  function handleImageLoaded(lay: WaterFallLayoutItem, event: Event) {
+  function handleImageLoaded(
+    lay: WaterFallLayoutItem<WaterFallRenderedItem<T>>,
+    event: Event
+  ) {
     const img = event.target as HTMLImageElement
     // The old image may finish after its item received a new source.
     if (img.getAttribute('src') !== lay.item.src) return
@@ -333,7 +335,9 @@
     emit('image-loaded', lay.item)
   }
 
-  function handleImageError(lay: WaterFallLayoutItem) {
+  function handleImageError(
+    lay: WaterFallLayoutItem<WaterFallRenderedItem<T>>
+  ) {
     emit('image-error', lay.item)
   }
 
@@ -397,7 +401,7 @@
 
   function handleItemKeydown(
     event: KeyboardEvent,
-    layout: WaterFallLayoutItem,
+    layout: WaterFallLayoutItem<WaterFallRenderedItem<T>>,
     index: number
   ) {
     if (event.key === 'Tab') return handleTab(event, index)

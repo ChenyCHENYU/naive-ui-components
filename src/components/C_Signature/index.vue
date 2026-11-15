@@ -255,6 +255,7 @@
   const canvasInstance = useSignatureCanvas({
     canvasRef,
     penConfig: toRef(currentPenConfig),
+    eraserConfig: toRef(props, 'eraserConfig'),
     mode: currentMode,
     disabled: interactionDisabled,
     backgroundImage,

@@ -1,14 +1,17 @@
 import { ref, readonly, type Ref } from 'vue'
 import type {
   PenConfig,
+  EraserConfig,
   PenMode,
   SignaturePoint,
   SignatureStroke,
 } from '../types'
+import { DEFAULT_ERASER_CONFIG } from '../data'
 
 interface UseSignatureCanvasOptions {
   canvasRef: Ref<HTMLCanvasElement | null>
   penConfig: Ref<PenConfig>
+  eraserConfig?: Ref<Partial<EraserConfig> | undefined>
   mode: Ref<PenMode>
   disabled: Ref<boolean>
   backgroundImage?: Ref<HTMLImageElement | null>
@@ -29,6 +32,7 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
   const {
     canvasRef,
     penConfig,
+    eraserConfig,
     mode,
     disabled,
     backgroundImage,
@@ -41,6 +45,11 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
   const isDrawing = ref(false)
   const currentStroke = ref<SignaturePoint[]>([])
   let ctx: CanvasRenderingContext2D | null = null
+  let strokeStyle: Omit<SignatureStroke, 'points'> | undefined
+  const eraserSize = (value?: number) =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0
+      ? value
+      : DEFAULT_ERASER_CONFIG.size
 
   const initCanvas = () => {
     const canvas = canvasRef.value
@@ -80,23 +89,31 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     from: SignaturePoint,
     to: SignaturePoint,
     config: PenConfig,
-    eraserMode = false
+    eraserMode = false,
+    size?: number
   ) => {
     if (!ctx) return
     ctx.save()
     if (eraserMode) {
       ctx.globalCompositeOperation = 'destination-out'
-      ctx.lineWidth = 20
+      ctx.lineWidth = eraserSize(size)
+      ctx.globalAlpha = 1
     } else {
       ctx.globalCompositeOperation = 'source-over'
       ctx.strokeStyle = config.color
+      ctx.fillStyle = config.color
       ctx.lineWidth = config.width
       ctx.globalAlpha = config.opacity
     }
     ctx.beginPath()
-    ctx.moveTo(from.x, from.y)
-    ctx.lineTo(to.x, to.y)
-    ctx.stroke()
+    if (from.x === to.x && from.y === to.y) {
+      ctx.arc(from.x, from.y, ctx.lineWidth / 2, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      ctx.moveTo(from.x, from.y)
+      ctx.lineTo(to.x, to.y)
+      ctx.stroke()
+    }
     ctx.restore()
   }
 
@@ -105,6 +122,13 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     e.preventDefault()
     isDrawing.value = true
     currentStroke.value = []
+    strokeStyle = {
+      ...penConfig.value,
+      mode: mode.value,
+      ...(mode.value === 'eraser' && {
+        eraserSize: eraserSize(eraserConfig?.value?.size),
+      }),
+    }
     const point = getPointFromEvent(e)
     currentStroke.value.push(point)
     onDrawStart()
@@ -115,8 +139,14 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     e.preventDefault()
     const point = getPointFromEvent(e)
     const lastPoint = currentStroke.value[currentStroke.value.length - 1]
-    if (lastPoint) {
-      drawStroke(lastPoint, point, penConfig.value, mode.value === 'eraser')
+    if (lastPoint && strokeStyle) {
+      drawStroke(
+        lastPoint,
+        point,
+        strokeStyle,
+        strokeStyle.mode === 'eraser',
+        strokeStyle.eraserSize
+      )
     }
     currentStroke.value.push(point)
     onDrawing(point)
@@ -129,13 +159,20 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     if (currentStroke.value.length > 0) {
       const stroke: SignatureStroke = {
         points: [...currentStroke.value],
-        color: penConfig.value.color,
-        width: penConfig.value.width,
-        opacity: penConfig.value.opacity,
-        mode: mode.value,
+        ...strokeStyle!,
       }
-      onStrokeComplete(stroke)
+      if (stroke.points.length === 1) {
+        drawStroke(
+          stroke.points[0],
+          stroke.points[0],
+          stroke,
+          stroke.mode === 'eraser',
+          stroke.eraserSize
+        )
+      }
+      strokeStyle = undefined
       currentStroke.value = []
+      onStrokeComplete(stroke)
     }
   }
 
@@ -149,12 +186,27 @@ export function useSignatureCanvas(options: UseSignatureCanvasOptions) {
     if (importedImage?.value)
       ctx.drawImage(importedImage.value, 0, 0, width, height)
     strokes.forEach(stroke => {
+      const config = {
+        color: stroke.color,
+        width: stroke.width,
+        opacity: stroke.opacity,
+      }
+      if (stroke.points.length === 1) {
+        drawStroke(
+          stroke.points[0],
+          stroke.points[0],
+          config,
+          stroke.mode === 'eraser',
+          stroke.eraserSize
+        )
+      }
       for (let i = 1; i < stroke.points.length; i++) {
         drawStroke(
           stroke.points[i - 1],
           stroke.points[i],
-          { color: stroke.color, width: stroke.width, opacity: stroke.opacity },
-          stroke.mode === 'eraser'
+          config,
+          stroke.mode === 'eraser',
+          stroke.eraserSize
         )
       }
     })

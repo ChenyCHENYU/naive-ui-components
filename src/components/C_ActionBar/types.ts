@@ -65,6 +65,7 @@ export interface ActionBarConfig {
   /** 允许分组及组内按钮随可用宽度换行。 */
   wrap?: boolean
   showDivider?: boolean
+  /** 按钮之间的分隔方向；horizontal 显示短横线，不改变按钮排列方向。 */
   dividerType?: 'vertical' | 'horizontal'
   /** 减少容器留白和默认按钮间距；行内模式也生效。 */
   compact?: boolean

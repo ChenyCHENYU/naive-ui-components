@@ -15,8 +15,10 @@ bun run test:performance
 
 The test commands only preview existing output on dedicated port 4191; they do not rebuild it or reuse another server. Port 4190 is deliberately avoided because Firefox and WebKit restrict it. On macOS Codex with `CODEX_SANDBOX=seatbelt`, the setup refuses browser launch unconditionally. Request `sandbox_permissions=require_escalated` for the concrete command; do not clear the sandbox marker or add a bypass environment variable. Ordinary terminals and CI follow their existing permissions.
 
-The browser suite runs eight cases in Chromium, Firefox and WebKit, without retries:
+The browser suite runs ten cases in Chromium, Firefox and WebKit, without retries:
 
+- Command-search sequential Tab/Shift+Tab focus containment and close/reopen opener restoration.
+- Fractional progress endpoints and changed Timeline rich content, real sanitization and semantic tag colors.
 - Master/detail replacement and clearing, plus independent failure/retry.
 - Real consecutive quality inputs, exact strings, immutable generated results and per-sample drafts.
 - Hidden nested split tables restored after a viewport resize.
@@ -25,7 +27,7 @@ The browser suite runs eight cases in Chromium, Firefox and WebKit, without retr
 - Quick picker Escape, preserved committed value and changed factory scope.
 - Remote tree failure/retry and replacing a pending query's scope.
 
-The suite checks page errors and console errors/warnings. Focus assertions cover the observed trigger return and native Tab between quality fields; they do not claim a complete focus-trap audit. Sources are deterministic local async adapters, not verified business backends.
+The suite checks page errors and console errors/warnings. Focus assertions cover command-search containment, observed trigger return and native Tab between quality fields; they do not claim a complete keyboard or assistive-technology audit for every component. Sources are deterministic local async adapters, not verified business backends.
 
 ## Fixed-scale performance
 

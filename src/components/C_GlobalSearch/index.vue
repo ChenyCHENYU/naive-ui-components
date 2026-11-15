@@ -16,7 +16,7 @@
       @click="openDialog"
     >
       <span class="i-mdi:search robot-trigger-icon" />
-      <span class="robot-trigger-text">搜索</span>
+      <span class="robot-trigger-text">{{ t('globalSearch.trigger') }}</span>
       <span class="robot-trigger-shortcut">Ctrl K</span>
     </button>
 
@@ -35,7 +35,7 @@
             :class="{ 'dialog-dark': isDark }"
             role="dialog"
             aria-modal="true"
-            aria-label="全局搜索"
+            :aria-label="t('globalSearch.dialog')"
             @click.stop
           >
             <!-- 搜索头部 -->
@@ -45,10 +45,10 @@
                 ref="searchInputRef"
                 v-model="searchValue"
                 type="text"
-                :placeholder="placeholder"
+                :placeholder="placeholder ?? t('globalSearch.placeholder')"
                 class="robot-search-input"
                 role="combobox"
-                aria-label="搜索菜单"
+                :aria-label="t('globalSearch.input')"
                 aria-autocomplete="list"
                 :aria-expanded="showDialog"
                 :aria-controls="optionListId"
@@ -59,7 +59,7 @@
               />
               <button
                 class="robot-close-btn"
-                aria-label="关闭搜索"
+                :aria-label="t('globalSearch.close')"
                 @click="closeDialog"
               >
                 <div class="i-mdi:close" />
@@ -80,7 +80,7 @@
                 class="robot-empty-state"
               >
                 <div class="i-mdi:magnify robot-empty-icon" />
-                <p>{{ emptyText }}</p>
+                <p>{{ emptyText ?? t('globalSearch.empty') }}</p>
               </div>
 
               <!-- 搜索历史 -->
@@ -93,14 +93,15 @@
                       <div
                         class="i-mdi:clock-time-four-outline robot-group-icon"
                       />
-                      最近搜索
+                      {{ t('globalSearch.recent') }}
                       <span class="robot-group-count">{{
                         displayHistory.length
                       }}</span>
                       <button
                         class="robot-clear-history"
                         @click="clearHistory"
-                        title="清空历史"
+                        :title="t('globalSearch.clearHistory')"
+                        :aria-label="t('globalSearch.clearHistory')"
                       >
                         <div class="i-mdi:delete-outline" />
                       </button>
@@ -110,7 +111,7 @@
                       ref="historyItemsRef"
                       class="robot-group-items"
                       role="listbox"
-                      aria-label="最近搜索"
+                      :aria-label="t('globalSearch.recent')"
                     >
                       <div
                         v-for="(historyItem, index) in displayHistory"
@@ -140,14 +141,15 @@
                           </div>
                           <div class="robot-item-desc">
                             {{
-                              formatMenuPath(historyItem.menuItem?.key || '')
+                              formatDisplayPath(historyItem.menuItem?.key || '')
                             }}
                           </div>
                         </div>
                         <button
                           class="robot-history-delete"
                           @click.stop="removeHistoryItem(index)"
-                          title="删除此记录"
+                          :title="t('globalSearch.removeHistory')"
+                          :aria-label="t('globalSearch.removeHistory')"
                         >
                           <div class="i-mdi:close" />
                         </button>
@@ -166,7 +168,9 @@
                     class="robot-empty-state"
                   >
                     <div class="i-mdi:magnify robot-empty-icon" />
-                    <p>未找到 "{{ searchValue }}" 相关内容</p>
+                    <p>{{
+                      t('globalSearch.noResults', { query: searchValue })
+                    }}</p>
                   </div>
 
                   <!-- 搜索结果列表 -->
@@ -176,7 +180,7 @@
                   >
                     <div class="robot-group-title">
                       <div class="i-mdi:menu robot-group-icon" />
-                      {{ resultGroupTitle }}
+                      {{ resultGroupTitle ?? t('globalSearch.group') }}
                       <span class="robot-group-count">{{
                         filteredMenuItems.length
                       }}</span>
@@ -186,7 +190,7 @@
                       ref="resultListRef"
                       class="robot-group-items robot-virtual-items"
                       role="listbox"
-                      :aria-label="resultGroupTitle"
+                      :aria-label="resultGroupTitle ?? t('globalSearch.group')"
                       :items="filteredMenuItems"
                       :item-size="64"
                       :style="{
@@ -201,7 +205,7 @@
                           :aria-selected="selectedIndex === index"
                           :aria-posinset="index + 1"
                           :aria-setsize="filteredMenuItems.length"
-                          :title="`${item.label} · ${formatMenuPath(item.key)}`"
+                          :title="`${item.label} · ${formatDisplayPath(item.key)}`"
                           @click="selectItem(item)"
                           @mouseenter="selectedIndex = index"
                         >
@@ -234,7 +238,7 @@
                               </template>
                             </div>
                             <div class="robot-item-desc">
-                              {{ formatMenuPath(item.key) }}
+                              {{ formatDisplayPath(item.key) }}
                             </div>
                           </div>
                           <div
@@ -255,13 +259,13 @@
             <div class="robot-search-footer">
               <div class="robot-footer-actions">
                 <div class="robot-action-item">
-                  <kbd>↵</kbd><span>选择</span>
+                  <kbd>↵</kbd><span>{{ t('globalSearch.select') }}</span>
                 </div>
                 <div class="robot-action-item">
-                  <kbd>↑↓</kbd><span>导航</span>
+                  <kbd>↑↓</kbd><span>{{ t('globalSearch.navigate') }}</span>
                 </div>
                 <div class="robot-action-item">
-                  <kbd>esc</kbd><span>关闭</span>
+                  <kbd>esc</kbd><span>{{ t('globalSearch.closeHint') }}</span>
                 </div>
               </div>
               <div
@@ -269,12 +273,20 @@
                 class="robot-footer-info"
               >
                 <span v-if="searchValue.trim() && hasResults">
-                  共 {{ filteredMenuItems.length }} 项结果
+                  {{
+                    t('globalSearch.resultCount', {
+                      count: filteredMenuItems.length,
+                    })
+                  }}
                 </span>
                 <span
                   v-else-if="!searchValue.trim() && displayHistory.length > 0"
                 >
-                  {{ displayHistory.length }} 条历史记录
+                  {{
+                    t('globalSearch.historyCount', {
+                      count: displayHistory.length,
+                    })
+                  }}
                 </span>
               </div>
             </div>
@@ -292,8 +304,10 @@
   import { VVirtualList } from '../../utils/virtualList'
   import { useGlobalSearch } from './composables/useGlobalSearch'
   import type { GlobalSearchOptions } from './types'
+  import { useGlobalSearchLocale } from './locale'
 
   defineOptions({ name: 'C_GlobalSearch' })
+  const { t } = useGlobalSearchLocale()
 
   interface Props {
     /** useGlobalSearch 配置（必须传入 menuItems + onSelect） */
@@ -306,11 +320,7 @@
     resultGroupTitle?: string
   }
 
-  const props = withDefaults(defineProps<Props>(), {
-    placeholder: '搜索导航菜单...',
-    emptyText: '输入关键词搜索菜单',
-    resultGroupTitle: '菜单导航',
-  })
+  const props = defineProps<Props>()
 
   const {
     showDialog,
@@ -337,6 +347,9 @@
     handleCompositionEnd,
   } = useGlobalSearch(() => props.options)
   const themeStyle = useComponentTheme(() => (isDark.value ? 'dark' : 'light'))
+
+  const formatDisplayPath = (key: string) =>
+    key === '' || key === '/' ? t('globalSearch.home') : formatMenuPath(key)
 
   const optionListId = `robot-search-options-${useId()}`
   const optionId = (index: number) => `${optionListId}-${index}`

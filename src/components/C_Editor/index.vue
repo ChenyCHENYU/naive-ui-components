@@ -62,15 +62,7 @@
     isDestroyed: boolean
   }
 
-  interface Props {
-    editorId?: string
-    modelValue?: string
-    placeholder?: string
-    disabled?: boolean
-    readonly?: boolean
-    height?: number
-    theme?: 'light' | 'dark'
-  }
+  import type { EditorProps } from './types'
 
   interface Emits {
     (e: 'update:modelValue', value: string): void
@@ -79,7 +71,7 @@
     (e: 'error', error: Error): void
   }
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<EditorProps>(), {
     modelValue: '',
     placeholder: '',
     disabled: false,

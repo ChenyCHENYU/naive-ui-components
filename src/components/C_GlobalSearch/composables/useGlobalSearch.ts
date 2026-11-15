@@ -230,20 +230,43 @@ export function useGlobalSearch(
   }
 
   // ==================== 对话框控制 ====================
+  let opener: HTMLElement | null = null
+  let focusVersion = 0
+  let disposed = false
   const openDialog = async () => {
+    if (
+      !showDialog.value &&
+      typeof document !== 'undefined' &&
+      typeof HTMLElement !== 'undefined'
+    )
+      opener =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+    const version = ++focusVersion
     showDialog.value = true
     searchValue.value = ''
     selectedIndex.value = 0
     isComposing.value = false
     await nextTick()
-    searchInputRef.value?.focus()
+    if (!disposed && version === focusVersion && showDialog.value)
+      searchInputRef.value?.focus()
   }
 
   const closeDialog = () => {
+    const wasOpen = showDialog.value
+    const previous = opener
+    opener = null
+    const version = ++focusVersion
     showDialog.value = false
     searchValue.value = ''
     selectedIndex.value = 0
     isComposing.value = false
+    if (wasOpen)
+      void nextTick(() => {
+        if (!disposed && version === focusVersion && previous?.isConnected)
+          previous.focus({ preventScroll: true })
+      })
   }
 
   // ==================== 选择项目 ====================
@@ -325,7 +348,32 @@ export function useGlobalSearch(
     )
   }
 
+  const containDialogFocus = (event: KeyboardEvent) => {
+    const dialog = searchInputRef.value?.closest('[role="dialog"]')
+    if (!dialog) return
+    const targets = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), a[href], [tabindex]'
+      )
+    ).filter(
+      element =>
+        element.tabIndex >= 0 &&
+        !element.matches(':disabled') &&
+        !element.closest('[hidden], [inert]')
+    )
+    const first = targets[0]
+    const last = targets[targets.length - 1]
+    const boundary = event.shiftKey ? first : last
+    if (!boundary || document.activeElement !== boundary) return
+    event.preventDefault()
+    ;(event.shiftKey ? last : first)?.focus()
+  }
+
   const handleDialogKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Tab' && !event.defaultPrevented && !event.isComposing) {
+      containDialogFocus(event)
+      return
+    }
     if (event.key !== 'Escape' || ignoresNavigation(event)) return
     event.preventDefault()
     closeDialog()
@@ -364,7 +412,12 @@ export function useGlobalSearch(
     loadHistory()
     document.addEventListener('keydown', handleKeydown)
   })
-  onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
+  onUnmounted(() => {
+    disposed = true
+    focusVersion++
+    opener = null
+    document.removeEventListener('keydown', handleKeydown)
+  })
 
   return {
     showDialog,

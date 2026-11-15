@@ -92,11 +92,8 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     hash: string
     file: File
     totalChunks: number
-    chunks: UploadChunk[]
-    totalBytes: number
     abortControllers: (() => void)[]
-    onProgress: (progress: ChunkProgress) => void
-    setUploadedBytes: (bytes: number) => void
+    onUploaded: (bytes: number) => void
     setError: () => void
     isCancelled: () => boolean
   }): Promise<void> {
@@ -137,17 +134,9 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
             resolveOnce()
             return
           }
-          ctx.chunk.uploaded = true
-          ctx.setUploadedBytes(ctx.chunk.size)
-          ctx.onProgress({
-            uploadedChunks: ctx.chunks.filter(c => c.uploaded).length,
-            totalChunks: ctx.totalChunks,
-            uploadedBytes: ctx.chunks
-              .filter(c => c.uploaded)
-              .reduce((sum, c) => sum + c.size, 0),
-            totalBytes: ctx.totalBytes,
-          })
           resolveOnce()
+          ctx.chunk.uploaded = true
+          ctx.onUploaded(ctx.chunk.size)
         },
         onError: rejectOnce,
       }
@@ -196,6 +185,7 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
     const totalChunks = chunks.length
     const totalBytes = file.size
     let uploadedBytes = 0
+    let uploadedCount = 0
 
     // 查询已上传分片（断点续传）
     await queryExistingChunks(hash, chunks)
@@ -203,17 +193,21 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
       finish()
       return
     }
-    uploadedBytes = chunks
-      .filter(c => c.uploaded)
-      .reduce((sum, c) => sum + c.size, 0)
-
-    // 初始进度
-    onProgress({
-      uploadedChunks: chunks.filter(c => c.uploaded).length,
-      totalChunks,
-      uploadedBytes,
-      totalBytes,
-    })
+    for (const chunk of chunks) {
+      if (!chunk.uploaded) continue
+      uploadedCount++
+      uploadedBytes += chunk.size
+    }
+    const reportProgress = () => {
+      if (!isCancelled())
+        onProgress({
+          uploadedChunks: uploadedCount,
+          totalChunks,
+          uploadedBytes,
+          totalBytes,
+        })
+    }
+    reportProgress()
 
     // 过滤待上传分片
     const pendingChunks = chunks.filter(c => !c.uploaded)
@@ -264,14 +258,11 @@ export function useChunkUpload(options: UseChunkUploadOptions) {
           hash,
           file,
           totalChunks,
-          chunks,
-          totalBytes,
           abortControllers,
-          onProgress: progress => {
-            if (!isCancelled()) onProgress(progress)
-          },
-          setUploadedBytes: (bytes: number) => {
+          onUploaded: bytes => {
+            uploadedCount++
             uploadedBytes += bytes
+            reportProgress()
           },
           setError: () => {
             hasError = true

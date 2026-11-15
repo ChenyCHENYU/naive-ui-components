@@ -6,11 +6,14 @@
   <div class="file-container word-container">
     <div class="file-toolbar">
       <div class="flex gap-2 items-center">
-        <NButton size="small" @click="showOutline = !showOutline">
+        <NButton
+          size="small"
+          @click="showOutline = !showOutline"
+        >
           <template #icon>
             <C_Icon name="ic:outline-list" />
           </template>
-          {{ showOutline ? "隐藏" : "显示" }}目录
+          {{ showOutline ? '隐藏' : '显示' }}目录
         </NButton>
         <NDivider vertical />
         <NButton
@@ -34,7 +37,10 @@
             <C_Icon name="ic:outline-zoom-in" />
           </template>
         </NButton>
-        <NButton size="small" @click="adjustWordZoom('reset')">
+        <NButton
+          size="small"
+          @click="adjustWordZoom('reset')"
+        >
           <template #icon>
             <C_Icon name="ic:outline-fit-screen" />
           </template>
@@ -46,7 +52,10 @@
     <div class="word-layout">
       <div class="word-main">
         <!-- 侧边栏目录 -->
-        <div v-if="showOutline" class="word-outline">
+        <div
+          v-if="showOutline"
+          class="word-outline"
+        >
           <div class="outline-header">
             <h3 class="text-sm font-semibold">文档目录</h3>
           </div>
@@ -66,6 +75,7 @@
         <!-- 主要内容区域 -->
         <div class="word-content">
           <div
+            ref="documentRef"
             class="word-document"
             :style="{
               transform: `scale(${wordZoom / 100})`,
@@ -80,28 +90,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { NButton, NDivider } from "naive-ui";
-import { createZoomHandler, ZOOM_CONFIGS } from "../../data";
-import type { DocHeading } from "../../types";
+  import { ref } from 'vue'
+  import { NButton, NDivider } from 'naive-ui'
+  import { createZoomHandler, ZOOM_CONFIGS } from '../../data'
+  import type { DocHeading } from '../../types'
 
-defineProps<{
-  content: string;
-  headings: DocHeading[];
-}>();
+  defineProps<{
+    content: string
+    headings: DocHeading[]
+  }>()
 
-const showOutline = ref(true);
-const wordZoom = ref(100);
+  const documentRef = ref<HTMLElement>()
+  const showOutline = ref(true)
+  const wordZoom = ref(100)
 
-const adjustWordZoom = createZoomHandler(wordZoom, ZOOM_CONFIGS.word);
+  const adjustWordZoom = createZoomHandler(wordZoom, ZOOM_CONFIGS.word)
 
-const scrollToHeading = (headingId: string) => {
-  document
-    .getElementById(headingId)
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-};
+  const scrollToHeading = (headingId: string) => {
+    Array.from(documentRef.value?.querySelectorAll('[id]') ?? [])
+      .find(element => element.id === headingId)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 </script>
 
 <style lang="scss" scoped>
-@use "./index.scss";
+  @use './index.scss';
 </style>

@@ -120,6 +120,7 @@
   import { useEdgeInteraction } from '../../composables/useEdgeInteraction'
   import { bindReadonlyGuard } from '../../composables/readonlyGraph'
   import { cloneData } from '../../../../utils/data'
+  import { createGraphEditSession } from '../../composables/graphEditSession'
   import BPMNPropertyEditor from './components/BPMNPropertyEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
   import {
@@ -193,6 +194,14 @@
   // ==================== 编辑器状态 ====================
   const showEditor = ref(false)
   const editingElement = ref<BPMNElement>()
+  const editSession = createGraphEditSession(
+    id => getCurrentData().find(item => item.id === id),
+    id => normalizeData(props.data).find(item => item.id === id),
+    () => {
+      showEditor.value = false
+      editingElement.value = undefined
+    }
+  )
 
   // ==================== 工具函数 ====================
   const getLabel = (cell: any): string =>
@@ -284,6 +293,7 @@
   // ==================== 元素编辑 ====================
   const editElement = (cell: any) => {
     if (props.readonly) return
+    editSession.begin(cell.id)
     const cellData = cell.getData() || {}
     editingElement.value = {
       id: cell.id,
@@ -298,24 +308,21 @@
   }
 
   const saveElement = () => {
-    if (props.readonly || !graph.value || !editingElement.value) return
-    const cell = graph.value.getCellById(editingElement.value.id)
-    if (cell) {
-      cell.setData({
-        description: editingElement.value.description,
-        assignee: editingElement.value.assignee,
-      })
-      cell.attr('text/text', editingElement.value.label || '')
-      cell.attr('label/text', editingElement.value.label || '')
-    }
-    showEditor.value = false
+    const draft = editingElement.value
+    if (props.readonly || !showEditor.value || !graph.value || !draft) return
+    if (!editSession.consume(draft.id)) return
+    const cell = graph.value.getCellById(draft.id)
+    cell.setData({ description: draft.description, assignee: draft.assignee })
+    cell.attr('text/text', draft.label || '')
+    cell.attr('label/text', draft.label || '')
     emitDataChange()
   }
 
   const deleteElement = () => {
-    if (props.readonly || !graph.value || !editingElement.value) return
-    graph.value.getCellById(editingElement.value.id)?.remove()
-    showEditor.value = false
+    const draft = editingElement.value
+    if (props.readonly || !showEditor.value || !graph.value || !draft) return
+    if (!editSession.consume(draft.id)) return
+    graph.value.getCellById(draft.id)?.remove()
     emitDataChange()
   }
 
@@ -374,6 +381,7 @@
     newData => {
       if (!graph.value) return
       loadData(newData === undefined ? sampleData : normalizeData(newData))
+      editSession.validate()
     },
     { deep: true }
   )
@@ -382,8 +390,7 @@
     () => props.readonly,
     readonly => {
       if (!readonly) return
-      showEditor.value = false
-      editingElement.value = undefined
+      editSession.close()
     },
     { flush: 'sync' }
   )

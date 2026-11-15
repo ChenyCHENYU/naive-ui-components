@@ -340,18 +340,30 @@
     border-radius: var(--tl-tag-radius);
     background: color-mix(
       in srgb,
-      var(--c-primary, var(--c-theme-primary, var(--primary-color, #2080f0)))
+      var(
+          --tl-tag-color,
+          var(
+            --c-primary,
+            var(--c-theme-primary, var(--primary-color, #2080f0))
+          )
+        )
         10%,
       var(--c-bg-card, var(--c-theme-bg-card, var(--card-color, #fff)))
     );
     color: var(
-      --c-primary,
-      var(--c-theme-primary, var(--primary-color, #2080f0))
+      --tl-tag-color,
+      var(--c-primary, var(--c-theme-primary, var(--primary-color, #2080f0)))
     );
     border: 1px solid
       color-mix(
         in srgb,
-        var(--c-primary, var(--c-theme-primary, var(--primary-color, #2080f0)))
+        var(
+            --tl-tag-color,
+            var(
+              --c-primary,
+              var(--c-theme-primary, var(--primary-color, #2080f0))
+            )
+          )
           20%,
         transparent
       );

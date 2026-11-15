@@ -1,14 +1,16 @@
-export { default as C_WaterFall } from "./index.vue";
+export { default as C_WaterFall } from './index.vue'
 export type {
   WaterFallItem,
   WaterFallLayoutItem,
+  WaterFallRenderedItem,
   WaterFallColumn,
   WaterFallBreakpoint,
   InfiniteScrollStatus,
   WaterFallProps,
   WaterFallEmits,
+  WaterFallSlots,
   WaterFallExpose,
-} from "./types";
+} from './types'
 export {
   DEFAULT_GAP,
   DEFAULT_ANIMATION_DURATION,
@@ -16,7 +18,7 @@ export {
   INFINITE_SCROLL_THRESHOLD,
   DEFAULT_BREAKPOINTS,
   SKELETON_HEIGHT_RANGE,
-} from "./constants";
-export { useResponsiveColumns } from "./composables/useResponsiveColumns";
-export { useWaterFallLayout } from "./composables/useWaterFallLayout";
-export { useInfiniteScroll } from "./composables/useInfiniteScroll";
+} from './constants'
+export { useResponsiveColumns } from './composables/useResponsiveColumns'
+export { useWaterFallLayout } from './composables/useWaterFallLayout'
+export { useInfiniteScroll } from './composables/useInfiniteScroll'

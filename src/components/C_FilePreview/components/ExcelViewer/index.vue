@@ -201,9 +201,29 @@
     Math.ceil(currentData.value.length / pageSize.value)
   )
 
+  const mergeAnchors = computed(() =>
+    currentData.value.flatMap((row, rowIndex) =>
+      Object.entries(row).flatMap(([key, cell]) =>
+        !cell.hidden && (cell.rowspan ?? 1) > 1 ? [{ rowIndex, key, cell }] : []
+      )
+    )
+  )
   const paginatedData = computed(() => {
     const start = (currentExcelPage.value - 1) * pageSize.value
-    return currentData.value.slice(start, start + pageSize.value)
+    const end = Math.min(start + pageSize.value, currentData.value.length)
+    // Own row objects: page-local span corrections must never alter workbook data.
+    const rows = currentData.value.slice(start, end).map(row => ({ ...row }))
+    for (const { rowIndex, key, cell } of mergeAnchors.value) {
+      const mergeEnd = rowIndex + (cell.rowspan ?? 1)
+      if (rowIndex >= end || mergeEnd <= start) continue
+      const anchor = Math.max(rowIndex, start)
+      rows[anchor - start][key] = {
+        ...cell,
+        hidden: false,
+        rowspan: Math.min(mergeEnd, end) - anchor,
+      }
+    }
+    return rows
   })
 
   /* ==================== 方法 ==================== */

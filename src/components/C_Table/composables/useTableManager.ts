@@ -591,50 +591,34 @@ export function useTableManager(params: TableManagerParams) {
       childSelection: {
         /** 选择指定父行下的子行 */
         select(parentKey: DataTableRowKey, childKey: DataTableRowKey) {
-          if (expandState?.childSelections.value) {
-            const current =
-              expandState.childSelections.value.get(parentKey) || []
-            if (!current.includes(childKey)) {
-              const newSelection = [...current, childKey]
-              expandState.childSelections.value.set(parentKey, newSelection)
-              emit('child-selection-change', parentKey, newSelection, [])
-            }
-          }
+          const current = expandState.childSelections.value.get(parentKey) ?? []
+          expandState.handleChildSelectionChange(parentKey, [
+            ...current,
+            childKey,
+          ])
         },
 
         /** 取消选择指定父行下的子行 */
         unselect(parentKey: DataTableRowKey, childKey: DataTableRowKey) {
-          if (expandState?.childSelections.value) {
-            const current =
-              expandState.childSelections.value.get(parentKey) || []
-            const newSelection = current.filter(k => k !== childKey)
-            expandState.childSelections.value.set(parentKey, newSelection)
-            emit('child-selection-change', parentKey, newSelection, [])
-          }
+          const current = expandState.childSelections.value.get(parentKey) ?? []
+          expandState.handleChildSelectionChange(
+            parentKey,
+            current.filter(key => key !== childKey)
+          )
         },
 
         /** 选择指定父行下的所有子行 */
         selectAll(parentKey: DataTableRowKey) {
-          if (
-            expandState?.childSelections.value &&
-            expandState.expandDataMap?.value
-          ) {
-            const expandData =
-              expandState.expandDataMap.value.get(parentKey) || []
-            const allChildKeys = expandData.map(
-              (child: DataRecord) => child.id as DataTableRowKey
-            )
-            expandState.childSelections.value.set(parentKey, allChildKeys)
-            emit('child-selection-change', parentKey, allChildKeys, expandData)
-          }
+          const children = expandState.expandDataMap.value.get(parentKey) ?? []
+          expandState.handleChildSelectionChange(
+            parentKey,
+            children.map(child => child.id as DataTableRowKey)
+          )
         },
 
         /** 清除指定父行下的所有子行选择 */
         clear(parentKey: DataTableRowKey) {
-          if (expandState?.childSelections.value) {
-            expandState.childSelections.value.set(parentKey, [])
-            emit('child-selection-change', parentKey, [], [])
-          }
+          expandState.handleChildSelectionChange(parentKey, [])
         },
 
         /** 获取指定父行下所有已选择的子行数据 */

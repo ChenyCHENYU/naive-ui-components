@@ -244,3 +244,95 @@ describe('HTML safety helpers', () => {
     expect(sanitizeRichHtml(unsafe)).not.toContain('<script>')
   })
 })
+
+test('chunk progress counts resumed and newly settled chunks once, including reentrant callbacks', async () => {
+  const requests: UploadRequestOptions[] = []
+  const progress: { uploadedChunks: number; uploadedBytes: number }[] = []
+  const successes: unknown[] = []
+  const errors: Error[] = []
+  const uploader = useChunkUpload({
+    chunkSize: ref(2),
+    concurrency: ref(1),
+    action: ref('/upload'),
+    headers: ref({}),
+    data: ref({}),
+    uploadedChunksQuery: ref(async () => [0, 0, 2, 99]),
+    customRequest: ref(request => {
+      requests.push(request)
+      request.onSuccess?.({})
+      request.onSuccess?.({ duplicate: true })
+      request.onError?.(new Error('late duplicate'))
+      return { abort() {} }
+    }),
+  })
+  await uploader.uploadChunks({
+    uid: 'resumed',
+    file: new File(['1234567'], 'file.txt'),
+    hash: 'hash',
+    isPaused: () => false,
+    onProgress: value => {
+      progress.push({
+        uploadedChunks: value.uploadedChunks,
+        uploadedBytes: value.uploadedBytes,
+      })
+      if (value.uploadedChunks === 3)
+        requests.at(-1)?.onSuccess?.({ reentrant: true })
+    },
+    onSuccess: response => successes.push(response),
+    onError: error => errors.push(error),
+  })
+  expect(requests.map(request => request.chunkIndex)).toEqual([1, 3])
+  expect(progress).toEqual([
+    { uploadedChunks: 2, uploadedBytes: 4 },
+    { uploadedChunks: 3, uploadedBytes: 6 },
+    { uploadedChunks: 4, uploadedBytes: 7 },
+  ])
+  expect(successes).toHaveLength(1)
+  expect(errors).toEqual([])
+})
+
+test('chunk retry recounts server resume state and ignores success after the failed attempt', async () => {
+  let attempt = 0
+  const progress: number[][] = [[], []]
+  const errors: Error[] = []
+  const successes: unknown[] = []
+  const requests: number[][] = [[], []]
+  const uploader = useChunkUpload({
+    chunkSize: ref(1),
+    concurrency: ref(1),
+    action: ref('/upload'),
+    headers: ref({}),
+    data: ref({}),
+    uploadedChunksQuery: ref(async () => (attempt ? [0] : [])),
+    customRequest: ref(request => {
+      requests[attempt].push(request.chunkIndex!)
+      if (attempt === 0 && request.chunkIndex === 1)
+        request.onError?.(new Error('retry'))
+      request.onSuccess?.({})
+      return { abort() {} }
+    }),
+  })
+  const upload = () =>
+    uploader.uploadChunks({
+      uid: 'retry',
+      file: new File(['abc'], 'file.txt'),
+      hash: 'hash',
+      isPaused: () => false,
+      onProgress: value => progress[attempt].push(value.uploadedChunks),
+      onSuccess: value => successes.push(value),
+      onError: error => errors.push(error),
+    })
+  await upload()
+  attempt = 1
+  await upload()
+  expect(requests).toEqual([
+    [0, 1],
+    [1, 2],
+  ])
+  expect(progress).toEqual([
+    [0, 1],
+    [1, 2, 3],
+  ])
+  expect(errors).toHaveLength(1)
+  expect(successes).toHaveLength(1)
+})

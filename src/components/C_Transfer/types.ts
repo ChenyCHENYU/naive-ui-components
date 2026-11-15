@@ -10,9 +10,9 @@ export interface TransferItem<K extends string | number = string | number> {
   label: string
   /** 是否禁用 */
   disabled?: boolean
-  /** 分组名称 */
+  /** 业务分组元数据；默认列表不按此字段分组。 */
   group?: string
-  /** 描述信息（用于详细模式） */
+  /** 业务描述元数据；默认行只显示 label 和可选 icon。 */
   description?: string
   /** 图标（Iconify） */
   icon?: string

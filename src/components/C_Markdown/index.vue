@@ -85,35 +85,9 @@
     height?: string | number
   }) => void
 
-  interface Props {
-    modelValue?: string
-    /** SSR 或同页多实例时建议显式传入稳定 ID */
-    editorId?: string
-    height?: string | number
-    disabled?: boolean
-    placeholder?: string
-    mode?: 'edit' | 'editable' | 'preview'
-    toolbar?: object | ToolbarName[]
-    uploadImageConfig?: {
-      accept?: string
-      multiple?: boolean
-      [key: string]: unknown
-    }
-    tocNavPosition?: 'left' | 'right'
-    defaultFullscreen?: boolean
-    autofocus?: boolean
-    includeLevel?: number[]
-    leftToolbar?: string
-    rightToolbar?: string
-    maxLength?: number
-    showWordCount?: boolean
-    autoSave?: boolean
-    autoSaveInterval?: number
-    /** 是否为暗色主题（外部传入） */
-    isDark?: boolean
-  }
+  import type { MarkdownProps } from './types'
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<MarkdownProps>(), {
     modelValue: '',
     height: '400px',
     disabled: false,

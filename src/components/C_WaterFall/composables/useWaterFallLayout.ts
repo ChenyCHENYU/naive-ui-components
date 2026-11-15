@@ -20,14 +20,14 @@ import { DEFAULT_GAP } from '../constants'
 /**
  *
  */
-export function useWaterFallLayout(
-  items: Ref<WaterFallItem[]>,
+export function useWaterFallLayout<T extends WaterFallItem = WaterFallItem>(
+  items: Readonly<Ref<readonly T[]>>,
   columns: Readonly<Ref<number>>,
   containerWidth: Readonly<Ref<number>>,
   gap: Ref<number>,
   options: { batchImageLoads?: boolean } = {}
 ) {
-  const layoutItems = ref<WaterFallLayoutItem[]>([])
+  const layoutItems = ref<WaterFallLayoutItem<T>[]>([])
   const containerHeight = ref(0)
   const itemExtraHeights = new Map<
     string | number,
@@ -201,7 +201,7 @@ export function useWaterFallLayout(
       (_, i) => ({ index: i, height: 0 })
     )
 
-    const result: WaterFallLayoutItem[] = []
+    const result: WaterFallLayoutItem<T>[] = []
 
     for (const item of items.value) {
       const shortest = columnState.reduce((min, col) =>

@@ -32,10 +32,10 @@
           :style="themeStyle"
           :aria-expanded="visible"
           :disabled="locked"
-          aria-label="选择城市"
+          :aria-label="t('city.choose')"
         >
           <span class="city-selector-trigger__text">{{
-            modelValue || placeholder
+            modelValue || (placeholder ?? t('city.placeholder'))
           }}</span>
         </button>
       </slot>
@@ -51,8 +51,10 @@
           v-model:value="radioValue"
           :size="resolvedSize ?? 'small'"
         >
-          <NRadioButton value="city">按城市</NRadioButton>
-          <NRadioButton value="province">按省份</NRadioButton>
+          <NRadioButton value="city">{{ t('city.byCity') }}</NRadioButton>
+          <NRadioButton value="province">{{
+            t('city.byProvince')
+          }}</NRadioButton>
         </NRadioGroup>
         <NSelect
           v-model:value="searchValue"
@@ -61,7 +63,7 @@
           :size="resolvedSize"
           filterable
           clearable
-          placeholder="搜索城市"
+          :placeholder="t('city.search')"
           @update:value="handleSearchSelect"
         />
       </div>
@@ -87,9 +89,7 @@
           role="status"
           class="city-selector-status"
         >
-          {{
-            cityLoadError ? '城市数据加载失败，请重新打开重试' : '正在加载城市…'
-          }}
+          {{ cityLoadError ? t('city.failed') : t('city.loading') }}
         </div>
         <div
           v-else-if="radioValue === 'city'"
@@ -158,6 +158,7 @@
     type SelectOption,
   } from 'naive-ui'
   import provinceData from './province.json'
+  import { useCityLocale } from './locale'
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import { useComponentDensity } from '../../composables/useComponentDensity'
   import {
@@ -166,6 +167,7 @@
   } from '../../core/density'
 
   defineOptions({ name: 'C_City' })
+  const { t } = useCityLocale()
 
   interface CityItem {
     id: number
@@ -200,7 +202,6 @@
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    placeholder: '请选择城市',
     showLetters: true,
   })
 

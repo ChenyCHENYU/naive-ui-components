@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, reactive, shallowRef } from 'vue'
 import { NButton, NDrawer, NTag } from 'naive-ui'
+import { VueFlow } from '@vue-flow/core'
 import Workflow from '../../src/components/C_WorkFlow/index.vue'
 import { useWorkflowNodes } from '../../src/components/C_WorkFlow/composables/useWorkflowNodes'
 import { validateWorkflowBranches } from '../../src/components/C_WorkFlow/composables/workflowBranches'
@@ -258,13 +259,11 @@ test('saved approval configuration updates the real canvas title and personnel o
       true
     )
   )
-  wrapper
-    .findComponent({ name: 'NodeConfigModal' })
-    .vm.$emit('save', {
-      title: '顺序审核',
-      approvalMode: 'sequence',
-      approvers: [people[1], people[0]],
-    })
+  wrapper.findComponent({ name: 'NodeConfigModal' }).vm.$emit('save', {
+    title: '顺序审核',
+    approvalMode: 'sequence',
+    approvers: [people[1], people[0]],
+  })
   await flushPromises()
   expect(
     wrapper.vm
@@ -459,4 +458,75 @@ test('stale dialogs cannot overwrite replacement models', async () => {
   )
   expect(workflow.showNodeConfig.value).toBe(false)
   wrapper.unmount()
+})
+
+test('readonly edge clicks emit an isolated public edge snapshot from the real SVG', async () => {
+  const original = model()
+  const wrapper = mount(Workflow, {
+    props: { modelValue: original, readonly: true },
+  })
+  await flushPromises()
+  await wrapper.get('.vue-flow__edge[data-id="b"]').trigger('click')
+  expect(wrapper.getComponent(VueFlow).emitted('edgeClick')).toHaveLength(1)
+  const emitted = wrapper.emitted('edge-click')!
+  expect(emitted).toHaveLength(1)
+  expect(emitted[0][0]).toEqual(original.edges[1])
+  const edge = emitted[0][0] as WorkflowData['edges'][number]
+  edge.label = 'Outside mutation'
+  expect(wrapper.vm.getCurrentWorkflowData().edges[1].label).toBe('原标签')
+})
+
+test('an externally replaced model invalidates its open preview and its old confirm handler', async () => {
+  const wrapper = mount(Workflow, {
+    props: { modelValue: model() },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  wrapper.vm.previewWorkflow()
+  await flushPromises()
+  const confirm = wrapper
+    .findAllComponents(NButton)
+    .find(button => button.text() === '确认并保存')!
+  const replacement = model()
+  replacement.nodes.push({
+    id: 'extra',
+    type: 'copy',
+    position: { x: 0, y: 600 },
+    data: { title: 'New step' },
+  })
+  replacement.edges.push({ id: 'extra-edge', source: 'copy', target: 'extra' })
+  await wrapper.setProps({ modelValue: replacement })
+  expect(
+    wrapper
+      .findAllComponents(NDrawer)
+      .every(drawer => drawer.props('show') === false)
+  ).toBe(true)
+  confirm.vm.$emit('click')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  wrapper.vm.previewWorkflow()
+  await flushPromises()
+  expect(
+    document.body.querySelector('.preview-timeline')?.textContent
+  ).toContain('New step')
+})
+
+test('an equal controlled echo retains preview and confirmation emits once', async () => {
+  const data = model()
+  const wrapper = mount(Workflow, {
+    props: { modelValue: data },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  wrapper.vm.previewWorkflow()
+  await flushPromises()
+  await wrapper.setProps({ modelValue: structuredClone(data) })
+  expect(
+    wrapper.findAllComponents(NDrawer).some(drawer => drawer.props('show'))
+  ).toBe(true)
+  const confirm = wrapper
+    .findAllComponents(NButton)
+    .find(button => button.text() === '确认并保存')!
+  confirm.vm.$emit('click')
+  confirm.vm.$emit('click')
+  expect(wrapper.emitted('save')).toEqual([[data]])
 })

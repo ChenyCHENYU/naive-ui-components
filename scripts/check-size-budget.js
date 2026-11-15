@@ -82,7 +82,9 @@ const totalSize = files.reduce(
 // 最终测量超出旧总量 2064 B，组件首屏/首开及 CSS 限额均保持原值。
 // 0.40.3 的请求/日历会话保护、键盘边界和上传局部文案追加 6 KiB 双格式空间；
 // 组件首屏/首开与 CSS 限额保持不变，上传文案不进入无关入口。
-const totalLimit = 4 * 1024 * 1024 + 681 * 1024
+// 0.40.4 的逐组件边界修复、组件私有语言词表及公开类型较 0.40.3 增加 32,226 B；
+// 总物理产物按实测追加 32 KiB，组件首屏/首开和全部 CSS 闭包限额保持原值。
+const totalLimit = 4 * 1024 * 1024 + 713 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

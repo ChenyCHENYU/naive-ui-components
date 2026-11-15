@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
   import { useComponentTheme } from '../../composables/useComponentTheme'
-  import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
   import ContextMenuItems from './ContextMenuItems.vue'
   import {
     DEFAULT_CONTEXT_MENU_PROPS,
@@ -202,9 +202,18 @@
 
   // ===== 菜单项选择 =====
   const handleSelect = (item: ContextMenuItem) => {
+    if (props.disabled || !visible.value) return
     emit('select', item)
     if (props.autoClose) close()
   }
+
+  watch(
+    () => props.disabled,
+    disabled => {
+      if (disabled) close()
+    },
+    { flush: 'sync' }
+  )
 
   onBeforeUnmount(() => {
     window.removeEventListener('resize', close)

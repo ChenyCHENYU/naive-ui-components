@@ -27,28 +27,14 @@
   import { NSelect } from 'naive-ui'
   import { normalizeCascadeSelection } from './cascadeSelection'
   import { useComponentDensity } from '../../composables/useComponentDensity'
-  import {
-    resolveComponentDensity,
-    type ComponentDensity,
-  } from '../../core/density'
-  import type { CascadeItem, CascadeValue } from './types'
+  import { resolveComponentDensity } from '../../core/density'
+  import type { CascadeItem, CascadeProps, CascadeValue } from './types'
 
   defineOptions({ name: 'C_Cascade' })
 
-  const props = withDefaults(
-    defineProps<{
-      data: CascadeItem[]
-      placeholders?: string[]
-      modelValue?: CascadeValue
-      disabled?: boolean
-      readonly?: boolean
-      size?: 'small' | 'medium' | 'large'
-      density?: ComponentDensity
-    }>(),
-    {
-      placeholders: () => ['请选择', '请选择', '请选择'],
-    }
-  )
+  const props = withDefaults(defineProps<CascadeProps>(), {
+    placeholders: () => ['请选择', '请选择', '请选择'],
+  })
 
   const emit = defineEmits<{
     'update:modelValue': [value: CascadeValue]

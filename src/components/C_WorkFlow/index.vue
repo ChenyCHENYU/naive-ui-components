@@ -101,6 +101,7 @@
       :delete-key-code="null"
       :elements-selectable="true"
       @node-click="onNodeClick"
+      @edge-click="onEdgeClick"
       @node-drag-stop="commitCanvasChange"
       @nodes-change="handleCanvasChanges"
       @edges-change="handleCanvasChanges"
@@ -468,11 +469,13 @@
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import type {
     WorkflowProps,
+    WorkflowData,
     WorkflowEmits,
     WorkflowExpose,
     WorkflowSlots,
   } from './types'
   import { NODE_TYPE_OPTIONS } from './data'
+  import { cloneData, isDataEqual } from '../../utils/data'
   const NodeConfigModal = defineAsyncComponent(
     () => import('./NodeConfigModal.vue')
   )
@@ -535,6 +538,7 @@
     updateConnection,
     addNode,
     onNodeClick,
+    onEdgeClick,
     closeAddMenu,
     handleConfigSave,
     resetNodes,
@@ -628,6 +632,29 @@
   /* ─── 流程预览 ──────────────────────────────────────────── */
   const { showPreview, previewSteps, previewStats, openPreview, closePreview } =
     useWorkflowPreview(nodes, edges)
+  let previewBaseline: WorkflowData | undefined
+  let previewSource: WorkflowData | undefined
+  const isPreviewSourceCurrent = () =>
+    isDataEqual(props.modelValue, previewSource) ||
+    isDataEqual(props.modelValue, previewBaseline)
+  watch(
+    () => props.modelValue,
+    () => {
+      // Equal controlled echoes retain the view; another definition invalidates it.
+      if (showPreview.value && !isPreviewSourceCurrent()) closePreview()
+    },
+    { deep: true, flush: 'sync' }
+  )
+  watch(
+    showPreview,
+    visible => {
+      if (!visible) {
+        previewBaseline = undefined
+        previewSource = undefined
+      }
+    },
+    { flush: 'sync' }
+  )
   onDeactivated(closePreview)
 
   /* ─── 编排方法（跨 composable 协作） ────────────────────── */
@@ -648,12 +675,20 @@
   }
 
   const previewWorkflow = (): void => {
+    previewBaseline = getCurrentWorkflowData()
+    previewSource = cloneData(props.modelValue)
     openPreview()
   }
 
   const confirmAndSave = (): void => {
+    const valid =
+      showPreview.value &&
+      isPreviewSourceCurrent() &&
+      isDataEqual(getCurrentWorkflowData(), previewBaseline)
     closePreview()
-    saveWorkflow()
+    previewBaseline = undefined
+    previewSource = undefined
+    if (valid) saveWorkflow()
   }
 
   const clearWorkflow = (): void => {

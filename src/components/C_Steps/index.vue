@@ -75,39 +75,19 @@
 <script setup lang="ts">
   import { computed, defineAsyncComponent } from 'vue'
   import { useComponentTheme } from '../../composables/useComponentTheme'
-  import type { StepItem } from './types'
+  import type { StepsProps } from './types'
 
   defineOptions({ name: 'C_Steps' })
   const themeStyle = useComponentTheme()
   // 默认数字与历史 CSS 图标不加载 Iconify；只有命中的自定义图标才实例化。
   const C_Icon = defineAsyncComponent(() => import('../C_Icon/index.vue'))
 
-  interface LegacyStepItem extends StepItem {
-    title: string
-    description?: string
-    time?: string
-    icon?: string
-    status?: 'wait' | 'process' | 'finish' | 'error'
-    disabled?: boolean
-    detail?: string
-  }
-
-  const props = withDefaults(
-    defineProps<{
-      steps: LegacyStepItem[]
-      current?: number
-      direction?: 'horizontal' | 'vertical'
-      clickable?: boolean
-      /** 水平模式下线条是否与图标紧密相连，默认 false（两端留有对称间距）*/
-      connected?: boolean
-    }>(),
-    {
-      current: 0,
-      direction: 'horizontal',
-      clickable: false,
-      connected: false,
-    }
-  )
+  const props = withDefaults(defineProps<StepsProps>(), {
+    current: 0,
+    direction: 'horizontal',
+    clickable: false,
+    connected: false,
+  })
 
   const emit = defineEmits<{
     'update:current': [number]

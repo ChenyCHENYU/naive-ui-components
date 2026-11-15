@@ -239,3 +239,14 @@
     transform: none !important;
   }
 }
+
+/* 主导航和关闭按钮是同级入口，保留原生链接的键盘与地址语义。 */
+.tag-navigation {
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+  outline-offset: 3px;
+  &:focus-visible {
+    outline: 2px solid var(--c-primary, var(--c-theme-primary));
+  }
+}

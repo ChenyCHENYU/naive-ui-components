@@ -155,11 +155,9 @@
     type Component,
   } from 'vue'
   import type { AltchaWidgetElement } from 'altcha/types/generic'
-  import {
-    useComponentFeedback,
-    useComponentLocale,
-  } from '../../component-config'
+  import { useComponentFeedback } from '../../component-config'
   import C_Icon from '../C_Icon/index.vue'
+  import { useScopedComponentLocale } from '../_shared/useScopedComponentLocale'
   import type {
     CaptchaEmits,
     CaptchaProof,
@@ -185,7 +183,7 @@
   const themeStyle = useComponentTheme(() => props.theme)
   const emit = defineEmits<CaptchaEmits>()
   const feedback = useComponentFeedback(() => props.feedback)
-  const { t } = useComponentLocale(() => props.locale)
+  const { t, locale } = useScopedComponentLocale({}, {}, () => props.locale)
 
   const CAPTCHA_ICON_PATHS = {
     default:
@@ -318,7 +316,7 @@
       verificationData.value = result
       isVerified.value = true
       emit('success', result)
-      emit('change', true)
+      if (verificationController === controller) emit('change', true)
     } catch (error) {
       if (shouldIgnoreVerificationError(controller, error)) return
       const message =
@@ -426,7 +424,7 @@
       display: 'standard',
       hideFooter: true,
       hideLogo: true,
-      language: props.locale?.locale === 'en-US' ? 'en' : 'zh-cn',
+      language: locale.value === 'en-US' ? 'en' : 'zh-cn',
       minDuration: 350,
       timeout: Math.max(props.verificationTimeout, 1_000),
       type: 'switch',
@@ -474,16 +472,21 @@
     setModalVisible(true)
   }
 
-  const resetCaptcha = () => {
+  const clearVerification = () => {
     verificationController?.abort()
     verificationController = null
     verifying.value = false
     isVerified.value = false
     hasError.value = false
-    setModalVisible(false)
-    altchaWidget?.reset()
     verificationData.value = null
     clearErrorTimer()
+    setModalVisible(false)
+    setInteractionActive(false)
+  }
+
+  const resetCaptcha = () => {
+    clearVerification()
+    altchaWidget?.reset()
     emit('reset')
     emit('change', false)
   }
@@ -502,15 +505,26 @@
 
   // 外观不是挑战身份；只更新 SDK 的主题属性，保留正在验证的 widget 与凭据。
   watch(colorMode, mode => altchaWidget?.setAttribute('theme', mode))
+  watch(locale, language =>
+    altchaWidget?.setAttribute(
+      'language',
+      language === 'en-US' ? 'en' : 'zh-cn'
+    )
+  )
 
   watch(
     () => [
       props.provider,
       props.challengeUrl,
-      props.locale?.locale,
+      props.verifier,
+      props.requireServerVerification,
       props.verificationTimeout,
     ],
     () => {
+      const hadVerification =
+        verifying.value || isVerified.value || showModal.value
+      clearVerification()
+      if (hadVerification) emit('change', false)
       if (isAltchaProvider.value) {
         void loadAltcha()
         return
@@ -519,7 +533,8 @@
       unbindAltchaWidget()
       altchaReady.value = false
       altchaLoadError.value = null
-    }
+    },
+    { flush: 'sync' }
   )
 
   onBeforeUnmount(() => {

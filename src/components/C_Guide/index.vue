@@ -17,7 +17,7 @@
         :style="themeStyle"
         text
         :loading="loading"
-        :aria-label="props.triggerTooltip"
+        :aria-label="props.triggerTooltip ?? t('guide.trigger')"
         @click="startGuide(true)"
       >
         <C_Icon
@@ -26,7 +26,7 @@
         />
       </NButton>
     </template>
-    <span>{{ props.triggerTooltip }}</span>
+    <span>{{ props.triggerTooltip ?? t('guide.trigger') }}</span>
   </NTooltip>
 </template>
 
@@ -38,17 +38,15 @@
   import C_Icon from '../C_Icon/index.vue'
   import { renderGuideDescription, resolveGuideTarget } from './data'
   import type { GuideProps, GuideStep } from './types'
+  import { useGuideLocale } from './locale'
 
   defineOptions({ name: 'C_Guide' })
   const themeStyle = useComponentTheme()
+  const { t } = useGuideLocale()
 
   const props = withDefaults(defineProps<GuideProps>(), {
     steps: () => [],
-    doneBtnText: '完成',
-    nextBtnText: '下一步',
-    prevBtnText: '上一步',
     showSkipButton: true,
-    skipBtnText: '跳过引导',
     showProgress: true,
     keyboard: true,
     animate: true,
@@ -56,7 +54,6 @@
     skipMissingElements: true,
     popoverClass: 'driverjs-theme',
     showTrigger: true,
-    triggerTooltip: '功能引导',
     triggerIcon: 'mdi:sign-routes',
   })
   const emit = defineEmits<{
@@ -67,6 +64,12 @@
     'step-change': [stepIndex: number, step: GuideStep]
     error: [error: unknown]
   }>()
+  const buttonText = computed(() => ({
+    done: props.doneBtnText ?? t('guide.done'),
+    next: props.nextBtnText ?? t('guide.next'),
+    previous: props.prevBtnText ?? t('guide.previous'),
+    skip: props.skipBtnText ?? t('guide.skip'),
+  }))
   const loading = ref(false)
   const persistKey = computed(
     () => `${props.persistence?.keyPrefix ?? 'c_guide'}_completed`
@@ -222,9 +225,9 @@
         allowKeyboardControl: props.keyboard,
         skipMissingElement: props.skipMissingElements,
         ...overlayOptions,
-        doneBtnText: props.doneBtnText,
-        nextBtnText: props.nextBtnText,
-        prevBtnText: props.prevBtnText,
+        doneBtnText: buttonText.value.done,
+        nextBtnText: buttonText.value.next,
+        prevBtnText: buttonText.value.previous,
         steps: activeSteps.map(step => ({
           // Driver 运行时允许动态目标返回 undefined，但 1.8 的声明仍限定 Element。
           element: step.element
@@ -254,7 +257,7 @@
             const skipButton = document.createElement('button')
             skipButton.type = 'button'
             skipButton.className = 'c-guide-skip-btn'
-            skipButton.textContent = props.skipBtnText
+            skipButton.textContent = buttonText.value.skip
             skipButton.addEventListener('click', () => {
               reason = 'skip'
               destroyGuide()
@@ -285,6 +288,23 @@
       if (request === generation) loading.value = false
     }
   }
+
+  watch(buttonText, ({ done, next, previous, skip }) => {
+    if (!activeDriver) return
+    activeDriver.setConfig({
+      ...activeDriver.getConfig(),
+      doneBtnText: done,
+      nextBtnText: next,
+      prevBtnText: previous,
+    })
+    const { popover } = activeDriver.getState()
+    if (popover) {
+      popover.nextButton.textContent = activeDriver.isLastStep() ? done : next
+      popover.previousButton.textContent = previous
+      const skipButton = popover.footer.querySelector('.c-guide-skip-btn')
+      if (skipButton) skipButton.textContent = skip
+    }
+  })
 
   onBeforeUnmount(stopGuide)
   watch(() => props.steps, stopGuide)

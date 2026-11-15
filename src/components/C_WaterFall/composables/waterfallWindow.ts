@@ -1,15 +1,17 @@
-import type { WaterFallLayoutItem } from '../types'
+import type { WaterFallItem, WaterFallLayoutItem } from '../types'
 
-export interface WaterFallWindowEntry {
-  layout: WaterFallLayoutItem
+export interface WaterFallWindowEntry<T extends WaterFallItem = WaterFallItem> {
+  layout: WaterFallLayoutItem<T>
   index: number
   bottom: number
 }
 
 /** Rebuilt only when layout changes, never on scroll. */
-export function indexWaterFallLayout(layout: readonly WaterFallLayoutItem[]) {
-  const columns: WaterFallWindowEntry[][] = []
-  const byId = new Map<string | number, WaterFallWindowEntry>()
+export function indexWaterFallLayout<T extends WaterFallItem = WaterFallItem>(
+  layout: readonly WaterFallLayoutItem<T>[]
+) {
+  const columns: WaterFallWindowEntry<T>[][] = []
+  const byId = new Map<string | number, WaterFallWindowEntry<T>>()
   const entries = layout.map((item, index) => {
     const entry = {
       layout: item,
@@ -24,12 +26,12 @@ export function indexWaterFallLayout(layout: readonly WaterFallLayoutItem[]) {
 }
 
 /** Each column has non-overlapping, increasing intervals: O(columns log N + visible). */
-export function findWaterFallWindow(
-  columns: readonly (readonly WaterFallWindowEntry[])[],
+export function findWaterFallWindow<T extends WaterFallItem = WaterFallItem>(
+  columns: readonly (readonly WaterFallWindowEntry<T>[])[],
   top: number,
   bottom: number
 ) {
-  const visible: WaterFallWindowEntry[] = []
+  const visible: WaterFallWindowEntry<T>[] = []
   for (const column of columns) {
     if (!column) continue
     let low = 0

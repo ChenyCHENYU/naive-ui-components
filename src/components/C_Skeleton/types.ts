@@ -7,14 +7,7 @@
 
 /** 骨架屏预设模式 */
 export type SkeletonPreset =
-  | 'text'
-  | 'avatar'
-  | 'card'
-  | 'table'
-  | 'form'
-  | 'list'
-  | 'detail'
-  | 'image'
+  'text' | 'avatar' | 'card' | 'table' | 'form' | 'list' | 'detail' | 'image'
 
 /** 骨架屏动画类型 */
 export type SkeletonAnimation = 'pulse' | 'wave' | false
@@ -83,7 +76,7 @@ export interface SkeletonProps {
   loading?: boolean
   /** 动画类型 */
   animation?: SkeletonAnimation
-  /** 重复次数（用于 text/card/list 模式） */
+  /** 重复次数（用于 text/card/image 模式；列表数量使用 list.items） */
   repeat?: number
   /** 圆角大小 */
   borderRadius?: string

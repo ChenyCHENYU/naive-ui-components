@@ -1,3 +1,4 @@
-import C_Code from "./index.vue";
+import C_Code from './index.vue'
 
-export { C_Code };
+export { C_Code }
+export type { CodeProps } from './types'

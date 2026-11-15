@@ -128,6 +128,7 @@
   import { useGraphExport } from '../../composables/useGraphExport'
   import { bindReadonlyGuard } from '../../composables/readonlyGraph'
   import { cloneData } from '../../../../utils/data'
+  import { createGraphEditSession } from '../../composables/graphEditSession'
   import type { ERTable, ERField, ERDiagramData, ERRelation } from '../../types'
   import ERTableEditor from './components/ERTableEditor.vue'
   import C_Icon from '../../../C_Icon/index.vue'
@@ -161,6 +162,14 @@
   // ==================== 编辑器状态 ====================
   const showEditor = ref(false)
   const editingTable = ref<ERTable>()
+  const editSession = createGraphEditSession(
+    id => getCurrentData().tables.find(item => item.id === id),
+    id => props.data?.tables.find(item => item.id === id),
+    () => {
+      showEditor.value = false
+      editingTable.value = undefined
+    }
+  )
   const deleteMode = ref(false)
 
   // ==================== 工具函数 ====================
@@ -371,30 +380,24 @@
 
   const editTable = (table: ERTable) => {
     if (props.readonly) return
+    editSession.begin(table.id)
     editingTable.value = cloneData(table)
     showEditor.value = true
   }
 
   const saveTable = () => {
-    if (props.readonly || !graph.value || !editingTable.value) return
-    const node = graph.value.getCellById(editingTable.value.id) as Node
-    if (node) {
-      node.setData(cloneData(editingTable.value))
-      node.prop({
-        size: {
-          width: 200,
-          height: 24 + editingTable.value.fields.length * 24,
-        },
-        attrs: {
-          label: {
-            text: truncateText(editingTable.value.name, 20),
-            title: editingTable.value.name,
-          },
-        },
-        ports: createPortConfig(editingTable.value),
-      })
-    }
-    showEditor.value = false
+    const draft = editingTable.value
+    if (props.readonly || !showEditor.value || !graph.value || !draft) return
+    if (!editSession.consume(draft.id)) return
+    const node = graph.value.getCellById(draft.id) as Node
+    node.setData(cloneData(draft))
+    node.prop({
+      size: { width: 200, height: 24 + draft.fields.length * 24 },
+      attrs: {
+        label: { text: truncateText(draft.name, 20), title: draft.name },
+      },
+      ports: createPortConfig(draft),
+    })
     emitDataChange()
   }
 
@@ -568,6 +571,7 @@
     newData => {
       if (graph.value && newData?.tables) {
         loadErData(newData)
+        editSession.validate()
       }
     },
     { deep: true }
@@ -577,8 +581,7 @@
     () => props.readonly,
     readonly => {
       if (!readonly) return
-      showEditor.value = false
-      editingTable.value = undefined
+      editSession.close()
       deleteMode.value = false
       selectedEdge = null
       resetEdgeStyles()

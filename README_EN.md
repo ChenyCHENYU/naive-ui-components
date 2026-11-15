@@ -33,7 +33,7 @@
 | Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.3**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.4**. See the [changelog](./CHANGELOG.md) for release details.
 
 0.40 adds continuous input with `edit: 'inline'` and fixes dynamic form visibility, cached workflow sessions and combined category searches. See the [table editing guide](./docs/guides/table-editing.md), [business scenario comparison](./docs/wl-business-scenario-parity.md) and [compatibility guide](./docs/guides/component-contracts.md) (Chinese).
 
@@ -212,22 +212,22 @@ Root imports aggregate navigation components and require `vue-router` at runtime
 
 ## Documentation
 
-| Document                                                       | Contents                                                                                                 |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [Architecture and isolation](./docs/architecture.en.md)        | Dependency boundaries, instance ownership and the independent Element Plus roadmap                       |
-| [Component catalog](./docs/components.en.md)                   | All 63 components, dependencies and behavior boundaries                                                  |
-| [Usage guide](./docs/guides/usage.en.md)                       | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading                  |
-| [Density and workbenches](./docs/guides/table-density.md)      | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese)                |
-| [Theme and visual standard](./docs/guides/theme.md)            | Semantic colors, light/dark mode, control sizes and local overrides with the existing provider (Chinese) |
-| [Lists and async tasks](./docs/guides/runtime-performance.md)  | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese)                |
-| [Waterfall lists](./docs/guides/waterfall.md)                  | Automatic windows, nested scrolling, measured cards and keyboard navigation (Chinese)                    |
-| [Compatible API migration](./docs/guides/api-migration.md)     | Standard models, application renderers and read-only migration checks (Chinese)                          |
-| [Production coverage review](./docs/wl-ui-produce-coverage.md) | wl-ui-produce capability mapping and adapter boundaries (Chinese)                                        |
-| [Stability review](./docs/stability-boundaries-0.40.3.md)       | Async and locale fixes, three-browser contracts, fixed-scale performance and measured boundaries (Chinese) |
-| [Development and build](./docs/engineering.en.md)              | Source structure, six-stage build, adding components, checks and releases                                |
-| [Brand assets](./docs/assets/README.md)                        | Robot family logo, editable SVG sources and high-resolution PNGs                                         |
-| [Changelog](./CHANGELOG.md)                                    | Releases and compatibility changes                                                                       |
-| [Security policy](./SECURITY.md)                               | Vulnerability reporting and maintenance policy                                                           |
+| Document                                                            | Contents                                                                                                   |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [Architecture and isolation](./docs/architecture.en.md)             | Dependency boundaries, instance ownership and the independent Element Plus roadmap                         |
+| [Component catalog](./docs/components.en.md)                        | All 63 components, dependencies and behavior boundaries                                                    |
+| [Usage guide](./docs/guides/usage.en.md)                            | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading                    |
+| [Density and workbenches](./docs/guides/table-density.md)           | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese)                  |
+| [Theme and visual standard](./docs/guides/theme.md)                 | Semantic colors, light/dark mode, control sizes and local overrides with the existing provider (Chinese)   |
+| [Lists and async tasks](./docs/guides/runtime-performance.md)       | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese)                  |
+| [Waterfall lists](./docs/guides/waterfall.md)                       | Automatic windows, nested scrolling, measured cards and keyboard navigation (Chinese)                      |
+| [Compatible API migration](./docs/guides/api-migration.md)          | Standard models, application renderers and read-only migration checks (Chinese)                            |
+| [Production coverage review](./docs/wl-ui-produce-coverage.md)      | wl-ui-produce capability mapping and adapter boundaries (Chinese)                                          |
+| [Component audit closure](./docs/component-audit-closure-0.40.4.md) | Per-component fixes, API/type cleanup, compatibility boundaries and packaged-consumer validation (Chinese) |
+| [Development and build](./docs/engineering.en.md)                   | Source structure, six-stage build, adding components, checks and releases                                  |
+| [Brand assets](./docs/assets/README.md)                             | Robot family logo, editable SVG sources and high-resolution PNGs                                           |
+| [Changelog](./CHANGELOG.md)                                         | Releases and compatibility changes                                                                         |
+| [Security policy](./SECURITY.md)                                    | Vulnerability reporting and maintenance policy                                                             |
 
 The [2026-10-18 scan record](./docs/security-scan-2026-10-18.md) documents two outstanding upstream advisories; the [2026-10-06 record](./docs/security-scan-2026-10-06.md) is a historical archive. Both are in Chinese. Run `bun run check:audit` to assess the current dependency state.
 

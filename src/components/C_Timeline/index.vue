@@ -66,6 +66,7 @@
             v-for="tag in item.tags"
             :key="tag.text"
             class="c-timeline__tag"
+            :style="tagStyle(tag.type)"
             >{{ tag.text }}</span
           >
         </div>
@@ -83,7 +84,7 @@
         >
           <div
             class="c-timeline__content"
-            v-html="sanitizeRichHtml(item.content)"
+            v-html="sanitizedContent(item)"
           />
         </div>
 
@@ -151,6 +152,20 @@
     (e: 'expand', item: TimelineItem, expanded: boolean): void
   }>()
 
+  // 净化按节点内容惰性执行；无关渲染复用结果，移除节点后缓存可随身份回收。
+  const contentCache = new WeakMap<
+    TimelineItem,
+    { source: string; html: string }
+  >()
+  const sanitizedContent = (item: TimelineItem) => {
+    const source = item.content ?? ''
+    const cached = contentCache.get(item)
+    if (cached?.source === source) return cached.html
+    const html = sanitizeRichHtml(source)
+    contentCache.set(item, { source, html })
+    return html
+  }
+
   // ===== 展开状态 =====
   const expandedMap = reactive(new Map<string | number, boolean>())
 
@@ -199,6 +214,18 @@
     error: 'var(--c-error, var(--c-theme-error))',
     info: 'var(--c-info, var(--c-theme-info))',
   }
+
+  const tagColors = new Map([
+    ['default', 'var(--tl-text-secondary)'],
+    ['success', statusColors.success],
+    ['warning', statusColors.warning],
+    ['error', statusColors.error],
+    ['info', statusColors.info],
+  ])
+  // 未指定或历史自定义 type 继续使用默认主色，不把业务字符串当成 CSS。
+  const tagStyle = (type?: string) => ({
+    '--tl-tag-color': type ? tagColors.get(type) : undefined,
+  })
 
   // ===== 节点颜色 =====
   const dotStyle = (item: TimelineItem) => {
