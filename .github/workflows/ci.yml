@@ -9,6 +9,38 @@ permissions:
   contents: read
 
 jobs:
+  browser-consumers:
+    name: Dist browser contracts and fixed-scale performance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run playwright install --with-deps chromium firefox webkit
+      - run: bun run build
+      - run: bun run check:search-workflows
+      - run: bun run type-check:e2e
+      - run: bun run test:browser
+      - run: bun run test:performance
+      - name: Upload browser traces and measured performance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-contracts-and-performance
+          path: |
+            node_modules/.cache/browser-report.json
+            node_modules/.cache/browser-report
+            node_modules/.cache/browser-results
+            node_modules/.cache/performance-report.json
+            node_modules/.cache/performance-results
+          if-no-files-found: warn
+
   fresh-consumers:
     name: ${{ matrix.peers }} consumers / ${{ matrix.runtime }}
     runs-on: ubuntu-latest

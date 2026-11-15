@@ -42,7 +42,7 @@
         role="status"
         style="margin: 0 0 8px"
       >
-        表单已修改，请重新保存。
+        {{ t('form.draftChanged') }}
       </p>
       <C_ActionBar
         :key="session"
@@ -67,7 +67,10 @@
     useFormGlobalConfig,
   } from '../C_Form'
   import { useActionTask } from '../../composables/useActionTask'
-  import { useComponentFeedback } from '../../component-config'
+  import {
+    useComponentFeedback,
+    useComponentLocale,
+  } from '../../component-config'
   import { useComponentTheme } from '../../composables/useComponentTheme'
   import { resolveComponentDensity } from '../../core/density'
   import { notifyObserver } from '../../core/observer'
@@ -82,9 +85,6 @@
   const props = withDefaults(defineProps<FormModalProps<T>>(), {
     config: () => ({}),
     width: 'min(620px, calc(100vw - 24px))',
-    createText: '创建',
-    saveText: '保存',
-    cancelText: '取消',
     closable: true,
     maskClosable: true,
     closeOnEsc: true,
@@ -98,6 +98,7 @@
   const feedback = useComponentFeedback(
     () => effectiveFormConfig.value.feedback
   )
+  const { t } = useComponentLocale(() => effectiveFormConfig.value.locale)
   const density = computed(
     () => props.config?.density ?? globalFormConfig.density ?? 'compact'
   )
@@ -213,16 +214,19 @@
     defineActions([
       {
         key: 'cancel',
-        label: props.cancelText,
+        label: props.cancelText || t('common.cancel'),
         disabled: busy,
         onClick: close,
       },
       {
         key: props.editor.mode.value === 'create' ? 'create' : 'save',
+        // 空文案沿用动作预设，但仍在本弹窗的语言范围内解析。
         label:
           props.editor.mode.value === 'create'
-            ? props.createText
-            : props.saveText,
+            ? props.createText === undefined
+              ? t('common.create')
+              : props.createText || t('common.add')
+            : props.saveText || t('common.save'),
         loading: busy,
         onClick: async () => {
           await formRef.value?.submit()

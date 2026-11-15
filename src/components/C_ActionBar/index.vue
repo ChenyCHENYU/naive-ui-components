@@ -91,6 +91,7 @@
   import { useComponentDensity } from '../../composables/useComponentDensity'
   import { resolveComponentDensity } from '../../core/density'
   import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useComponentLocale } from '../../composables/useComponentLocale'
   import {
     computed,
     h,
@@ -118,6 +119,29 @@
   defineOptions({ name: 'C_ActionBar' })
   const themeStyle = useComponentTheme()
   const scopedDensity = useComponentDensity()
+  const { t } = useComponentLocale()
+  // 仅翻译组件的默认文案；公开预设及独立解析函数保留原中文契约。
+  const actionLabelKeys: Readonly<Record<string, string>> = {
+    add: 'common.add',
+    create: 'common.add',
+    save: 'common.save',
+    confirm: 'action.confirm',
+    cancel: 'common.cancel',
+    close: 'common.close',
+    view: 'common.view',
+    edit: 'common.edit',
+    delete: 'common.delete',
+    remove: 'common.delete',
+    refresh: 'common.refresh',
+    import: 'common.import',
+    export: 'common.export',
+    print: 'common.print',
+    reset: 'common.reset',
+    columns: 'table.columnSettings',
+    fullscreen: 'common.fullscreen',
+    settings: 'common.settings',
+    more: 'common.more',
+  }
 
   const props = withDefaults(defineProps<TableActionsProps>(), {
     actions: () => [],
@@ -258,7 +282,19 @@
     emits: ['click', 'dropdown-select'],
     setup(props, { emit }) {
       const action = computed(() => props.action)
-      const resolvedAction = computed(() => resolveActionPreset(action.value))
+      const resolvedAction = computed(() => {
+        const resolved = resolveActionPreset(action.value)
+        if (action.value.label) return resolved
+        const { key } = action.value
+        const messageKey =
+          key && Object.prototype.hasOwnProperty.call(actionLabelKeys, key)
+            ? actionLabelKeys[key]
+            : undefined
+        return {
+          ...resolved,
+          label: messageKey ? t(messageKey) : key || t('common.action'),
+        }
+      })
       const buttonSize = computed(
         () =>
           resolvedAction.value.buttonProps?.size ||

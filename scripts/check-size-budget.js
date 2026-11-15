@@ -78,7 +78,9 @@ const totalSize = files.reduce(
 // 仅为双格式物理产物追加 16 KiB，原有 CSS 闭包及首屏/按需加载限额保持不变。
 // 0.40 常显录入、会话保护、按需候选渲染和菜单边界相对官方 0.39.0 增加 8625 B；
 // 消耗既有余量后，为 ESM/CJS、声明与物理 CSS 追加 8 KiB。首屏/首开预算保持不变。
-const totalLimit = 4 * 1024 * 1024 + 672 * 1024
+// 0.40.2 为异步选项所有权修复与默认文案国际化追加 3 KiB 物理产物空间；
+// 最终测量超出旧总量 2064 B，组件首屏/首开及 CSS 限额均保持原值。
+const totalLimit = 4 * 1024 * 1024 + 675 * 1024
 if (totalSize - sheetJsSize > totalLimit) {
   failures.push(
     `dist excluding reviewed SheetJS: ${totalSize - sheetJsSize} bytes > ${totalLimit} bytes`

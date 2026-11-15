@@ -8,7 +8,7 @@
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（62 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（63 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
   ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -18,7 +18,7 @@ bun run build
 
 ### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），55 个组件入口，加主入口与 Resolver
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），63 个组件入口，加主入口与 Resolver
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 仅编译共享变量入口
 - **CSS 合并**：构建后将 Vue 已完成 scoped 转换的 per-chunk CSS 与共享变量合并为单一 `style.css`，避免重复样式和原始 `:deep()` 选择器泄漏
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
@@ -34,7 +34,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（55 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（63 组件）
 ├── C_Form.base.css / C_Form.css         # 基础/完整样式层级
 ├── C_Table.base.css / C_Table.css       # 基础/完整样式层级
 ├── style.css                             # 合并后的全量样式

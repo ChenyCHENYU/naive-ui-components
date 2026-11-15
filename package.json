@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.40.1",
+  "version": "0.40.2",
   "description": "基于 Naive UI 的 Vue 3 组件库",
   "packageManager": "bun@1.4.2",
   "engines": {
@@ -134,7 +134,10 @@
     "check:quality": "node scripts/check-source-quality.js",
     "check:consumer-types": "vue-tsc --noEmit -p tests/consumer/tsconfig.json",
     "check:consumer-contracts": "node scripts/check-consumer-contracts.js",
-    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:vendor && bun run check:legacy && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-size && bun run check:consumer-types && bun run check:consumer-contracts && bun run check:search-workflows",
+    "verify": "bun run lint:check && bun run type-check && bun run type-check:vue && bun run test && bun run test:components && bun run type-check:components && bun run check:exports && bun run check:vendor && bun run check:legacy && bun run check:package && bun run check:quality && bun run build && bun run check:consumer-size && bun run check:consumer-types && bun run check:consumer-contracts && bun run check:search-workflows && bun run type-check:e2e",
+    "test:browser": "playwright test --config playwright.config.ts",
+    "test:performance": "playwright test --config playwright.performance.config.ts",
+    "type-check:e2e": "tsc --noEmit -p e2e/tsconfig.json",
     "prepublishOnly": "bun run verify",
     "release": "changeset publish",
     "changeset": "changeset",
@@ -217,6 +220,7 @@
     "@iconify-json/la": "1.2.1",
     "@iconify-json/mdi": "1.2.3",
     "@iconify-json/ri": "1.2.10",
+    "@playwright/test": "1.63.0",
     "@robot-admin/git-standards": "1.0.3",
     "@types/node": "^24.13.3",
     "@types/sortablejs": "^1.15.9",
@@ -244,6 +248,7 @@
     "postcss-selector-parser": "7.1.6",
     "prettier": "^3.9.6",
     "sass": "^1.103.1",
+    "sortablejs": "1.15.7",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "unocss": "66.10.5",
@@ -252,9 +257,8 @@
     "vite": "8.2.4",
     "vitest": "4.1.12",
     "vue": "^3.5.42",
-    "vue-tsc": "^3.3.11",
     "vue-router": "^5.3.1",
-    "sortablejs": "1.15.7",
+    "vue-tsc": "^3.3.11",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
   "overrides": {

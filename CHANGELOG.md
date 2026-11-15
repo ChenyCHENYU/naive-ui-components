@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.40.2
+
+### Patch Changes
+
+- 修复旧 asyncOptions 联动失败时残留候选与取消回调同步重入的请求归属问题，保留业务选值及同上下文手动刷新契约。操作栏和表单弹窗默认文案接入既有语言配置，显式业务文案及公开中文预设保持兼容。新增正式构建消费者的三浏览器回归与固定规模性能基准，使用侧无需新增配置，C_Table 与 MachTable 实现不变。
+
 ## 0.40.1
 
 ### Patch Changes

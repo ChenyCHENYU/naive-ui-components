@@ -8,7 +8,7 @@
 
 ```
 bun run build
-  ├── 1. tsdown          → Multi-entry bundling (62 components ESM/CJS/DTS)
+  ├── 1. tsdown          → Multi-entry bundling (63 components ESM/CJS/DTS)
   ├── 2. sass CLI        → Compile the shared-variable entry → global-scss.css
   ├── 3. merge-css.js    → Merge Vue-compiled SFC CSS + global variables → style.css
   ├── 4. gen-exports.js  → Auto-generate package.json exports map
@@ -18,7 +18,7 @@ bun run build
 
 ### Key Technical Details
 
-- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 55 component entries plus the root entry and resolver
+- **Build engine**: [tsdown](https://github.com/rolldown/tsdown) (Rolldown-based), 63 component entries plus the root entry and resolver
 - **SCSS processing**: Custom `scssTransformPlugin` compiles SFC SCSS within the Rolldown pipeline; standalone Sass CLI only compiles the shared-variable entry
 - **CSS merging**: Post-build merges Vue scoped-compiled per-chunk CSS with shared variables into a single `style.css`, avoiding duplicate styles and leaked raw `:deep()` selectors
 - **Type exports**: Unified `export *` barrel pattern with auto-generated `.d.ts`
@@ -34,7 +34,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # Main entry
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (55 components)
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # Subpath entries (63 components)
 ├── C_Form.base.css / C_Form.css         # Base/full style tiers
 ├── C_Table.base.css / C_Table.css       # Base/full style tiers
 ├── style.css                             # Merged full styles

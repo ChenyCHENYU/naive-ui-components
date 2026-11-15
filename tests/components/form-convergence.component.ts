@@ -293,3 +293,48 @@ test('loading layouts cannot bypass validation, including unvisited required tab
   expect(await instance.submit()).toBe(true)
   expect(save).toHaveBeenCalledTimes(1)
 })
+
+test('failed dependent options cannot render choices from the previous context or static fallback', async () => {
+  let fail = true
+  const wrapper = mount(C_Form<FormRecord>, {
+    global: { components },
+    props: {
+      config: { onError: vi.fn() },
+      options: [
+        { type: 'input', prop: 'warehouse', value: 'A' },
+        {
+          type: 'select',
+          prop: 'location',
+          value: 'A-01',
+          dependsOn: 'warehouse',
+          children: [{ label: 'Static fallback', value: 'static' }],
+          asyncOptions: async model => {
+            if (model.warehouse === 'B' && fail) throw new Error('offline')
+            return [
+              {
+                label: String(model.warehouse),
+                value: `${model.warehouse}-01`,
+              },
+            ]
+          },
+        },
+      ],
+    },
+  })
+  const instance = wrapper.vm as unknown as FormInstance<FormRecord>
+  await flushPromises()
+  const select = wrapper.findComponent(NSelect)
+  expect(select.props('options')).toEqual([{ label: 'A', value: 'A-01' }])
+  await instance.setFieldValue('warehouse', 'B')
+  await flushPromises()
+  expect(select.props('options')).toEqual([])
+  expect(select.props('value')).toBe('A-01')
+  expect(select.props('loading')).toBe(false)
+  expect(wrapper.find('.c-form-option-error').exists()).toBe(true)
+  fail = false
+  await wrapper.get('.c-form-option-retry').trigger('click')
+  await flushPromises()
+  expect(select.props('options')).toEqual([{ label: 'B', value: 'B-01' }])
+  expect(select.props('value')).toBe('A-01')
+  expect(wrapper.find('.c-form-option-error').exists()).toBe(false)
+})

@@ -31,7 +31,10 @@ import {
   parseDataPath,
   setDataPath,
 } from '../../../utils/data'
-import { useComponentFeedback, useComponentLocale } from '../../../component-config'
+import {
+  useComponentFeedback,
+  useComponentLocale,
+} from '../../../component-config'
 import {
   createRequiredFormRule,
   resolveFormRules,
@@ -138,6 +141,7 @@ export function useFormState(
   const requestVersions = new Map<string, number>()
   const requestControllers = new Map<string, AbortController>()
   const asyncOptionLoaders = new Map<string, FormOption['asyncOptions']>()
+  const asyncOptionDependencies = new Map<string, unknown[]>()
   const scheduledOptionLoads = new Map<
     string,
     { item: FormOption; reason: AsyncOptionsContext['reason'] }
@@ -271,8 +275,9 @@ export function useFormState(
       formItemRefs.delete(prop)
       delete formRules[prop]
       ruleErrors.delete(prop)
-      invalidateAsyncOptions(prop)
       asyncOptionLoaders.delete(prop)
+      asyncOptionDependencies.delete(prop)
+      invalidateAsyncOptions(prop)
       if (!config.value.preserveRemovedFields) deleteDataPath(formModel, prop)
     })
   }
@@ -323,27 +328,40 @@ export function useFormState(
     )
   }
 
-  function invalidateAsyncOptions(field: string): void {
-    requestControllers.get(field)?.abort()
+  function invalidateAsyncOptions(field: string, clearChoices = false): void {
+    const previous = requestControllers.get(field)
     requestControllers.delete(field)
     requestVersions.delete(field)
     scheduledOptionLoads.delete(field)
-    delete asyncOptionsCache.value[field]
     delete asyncLoadingMap.value[field]
     delete asyncErrorMap.value[field]
+    // 新依赖上下文不能回退到旧候选或静态 children；已有业务选值保持不变。
+    // 候选变化可同步触发公开 reloadOptions，发布它之后不再清除 loading/error。
+    if (clearChoices) asyncOptionsCache.value[field] = []
+    else delete asyncOptionsCache.value[field]
+    // abort 监听器可以同步重载；清理必须先完成，不能删除它创建的新请求。
+    previous?.abort()
   }
 
   function reconcileAsyncOptions(item: FormOption): void {
     // 来源控件拥有查询状态，迁移字段时优先 source，避免旧 asyncOptions 重复请求。
     const loader = item.source ? undefined : item.asyncOptions
     if (asyncOptionLoaders.get(item.prop) === loader) return
+    if (loader) asyncOptionLoaders.set(item.prop, loader)
+    else asyncOptionLoaders.delete(item.prop)
+    asyncOptionDependencies.delete(item.prop)
     invalidateAsyncOptions(item.prop)
-    if (!loader) {
-      asyncOptionLoaders.delete(item.prop)
-      return
-    }
-    asyncOptionLoaders.set(item.prop, loader)
-    scheduleAsyncOptions(item, 'initialize')
+    if (loader && !requestVersions.has(item.prop))
+      scheduleAsyncOptions(item, 'initialize')
+  }
+
+  function getAsyncOptionDependencies(item: FormOption): unknown[] {
+    const fields = Array.isArray(item.dependsOn)
+      ? item.dependsOn
+      : item.dependsOn
+        ? [item.dependsOn]
+        : []
+    return cloneFormValue(fields.map(field => getDataPath(formModel, field)))
   }
 
   /** Coalesce model changes before loading, using the final model snapshot. */
@@ -351,8 +369,20 @@ export function useFormState(
     item: FormOption,
     reason: AsyncOptionsContext['reason']
   ): void {
-    if (disposed) return
+    if (!isCurrentLoader(item)) return
     const previous = scheduledOptionLoads.get(item.prop)
+    if (reason === 'dependency') {
+      const dependencies = getAsyncOptionDependencies(item)
+      if (
+        !isFormValueEqual(asyncOptionDependencies.get(item.prop), dependencies)
+      ) {
+        // 同值通知仍刷新，但仅依赖上下文变化才清空已有候选。
+        asyncOptionDependencies.set(item.prop, dependencies)
+        invalidateAsyncOptions(item.prop, true)
+        // 同步重入即使已失败结束，也已接管此次刷新，不能再重试一次。
+        if (!isCurrentLoader(item) || requestVersions.has(item.prop)) return
+      }
+    }
     const pending = {
       item,
       reason: previous?.reason === 'initialize' ? previous.reason : reason,
@@ -388,6 +418,20 @@ export function useFormState(
     )
   }
 
+  function finishAsyncOptions(
+    field: string,
+    version: number,
+    controller: AbortController
+  ): void {
+    if (
+      requestVersions.get(field) !== version ||
+      requestControllers.get(field) !== controller
+    )
+      return
+    requestControllers.delete(field)
+    asyncLoadingMap.value[field] = false
+  }
+
   async function loadAsyncOptions(
     item: FormOption,
     reason: AsyncOptionsContext['reason']
@@ -396,15 +440,18 @@ export function useFormState(
 
     const { prop } = item
     const version = (requestVersions.get(prop) ?? 0) + 1
-    requestVersions.set(prop, version)
-    requestControllers.get(prop)?.abort()
-
+    const previous = requestControllers.get(prop)
     const controller = new AbortController()
+    requestVersions.set(prop, version)
     requestControllers.set(prop, controller)
     asyncLoadingMap.value[prop] = true
     delete asyncErrorMap.value[prop]
+    previous?.abort()
+    // 重入请求已接管时，外层既不再调用 loader，也不清理后继状态。
+    if (isStaleRequest(prop, version, controller)) return
 
     try {
+      asyncOptionDependencies.set(prop, getAsyncOptionDependencies(item))
       const result = await item.asyncOptions(getModel(), {
         field: prop,
         reason,
@@ -418,15 +465,10 @@ export function useFormState(
     } catch (error) {
       if (isStaleRequest(prop, version, controller)) return
       asyncErrorMap.value[prop] = error
-      reportError(error, 'async-options', prop)
+      if (!isStaleRequest(prop, version, controller))
+        reportError(error, 'async-options', prop)
     } finally {
-      if (
-        requestVersions.get(prop) === version &&
-        requestControllers.get(prop) === controller
-      ) {
-        asyncLoadingMap.value[prop] = false
-        requestControllers.delete(prop)
-      }
+      finishAsyncOptions(prop, version, controller)
     }
   }
 
@@ -776,6 +818,7 @@ export function useFormState(
     submitController?.abort()
     requestControllers.forEach(controller => controller.abort())
     requestControllers.clear()
+    asyncOptionDependencies.clear()
     scheduledOptionLoads.clear()
     formItemRefs.clear()
   })

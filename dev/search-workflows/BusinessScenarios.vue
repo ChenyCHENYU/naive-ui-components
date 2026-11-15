@@ -37,6 +37,7 @@
   import './business-scenarios.css'
 
   const production = useProductionParity()
+  const productionVisible = ref(true)
   const quality = useQualityParity()
   const material = ref<string | number | null>('material-1')
   const operator = ref<string | null>('U001')
@@ -97,9 +98,19 @@
               size="small"
               @click="production.failBound = true"
               >下次炉次查询失败</NButton
+            ><NButton
+              size="small"
+              @click="productionVisible = !productionVisible"
+              >{{
+                productionVisible ? '隐藏分配工作台' : '显示分配工作台'
+              }}</NButton
             ></div
           >
-          <div class="business-parity__production-layout">
+          <div
+            v-show="productionVisible"
+            data-testid="production-layout"
+            class="business-parity__production-layout"
+          >
             <C_SplitPane
               direction="vertical"
               :default-size="40"
