@@ -8,7 +8,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@robot-admin/naive-ui-components"><img src="https://img.shields.io/npm/v/@robot-admin/naive-ui-components?style=flat-square&amp;color=249D70&amp;labelColor=183C2E" alt="npm version"></a>
     <a href="./package.json"><img src="https://img.shields.io/badge/Vue-3.5+-249D70?style=flat-square&amp;logo=vue.js&amp;logoColor=white&amp;labelColor=183C2E" alt="Vue 3.5+"></a>
-    <a href="./package.json"><img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white&amp;labelColor=183C2E" alt="TypeScript 5.9"></a>
+    <a href="./docs/engineering.en.md#typescript-build-and-consumption"><img src="https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white&amp;labelColor=183C2E" alt="Build: TypeScript 5.9.3"></a>
     <a href="https://github.com/ChenyCHENYU/naive-ui-components/actions/workflows/ci.yml"><img src="https://github.com/ChenyCHENYU/naive-ui-components/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-64748B?style=flat-square&amp;labelColor=183C2E" alt="MIT License"></a>
   </p>
@@ -33,50 +33,39 @@
 | Selective loading       | 63 component entries, an auto-import resolver, component CSS and base styles for forms and tables                                                            |
 | Application integration | Global registration or local imports; injectable feedback, locale and defaults; form dialogs compatible with structurally matching headless CRUD controllers |
 
-The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.4**. See the [changelog](./CHANGELOG.md) for release details.
+The library handles UI and interaction. Applications supply business APIs, authentication, authorization, upload services and platform configuration. The current repository version is **0.40.5**. See the [changelog](./CHANGELOG.md) for release details.
 
-0.40 adds continuous input with `edit: 'inline'` and fixes dynamic form visibility, cached workflow sessions and combined category searches. See the [table editing guide](./docs/guides/table-editing.md), [business scenario comparison](./docs/wl-business-scenario-parity.md) and [compatibility guide](./docs/guides/component-contracts.md) (Chinese).
-
-0.34 adds state-aware tree icons, richer node contexts and action states, plus organization-chart field mapping, controlled interaction and measured connectors. Use `C_Tree` for hierarchical selection and the independent `C_OrgChart` for reporting relationships. See the [organization examples](./docs/guides/tree-org-examples.md) (Chinese).
-
-0.36 adds `C_UserPicker` for organization-based person selection, sharing pagination, drafts and confirmation. Workflow nodes gain real connection ports, explicit conditional targets and the same person-selection interface. See [person selection](./docs/guides/user-picker.md) and [workflow design](./docs/guides/workflow.md) (Chinese).
-
-Use `C_Select` for standalone selections and freeform tags. Multiple selections in forms and search share the compact tag summary. Date and time fields can bind directly to formatted API strings. See the [composition examples](./docs/guides/data-workflows.md#多选标签和日期时间) (Chinese).
-
-Remote options, free text suggestions and multi-column entity selection use `C_Select`, `C_AutoComplete` and `C_DataPicker` with a shared request contract. Form and search fields accept `source` directly. See [search workflows](./docs/guides/search-workflows.md#远程选项与自由文本建议) and [scenario coverage](./docs/search-selection-coverage.md) (Chinese).
-
-Search fields, form fields, and actions can be generated from reactive configuration. Compact density applies consistently across search and data entry, including validation, async options, and dialogs. The application owns dictionaries and permissions, supplying ordinary options and column definitions to components.
-
-Compose `C_FormSearch`, `C_ActionBar`, `C_FormModal`, and `C_DataPicker` around either `C_Table` or MachTable. Each grid uses its own column definitions and pagination. See [workspace composition](./docs/guides/data-workflows.md), [form density](./docs/guides/form-density.en.md), and [runtime performance](./docs/guides/runtime-performance.md).
-
-Set search `columns` to `3` or `4` for responsive field tracks with right-aligned actions. Use `presentation="inline"` for selection inside an edit form and the picker's `#query` slot for multiple filters. See [search workflows](./docs/guides/search-workflows.md) and [data picker](./docs/guides/data-picker.md).
-
-Set `searchOnReset: true` to run both search and reset through `onSearch`. Use `createDataPickerField` for form lookup fields and `config.actions.inline` for row actions. See [workspace composition](./docs/guides/data-workflows.md).
+Start with component props, business data and public types. Use composables when coordinating forms, queries and dialogs. Existing projects can simplify one page at a time using the [0.40.4 adoption notes](./docs/guides/api-migration.md#0404-接入收敛) (Chinese); existing compatibility APIs remain available.
 
 ## Capability map
 
-`C_Table` retains the native Naive UI empty state, including provider theme, locale and `componentOptions.DataTable.renderEmpty`. Use `#empty` to replace the content of one table.
-
-In narrow `C_Table` cells, edit actions wrap so the input stays visible. Utility columns remain compact; automatic business columns share available space proportionally to their measured header/content bases, and preserve their bases with horizontal scrolling when they do not fit. Explicit widths and saved width preferences remain effective.
-
-`C_Table` shows row numbers and a pager by default and centers all cells, including numbers. Use `:row-number="false"` and `:pagination="false"` to disable the automatic index and pager respectively. Bind server-provided columns and rows directly as shown in the [usage guide](./docs/guides/usage.en.md).
-
-Checked rows show a leading theme-colored marker; set `--c-table-selected-marker-width: 0px` to hide it. Async exports retain the columns, formatting and file settings captured at startup, and stop downloading after unmount. `createComponentTheme({ primary: '#409eff' })` uses a white foreground for filled buttons and checked controls by default; set `onSolid` centrally or override it through a local Provider. See the [theme guide](./docs/guides/theme.md).
-
-A `{ type: 'selection' }` column enables selection without repeating `selection: true`. Explicit global or local `selection: false` / `{ enabled: false }` still takes precedence, including when columns change dynamically.
-
-| Scenario              | Representative components                                        | Capabilities                                                                                |
-| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Data entry            | `C_Form` · `C_FormModal` · `C_FormSearch`                        | Dynamic fields, validation, async submission, search and create/edit dialogs                |
-| Data operations       | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | Pagination, trees, inline/row/cell editing, cross-page selection, exports and batch actions |
-| Editing               | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | Rich text, Markdown, Cron previews and local formula evaluation                             |
-| Workflow and planning | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER/BPMN/UML, approval flows, Gantt charts and calendars                                     |
-| Files and media       | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | Chunked uploads, PDF/Word/Excel previews and audio/video playback                           |
-| Images and maps       | `C_Signature` · `C_ImageCropper` · `C_QRCode` · `C_Map`          | Signatures, cropping, QR codes, OpenStreetMap and AMap                                      |
-| Workspace             | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | Menus, view switching, tab navigation and global search                                     |
-| Common interactions   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | Login UI, human verification, onboarding and navigation feedback                            |
+| Scenario              | Representative components                                        | Capabilities                                                                                            |
+| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Data entry            | `C_Form` · `C_FormModal` · `C_FormSearch`                        | Dynamic fields, validation, async submission, search and create/edit dialogs                            |
+| Data operations       | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | Pagination, trees, inline/row/cell editing, cross-page selection, exports and batch actions             |
+| Search and selection  | `C_Select` · `C_AutoComplete` · `C_DataPicker` · `C_UserPicker`  | Remote options, text suggestions, multi-column entity selection and organization-based people selection |
+| Structures and cards  | `C_OrgChart` · `C_WaterFall`                                     | Reporting relationships, responsive cards, list windowing and inferred business fields                  |
+| Editing               | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | Rich text, Markdown, Cron previews and local formula evaluation                                         |
+| Workflow and planning | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER/BPMN/UML, approval flows, Gantt charts and calendars                                                 |
+| Files and media       | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | Chunked uploads, PDF/Word/Excel previews and audio/video playback                                       |
+| Images and maps       | `C_Signature` · `C_ImageCropper` · `C_QRCode` · `C_Map`          | Signatures, cropping, QR codes, OpenStreetMap and AMap                                                  |
+| Workspace             | `C_Menu` · `C_Tabs` · `C_TagsView` · `C_GlobalSearch`            | Menus, view switching, tab navigation and global search                                                 |
+| Common interactions   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | Login UI, human verification, onboarding and navigation feedback                                        |
 
 Browse [all 63 components and dependencies](./docs/components.en.md), or explore scenarios in [Robot Admin](https://robotadmin.cn). Cron previews calculate times only; formulas run locally. Production human verification requires server validation. See the [usage guide](./docs/guides/usage.en.md).
+
+### Choose by task
+
+The focused guides below are in Chinese.
+
+| Task                                                         | Recommended entry and usage                                                                                                                                                                                                                              |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Filter, edit and run batch actions                           | Compose `C_FormSearch`, `C_FormModal` and `C_ActionBar`, sharing field definitions and compact density; see [workspace composition](./docs/guides/data-workflows.md)                                                                                     |
+| Select values, suggest text or choose entities               | Use `C_Select`, `C_AutoComplete` or `C_DataPicker` respectively; remote fields accept `source` directly. See [search and selection](./docs/guides/search-workflows.md)                                                                                   |
+| Browse a hierarchy, display reporting lines or choose people | Use `C_Tree`, `C_OrgChart` or `C_UserPicker`; see [organization examples](./docs/guides/tree-org-examples.md) and [person selection](./docs/guides/user-picker.md)                                                                                       |
+| Display and edit tabular data                                | `C_Table` includes row numbers and pagination by default; a selection column enables selection, and `config.edit` selects the editing mode. See [table editing](./docs/guides/table-editing.md) and [widths and density](./docs/guides/table-density.md) |
+
+Forms and search can accompany `C_Table` or another grid, retaining each grid's native column and pagination contracts. Workflow, upload and map components provide UI and integration points; applications own approval execution, file services and platform authorization.
 
 ## Quick start
 
@@ -144,6 +133,70 @@ Place this example in `App.vue`. It uses a component subpath and its CSS entry, 
 
 The form includes submission, reset and validation. For persistence, await your async request inside `config.onSubmit`; use `@submit` for completion notifications. See the [usage guide](./docs/guides/usage.en.md) for layouts, validation rules, dialogs and remote tables.
 
+### Use public Props directly
+
+For simple components, bind props directly. When extracting configuration, use the component's public type to check fields without duplicating an interface or adding a configuration factory:
+
+```vue
+<script setup lang="ts">
+  import {
+    C_Progress,
+    type ProgressProps,
+  } from '@robot-admin/naive-ui-components/C_Progress'
+  import '@robot-admin/naive-ui-components/C_Progress/style.css'
+
+  const progress = {
+    percentage: 62.5,
+    isAnimation: true,
+  } satisfies ProgressProps
+</script>
+
+<template>
+  <C_Progress v-bind="progress" />
+</template>
+```
+
+`BarcodeProps`, `CascadeProps`, `StepsProps`, `CodeProps`, `EditorProps` and `MarkdownProps` are also available from their component subpaths. They share declarations with the actual component props.
+
+### Infer waterfall business fields
+
+Provide `id`, `src`, `width` and `height` in `items`. Additional business fields flow into slots and events automatically, without converting your data to a base `WaterFallItem[]`:
+
+```vue
+<script setup lang="ts">
+  import { C_WaterFall } from '@robot-admin/naive-ui-components/C_WaterFall'
+  import '@robot-admin/naive-ui-components/C_WaterFall/style.css'
+
+  const products = [
+    {
+      id: 1,
+      src: '/images/product.jpg',
+      width: 640,
+      height: 480,
+      productCode: 'A-01',
+      price: 125.5,
+    },
+  ]
+</script>
+
+<template>
+  <C_WaterFall :items="products">
+    <template #item="{ item, width, height }">
+      <img
+        :src="item.src"
+        :alt="item.productCode"
+        :width="width"
+        :height="height"
+        loading="lazy"
+      />
+      <p>{{ item.productCode }} · {{ item.price.toFixed(2) }}</p>
+    </template>
+  </C_WaterFall>
+</template>
+```
+
+Replace the image path with an application asset. Slot and event records are read-only and preserve Vue's nested `ref` unwrapping; edit the source data owned by your application. See the [waterfall guide](./docs/guides/waterfall.md) (Chinese) for long lists, variable-height cards and scroll containers.
+
 ### Scope table preferences per account
 
 Register once when the app starts. `session` is your existing reactive identity state; keep it `undefined` until the identity is fully resolved:
@@ -206,34 +259,36 @@ The resolver uses component subpaths by default. `importStyle` defaults to `fals
 
 Each component CSS entry loads its composed styles and shared design tokens automatically. Manual imports can use `C_Form/base.css` and `C_Table/base.css`; full styles also have `full.css` aliases. Load heavy editors, flows, maps and media with their business routes. See [import strategies](./docs/guides/usage.en.md#import-strategies) for details and global registration examples.
 
-Minimal consumer builds reduced initial JS gzip by 36.1% for the base form and 34.6% for the display table, including Vue and Naive UI. See the [measurement and automated budgets](./docs/performance-0.15.0.md) (Chinese) for scope and limitations.
+The repository builds minimal consumers per entry and checks initial JS gzip, heavy dependency boundaries and first-open increments. Measurements include Vue and Naive UI, cannot be summed into a whole-app estimate, and do not replace page-level interaction measurements. See [development and build](./docs/engineering.en.md#development) for coverage; the [0.15.0 size report](./docs/performance-0.15.0.md) (Chinese) is retained as historical context only.
 
 Root imports aggregate navigation components and require `vue-router` at runtime. Applications without it should use component subpaths; their unrelated optional peers are not required.
 
 ## Documentation
 
-| Document                                                            | Contents                                                                                                   |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [Architecture and isolation](./docs/architecture.en.md)             | Dependency boundaries, instance ownership and the independent Element Plus roadmap                         |
-| [Component catalog](./docs/components.en.md)                        | All 63 components, dependencies and behavior boundaries                                                    |
-| [Usage guide](./docs/guides/usage.en.md)                            | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading                    |
-| [Density and workbenches](./docs/guides/table-density.md)           | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese)                  |
-| [Theme and visual standard](./docs/guides/theme.md)                 | Semantic colors, light/dark mode, control sizes and local overrides with the existing provider (Chinese)   |
-| [Lists and async tasks](./docs/guides/runtime-performance.md)       | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese)                  |
-| [Waterfall lists](./docs/guides/waterfall.md)                       | Automatic windows, nested scrolling, measured cards and keyboard navigation (Chinese)                      |
-| [Compatible API migration](./docs/guides/api-migration.md)          | Standard models, application renderers and read-only migration checks (Chinese)                            |
-| [Production coverage review](./docs/wl-ui-produce-coverage.md)      | wl-ui-produce capability mapping and adapter boundaries (Chinese)                                          |
-| [Component audit closure](./docs/component-audit-closure-0.40.4.md) | Per-component fixes, API/type cleanup, compatibility boundaries and packaged-consumer validation (Chinese) |
-| [Development and build](./docs/engineering.en.md)                   | Source structure, six-stage build, adding components, checks and releases                                  |
-| [Brand assets](./docs/assets/README.md)                             | Robot family logo, editable SVG sources and high-resolution PNGs                                           |
-| [Changelog](./CHANGELOG.md)                                         | Releases and compatibility changes                                                                         |
-| [Security policy](./SECURITY.md)                                    | Vulnerability reporting and maintenance policy                                                             |
+| Document                                                           | Contents                                                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| [Architecture and isolation](./docs/architecture.en.md)            | Dependency boundaries, instance ownership and the independent Element Plus roadmap                           |
+| [Component catalog](./docs/components.en.md)                       | All 63 components, dependencies and behavior boundaries                                                      |
+| [Usage guide](./docs/guides/usage.en.md)                           | Imports, forms/tables, Cron/formulas, maps, onboarding, captcha, login and page loading                      |
+| [Density and workbenches](./docs/guides/table-density.md)          | Shared form/search/table density, edit modes, split panes and tree capabilities (Chinese)                    |
+| [Theme and visual standard](./docs/guides/theme.md)                | Semantic colors, light/dark mode, control sizes and local overrides with the existing provider (Chinese)     |
+| [Lists and async tasks](./docs/guides/runtime-performance.md)      | Automatic list windows, chat scrolling, search indexes and media task ownership (Chinese)                    |
+| [Waterfall lists](./docs/guides/waterfall.md)                      | Automatic windows, nested scrolling, measured cards and keyboard navigation (Chinese)                        |
+| [Compatible API migration](./docs/guides/api-migration.md)         | 0.40.4 adoption notes, standard models, application renderers and read-only migration checks (Chinese)       |
+| [Production coverage review](./docs/wl-ui-produce-coverage.md)     | wl-ui-produce capability mapping and adapter boundaries (Chinese)                                            |
+| [0.40.4 component audit](./docs/component-audit-closure-0.40.4.md) | That release's fixes, type improvements, compatibility boundaries and packaged-consumer validation (Chinese) |
+| [Development and build](./docs/engineering.en.md)                  | Source structure, six-stage build, adding components, checks and releases                                    |
+| [Brand assets](./docs/assets/README.md)                            | Robot family logo, editable SVG sources and high-resolution PNGs                                             |
+| [Changelog](./CHANGELOG.md)                                        | Releases and compatibility changes                                                                           |
+| [Security policy](./SECURITY.md)                                   | Vulnerability reporting and maintenance policy                                                               |
 
-The [2026-10-18 scan record](./docs/security-scan-2026-10-18.md) documents two outstanding upstream advisories; the [2026-10-06 record](./docs/security-scan-2026-10-06.md) is a historical archive. Both are in Chinese. Run `bun run check:audit` to assess the current dependency state.
+Dependency security depends on the actual lockfile and audit run. `bun run check:audit` retains raw findings and verifies evidence for narrowly scoped local mitigations or unaffected paths; `check:audit:raw` provides the original report. Repository overrides and development patches do not propagate to consumers, so applications must audit their own lockfiles. Historical scans are not current results. See the [security policy](./SECURITY.md) for bundled-runtime and consumer-dependency boundaries.
 
 ## Local development
 
 Maintaining this repository requires **Node.js ≥20.19.0** and the pinned **Bun 1.4.2**. CI uses `.node-version`, the frozen lockfile and checks actual dependency overrides. The minimum Bun version for consumers remains 1.3.14.
+
+Source checks and builds use locked **TypeScript 5.9.3**. CI additionally verifies consumption of the built declarations with **TypeScript 5.8.3**; this does not claim support for building repository source with 5.8. See [TypeScript build and consumption](./docs/engineering.en.md#typescript-build-and-consumption).
 
 ```bash
 git clone https://github.com/ChenyCHENYU/naive-ui-components.git
@@ -263,15 +318,3 @@ See [development and build](./docs/engineering.en.md) for individual checks and 
 ## License
 
 [MIT License](./LICENSE) · Made by [CHENY](https://github.com/ChenyCHENYU)
-
-## Content widths and status columns (0.24)
-
-Columns without `width` now measure their header and up to 100 evenly sampled loaded rows, using formatted values and status labels. Content measurement bases default to 80–360px; final automatic widths may grow proportionally to fill available space. Saving a manual width preserves the original ellipsis, tooltip and default minimum. Action columns default to the right edge; the internal canvas absorbs spare space after shrinking without resizing peer business columns. Native links and buttons inside an ellipsis cell also shrink with a trailing ellipsis. Use `minWidth/maxWidth` to adjust the bounds. Explicit widths (including native strings), saved column widths and `display.columnWidth` take precedence. `autoWidth: false` restores the 180px default. Long automatic cells use ellipsis and a tooltip; horizontal virtualization uses the same numeric widths.
-
-Use `{ key: 'status', status: true }` for themed status tags, or `status: { S1B: { label: 'Review', color: 'danger' }, S1C: 'success' }`. Semantic colors and CSS colors are supported. Unknown codes stay neutral, zero/false stay valid, and explicit render functions win. Display changes never rewrite data or export policy. Measurement does not invoke render functions; give graphical/custom columns explicit widths. Data and column updates remeasure a bounded sample; all caches remain component-local.
-
-Headers display their full text by default, independently of cell ellipsis. Initial layout, explicit or restored narrow widths, and interactive resizing share a minimum that includes the entire title and its sort/filter controls. The 360px measurement cap applies only to cell content; longer headers use internal horizontal scrolling. Custom header content should declare an appropriate minWidth.
-
-Compact forms and searches use a 4px row gap and a 2px empty feedback reserve; validation messages grow naturally. Compact form dialogs use tighter padding and internal scrolling. Per-field entrance and layout-size animations have been removed.
-
-The default adaptive layout distributes spare viewport space proportionally among automatic business columns; crowded tables keep their measured bases and scroll horizontally. Utility, explicit-width and manually resized columns retain their widths. Resolved numeric widths drive both the table and horizontal scroll range. Resizing changes only the target column, including after preferences are committed. Explicit native `table-layout` attributes or nonnumeric widths retain Naive UI layout semantics and its `scrollX` minimum.

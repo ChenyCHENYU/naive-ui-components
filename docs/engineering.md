@@ -53,6 +53,12 @@ dist/
 
 两种类型格式都在最低组合检查。`minimum` 的浏览器打包通过不代表对旧依赖执行了整套浏览器交互验收；本轮交互验收使用上表的本地组合。原生 ESM 的区别来自上游分发格式，保留浏览器与 CJS 用户的现有 peer 范围。CI 任务名和检查输出明确标识覆盖范围。
 
+### TypeScript 构建与消费
+
+仓库的源码类型检查与声明构建使用锁文件中的 **TypeScript 5.9.3**。CI 的 `consumer-types-ts58` 任务先使用该编译器构建，再切换到 **TypeScript 5.8.3**，执行 `check:consumer-types` 与 `check:consumer-contracts`，验证正式声明的 Vue SFC 消费以及打包消费者契约。
+
+因此，5.8.3 是额外验证的**消费编译器版本**，不是仓库源码的构建工具版本。检查沿用消费夹具的 `skipLibCheck` 设置，验证公开 API 的使用与推导，不宣称完整检查所有第三方声明或覆盖所有 TypeScript 版本。具体任务见 [CI 配置](../.github/workflows/ci.yml)。
+
 ## 开发
 
 维护环境为 Node.js 20.19.0+ 与固定的 Bun 1.4.2；仓库通过 `.node-version`、`packageManager` 和冻结锁文件保持本地/CI 一致。消费者 Bun 最低版本仍为 1.3.14；维护环境使用能真实应用条件 overrides 的版本，并校验实际解析结果。

@@ -52,6 +52,12 @@ dist/
 
 Both declaration formats remain checked with minimum peers. Browser bundling does not mean that the full interactive browser suite ran against old dependencies; interaction checks use the locally verified profile. The peer range remains available to browser and CJS consumers, with explicit coverage in CI names and logs.
 
+### TypeScript build and consumption
+
+Source type checks and declaration builds use **TypeScript 5.9.3** from the repository lockfile. CI's `consumer-types-ts58` job builds with that compiler first, then switches to **TypeScript 5.8.3** and runs `check:consumer-types` and `check:consumer-contracts` against the resulting declarations and packaged-consumer fixtures.
+
+Version 5.8.3 is therefore an additionally verified **consumer compiler**, not the repository build compiler. Checks retain the fixtures' `skipLibCheck` setting: they validate public API usage and inference without claiming a full check of every third-party declaration or support for every TypeScript release. See the [CI configuration](../.github/workflows/ci.yml).
+
 ## Development
 
 The maintenance environment uses Node.js 20.19.0+ and pinned Bun 1.4.2. `.node-version`, `packageManager` and the frozen lockfile align local and CI installs. The minimum Bun version for consumers remains 1.3.14; maintenance checks verify that conditional overrides affect actual resolutions.

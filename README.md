@@ -8,7 +8,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@robot-admin/naive-ui-components"><img src="https://img.shields.io/npm/v/@robot-admin/naive-ui-components?style=flat-square&amp;color=249D70&amp;labelColor=183C2E" alt="npm version"></a>
     <a href="./package.json"><img src="https://img.shields.io/badge/Vue-3.5+-249D70?style=flat-square&amp;logo=vue.js&amp;logoColor=white&amp;labelColor=183C2E" alt="Vue 3.5+"></a>
-    <a href="./package.json"><img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white&amp;labelColor=183C2E" alt="TypeScript 5.9"></a>
+    <a href="./docs/engineering.md#typescript-构建与消费"><img src="https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white&amp;labelColor=183C2E" alt="Build: TypeScript 5.9.3"></a>
     <a href="https://github.com/ChenyCHENYU/naive-ui-components/actions/workflows/ci.yml"><img src="https://github.com/ChenyCHENYU/naive-ui-components/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-64748B?style=flat-square&amp;labelColor=183C2E" alt="MIT License"></a>
   </p>
@@ -33,42 +33,18 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.4**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.5**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
-0.40 新增 `edit: 'inline'` 常显连续录入，收敛动态表单显隐、流程缓存会话与分类查询组合。见[表格编辑指南](./docs/guides/table-editing.md)和[真实业务场景对照](./docs/wl-business-scenario-parity.md)；已有项目可参考[兼容接入与独立演示](./docs/guides/component-contracts.md)。
-
-0.34 完善树的动态图标、自定义节点状态与操作配置，以及组织架构图的数据映射、受控交互和连线。目录选择使用 `C_Tree`，卡片式汇报关系使用独立的 `C_OrgChart`。见[组织场景示例](./docs/guides/tree-org-examples.md)。
-
-0.36 增加组织人员选择入口 `C_UserPicker`，共用分页、草稿和确认机制；完善审批节点端口、显式条件分支及统一选人配置。见[人员选择](./docs/guides/user-picker.md)与[工作流设计](./docs/guides/workflow.md)。
-
-搜索条件、录入字段和操作按钮可以由响应式配置生成。筛选和编辑共享紧凑密度，支持校验、异步选项和业务弹窗。后端字典或权限由项目接入，表单和搜索消费普通选项，表格消费普通列配置。
-
-`C_Select` 支持独立单选、多选与自由标签。表单和搜索多选共用紧凑标签摘要，日期时间字段可直接读写接口字符串。见[多选与日期时间用法](./docs/guides/data-workflows.md#多选标签和日期时间)。
-
-远程选项、自由文本建议和多列实体选择分别使用 `C_Select`、`C_AutoComplete`、`C_DataPicker`，共享请求契约；表单与搜索字段可直接配置 `source`。见[搜索与选择用法](./docs/guides/search-workflows.md#远程选项与自由文本建议)及[产销场景核对](./docs/search-selection-coverage.md)。
-
-列表按场景组合 `C_FormSearch`、`C_ActionBar`、`C_FormModal` 和 `C_DataPicker`。同一套表单与搜索可搭配 `C_Table` 或 MachTable，各自使用原生表格配置和分页。见[组合用法](./docs/guides/data-workflows.md#搜索表单与弹窗组合)、[表单密度](./docs/guides/form-density.md)和[运行时性能](./docs/guides/runtime-performance.md)。
-
-搜索区用 `columns: 3` 或 `columns: 4` 限定每行字段数，操作按钮保持靠右。表单内的实体选择用 `presentation="inline"` 在原处展开，复杂的进阶查询可通过选择器的 `#query` 插槽接入多个条件。见[搜索区用法](./docs/guides/search-workflows.md)和[数据选择器](./docs/guides/data-picker.md)。
-
-设置 `searchOnReset: true`，让重置与搜索共用 `onSearch`。表单选择字段通过 `createDataPickerField` 接入，列表行操作使用 `config.actions.inline`。见[工作台组合](./docs/guides/data-workflows.md)。
+接入时直接使用组件 props、业务数据和公开类型；复杂表单、查询与弹窗再使用对应组合函数。已有项目见 [0.40.4 接入收敛说明](./docs/guides/api-migration.md#0404-接入收敛)，可逐页简化配置，现有兼容入口继续保留。
 
 ## 能力地图
-
-`C_Table` 保留 Naive UI 原生空态，继承 Provider 的主题、语言与 `componentOptions.DataTable.renderEmpty`。使用 `#empty` 可替换单个表格的空态内容。
-
-`C_Table` 窄列编辑时操作组可自然换行，输入保持可见。功能列保持紧凑；普通自动业务列按表头与内容基准比例均衡分配余量，列多时保留基准横向滚动。显式宽度和已保存的列宽偏好继续生效。
-
-`C_Table` 默认显示序号和分页，数字与其他内容默认居中。通过 `:row-number="false"` 和 `:pagination="false"` 分别关闭自动序号与分页。后端返回列和行可直接绑定，详见[动态表格示例](./docs/guides/usage.md#后端返回列和行)。
-
-勾选行默认显示左侧主题色标识，可通过 `--c-table-selected-marker-width: 0px` 关闭。异步导出使用发起时的列、格式化和文件配置，卸载后停止下载。`createComponentTheme({ primary: '#409eff' })` 默认让填充按钮和选中控件使用白色前景；需要其他配色时集中设置 `onSolid`，或在局部 Provider 覆盖，详见[主题标准](./docs/guides/theme.md)。
-
-列中声明 `{ type: 'selection' }` 即启用多选，无需再写 `selection: true`。显式全局或单表 `selection: false` / `{ enabled: false }` 继续优先，动态列沿用同一规则。
 
 | 场景       | 代表组件                                                         | 覆盖能力                                                           |
 | ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
 | 数据录入   | `C_Form` · `C_FormModal` · `C_FormSearch`                        | 动态字段、校验、异步提交、搜索与新增／编辑弹窗                     |
 | 数据操作   | `C_Table` · `C_ActionBar` · `C_Tree` · `C_Transfer`              | 分页、树形数据、常显录入、行／单元格编辑、跨页选择、导出与批量操作 |
+| 搜索与选择 | `C_Select` · `C_AutoComplete` · `C_DataPicker` · `C_UserPicker`  | 远程选项、文本建议、多列表格选择与组织选人                         |
+| 结构与卡片 | `C_OrgChart` · `C_WaterFall`                                     | 汇报关系、响应式卡片布局、长列表窗口化与业务字段推导               |
 | 专业编辑   | `C_Editor` · `C_Markdown` · `C_Cron` · `C_FormulaEditor`         | 富文本、Markdown、Cron 预览、公式编辑与本地试算                    |
 | 流程与计划 | `C_AntV` · `C_WorkFlow` · `C_VtableGantt` · `C_FullCalendar`     | ER／BPMN／UML、审批流程、甘特与日历                                |
 | 文件与媒体 | `C_Upload` · `C_FilePreview` · `C_VideoPlayer` · `C_AudioPlayer` | 分片上传、PDF／Word／Excel 预览、音视频播放                        |
@@ -77,6 +53,17 @@
 | 通用交互   | `C_Login` · `C_Captcha` · `C_Guide` · `C_PageLoading`            | 登录、人机验证、功能引导、页面切换反馈                             |
 
 查看 [全部 63 个组件与依赖](./docs/components.md)，或在 [Robot Admin](https://robotadmin.cn) 中体验组件场景。Cron 预览只计算时间，公式只进行本地试算；生产人机验证需接入服务端校验，详见[使用指南](./docs/guides/usage.md)。
+
+### 按任务选择组件
+
+| 需要完成的任务           | 推荐入口与用法                                                                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 筛选、编辑与批量操作     | 组合 `C_FormSearch`、`C_FormModal` 与 `C_ActionBar`，共享表单字段和紧凑密度；见[工作台组合](./docs/guides/data-workflows.md)                                           |
+| 选项、文本建议或实体选择 | `C_Select` 选值，`C_AutoComplete` 补全文本，`C_DataPicker` 展示多列实体；远程字段直接配置 `source`，见[搜索与选择](./docs/guides/search-workflows.md)                  |
+| 目录、汇报关系或人员选择 | 分别使用 `C_Tree`、`C_OrgChart`、`C_UserPicker`；见[组织场景](./docs/guides/tree-org-examples.md)与[人员选择](./docs/guides/user-picker.md)                            |
+| 表格展示与录入           | `C_Table` 默认带序号和分页；选择列即可启用多选，`config.edit` 切换编辑模式；见[编辑指南](./docs/guides/table-editing.md)与[列宽及密度](./docs/guides/table-density.md) |
+
+表单和搜索可搭配 `C_Table` 或其他表格，各自保留原生列与分页契约。流程、上传、地图等组件提供界面和接入点，真实审批执行、文件服务及平台权限仍由应用负责。
 
 ## 快速开始
 
@@ -144,6 +131,70 @@ bun add vue@^3.5.3 naive-ui@^2.35.0
 
 表单内置提交、重置与校验流程。实际保存时，将异步请求放入 `config.onSubmit` 并等待完成；`@submit` 用于完成通知。表单布局、验证规则、弹窗与远程表格示例见[使用指南](./docs/guides/usage.md)。
 
+### 直接使用公开 Props
+
+简单组件直接写 props 即可；需要抽出配置时，用组件公开的类型检查字段，无需重复声明接口或增加配置工厂：
+
+```vue
+<script setup lang="ts">
+  import {
+    C_Progress,
+    type ProgressProps,
+  } from '@robot-admin/naive-ui-components/C_Progress'
+  import '@robot-admin/naive-ui-components/C_Progress/style.css'
+
+  const progress = {
+    percentage: 62.5,
+    isAnimation: true,
+  } satisfies ProgressProps
+</script>
+
+<template>
+  <C_Progress v-bind="progress" />
+</template>
+```
+
+`BarcodeProps`、`CascadeProps`、`StepsProps`、`CodeProps`、`EditorProps` 和 `MarkdownProps` 同样可从对应组件子路径导入，字段与组件实际 props 共用声明。
+
+### 瀑布流自动推导业务字段
+
+`items` 提供 `id`、`src`、`width`、`height`，其余业务字段自动传递到插槽和事件。无需转换成基础 `WaterFallItem[]`：
+
+```vue
+<script setup lang="ts">
+  import { C_WaterFall } from '@robot-admin/naive-ui-components/C_WaterFall'
+  import '@robot-admin/naive-ui-components/C_WaterFall/style.css'
+
+  const products = [
+    {
+      id: 1,
+      src: '/images/product.jpg',
+      width: 640,
+      height: 480,
+      productCode: 'A-01',
+      price: 125.5,
+    },
+  ]
+</script>
+
+<template>
+  <C_WaterFall :items="products">
+    <template #item="{ item, width, height }">
+      <img
+        :src="item.src"
+        :alt="item.productCode"
+        :width="width"
+        :height="height"
+        loading="lazy"
+      />
+      <p>{{ item.productCode }} · {{ item.price.toFixed(2) }}</p>
+    </template>
+  </C_WaterFall>
+</template>
+```
+
+图片路径替换为应用自己的资源。插槽和事件中的条目只读，嵌套 `ref` 保持 Vue 解包语义；编辑时更新应用持有的源数据。长列表、变高卡片与滚动容器配置见[瀑布流指南](./docs/guides/waterfall.md)。
+
 ### 表格偏好按账号隔离
 
 应用启动时注册一次。`session` 是项目已有的响应式身份状态，未登录或身份尚未就绪时为 `undefined`：
@@ -206,34 +257,36 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 
 组件样式入口会加载组合组件及共享设计变量，无需额外导入。手动导入时可选 `C_Form/base.css`、`C_Table/base.css`；完整样式也提供 `full.css` 别名。重型编辑器、流程、地图和媒体组件建议随业务路由加载。完整策略与全量注册示例见[导入指南](./docs/guides/usage.md#导入方式)。
 
-本轮最小消费构建中，基础表单与展示表格的首屏 JS gzip 分别下降 36.1% 和 34.6%；包含 Vue 与 Naive UI，测量范围及自动体积门禁见[消费体积记录](./docs/performance-0.15.0.md)。
+仓库按独立入口构建最小消费场景，校验首屏 JS gzip、重型依赖边界和首次打开增量；数据包含 Vue 与 Naive UI，不能相加作为整站体积，也不替代业务页面的交互测量。检查范围见[开发与构建](./docs/engineering.md#开发)；[0.15.0 体积记录](./docs/performance-0.15.0.md)仅保留为历史对照。
 
 根入口聚合导航组件，运行时也需要 `vue-router`。不使用路由的项目请选择组件子路径，无需因此补装无关可选 peer。
 
 ## 文档导航
 
-| 文档                                                     | 内容                                                             |
-| -------------------------------------------------------- | ---------------------------------------------------------------- |
-| [架构与隔离](./docs/architecture.md)                     | 依赖边界、实例所有权与独立 Element Plus 演进路线                 |
-| [组件目录](./docs/components.md)                         | 63 个组件、外部依赖与各组件的使用边界                            |
-| [使用指南](./docs/guides/usage.md)                       | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
-| [密度与多表工作台](./docs/guides/table-density.md)       | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
-| [主题与视觉标准](./docs/guides/theme.md)                 | 统一色彩、明暗主题、尺寸层级与局部覆盖，不增加 Provider          |
-| [大列表与异步任务](./docs/guides/runtime-performance.md) | 自动窗口化、聊天滚动、搜索索引、字幕与图片任务                   |
-| [瀑布流长列表](./docs/guides/waterfall.md)               | 自动窗口化、嵌套滚动、变高卡片与键盘导航                         |
-| [兼容 API 迁移](./docs/guides/api-migration.md)          | 标准模型、应用渲染器与只读迁移检查                               |
-| [真实场景覆盖](./docs/wl-ui-produce-coverage.md)         | wl-ui-produce 对照、可组合能力与需要适配的边界                   |
-| [组件审计闭环](./docs/component-audit-closure-0.40.4.md) | 逐组件修复、API 与类型收敛、兼容边界和正式产物验证               |
-| [开发与构建](./docs/engineering.md)                      | 工程结构、六阶段构建、组件扩展、校验与发布流程                   |
-| [品牌资源](./docs/assets/README.md)                      | Robot 系列 Logo、可编辑 SVG 与高清 PNG 封面                      |
-| [变更记录](./CHANGELOG.md)                               | 版本更新与兼容变化                                               |
-| [安全策略](./SECURITY.md)                                | 漏洞报告与维护约定                                               |
+| 文档                                                            | 内容                                                             |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [架构与隔离](./docs/architecture.md)                            | 依赖边界、实例所有权与独立 Element Plus 演进路线                 |
+| [组件目录](./docs/components.md)                                | 63 个组件、外部依赖与各组件的使用边界                            |
+| [使用指南](./docs/guides/usage.md)                              | 导入、表单表格、Cron／公式、地图、引导、人机验证、登录与页面加载 |
+| [密度与多表工作台](./docs/guides/table-density.md)              | 表单/搜索/表格统一密度、编辑模式、分屏与树能力                   |
+| [主题与视觉标准](./docs/guides/theme.md)                        | 统一色彩、明暗主题、尺寸层级与局部覆盖，不增加 Provider          |
+| [大列表与异步任务](./docs/guides/runtime-performance.md)        | 自动窗口化、聊天滚动、搜索索引、字幕与图片任务                   |
+| [瀑布流长列表](./docs/guides/waterfall.md)                      | 自动窗口化、嵌套滚动、变高卡片与键盘导航                         |
+| [兼容 API 迁移](./docs/guides/api-migration.md)                 | 0.40.4 接入收敛、标准模型、应用渲染器与只读迁移检查              |
+| [真实场景覆盖](./docs/wl-ui-produce-coverage.md)                | wl-ui-produce 对照、可组合能力与需要适配的边界                   |
+| [0.40.4 组件审计记录](./docs/component-audit-closure-0.40.4.md) | 该版本的逐组件修复、类型收敛、兼容边界与正式产物验证             |
+| [开发与构建](./docs/engineering.md)                             | 工程结构、六阶段构建、组件扩展、校验与发布流程                   |
+| [品牌资源](./docs/assets/README.md)                             | Robot 系列 Logo、可编辑 SVG 与高清 PNG 封面                      |
+| [变更记录](./CHANGELOG.md)                                      | 版本更新与兼容变化                                               |
+| [安全策略](./SECURITY.md)                                       | 漏洞报告与维护约定                                               |
 
-本轮依赖审计的两项上游告警见 [2026-10-18 扫描记录](./docs/security-scan-2026-10-18.md)；[2026-10-06 记录](./docs/security-scan-2026-10-06.md)保留为历史档案。当前依赖状态以实际运行 `bun run check:audit` 的结果为准。
+依赖安全以实际锁文件和当次审计为准：`bun run check:audit` 保留原始发现，并核验精确的本地缓解或不受影响证据；`check:audit:raw` 提供原始报告。仓库 overrides 与开发补丁不会自动传给使用侧，应用需审计自己的锁文件。历史扫描不代表当前结果，已打包运行时与消费依赖的边界见[安全策略](./SECURITY.md)。
 
 ## 本地开发
 
 维护本仓库需要 **Node.js ≥20.19.0**、固定的 **Bun 1.4.2**；CI 按 `.node-version` 与冻结锁文件安装，并校验实际依赖覆盖。消费者的 Bun 最低版本仍为 1.3.14。
+
+源码检查与构建使用锁定的 **TypeScript 5.9.3**。CI 另用 **TypeScript 5.8.3** 验证构建后声明的消费兼容性，不代表以 5.8 构建本仓库源码；详见[TypeScript 构建与消费](./docs/engineering.md#typescript-构建与消费)。
 
 ```bash
 git clone https://github.com/ChenyCHENYU/naive-ui-components.git
@@ -263,34 +316,3 @@ bun run check:audit  # 单独运行依赖安全审计，CI 在 verify 前执行
 ## 许可证
 
 [MIT License](./LICENSE) · Made by [CHENY](https://github.com/ChenyCHENYU)
-
-## 内容列宽与状态颜色（0.24）
-
-`C_Table` 未声明 `width` 的业务列默认按表头和显示文字测宽，均匀抽样最多 100 条已加载数据，测量基准默认 80–360px；少列时实际显示宽度可按比例扩展。`minWidth/maxWidth` 可调整边界；显式列宽、原生百分比宽度、列设置后的宽度和 `display.columnWidth` 优先。`autoWidth: false` 恢复原统一默认 180px。横向虚拟化同样使用数值测宽，不依赖浏览器扫描所有行；长内容默认省略并提供 tooltip。
-
-```ts
-const columns = [
-  { type: 'index' },
-  { key: 'customer', title: '客户', maxWidth: 280 },
-  { key: 'status', title: '状态', status: true },
-  {
-    key: 'planStatus',
-    title: '计划状态',
-    status: {
-      S1B: { label: '待复核', color: 'danger' },
-      S1C: { label: '已完成', color: 'success' },
-      special: { label: '特殊处理', color: '#8b5cf6' },
-    },
-  },
-]
-```
-
-状态列复用 Naive UI 标签和主题。支持 `success/warning/danger/info/neutral`，也支持 Naive 的 `error/default/primary` 和 CSS 颜色。未知代码保持中性；`0/false` 是有效值，空值保留空态。显式 render 优先；formatter 文字会用于默认颜色判断和测宽。状态配置只改变展示，不会改写数据、排序、筛选或导出。
-
-默认智能布局会在缓存的内容基准上分配可用宽度；空间充足时自动业务列按基准比例铺满，空间不足时不压缩表头。数值列宽控制业务列与横向滚动，`scrollX` 不再挑某一列单独撑大。拖动只改变目标列，保存后继续保留原来的单行省略、提示和默认下限。操作列默认固定右侧；缩列后空余画布由包内承接，右固定区持续贴住视口，其他业务列保持原宽。需要 Naive UI 原生铺满或强制最小滚动宽度时，显式传 `table-layout="fixed"` / `table-layout="auto"`；百分比等非数值列宽也沿用原生布局。
-
-测宽不额外挂载或执行 render；图标、进度条和复杂自定义内容请显式指定 width。数据与列配置更新会触发新的有界测量，配置和缓存只属于当前组件实例。此版本将未声明宽度的业务列由自然布局改为有界内容宽度；既有显式布局及原生 table-layout 覆盖仍保留。
-
-表头默认完整展示，不随单元格 ellipsis 配置省略。所有业务列的最小宽度计入完整标题及排序/筛选控件；初始布局、显式窄列宽、恢复列设置与拖拽缩列均受此下限保护。360px 仅限制数据内容测宽；标题更长时允许超过该值，并使用表格内部横向滚动。复杂自定义标题请配置 minWidth。 自动列内的原生链接、按钮随省略容器收缩，悬停可查看完整内容；明确配置 `ellipsis: false` 时保留多行呈现。
-
-紧凑表单与搜索的纵向间距收紧至 4px，空反馈区 2px，校验按内容自然撑高。表单弹窗同步收紧并支持内部滚动；移除逐字段排队入场和布局尺寸动画。详情的左右同排展示见 Robot_Admin 产销模块。

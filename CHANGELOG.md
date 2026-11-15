@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.40.5
+
+### Patch Changes
+
+- 重整中英文 README 的能力地图、组件选择与配置接入示例，补齐公开 Props 和瀑布流业务字段推导；明确迁移、编译器与消费环境边界，清理过期的历史说明。文档示例经正式声明编译验证，组件运行时、样式和公开 API 保持 0.40.4 行为。
+
 ## 0.40.4
 
 ### Patch Changes
