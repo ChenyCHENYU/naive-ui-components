@@ -27,7 +27,8 @@ bun run build
 - **Artifact entry validation**: `check-dist-entries.js` prevents internal chunks from replacing root declarations and verifies component utility subpath types
 - **Package contract validation**: blocks Naive UI internal type paths, hidden optional installs, and plugin console side effects
 - **Size budgets**: `check-size-budget.js` prevents accidental growth of global, C_Form/C_Table, and total dist output
-- **Consumer budgets**: `check-consumer-size.js` builds four minimal Vite applications, sums gzip bytes along the emitted static JS import graph, and rejects eager editor, spreadsheet, screenshot, or print dependencies.
+- **Consumer budgets**: `check-consumer-size.js` builds isolated minimal component consumers, sums gzip bytes along the emitted static import graph, and checks heavy dependencies and first-open increments.
+- **Type quality budgets**: scripts, template bindings/interpolations, slot parameters and SFC generic attributes contribute to explicit `any` counts. Comments, strings and static HTML do not. Regression tests cover the counting boundaries, and current measured baselines prevent increases.
 
 ### Build Output
 
@@ -77,7 +78,7 @@ bun run lint:eslint      # Audit the existing ESLint rule backlog
 bun run verify           # Type, test, export, and build verification
 ```
 
-Consumer budgets include Vue and Naive UI. The four applications are independent measurements and cannot be added to estimate one application's size. `C_Form/base` renders one input; `C_Table/base` renders one row and column. The other cases render one search input and one action button. Base CSS excludes the built-in rich-text editor styles. Dynamic JS is built and checked but excluded from initial bytes; using those features still loads it. This check measures transfer size, not browser interaction performance. Both `verify` and the pre-publish lifecycle include this gate.
+Consumer budgets include Vue and Naive UI. Entry measurements are independent and cannot be added to estimate one application's size. `C_Form/base` renders one input; `C_Table/base` renders one row and column. Search, actions, trees, organization charts, pickers and workflows also have minimal consumer scenarios. Base CSS excludes built-in rich-text editor styles. Dynamic JS is built and checked but excluded from initial bytes; DataPicker, UserPicker and AntV also have first-open increment gates. This measures transfer size, not browser interaction performance. Both `verify` and the pre-publish lifecycle include this gate.
 
 ### Project Structure
 

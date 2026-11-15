@@ -5,12 +5,9 @@ import SparkMD5 from 'spark-md5'
 
 const yieldToBrowser = (signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
-    let frame: number | undefined
-    let timer: ReturnType<typeof setTimeout> | undefined
     const cleanup = () => {
       signal?.removeEventListener('abort', abort)
-      if (frame !== undefined) cancelAnimationFrame(frame)
-      if (timer !== undefined) clearTimeout(timer)
+      clearTimeout(timer)
     }
     const abort = () => {
       cleanup()
@@ -20,14 +17,11 @@ const yieldToBrowser = (signal?: AbortSignal) =>
       cleanup()
       resolve()
     }
+    // Hashing is background work, not a paint task. Hidden tabs may stop RAF
+    // entirely; a cancellable task yield keeps the hash queue independent of it.
+    const timer = setTimeout(finish, 0)
     signal?.addEventListener('abort', abort, { once: true })
-    if (signal?.aborted) {
-      abort()
-      return
-    }
-    if (typeof requestAnimationFrame === 'function')
-      frame = requestAnimationFrame(finish)
-    else timer = setTimeout(finish, 0)
+    if (signal?.aborted) abort()
   })
 
 /** Compute MD5 incrementally while yielding between chunks to keep UI responsive. */

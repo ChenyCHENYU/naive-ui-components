@@ -35,11 +35,11 @@
         <div class="file-list__meta">
           <span class="file-list__size">{{ formatFileSize(file.size) }}</span>
           <NTag
-            :type="(STATUS_TYPE[file.status] as any) || 'default'"
+            :type="STATUS_TYPE[file.status] || 'default'"
             size="tiny"
             :bordered="false"
           >
-            {{ STATUS_TEXT[file.status] || file.status }}
+            {{ statusLabel(file.status) }}
           </NTag>
           <span
             v-if="file.status === 'instant'"
@@ -64,8 +64,11 @@
           v-if="file.chunkProgress && file.status === 'uploading'"
           class="file-list__chunk-info"
         >
-          分片 {{ file.chunkProgress.uploadedChunks }}/{{
-            file.chunkProgress.totalChunks
+          {{
+            t('upload.chunkProgress', {
+              uploaded: file.chunkProgress.uploadedChunks,
+              total: file.chunkProgress.totalChunks,
+            })
           }}
         </div>
 
@@ -86,7 +89,7 @@
           type="warning"
           size="tiny"
           :disabled="disabled"
-          aria-label="重试上传"
+          :aria-label="t('upload.retry')"
           @click="emit('retry', file.uid)"
         >
           <template #icon>
@@ -98,7 +101,7 @@
           type="error"
           size="tiny"
           :disabled="disabled"
-          aria-label="移除文件"
+          :aria-label="t('upload.remove')"
           @click="emit('remove', file.uid)"
         >
           <template #icon>
@@ -113,7 +116,8 @@
 <script setup lang="ts">
   import { NProgress, NButton, NTag, NEllipsis } from 'naive-ui'
   import C_Icon from '../../C_Icon/index.vue'
-  import type { UploadFileItem } from '../types'
+  import { useUploadLocale } from '../locale'
+  import type { UploadFileItem, UploadFileStatus } from '../types'
   import {
     STATUS_TEXT,
     STATUS_TYPE,
@@ -133,6 +137,11 @@
     remove: [uid: string]
     retry: [uid: string]
   }>()
+  const { t } = useUploadLocale()
+  const statusLabel = (status: UploadFileStatus): string =>
+    Object.prototype.hasOwnProperty.call(STATUS_TEXT, status)
+      ? t(`upload.status.${status}`)
+      : status
 </script>
 
 <style scoped lang="scss">

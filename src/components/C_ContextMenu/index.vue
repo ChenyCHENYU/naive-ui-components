@@ -22,10 +22,10 @@
       role="menu"
       tabindex="-1"
       @keydown.escape="close"
-      @keydown.arrow-down.prevent="moveFocus(1)"
-      @keydown.arrow-up.prevent="moveFocus(-1)"
-      @keydown.home.prevent="focusBoundary('first')"
-      @keydown.end.prevent="focusBoundary('last')"
+      @keydown.arrow-down.prevent="moveFocus(1, $event)"
+      @keydown.arrow-up.prevent="moveFocus(-1, $event)"
+      @keydown.home.prevent="focusBoundary('first', $event)"
+      @keydown.end.prevent="focusBoundary('last', $event)"
     >
       <ContextMenuItems
         :items="props.items"
@@ -103,22 +103,30 @@
     if (current[0] !== previous[0] || current[1] !== previous[1]) close()
   }
 
-  function focusableItems(): HTMLElement[] {
+  function focusableItems(event?: KeyboardEvent): HTMLElement[] {
+    const root = menuRef.value
+    const target = event?.target
+    const menu =
+      target instanceof Element
+        ? target.closest<HTMLElement>('[role="menu"]')
+        : root
+    if (!menu || !root?.contains(menu)) return []
+    // 子菜单有自己的导航环；展开后仍不能把其他层级的条目混入当前环。
     return Array.from(
-      menuRef.value?.querySelectorAll<HTMLElement>(
+      menu.querySelectorAll<HTMLElement>(
         '[role="menuitem"]:not([aria-disabled="true"])'
-      ) ?? []
-    )
+      )
+    ).filter(item => item.closest('[role="menu"]') === menu)
   }
 
-  function focusBoundary(boundary: 'first' | 'last') {
-    const items = focusableItems()
+  function focusBoundary(boundary: 'first' | 'last', event?: KeyboardEvent) {
+    const items = focusableItems(event)
     const item = boundary === 'first' ? items[0] : items[items.length - 1]
     item?.focus({ preventScroll: true })
   }
 
-  function moveFocus(delta: number) {
-    const items = focusableItems()
+  function moveFocus(delta: number, event: KeyboardEvent) {
+    const items = focusableItems(event)
     if (items.length === 0) return
     const index = items.indexOf(document.activeElement as HTMLElement)
     const next =

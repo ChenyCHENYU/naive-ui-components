@@ -33,7 +33,7 @@
 | 按需消费 | 63 个独立组件入口、自动导入 Resolver、组件样式入口，以及表单／表格的基础样式层级                       |
 | 独立接入 | 支持全量注册与局部导入；反馈、文案和全局配置可由宿主提供，表单弹窗可接入结构兼容的 Headless CRUD       |
 
-组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.2**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
+组件库负责界面与交互。业务接口、身份权限、上传服务和第三方平台配置由应用接入。当前仓库版本 **0.40.3**，版本变化见 [CHANGELOG](./CHANGELOG.md)。
 
 0.40 新增 `edit: 'inline'` 常显连续录入，收敛动态表单显隐、流程缓存会话与分类查询组合。见[表格编辑指南](./docs/guides/table-editing.md)和[真实业务场景对照](./docs/wl-business-scenario-parity.md)；已有项目可参考[兼容接入与独立演示](./docs/guides/component-contracts.md)。
 
@@ -223,7 +223,7 @@ Resolver 默认解析到组件子路径；`importStyle` 默认是 `false`，需�
 | [瀑布流长列表](./docs/guides/waterfall.md)               | 自动窗口化、嵌套滚动、变高卡片与键盘导航                         |
 | [兼容 API 迁移](./docs/guides/api-migration.md)          | 标准模型、应用渲染器与只读迁移检查                               |
 | [真实场景覆盖](./docs/wl-ui-produce-coverage.md)         | wl-ui-produce 对照、可组合能力与需要适配的边界                   |
-| [稳定性复核](./docs/stability-review-20261115.md)        | 异步与语言边界、三浏览器回归、固定规模性能与实际覆盖范围         |
+| [稳定性复核](./docs/stability-boundaries-0.40.3.md)        | 异步与语言边界、三浏览器回归、固定规模性能与实际覆盖范围         |
 | [开发与构建](./docs/engineering.md)                      | 工程结构、六阶段构建、组件扩展、校验与发布流程                   |
 | [品牌资源](./docs/assets/README.md)                      | Robot 系列 Logo、可编辑 SVG 与高清 PNG 封面                      |
 | [变更记录](./CHANGELOG.md)                               | 版本更新与兼容变化                                               |

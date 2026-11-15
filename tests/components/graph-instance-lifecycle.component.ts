@@ -144,7 +144,9 @@ test('Gantt retains raw instances and cancels delayed startup after an early con
     theme: 'dark',
     options: { grid: { backgroundColor: '#111' } },
   })
-  await vi.waitFor(() => expect(instances.gantts).toHaveLength(1))
+  // Module loading uses real I/O; the fake clock below only owns startup delay.
+  await vi.dynamicImportSettled()
+  expect(instances.gantts).toHaveLength(1)
   const first = instances.gantts[0]
   expect(wrapper.vm.ganttInstance).toBe(first)
   expect(isReactive(wrapper.vm.ganttInstance)).toBe(false)
@@ -159,7 +161,8 @@ test('Gantt retains raw instances and cancels delayed startup after an early con
     theme: 'light',
     options: { grid: { backgroundColor: '#fff' } },
   })
-  await vi.waitFor(() => expect(instances.gantts).toHaveLength(2))
+  await vi.dynamicImportSettled()
+  expect(instances.gantts).toHaveLength(2)
   expect(first.released).toBe(true)
   const current = instances.gantts[1]
   wrapper.unmount()

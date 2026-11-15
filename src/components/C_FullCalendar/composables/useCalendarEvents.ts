@@ -22,6 +22,7 @@ import type {
 } from '@fullcalendar/core'
 import zhCn from '@fullcalendar/core/locales/zh-cn'
 import { buildLocalEventRange } from '../calendarDate'
+import { cloneData, isDataEqual } from '../../../utils/data'
 
 type EmitFn = {
   (event: 'update:events', events: CalendarEvent[]): void
@@ -59,6 +60,55 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     form.allDay,
   ]
   let initialEditTime: unknown[] = []
+  let operationBaseline: CalendarEvent | undefined
+  let sourceBaseline: CalendarEvent | undefined
+  const selectedRecord = computed(() =>
+    internalEvents.value.find(event => event.id === selectedEvent.value?.id)
+  )
+  const selectedSourceRecord = computed(() =>
+    props.events?.find(event => event.id === selectedEvent.value?.id)
+  )
+
+  const closeOperation = () => {
+    operationBaseline = undefined
+    sourceBaseline = undefined
+    selectedEvent.value = null
+    showActionDialog.value = false
+    showEditModal.value = false
+  }
+  const isCurrentOperation = () =>
+    operationBaseline !== undefined &&
+    selectedEvent.value?.id === operationBaseline.id &&
+    isDataEqual(selectedRecord.value, operationBaseline) &&
+    (isDataEqual(selectedSourceRecord.value, sourceBaseline) ||
+      isDataEqual(selectedSourceRecord.value, operationBaseline))
+
+  watch(
+    selectedEvent,
+    () => {
+      operationBaseline = selectedRecord.value
+        ? cloneData(selectedRecord.value)
+        : undefined
+      sourceBaseline = cloneData(selectedSourceRecord.value)
+    },
+    { flush: 'sync' }
+  )
+  // Only the selected record owns this session. Equal parent echoes and edits
+  // to other events must leave the user's draft intact.
+  watch(
+    [selectedRecord, selectedSourceRecord],
+    () => {
+      if (
+        operationBaseline &&
+        selectedEvent.value?.id === operationBaseline.id &&
+        !isCurrentOperation()
+      )
+        closeOperation()
+    },
+    // Batch array mutations (e.g. reverse) rather than closing on a transient
+    // missing row. Commit guards still read the latest source synchronously.
+    { deep: true }
+  )
 
   watch(
     () => [editForm.value, editForm.value.date] as const,
@@ -152,6 +202,7 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    */
   function openAddModal(date: Date) {
     if (props.editable === false) return
+    closeOperation()
     isEditing.value = false
     editForm.value = {
       ...DEFAULT_EDIT_FORM,
@@ -168,6 +219,10 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
    */
   function openEditModal() {
     if (props.editable === false) return
+    if (!isCurrentOperation()) {
+      closeOperation()
+      return
+    }
     const event = selectedEvent.value
     if (!event?.start) return
     const { start } = event
@@ -218,9 +273,21 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     return range && { ...range, allDay: Boolean(editForm.value.allDay) }
   }
 
-  /** 校验完整编辑快照，成功后一次写回事件。 */
+  function canSaveOperation() {
+    if (props.editable === false || !showEditModal.value) return false
+    if (
+      isEditing.value &&
+      (!isCurrentOperation() || editForm.value.id !== operationBaseline?.id)
+    ) {
+      closeOperation()
+      return false
+    }
+    return true
+  }
+
+  /** 仅提交当前打开的编辑会话；程序化写入继续使用 expose.addEvent/updateEvent。 */
   function saveEvent() {
-    if (props.editable === false) return false
+    if (!canSaveOperation()) return false
     if (!editForm.value.title.trim()) {
       message.error('请输入事件标题')
       return false
@@ -244,7 +311,11 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
       color: editForm.value.color,
     }
 
-    if (isEditing.value) {
+    const editing = isEditing.value
+    // End the old operation before update:events observers can synchronously
+    // replace records or invoke another save/delete callback.
+    closeOperation()
+    if (editing) {
       updateEventInArray(eventData)
       emit('event-updated', eventData)
       message.success('事件已更新')
@@ -254,23 +325,20 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
       message.success('事件已添加')
     }
 
-    showEditModal.value = false
     return true
   }
 
-  /**
-   *
-   */
+  /** 仅确认当前打开的操作会话；程序化删除继续使用 expose.deleteEvent。 */
   function deleteEvent() {
-    if (props.editable === false || !selectedEvent.value) return
-    const { id, title } = selectedEvent.value
-    if (!internalEvents.value.some(event => event.id === id)) {
-      showActionDialog.value = false
+    if (props.editable === false || !showActionDialog.value) return
+    if (!isCurrentOperation() || !operationBaseline) {
+      closeOperation()
       return
     }
+    const { id, title } = operationBaseline
+    closeOperation()
     removeEventFromArray(id)
     emit('event-deleted', { id, title })
-    showActionDialog.value = false
     message.success(`已删除事件: ${title}`)
   }
 
@@ -297,9 +365,7 @@ export function useCalendarEvents(props: CalendarProps, emit: EmitFn) {
     () => props.editable,
     editable => {
       if (editable !== false) return
-      showActionDialog.value = false
-      showEditModal.value = false
-      selectedEvent.value = null
+      closeOperation()
     },
     { flush: 'sync' }
   )

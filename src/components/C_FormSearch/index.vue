@@ -89,7 +89,7 @@
                     class="clear-all"
                     @click.stop="history.clearAllHistory(item.prop)"
                   >
-                    清空历史记录
+                    {{ t('search.clearHistory') }}
                   </span>
                 </div>
               </div>
@@ -112,7 +112,7 @@
               v-bind="item.attrs"
               :model-value="sourceValue(item.prop)"
               :source="fieldSource(item)"
-              :placeholder="item.placeholder || '请选择'"
+              :placeholder="item.placeholder || t('search.selectPlaceholder')"
               :clearable="item.attrs?.clearable !== false"
               :size="fieldSize(item)"
               :disabled="fieldDisabled(item) || fieldReadonly(item)"
@@ -126,7 +126,7 @@
               @update:value="
                 (value, selected) => setSelectValue(item, value, selected)
               "
-              :placeholder="item.placeholder || '请选择'"
+              :placeholder="item.placeholder || t('search.selectPlaceholder')"
               :clearable="item.attrs?.clearable !== false"
               :size="fieldSize(item)"
               :options="selectBinding(item).options"

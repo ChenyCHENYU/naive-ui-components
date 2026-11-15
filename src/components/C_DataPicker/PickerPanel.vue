@@ -264,11 +264,19 @@
   lang="ts"
   generic="T extends object, F extends object = Record<string, unknown>"
 >
-  import { computed, defineAsyncComponent, h, shallowRef } from 'vue'
+  import {
+    computed,
+    defineAsyncComponent,
+    h,
+    inject,
+    provide,
+    shallowRef,
+  } from 'vue'
   import { NButton, NInput, NPagination, NTag } from 'naive-ui'
   import type { TableInstance } from '../C_Table/types'
   import type { useDataPicker } from './data'
   import { useComponentLocale } from '../../composables/useComponentLocale'
+  import { COMPONENT_LOCALE_KEY } from '../../context'
   import {
     resolveComponentDensity,
     type ComponentDensity,
@@ -284,6 +292,23 @@
   }>()
   const emit = defineEmits<{ confirm: []; dismiss: [] }>()
   const { t } = useComponentLocale(() => props.options.locale)
+  const inheritedLocale = inject(COMPONENT_LOCALE_KEY, {})
+  const scopedMessages = computed(() => ({
+    ...inheritedLocale.messages,
+    ...props.options.locale?.messages,
+  }))
+  // 只转交当前会话的语言层级；不能把普通 messages 升格为全局 t，压过后代自己的消息。
+  provide(COMPONENT_LOCALE_KEY, {
+    get locale() {
+      return props.options.locale?.locale ?? inheritedLocale.locale
+    },
+    get messages() {
+      return scopedMessages.value
+    },
+    get t() {
+      return props.options.locale?.t ?? inheritedLocale.t
+    },
+  })
   const density = computed(() => resolveComponentDensity(props.densityValue))
   const {
     opened,

@@ -487,6 +487,12 @@ test('switching selected events does not accidentally move a multi-day ending da
     start: new Date(2026, 9, 4, 9),
     end: new Date(2026, 9, 4, 10),
   })
+  api.expose.addEvent({
+    id: 'b',
+    title: 'B',
+    start: new Date(2026, 9, 1, 9),
+    end: new Date(2026, 9, 4, 17),
+  })
   api.selectedEvent.value = {
     id: 'b',
     title: 'B',
@@ -496,6 +502,7 @@ test('switching selected events does not accidentally move a multi-day ending da
     backgroundColor: '',
   } as EventApi
   api.openEditModal()
+  expect(api.editForm.value.title).toBe('B')
   expect(new Date(api.editForm.value.endDate!).getDate()).toBe(4)
 })
 

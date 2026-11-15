@@ -110,8 +110,6 @@ export function useSearchState<T extends object = SearchFormParams>(
     fields.value.forEach(item => {
       item.isFocus = false
       if (item.show === false) return
-      if (item.type === 'select' && !item.placeholder)
-        item.placeholder = '请选择'
       if (item.type !== 'spacer' && values[item.prop] === undefined) {
         values[item.prop] =
           item.defaultValue !== undefined

@@ -52,7 +52,7 @@
             size="tiny"
             type="warning"
             :disabled="disabled"
-            aria-label="重试上传"
+            :aria-label="t('upload.retry')"
             @click="emit('retry', file.uid)"
           >
             <template #icon>
@@ -64,7 +64,7 @@
             size="tiny"
             type="error"
             :disabled="disabled"
-            aria-label="移除文件"
+            :aria-label="t('upload.remove')"
             @click="emit('remove', file.uid)"
           >
             <template #icon>
@@ -88,6 +88,7 @@
   import { computed } from 'vue'
   import { NProgress, NButton, NEllipsis } from 'naive-ui'
   import C_Icon from '../../C_Icon/index.vue'
+  import { useUploadLocale } from '../locale'
   import type { UploadFileItem } from '../types'
 
   const props = defineProps<{
@@ -100,6 +101,7 @@
     remove: [uid: string]
     retry: [uid: string]
   }>()
+  const { t } = useUploadLocale()
 
   /** 过滤出图片文件 */
   const imageFiles = computed(() =>

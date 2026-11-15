@@ -31,7 +31,7 @@
       class="c-upload__total-progress"
     >
       <div class="c-upload__total-label">
-        <span>总进度</span>
+        <span>{{ t('upload.totalProgress') }}</span>
         <span>{{ totalPercent }}%</span>
       </div>
       <NProgress
@@ -66,6 +66,7 @@
 
 <script setup lang="ts">
   import { useComponentTheme } from '../../composables/useComponentTheme'
+  import { useUploadLocale } from './locale'
   import { ref, computed, watch } from 'vue'
   import { NProgress } from 'naive-ui'
   import type { UploadProps, UploadExpose, UploadFileItem } from './types'
@@ -76,6 +77,7 @@
   import ImagePreview from './components/ImagePreview.vue'
 
   const themeStyle = useComponentTheme()
+  const { t } = useUploadLocale()
 
   const props = withDefaults(defineProps<UploadProps>(), {
     action: '',
@@ -226,7 +228,11 @@
           previous.status !== 'error' &&
           file.status === 'error'
         ) {
-          emit('error', snapshotFile(file), new Error(file.error || '上传失败'))
+          emit(
+            'error',
+            snapshotFile(file),
+            new Error(file.error || t('upload.status.error'))
+          )
         }
         previousStates.set(file.uid, {
           status: file.status,

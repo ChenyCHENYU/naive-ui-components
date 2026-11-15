@@ -37,11 +37,12 @@
           class="upload-area__icon"
         />
         <div class="upload-area__text">
-          <span v-if="isDragOver">释放文件到此处</span>
+          <span v-if="isDragOver">{{ t('upload.dropHere') }}</span>
           <span v-else>
-            点击或拖拽文件到此区域上传
+            <span>{{ t('upload.chooseOrDrop') }}</span>
             <template v-if="pasteable">
-              ，支持 <kbd>Ctrl+V</kbd> 粘贴
+              {{ t('upload.pastePrefix') }}<kbd>Ctrl+V</kbd
+              >{{ t('upload.pasteSuffix') }}
             </template>
           </span>
         </div>
@@ -58,6 +59,7 @@
 
 <script setup lang="ts">
   import { ref, computed, nextTick } from 'vue'
+  import { useUploadLocale } from '../locale'
   import C_Icon from '../../C_Icon/index.vue'
   import { filterByAccept, useDragDrop } from '../composables/useDragDrop'
 
@@ -92,6 +94,7 @@
   const emit = defineEmits<{
     files: [files: File[]]
   }>()
+  const { t } = useUploadLocale()
 
   const areaRef = ref<HTMLElement>()
   const inputRef = ref<HTMLInputElement>()

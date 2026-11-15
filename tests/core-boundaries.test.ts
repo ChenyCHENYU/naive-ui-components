@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
+import { computed, reactive } from 'vue'
 import { translateComponentMessage } from '../src/core'
 
 const coreRoot = fileURLToPath(new URL('../src/core', import.meta.url))
@@ -114,6 +115,27 @@ describe('UI-independent foundation', () => {
       translateComponentMessage('field', {}, { t: key => `app:${key}` })
     ).toBe('app:field')
     expect(translateComponentMessage('field')).toBe('field')
+  })
+
+  test('reactive message additions and deletions preserve local and application fallbacks', () => {
+    const localMessages = reactive<Record<string, string>>({})
+    const applicationMessages = reactive<Record<string, string>>({})
+    const label = computed(() =>
+      translateComponentMessage(
+        'common.save',
+        { messages: localMessages },
+        { locale: 'en-US', messages: applicationMessages }
+      )
+    )
+    expect(label.value).toBe('Save')
+    applicationMessages['common.save'] = 'Store'
+    expect(label.value).toBe('Store')
+    localMessages['common.save'] = 'Save locally'
+    expect(label.value).toBe('Save locally')
+    delete localMessages['common.save']
+    expect(label.value).toBe('Store')
+    delete applicationMessages['common.save']
+    expect(label.value).toBe('Save')
   })
 
   test('prototype names are ordinary missing keys and inherited messages are ignored', () => {

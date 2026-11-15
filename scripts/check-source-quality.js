@@ -1,8 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import ts from 'typescript'
-import { parse } from '@vue/compiler-sfc'
+import { countExplicitAny } from './source-quality-metrics.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const sourceRoot = path.join(root, 'src')
@@ -21,50 +20,32 @@ const source = files
   .map(filename => fs.readFileSync(filename, 'utf8'))
   .join('\n')
 const count = pattern => source.match(pattern)?.length ?? 0
-// 使用语法树只统计显式 any 类型，避免把注释和字符串中的 any 计入预算。
+// 脚本与模板表达式都纳入类型预算；注释、字符串和静态 HTML 不计入。
 const componentCounts = new Map()
 let unsafeAnyCount = 0
 for (const filename of files) {
-  let code = fs.readFileSync(filename, 'utf8')
-  if (filename.endsWith('.vue')) {
-    const { descriptor } = parse(code, { filename })
-    code = [descriptor.script?.content, descriptor.scriptSetup?.content]
-      .filter(Boolean)
-      .join('\n')
-  }
-  const ast = ts.createSourceFile(
-    filename,
-    code,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS
-  )
+  const actual = countExplicitAny(fs.readFileSync(filename, 'utf8'), filename)
   const component = path.relative(sourceRoot, filename).split(path.sep)[1]
-  const visit = node => {
-    if (node.kind === ts.SyntaxKind.AnyKeyword) {
-      unsafeAnyCount++
-      componentCounts.set(component, (componentCounts.get(component) ?? 0) + 1)
-    }
-    ts.forEachChild(node, visit)
-  }
-  visit(ast)
+  unsafeAnyCount += actual
+  componentCounts.set(component, (componentCounts.get(component) ?? 0) + actual)
 }
 const consoleCallCount = count(/console\.(?:log|warn|error|debug)\s*\(/g)
 const failures = []
 
-if (unsafeAnyCount > 106) {
-  failures.push(`unsafe any baseline increased: ${unsafeAnyCount} > 106`)
+if (unsafeAnyCount > 102) {
+  failures.push(`unsafe any baseline increased: ${unsafeAnyCount} > 102`)
 }
-if (consoleCallCount > 15) {
+if (consoleCallCount > 14) {
   failures.push(
-    `console side-effect baseline increased: ${consoleCallCount} > 15`
+    `console side-effect baseline increased: ${consoleCallCount} > 14`
   )
 }
 for (const [component, budget] of Object.entries({
-  C_Table: 23,
+  // 基线包含模板断言；收紧到当前实际值，保留第三方边界而不留回涨余量。
+  C_Table: 15,
   C_Form: 13,
   C_AntV: 34,
-  C_WorkFlow: 1,
+  C_WorkFlow: 0,
 })) {
   const actual = componentCounts.get(component) ?? 0
   if (actual > budget)

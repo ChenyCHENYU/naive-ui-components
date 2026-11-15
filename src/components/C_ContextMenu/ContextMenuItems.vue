@@ -77,6 +77,7 @@
           :sub-menu-placement="subMenuPlacement"
           :z-index="zIndex + 1"
           @select="emit('select', $event)"
+          @back="closeSubmenu"
         />
       </div>
     </div>
@@ -100,6 +101,7 @@
 
   const emit = defineEmits<{
     select: [item: ContextMenuItem]
+    back: []
   }>()
 
   const activeSubKey = ref<string | null>(null)
@@ -146,8 +148,16 @@
     const item = event.currentTarget as HTMLElement | null
     const submenu = item?.closest('.c-context-menu__submenu')
     const parent = submenu?.parentElement
-    if (parent?.getAttribute('role') === 'menuitem')
-      parent.focus({ preventScroll: true })
+    if (parent?.getAttribute('role') !== 'menuitem') return
+    emit('back')
+    void nextTick(() => {
+      if (parent.isConnected) parent.focus({ preventScroll: true })
+    })
+  }
+
+  function closeSubmenu() {
+    clearSubTimer()
+    activeSubKey.value = null
   }
 
   const handleMouseEnter = (item: ContextMenuItem) => {

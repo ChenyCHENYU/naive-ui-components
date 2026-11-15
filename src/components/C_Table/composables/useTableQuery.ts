@@ -10,6 +10,7 @@ import {
 import type { TableConfig } from './useTableConfig'
 import type { TableColumn, TableRowKey } from '../types'
 import { cloneData } from '../../../utils/data'
+import { notifyObserver } from '../../../core/observer'
 
 export interface TableQueryContext<Q> {
   page: number
@@ -59,38 +60,59 @@ export function useTableQuery<
   const query = shallowRef<Q>(cloneData(initialQuery))
   let requestVersion = 0
   let controller: AbortController | null = null
+  let disposed = false
+  const ownsRequest = (version: number, request: AbortController): boolean =>
+    !disposed &&
+    version === requestVersion &&
+    controller === request &&
+    !request.signal.aborted
 
   // eslint-disable-next-line complexity -- Request version, abort and validation guards form one atomic transition.
   const execute = async (): Promise<boolean> => {
+    if (disposed) return false
     const version = ++requestVersion
-    controller?.abort()
-    controller = new AbortController()
-    loading.value = true
-    error.value = undefined
+    const previous = controller
+    const request = new AbortController()
+    controller = request
     try {
+      previous?.abort()
+      // abort 与公开状态的同步观察器均可重入；只允许当前请求继续发布状态。
+      if (!ownsRequest(version, request)) return false
+      loading.value = true
+      if (!ownsRequest(version, request)) return false
+      error.value = undefined
+      if (!ownsRequest(version, request)) return false
       const result = await options.request({
         page: page.value,
         pageSize: pageSize.value,
         query: cloneData(query.value),
-        signal: controller.signal,
+        signal: request.signal,
       })
-      if (version !== requestVersion || controller.signal.aborted) return false
+      if (!ownsRequest(version, request)) return false
       if (!Array.isArray(result.data) || !Number.isFinite(result.total)) {
         throw new TypeError(
           '[C_Table] request 必须返回 { data: T[], total: number }'
         )
       }
       data.value = cloneData([...result.data])
+      if (!ownsRequest(version, request)) return false
       total.value = Math.max(0, Math.floor(result.total))
-      options.onSuccess?.({ data: data.value, total: total.value })
-      return true
+      if (!ownsRequest(version, request)) return false
+      notifyObserver(() =>
+        options.onSuccess?.({ data: data.value, total: total.value })
+      )
+      return ownsRequest(version, request)
     } catch (cause) {
-      if (version !== requestVersion || controller.signal.aborted) return false
+      if (!ownsRequest(version, request)) return false
       error.value = cause
-      options.onError?.(cause)
+      if (ownsRequest(version, request))
+        notifyObserver(() => options.onError?.(cause))
       return false
     } finally {
-      if (version === requestVersion) loading.value = false
+      if (version === requestVersion && controller === request) {
+        controller = null
+        loading.value = false
+      }
     }
   }
 
@@ -98,6 +120,7 @@ export function useTableQuery<
     next: Partial<Q> | ((current: Readonly<Q>) => Q),
     reload = true
   ): Promise<boolean> => {
+    if (disposed) return false
     query.value = cloneData(
       typeof next === 'function'
         ? next(query.value)
@@ -111,12 +134,14 @@ export function useTableQuery<
     nextPage: number,
     nextPageSize: number
   ): Promise<boolean> => {
+    if (disposed) return false
     page.value = positiveInteger(nextPage, page.value)
     pageSize.value = positiveInteger(nextPageSize, pageSize.value)
     return execute()
   }
 
   const resetQuery = async (reload = true): Promise<boolean> => {
+    if (disposed) return false
     query.value = cloneData(initialQuery)
     page.value = 1
     return reload ? execute() : true
@@ -151,14 +176,18 @@ export function useTableQuery<
   }))
 
   const cancel = () => {
-    requestVersion += 1
-    controller?.abort()
+    const version = ++requestVersion
+    const previous = controller
     controller = null
-    loading.value = false
+    previous?.abort()
+    if (version === requestVersion) loading.value = false
   }
 
   if (options.immediate !== false) onMounted(() => void execute())
-  onScopeDispose(cancel)
+  onScopeDispose(() => {
+    disposed = true
+    cancel()
+  })
 
   return {
     data,

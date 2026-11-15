@@ -97,6 +97,8 @@ const ZH_CN_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
   'search.fields': '查询字段',
   'search.fieldSettings': '设置查询字段',
   'search.restoreFields': '恢复默认字段',
+  'search.selectPlaceholder': '请选择',
+  'search.clearHistory': '清空历史记录',
   'tree.expandAll': '展开全部',
   'tree.collapseAll': '收起全部',
   'tree.menu.add': '新增子菜单',
@@ -346,6 +348,8 @@ const EN_US_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
   'search.fields': 'Query fields',
   'search.fieldSettings': 'Configure query fields',
   'search.restoreFields': 'Restore default fields',
+  'search.selectPlaceholder': 'Please select',
+  'search.clearHistory': 'Clear history',
   'tree.expandAll': 'Expand all',
   'tree.collapseAll': 'Collapse all',
   'tree.menu.add': 'Add submenu',
@@ -513,7 +517,10 @@ function getMessage(
   messages: Readonly<Record<string, string>> | undefined,
   key: string
 ): string | undefined {
-  return messages && Object.prototype.hasOwnProperty.call(messages, key)
+  // `in` 保留响应式字典缺失键的 HAS 依赖，own 检查继续隔离原型键。
+  return messages &&
+    key in messages &&
+    Object.prototype.hasOwnProperty.call(messages, key)
     ? messages[key]
     : undefined
 }

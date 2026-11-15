@@ -2,6 +2,8 @@
  * C_Upload 组件常量
  */
 
+import type { TagProps } from 'naive-ui'
+
 /** 默认分片大小 2MB */
 export const DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024
 
@@ -27,7 +29,7 @@ export const STATUS_TEXT: Record<string, string> = {
 }
 
 /** 状态颜色映射（Naive UI NTag type） */
-export const STATUS_TYPE: Record<string, string> = {
+export const STATUS_TYPE: Record<string, NonNullable<TagProps['type']>> = {
   pending: 'default',
   validating: 'info',
   hashing: 'info',

@@ -66,7 +66,7 @@ app.mount('#app')
 
 ### 按需配置语言与反馈
 
-独立 `/config` 入口只导出注入键和协议类型，不加载组件、路由或 Naive UI 适配器。与根入口使用相同的注入键，可以直接配置按需使用的组件：
+独立 `/config` 入口导出共享注入键、协议类型、色板及主题工厂，不注册组件、不加载路由或消息／弹窗反馈适配器。主题工厂依赖 Naive UI 的公开主题接口，原生 CJS 导入会加载 Naive UI。该入口与根入口使用相同的注入键，可以直接配置按需使用的组件：
 
 ```ts
 import {
@@ -81,7 +81,7 @@ app.provide(COMPONENT_FEEDBACK_KEY, {
 })
 ```
 
-默认中文，内置支持 `zh-CN` / `en-US`，自定义 `messages` 或 `t` 沿用现有协议。需要动态切换时提供响应式对象或 `locale` getter。Tree、Transfer、SplitPane、Chat、NotificationCenter、Theme、Language、Skeleton、Timeline 的内置文案与已有 Form/Table/Search/Breadcrumb 一起使用该上下文；业务标题、菜单名称和显式传入的文案由宿主管理。
+默认中文，内置支持 `zh-CN` / `en-US`，自定义 `messages` 或 `t` 沿用现有协议。需要动态切换时提供响应式对象或 `locale` getter。Tree、Transfer、SplitPane、Chat、NotificationCenter、Theme、Language、Skeleton、Timeline、Upload 的内置文案与已有 Form/Table/Search/Breadcrumb 一起使用该上下文；DataPicker 的局部语言也传给内嵌分类树。业务标题、菜单名称和显式传入的文案由宿主管理，上传文件名和服务端错误保持原文。
 
 ### Composables 单独使用
 
