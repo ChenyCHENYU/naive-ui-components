@@ -326,4 +326,6 @@ const fields: SearchFormItem<Query>[] = [
 
 `treeSelect` 默认节点键为 `key`，`cascader` 默认节点值为 `value`；自定义字段名通过原生 `attrs` 声明。单选模型是 `string | number | null`，多选是键数组，清空/重置保持对应形状。数字键 `0` 不会被当作空值。只读/禁用/固定字段继续使用相同的受控更新边界，尺寸继承搜索密度。
 
+在 `C_Form` 中，`treeSelect` 的 `children` 和 `asyncOptions` 可直接使用 Naive 树节点，例如 `{ key: 0, label: '总厂', children: [] }`。沿用旧数据的 `value` 作为节点键时继续设置 `attrs.keyField: 'value'`。已加载的异步选项优先，其次为 `attrs.options` 和 `children`。读取动态字段配置时，请按实际控件的节点协议处理 `key` 或 `value`。
+
 这里使用 Naive 的叶键/勾选键模型，**不把一个单选路径数组猜成多选值，也不兼容 Element Plus 的 `emitPath` 协议**。请求需要祖先路径时，由项目在显式 `query.serialize` 中映射；不要为了适配一个后台修改所有页面的模型。

@@ -25,6 +25,7 @@ export const ACTION_BAR_DEFAULT_CONFIG: Readonly<Required<ActionBarConfig>> = {
   dividerType: 'vertical',
   compact: true,
   inline: true,
+  overflowAt: 0,
 }
 
 export const ACTION_PRESETS: Readonly<

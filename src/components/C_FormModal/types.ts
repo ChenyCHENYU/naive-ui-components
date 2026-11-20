@@ -9,6 +9,16 @@ import type {
 
 export type FormModalMode = 'create' | 'edit'
 
+export interface FormModalBeforeCloseContext {
+  /** 弹窗会话结束或草稿被更新时取消本次确认。 */
+  signal: AbortSignal
+}
+
+export interface FormModalInstance {
+  /** 经未保存保护后同步执行替换草稿等动作。返回动作是否执行。 */
+  requestDiscard(action: () => void): Promise<boolean>
+}
+
 /**
  * Structural editor contract. It intentionally does not depend on request-core,
  * so any headless CRUD implementation can drive the modal.
@@ -37,6 +47,12 @@ export interface FormModalProps<T extends object = FormRecord> {
   closable?: boolean
   maskClosable?: boolean
   closeOnEsc?: boolean
+  /** 仅草稿已修改时调用。返回 true 才允许丢弃；异常视为取消。 */
+  beforeClose?: (
+    context: FormModalBeforeCloseContext
+  ) => boolean | Promise<boolean>
+  /** 保持弹窗打开并切换记录时，更新该键以重新建立表单初始快照。 */
+  sessionKey?: string | number
 }
 
 export interface FormModalEmits<T extends object = FormRecord> {

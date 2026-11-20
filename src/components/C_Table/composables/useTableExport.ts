@@ -5,15 +5,23 @@
 
 import { flattenTableColumns } from '../helpers'
 import type { DataRecord, TableColumn, ColumnWithKey } from '../types'
+import type {
+  TableExportScope,
+  TableMatchingExportContext,
+} from '../exportTypes'
 import { applyFormatter, type FormatterConfig } from './useTableGlobalConfig'
 
 /* ================= 类型定义 ================= */
 
 export interface ExportConfig {
   /** Data scope used by C_Table; source preserves the legacy loaded-source behavior. */
-  scope?: 'source' | 'page' | 'selected'
+  scope?: 'source' | TableExportScope
+  /** Opt-in toolbar menu, in the supplied order. Unavailable scopes stay out of the menu. */
+  scopes?: readonly TableExportScope[]
   /** Explicit server-side/full-data export request; invoked only when exporting. */
   requestData?: () => DataRecord[] | Promise<DataRecord[]>
+  /** Generates or schedules a matching export on behalf of the application. */
+  onExportMatching?: (context: TableMatchingExportContext) => unknown
   /** 导出文件名（不含扩展名） */
   filename?: string
   /** 导出格式 */
@@ -35,7 +43,7 @@ export interface ExportConfig {
 /* ================= 内部辅助 ================= */
 
 /** 获取导出用的列（过滤掉内置列） */
-function getExportColumns(
+export function getExportColumns(
   columns: TableColumn[],
   columnKeys?: string[]
 ): ColumnWithKey[] {

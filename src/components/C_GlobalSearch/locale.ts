@@ -18,6 +18,13 @@ const CHINESE = Object.freeze({
   'globalSearch.empty': '输入关键词搜索菜单',
   'globalSearch.group': '菜单导航',
   'globalSearch.home': '首页',
+  'globalSearch.commandInput': '搜索菜单或业务记录',
+  'globalSearch.commandPlaceholder': '搜索菜单、业务记录和快捷操作…',
+  'globalSearch.commandEmpty': '输入关键词查找菜单、业务记录和快捷操作',
+  'globalSearch.commandResults': '全局搜索结果',
+  'globalSearch.commandLoading': '正在搜索其他来源…',
+  'globalSearch.commandFailed': '部分搜索来源加载失败',
+  'globalSearch.commandRetry': '重试',
 })
 const ENGLISH = Object.freeze({
   'globalSearch.trigger': 'Search',
@@ -37,6 +44,13 @@ const ENGLISH = Object.freeze({
   'globalSearch.empty': 'Type to search menus',
   'globalSearch.group': 'Navigation menus',
   'globalSearch.home': 'Home',
+  'globalSearch.commandInput': 'Search menus or records',
+  'globalSearch.commandPlaceholder': 'Search menus, records and actions…',
+  'globalSearch.commandEmpty': 'Type to search menus, records and actions',
+  'globalSearch.commandResults': 'Global search results',
+  'globalSearch.commandLoading': 'Searching additional sources…',
+  'globalSearch.commandFailed': 'Some search sources failed to load',
+  'globalSearch.commandRetry': 'Retry',
 })
 
 export const useGlobalSearchLocale = () =>

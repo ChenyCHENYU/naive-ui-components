@@ -4,6 +4,12 @@ export type {
   DataResourceOptions,
   DataResourceStatus,
 } from './composables/useDataResource'
+export { useTabbedQuery } from './composables/useTabbedQuery'
+export type {
+  TabbedQueryContext,
+  TabbedQueryOptions,
+  TabbedQueryResult,
+} from './composables/useTabbedQuery'
 export { useValidationScope } from './composables/useValidationScope'
 export type { ValidationParticipant } from './composables/useValidationScope'
 export { useFormArray } from './composables/useFormArray'

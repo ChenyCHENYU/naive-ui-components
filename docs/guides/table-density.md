@@ -141,7 +141,21 @@ const columns = [
 const config = { persistKey: 'shipping', density: 'compact' } as const
 ```
 
-应用启动时，通过轻量入口 `@robot-admin/naive-ui-components/config` 的 `TABLE_GLOBAL_CONFIG_KEY` 提供全局 `persistPrefix` getter，示例见 [README](../../README.md#表格偏好按账号隔离)。值由项目已有响应式状态生成，可包含租户、公司、用户等项目需要的维度；组件不读取认证服务，也不要求特定身份字段。
+应用启动时提供 `persistPrefix` getter。范围来自应用已有的响应式状态，可包含租户、公司和用户标识。此例中的 `session` 是应用持有的身份状态，未就绪时返回 `undefined`。
+
+```ts
+import { TABLE_GLOBAL_CONFIG_KEY } from '@robot-admin/naive-ui-components/config'
+
+app.provide(TABLE_GLOBAL_CONFIG_KEY, {
+  defaults: { density: 'compact' },
+  get persistPrefix() {
+    const scope = session.value
+    return scope
+      ? JSON.stringify([scope.tenantId, scope.companyId, scope.userId])
+      : undefined
+  },
+})
+```
 
 - 启动时就声明 getter 或响应式字段；切换时更新值，不新增、删除配置字段。`C_Density` 实时转发该范围，区域密度不会锁定先前账号。
 - 有效范围与表 ID 以独立元组编码；相同表 ID 在不同范围互不继承列显隐、顺序和宽度。A 尚未提交的拖宽会写回 A，随后加载 B；返回 A 可恢复 A 的已保存偏好。重置只删除当前范围、当前表的设置。
@@ -151,6 +165,38 @@ const config = { persistKey: 'shipping', density: 'compact' } as const
 传入的范围字符串只判空，不规范化身份 ID。按需导入与全量安装使用相同的配置键；全量安装时也可把同一配置对象放在 `app.use` 的 `table` 选项中。
 
 ## 异步导出的快照与卸载
+
+`config.export.scopes` 按声明顺序启用导出范围菜单。
+
+| 范围       | 数据来源                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| `page`     | 当前显示页，沿用当前筛选和排序                                                            |
+| `selected` | 已选行，启用表格选择后可用。选中的记录未完整加载时禁用                                    |
+| `matching` | 本地表格中全部匹配的行。远程表格通过 `requestData` 或 `onExportMatching` 提供全部匹配结果 |
+
+```ts
+import { defineTableConfig } from '@robot-admin/naive-ui-components/C_Table'
+
+const tableConfig = defineTableConfig({
+  selection: true,
+  export: {
+    scopes: ['page', 'selected', 'matching'],
+    format: 'xlsx',
+    onExportMatching({ columns, format, filename }) {
+      return submitExport({
+        query: appliedQuery.value,
+        columns,
+        format,
+        filename,
+      })
+    },
+  },
+})
+```
+
+`onExportMatching` 收到本次导出的列顺序和文件配置，宿主可返回生成文件或创建后台任务的 Promise。示例中的 `appliedQuery` 来自 [`useTabbedQuery`](./data-workflows.md#多页签共享查询)，独立搜索也可保存 `C_FormSearch` 的 `@applied` 快照。任务的状态由 [`C_TaskPanel`](./task-panel.md) 展示。若应用通过 `requestData` 提供行数据，表格会生成文件。两种来源同时提供时，`matching` 优先使用 `onExportMatching`。
+
+`exportData('page' | 'selected' | 'matching')` 使用对应范围。本页和已选均使用本地已有行。省略 `scopes` 时继续使用单按钮。既有无参 `exportData()` 保留 `requestData` 与固定 `scope` 的优先级，默认 `source` 表示传入的数据源，远程模式通常只有已加载页。
 
 `export.requestData` 开始前，表格会固定本次导出的列、列级 formatter、全局 formatter 与文件配置。等待期间切换报表，旧请求仍按原报表快照导出；下一次导出使用新配置。`persistKey` 只控制偏好存储，不是业务请求的取消范围。
 

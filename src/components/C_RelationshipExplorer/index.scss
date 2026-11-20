@@ -1,0 +1,86 @@
+.c-relationship-explorer {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  color: var(--c-text-1, var(--c-theme-text-1));
+  overflow-wrap: anywhere;
+
+  &__layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: 8px;
+  }
+
+  &__panel,
+  &__path {
+    display: grid;
+    align-content: start;
+    gap: 4px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--c-border, var(--c-theme-border));
+    border-radius: var(--c-radius, var(--c-theme-radius));
+    background: var(--c-bg-card, var(--c-theme-bg-card));
+  }
+
+  &__current {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    border-color: var(--c-primary, var(--c-theme-primary));
+    background: var(--c-bg-active, var(--c-theme-bg-active));
+
+    :deep(.n-button) {
+      justify-self: start;
+    }
+  }
+
+  ol,
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+
+    li + li::before {
+      content: '\2192';
+      margin-inline-end: 4px;
+      color: var(--c-text-3, var(--c-theme-text-3));
+    }
+  }
+
+  li button {
+    padding: 3px 6px;
+    border: 0;
+    border-radius: var(--c-radius-sm, var(--c-theme-radius-sm));
+    background: transparent;
+    color: var(--c-primary, var(--c-theme-primary));
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover,
+    &[data-traced] {
+      background: var(--c-bg-active, var(--c-theme-bg-active));
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentcolor;
+      outline-offset: 1px;
+    }
+  }
+
+  p {
+    margin: 0;
+  }
+
+  small {
+    display: block;
+    color: var(--c-text-2, var(--c-theme-text-2));
+  }
+}

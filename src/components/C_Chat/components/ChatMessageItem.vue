@@ -43,54 +43,66 @@
           {{ msg.username }}
         </span>
 
-        <!-- 文本消息 -->
-        <div
-          v-if="msg.type === 'text' || msg.type === 'system'"
-          class="c-chat__bubble"
+        <slot
+          name="message"
+          :message="msg"
         >
-          {{ msg.content }}
-        </div>
-
-        <!-- 图片消息 -->
-        <button
-          v-else-if="msg.type === 'image'"
-          type="button"
-          class="c-chat__msg-image-button"
-          :aria-label="
-            t('chat.imagePreview', { name: msg.username || t('chat.title') })
-          "
-          @click="emit('image-preview', msg.content)"
-        >
-          <img
-            :src="msg.content"
-            :alt="msg.fileName || t('chat.image')"
-            class="c-chat__msg-image"
-          />
-        </button>
-
-        <!-- 文件消息 -->
-        <button
-          v-else-if="msg.type === 'file'"
-          type="button"
-          class="c-chat__msg-file"
-          @click="emit('file-click', msg)"
-        >
-          <C_Icon
-            name="mdi:file-document-outline"
-            :size="28"
-          />
-          <div class="c-chat__file-info">
-            <span class="c-chat__file-name">{{
-              msg.fileName || t('chat.file')
-            }}</span>
-            <span
-              v-if="msg.fileSize"
-              class="c-chat__file-size"
-            >
-              {{ formatFileSize(msg.fileSize) }}
-            </span>
+          <!-- 文本消息 -->
+          <div
+            v-if="msg.type === 'text' || msg.type === 'system'"
+            class="c-chat__bubble"
+          >
+            {{ msg.content }}
           </div>
-        </button>
+
+          <!-- 图片消息 -->
+          <button
+            v-else-if="msg.type === 'image'"
+            type="button"
+            class="c-chat__msg-image-button"
+            :aria-label="
+              t('chat.imagePreview', { name: msg.username || t('chat.title') })
+            "
+            @click="emit('image-preview', msg.content)"
+          >
+            <img
+              :src="msg.content"
+              :alt="msg.fileName || t('chat.image')"
+              class="c-chat__msg-image"
+            />
+          </button>
+
+          <!-- 文件消息 -->
+          <button
+            v-else-if="msg.type === 'file'"
+            type="button"
+            class="c-chat__msg-file"
+            @click="emit('file-click', msg)"
+          >
+            <C_Icon
+              name="mdi:file-document-outline"
+              :size="28"
+            />
+            <div class="c-chat__file-info">
+              <span class="c-chat__file-name">{{
+                msg.fileName || t('chat.file')
+              }}</span>
+              <span
+                v-if="msg.fileSize"
+                class="c-chat__file-size"
+              >
+                {{ formatFileSize(msg.fileSize) }}
+              </span>
+            </div>
+          </button>
+        </slot>
+
+        <ChatMessageExtras
+          v-if="msg.activities?.length || msg.sources?.length"
+          :activities="msg.activities"
+          :sources="msg.sources"
+          @source-click="emit('source-click', $event, msg)"
+        />
 
         <!-- 时间戳 -->
         <span
@@ -122,7 +134,8 @@
   import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
   import C_Icon from '../../C_Icon/index.vue'
-  import type { ChatMessage } from '../types'
+  import ChatMessageExtras from './ChatMessageExtras.vue'
+  import type { ChatMessage, ChatSource } from '../types'
   const { t } = useComponentLocale()
   const props = defineProps<{
     msg: ChatMessage
@@ -131,10 +144,12 @@
     selfName: string
     showTimestamp: boolean
   }>()
+  defineSlots<{ message?: (context: { message: ChatMessage }) => unknown }>()
   const emit = defineEmits<{
     'image-preview': [url: string]
     'file-click': [msg: ChatMessage]
     resend: [msg: ChatMessage]
+    'source-click': [source: ChatSource, msg: ChatMessage]
   }>()
   const showTimeDivider = computed(
     () =>

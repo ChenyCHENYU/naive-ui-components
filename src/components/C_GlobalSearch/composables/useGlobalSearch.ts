@@ -3,13 +3,20 @@ import {
   ref,
   computed,
   watch,
+  onDeactivated,
   onMounted,
   onUnmounted,
   nextTick,
   toValue,
   type MaybeRefOrGetter,
 } from 'vue'
-import type { SearchMenuItem, HistoryItem, GlobalSearchOptions } from '../types'
+import type {
+  GlobalSearchCommandItem,
+  GlobalSearchOptions,
+  HistoryItem,
+  SearchMenuItem,
+} from '../types'
+import { useCommandSearch } from './useCommandSearch'
 import {
   createMenuSearchIndex,
   formatSearchMenuPath,
@@ -47,7 +54,8 @@ function decodeHistoryItem(item: unknown): StoredHistoryItem[] {
  * 所有外部数据通过 options 注入。
  */
 export function useGlobalSearch(
-  options: MaybeRefOrGetter<GlobalSearchOptions>
+  options: MaybeRefOrGetter<GlobalSearchOptions>,
+  onCommandSelect?: (source: string, item: GlobalSearchCommandItem) => void
 ) {
   const getOptions = () => toValue(options)
   const getMenuItems = () => getOptions().menuItems()
@@ -117,14 +125,32 @@ export function useGlobalSearch(
   const displayHistory = computed(() =>
     visibleHistory.value.map(({ item }) => item)
   )
-  const hasResults = computed(() => filteredMenuItems.value.length > 0)
+  const commands = useCommandSearch(
+    () => getOptions().commands,
+    () => (showDialog.value && !isComposing.value ? searchValue.value : '')
+  )
+  const commandGroups = computed(() => {
+    let start = filteredMenuItems.value.length
+    return commands.groups.value.map(group => {
+      const indexed = { ...group, start }
+      start += group.items.length
+      return indexed
+    })
+  })
+  const commandEntries = computed(() =>
+    commandGroups.value.flatMap(group =>
+      group.items.map(item => ({ source: group.key, item }))
+    )
+  )
+  const resultCount = computed(
+    () => filteredMenuItems.value.length + commandEntries.value.length
+  )
+  const hasResults = computed(() => resultCount.value > 0)
   const hasContent = computed(
     () => Boolean(searchValue.value.trim()) || displayHistory.value.length > 0
   )
   const activeItemCount = computed(() =>
-    searchValue.value.trim()
-      ? filteredMenuItems.value.length
-      : displayHistory.value.length
+    searchValue.value.trim() ? resultCount.value : displayHistory.value.length
   )
 
   // ==================== 工具函数 ====================
@@ -290,6 +316,21 @@ export function useGlobalSearch(
     closeDialog()
   }
 
+  const selectCommand = (source: string, item: GlobalSearchCommandItem) => {
+    // The rendered item must still belong to the current query and scope.
+    if (
+      !showDialog.value ||
+      !commandEntries.value.some(
+        entry => entry.source === source && entry.item === item
+      )
+    )
+      return
+    const callback = getOptions().commands?.onSelect
+    closeDialog()
+    callback?.(source, item)
+    onCommandSelect?.(source, item)
+  }
+
   // ==================== 键盘导航 ====================
   const ignoresNavigation = (event?: KeyboardEvent) =>
     isComposing.value ||
@@ -312,21 +353,25 @@ export function useGlobalSearch(
     )
     const isHistoryMode =
       !searchValue.value.trim() && displayHistory.value.length > 0
-    const isSearchMode =
-      searchValue.value.trim() && filteredMenuItems.value.length > 0
-
     if (isHistoryMode) {
       const historyItem = displayHistory.value[selectedIndex.value]
       if (historyItem) {
         event?.preventDefault()
         selectHistoryItem(historyItem)
       }
-    } else if (isSearchMode) {
-      const item = filteredMenuItems.value[selectedIndex.value]
-      if (item) {
-        event?.preventDefault()
-        selectItem(item)
-      }
+      return
+    }
+    const menuItem = filteredMenuItems.value[selectedIndex.value]
+    if (menuItem) {
+      event?.preventDefault()
+      selectItem(menuItem)
+      return
+    }
+    const command =
+      commandEntries.value[selectedIndex.value - filteredMenuItems.value.length]
+    if (command) {
+      event?.preventDefault()
+      selectCommand(command.source, command.item)
     }
   }
 
@@ -412,6 +457,7 @@ export function useGlobalSearch(
     loadHistory()
     document.addEventListener('keydown', handleKeydown)
   })
+  onDeactivated(closeDialog)
   onUnmounted(() => {
     disposed = true
     focusVersion++
@@ -426,6 +472,13 @@ export function useGlobalSearch(
     searchInputRef,
     isDark,
     filteredMenuItems,
+    commandGroups,
+    commandEnabled: commands.enabled,
+    commandLoading: commands.loading,
+    commandFailed: commands.failed,
+    retryCommands: commands.retry,
+    selectCommand,
+    resultCount,
     displayHistory,
     hasResults,
     hasContent,

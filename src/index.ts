@@ -87,6 +87,21 @@ import { C_SectionNav } from './components/C_SectionNav'
 import { C_DataPicker } from './components/C_DataPicker'
 import { C_UserPicker } from './components/C_UserPicker'
 import { C_BatchResult } from './components/C_BatchResult'
+import { C_ChangeReview } from './components/C_ChangeReview'
+import { C_Descriptions } from './components/C_Descriptions'
+import { C_FilterBuilder } from './components/C_FilterBuilder'
+import { C_RecordList } from './components/C_RecordList'
+import { C_Attachments } from './components/C_Attachments'
+import { C_ImportWizard } from './components/C_ImportWizard'
+import { C_RecurrenceEditor } from './components/C_RecurrenceEditor'
+import { C_ScanInput } from './components/C_ScanInput'
+import { C_ImageAnnotator } from './components/C_ImageAnnotator'
+import { C_ResourceSchedule } from './components/C_ResourceSchedule'
+import { C_RelationshipExplorer } from './components/C_RelationshipExplorer'
+import { C_NotificationInbox } from './components/C_NotificationInbox'
+import { C_TaskBoard } from './components/C_TaskBoard'
+import { C_TaskPanel } from './components/C_TaskPanel'
+import { C_ApprovalViewer } from './components/C_ApprovalViewer'
 
 // ====== 插件 ======
 import {
@@ -171,6 +186,21 @@ const components: Record<string, Component> = {
   C_DataPicker,
   C_UserPicker,
   C_BatchResult,
+  C_ChangeReview,
+  C_Descriptions,
+  C_FilterBuilder,
+  C_RecordList,
+  C_Attachments,
+  C_ImportWizard,
+  C_RecurrenceEditor,
+  C_ScanInput,
+  C_ImageAnnotator,
+  C_ResourceSchedule,
+  C_RelationshipExplorer,
+  C_NotificationInbox,
+  C_TaskBoard,
+  C_TaskPanel,
+  C_ApprovalViewer,
 }
 
 // ====== Barrel Re-exports：所有组件 + composables + types + constants ======
@@ -237,6 +267,21 @@ export * from './components/C_SectionNav'
 export * from './components/C_DataPicker'
 export * from './components/C_UserPicker'
 export * from './components/C_BatchResult'
+export * from './components/C_ChangeReview'
+export * from './components/C_Descriptions'
+export * from './components/C_FilterBuilder'
+export * from './components/C_RecordList'
+export * from './components/C_Attachments'
+export * from './components/C_ImportWizard'
+export * from './components/C_RecurrenceEditor'
+export * from './components/C_ScanInput'
+export * from './components/C_ImageAnnotator'
+export * from './components/C_ResourceSchedule'
+export * from './components/C_RelationshipExplorer'
+export * from './components/C_NotificationInbox'
+export * from './components/C_TaskBoard'
+export * from './components/C_TaskPanel'
+export * from './components/C_ApprovalViewer'
 
 // ====== 工具函数（不属于任何组件的公共工具） ======
 export { setItem, getItem, removeItem, removeAllItem } from './utils/storage'

@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { NPagination } from 'naive-ui'
 import WordViewer from '../../src/components/C_FilePreview/components/WordViewer/index.vue'
 import ExcelViewer from '../../src/components/C_FilePreview/components/ExcelViewer/index.vue'
-import { processExcelSheet } from '../../src/components/C_FilePreview/data'
+import { processExcelSheet } from '../../src/components/C_FilePreview/excel'
 
 test('Word outline navigation stays inside its own document, including special IDs', async () => {
   const targets: string[] = []

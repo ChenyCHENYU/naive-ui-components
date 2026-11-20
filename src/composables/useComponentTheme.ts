@@ -65,6 +65,7 @@ export function useComponentTheme(
       '--c-theme-primary': value.primaryColor,
       '--c-theme-primary-hover': value.primaryColorHover,
       '--c-theme-primary-pressed': value.primaryColorPressed,
+      '--c-theme-primary-suppl': value.primaryColorSuppl,
       '--c-theme-success': value.successColor,
       '--c-theme-warning': value.warningColor,
       '--c-theme-error': value.errorColor,

@@ -15,7 +15,8 @@ import { notifyObserver } from '../core/observer'
 
 export type DataResourceStatus =
   'idle' | 'loading' | 'ready' | 'empty' | 'error'
-export interface DataResourceOptions<K extends string | number, T> {
+export interface DataResourceOptions<K extends string | number | object, T> {
+  /** 对象 key 按引用识别；更换资源时创建新对象。 */
   key: MaybeRefOrGetter<K | null | undefined>
   load: (context: { key: K; signal: AbortSignal }) => Promise<T>
   /** undefined 表示未提供本地源；[]、null 等其它值均由本地源拥有。 */
@@ -26,7 +27,7 @@ export interface DataResourceOptions<K extends string | number, T> {
 }
 
 /** 独立区域的请求状态，既不持有全局缓存，也不决定业务主从关系。 */
-export function useDataResource<K extends string | number, T>(
+export function useDataResource<K extends string | number | object, T>(
   options: DataResourceOptions<K, T>
 ) {
   const data = shallowRef<T>()

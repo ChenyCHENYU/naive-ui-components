@@ -9,7 +9,11 @@ import { expect, test, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref, shallowRef } from 'vue'
 import C_ActionBar from '../../src/components/C_ActionBar/index.vue'
 import C_FormModal from '../../src/components/C_FormModal/index.vue'
-import type { FormModalEditor } from '../../src/components/C_FormModal/types'
+import type {
+  FormModalEditor,
+  FormModalInstance,
+  FormModalProps,
+} from '../../src/components/C_FormModal/types'
 import { FORM_GLOBAL_CONFIG_KEY } from '../../src/context'
 
 interface Draft {
@@ -44,10 +48,13 @@ function createEditor() {
   } satisfies FormModalEditor<Draft>
 }
 
-const mountModal = (editor: FormModalEditor<Draft>) =>
+const mountModal = (
+  editor: FormModalEditor<Draft>,
+  extra?: Partial<FormModalProps<Draft>>
+) =>
   mount(C_FormModal<Draft>, {
     attachTo: document.body,
-    props: { editor, options: [{ type: 'input', prop: 'name' }] },
+    props: { editor, options: [{ type: 'input', prop: 'name' }], ...extra },
   })
 
 function button(wrapper: Pick<VueWrapper, 'getComponent'>, text: string) {
@@ -203,6 +210,158 @@ test('编辑器保存成功并先自行关闭时，通知结果并使用全局�
   ])
   expect(success).toHaveBeenCalledExactlyOnceWith('已保存', undefined)
   expect(wrapper.emitted('close')).toBeUndefined()
+})
+
+test('只保护脏草稿，同一次确认期间统一拦截退出与保存', async () => {
+  const editor = createEditor()
+  const first = deferred<boolean>()
+  const beforeClose = vi
+    .fn<NonNullable<FormModalProps<Draft>['beforeClose']>>()
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(true)
+  const wrapper = mountModal(editor, { beforeClose })
+  const modal = wrapper.getComponent(NModal)
+  const body = new DOMWrapper(document.body)
+  await flushPromises()
+  await body.get('input').setValue('已编辑')
+  await body.get('.n-base-close').trigger('click')
+  await vi.waitFor(() => expect(beforeClose).toHaveBeenCalledOnce())
+  expect(modal.props()).toMatchObject({
+    closable: false,
+    closeOnEsc: false,
+    maskClosable: false,
+  })
+  expect(body.get('form').element.hasAttribute('inert')).toBe(true)
+  expect(button(wrapper, '保存').props('disabled')).toBe(true)
+  modal.vm.$emit('update:show', false)
+  await button(wrapper, '取消').trigger('click')
+  expect(beforeClose).toHaveBeenCalledOnce()
+  expect(editor.close).not.toHaveBeenCalled()
+
+  first.resolve(false)
+  await flushPromises()
+  expect(body.get('input').element.value).toBe('已编辑')
+  expect(body.get('form').element.hasAttribute('inert')).toBe(false)
+  const mask = body.get('.n-modal-mask')
+  await mask.trigger('mousedown')
+  await mask.trigger('mouseup')
+  await flushPromises()
+  expect(beforeClose).toHaveBeenCalledTimes(2)
+  expect(editor.close).toHaveBeenCalledOnce()
+  expect(wrapper.emitted('close')).toHaveLength(1)
+
+  editor.model.value = { name: '干净草稿' }
+  editor.visible.value = true
+  await flushPromises()
+  await button(wrapper, '取消').trigger('click')
+  expect(editor.close).toHaveBeenCalledTimes(2)
+  expect(beforeClose).toHaveBeenCalledTimes(2)
+})
+
+test('确认失败保留草稿，保存成功自行关闭不进入守卫', async () => {
+  const editor = createEditor()
+  const beforeClose = vi.fn(async () => {
+    throw new Error('确认服务不可用')
+  })
+  editor.submit.mockImplementation(async () => {
+    editor.close()
+    return true
+  })
+  const wrapper = mountModal(editor, { beforeClose })
+  await flushPromises()
+  await new DOMWrapper(document.body).get('input').setValue('将保存')
+  await button(wrapper, '取消').trigger('click')
+  await flushPromises()
+  expect(editor.visible.value).toBe(true)
+  expect(editor.model.value?.name).toBe('将保存')
+  expect(wrapper.emitted('close')).toBeUndefined()
+  await button(wrapper, '保存').trigger('click')
+  await flushPromises()
+  expect(editor.close).toHaveBeenCalledOnce()
+  expect(beforeClose).toHaveBeenCalledOnce()
+  expect(wrapper.emitted('submit')).toEqual([
+    [expect.objectContaining({ model: { name: '将保存' } }), true],
+  ])
+})
+
+test.each([
+  '替换草稿',
+  '修改草稿',
+  '更换会话键',
+  '进入加载状态',
+  '重新打开',
+  '替换编辑器',
+  '卸载弹窗',
+])('%s 会取消旧的丢弃决定，迟到同意不执行动作', async change => {
+  const editor = createEditor()
+  const decision = deferred<boolean>()
+  const beforeClose = vi
+    .fn<NonNullable<FormModalProps<Draft>['beforeClose']>>()
+    .mockReturnValue(decision.promise)
+  const activeEditor = shallowRef<FormModalEditor<Draft>>(editor)
+  const activeModal = shallowRef<FormModalInstance>()
+  const sessionKey = ref('one')
+  const host = mount(
+    defineComponent(
+      () => () =>
+        h(C_FormModal<Draft>, {
+          ref: activeModal,
+          editor: activeEditor.value,
+          options: [{ type: 'input', prop: 'name' }],
+          beforeClose,
+          sessionKey: sessionKey.value,
+        })
+    ),
+    { attachTo: document.body }
+  )
+  await flushPromises()
+  await new DOMWrapper(document.body).get('input').setValue('已修改')
+  const replacement = vi.fn()
+  const waiting = activeModal.value!.requestDiscard(replacement)
+  await vi.waitFor(() => expect(beforeClose).toHaveBeenCalledOnce())
+  const [{ signal }] = beforeClose.mock.calls[0]
+
+  if (change === '替换草稿') editor.model.value = { name: '新草稿' }
+  else if (change === '修改草稿') editor.model.value!.name = '新草稿'
+  else if (change === '更换会话键') sessionKey.value = 'two'
+  else if (change === '进入加载状态') editor.loading.value = true
+  else if (change === '重新打开') {
+    editor.visible.value = false
+    editor.visible.value = true
+  } else if (change === '替换编辑器') {
+    activeEditor.value = createEditor()
+  } else host.unmount()
+
+  await nextTick()
+  expect(signal.aborted).toBe(true)
+  await expect(waiting).resolves.toBe(false)
+  decision.resolve(true)
+  await flushPromises()
+  expect(replacement).not.toHaveBeenCalled()
+  expect(editor.close).not.toHaveBeenCalled()
+})
+
+test('批准切换记录后更新会话键，替换的记录以干净草稿开始', async () => {
+  const editor = createEditor()
+  const beforeClose = vi.fn(async () => true)
+  const wrapper = mountModal(editor, { beforeClose, sessionKey: 'one' })
+  const body = new DOMWrapper(document.body)
+  await flushPromises()
+  await body.get('input').setValue('已修改')
+
+  await expect(
+    wrapper.vm.requestDiscard(() => {
+      editor.model.value = { name: '新记录' }
+      void wrapper.setProps({ sessionKey: 'two' })
+    })
+  ).resolves.toBe(true)
+  await flushPromises()
+  expect(body.get('input').element.value).toBe('新记录')
+  expect(beforeClose).toHaveBeenCalledOnce()
+
+  await button(wrapper, '取消').trigger('click')
+  expect(editor.close).toHaveBeenCalledOnce()
+  expect(beforeClose).toHaveBeenCalledOnce()
 })
 
 test.each(['重新打开', '替换编辑器', '卸载弹窗'])(

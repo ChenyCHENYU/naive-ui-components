@@ -2,138 +2,128 @@
 
 # Component catalog
 
-Use the online docs and repository guides for component contracts, and Robot Admin demos for combined workflows.
+All 78 public components have a package subpath, such as `@robot-admin/naive-ui-components/C_Table`, and a matching `/style.css` entry. Some focused guides are in Chinese. See [dependencies and styles](#dependencies-and-styles) for installation details.
 
-## Basic Components
+## Choose by task
 
-| Component        | Description               | External Deps                 |
-| ---------------- | ------------------------- | ----------------------------- |
-| `C_Icon`         | Iconify icon wrapper      | `@iconify/vue`                |
-| `C_Loading`      | Theme-aware SVG loading   | -                             |
-| `C_PageLoading`  | Theme-aware page loading  | -                             |
-| `C_Code`         | Code highlighting         | `highlight.js`                |
-| `C_Barcode`      | Barcode generator         | `@chenfengyuan/vue-barcode`   |
-| `C_Captcha`      | Puzzle / ALTCHA captcha   | `vue3-puzzle-vcode`, `altcha` |
-| `C_Cascade`      | Cascade panel selector    | -                             |
-| `C_Guide`        | User guide / tour         | `driver.js`                   |
-| `C_Progress`     | Enhanced progress bar     | -                             |
-| `C_Steps`        | Step bar                  | -                             |
-| `C_ActionBar`    | Action button bar         | -                             |
-| `C_Theme`        | Theme switcher            | -                             |
-| `C_Language`     | Language switcher         | -                             |
-| `C_Date`         | Enhanced date picker      | `date-fns`                    |
-| `C_City`         | Province / city selector  | -                             |
-| `C_Breadcrumb`   | Breadcrumb navigation     | -                             |
-| `C_Menu`         | Navigation menu           | -                             |
-| `C_Tabs`         | Data-driven scenario tabs | -                             |
-| `C_TagsView`     | Tab-based navigation      | -                             |
-| `C_GlobalSearch` | Global search panel       | -                             |
-| `C_AvatarGroup`  | Avatar group display      | -                             |
-| `C_OrgChart`     | Organization chart        | -                             |
-| `C_Skeleton`     | Skeleton placeholder      | -                             |
+| Task                                                        | Entry point                                                                                                                                              |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pick a record from a grid and fill related form fields      | [`C_DataPicker`](./guides/data-picker.md#表单内嵌选择) with `createDataPickerField` and `mapFields`                                                      |
+| Share filters across tabs with independent paging           | [`C_Tabs`, `C_FormSearch`, and `C_Table`](./guides/data-workflows.md#多页签共享查询) with `useTabbedQuery` from `/workflows`                             |
+| Export the current page, selection, or all matching rows    | [`C_Table` export scopes](./guides/usage.en.md#table-pagination-selection-and-export), with [`C_TaskPanel`](./guides/task-panel.md) for server-side jobs |
+| View approval history or open an instance from a message    | [`C_ApprovalViewer`](./guides/approval-viewer.md) for instances and [`C_WorkFlow`](./guides/workflow.md) for definitions                                 |
+| Compose import, change review, scheduling, or inbox screens | [Scenario guide](./guides/scene-components.md)                                                                                                           |
+| Lay out fixed master/detail panels or a dockable workspace  | [`C_SplitPane`](./guides/split-pane.en.md) and the [docking integration guide](./guides/dockable-workbench.md)                                           |
 
-## Content & Editor Components
+## Forms, queries, and selection
 
-| Component         | Description                  | External Deps             |
-| ----------------- | ---------------------------- | ------------------------- |
-| `C_Editor`        | Rich text editor             | `@wangeditor-next/editor` |
-| `C_Markdown`      | Markdown editor/preview      | `md-editor-v3`            |
-| `C_FormulaEditor` | Formula editor (safe parser) | Built in                  |
-| `C_Signature`     | Electronic signature         | -                         |
-| `C_QRCode`        | QR code generator            | `qrcode`                  |
-| `C_ImageCropper`  | Image cropper                | `vue-cropper`             |
+| Component         | Use                                                                  | Guide                                                                       |
+| ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `C_Form`          | Configured forms, dynamic fields, sections, and validation           | [Form density and layout](./guides/form-density.en.md)                      |
+| `C_FormModal`     | Create/edit dialog, submit locking, and unsaved-change protection    | [Form dialog setup](./guides/usage.en.md#recommended-c_form--c_table-setup) |
+| `C_FormSearch`    | Draft filters, submit and reset, and applied query snapshots         | [Search workflows](./guides/search-workflows.md)                            |
+| `C_Select`        | Single or multiple values, tags, and remote paging                   | [Remote options](./guides/remote-options.md)                                |
+| `C_AutoComplete`  | Free text with local or remote suggestions                           | [Remote options](./guides/remote-options.md)                                |
+| `C_DataPicker`    | Multi-column records, paging, batch paste, and related field mapping | [Entity picker](./guides/data-picker.md)                                    |
+| `C_UserPicker`    | Organization filters and cross-page user selection                   | [User picker](./guides/user-picker.md)                                      |
+| `C_Tree`          | Hierarchical selection, lazy loading, search, and path location      | [Tree](./guides/tree.en.md)                                                 |
+| `C_OrgChart`      | Organization chart layout and nodes                                  | [Organization chart](./guides/org-chart.md)                                 |
+| `C_Transfer`      | Dual lists with optional columns and hierarchical grouping           | [Transfer](./guides/transfer.md)                                            |
+| `C_FilterBuilder` | Nested condition groups, fields, and operators                       | [Filter builder](./guides/filter-builder.md)                                |
+| `C_Cascade`       | Cascading panel selector                                             |                                                                             |
+| `C_City`          | Province, city, and district selector                                |                                                                             |
+| `C_Date`          | Single dates, ranges, and date-time selection                        |                                                                             |
+| `C_Time`          | Single times and time intervals                                      |                                                                             |
 
-## Data Display Components
+## Tables, records, and actions
 
-| Component        | Description                                  | External Deps              |
-| ---------------- | -------------------------------------------- | -------------------------- |
-| `C_Table`        | Advanced data table (CRUD/inline edit/print) | `print-js`, `html2canvas`  |
-| `C_Map`          | Map component (OSM/AMap)                     | `leaflet`                  |
-| `C_VtableGantt`  | Gantt chart                                  | `@visactor/vtable-gantt`   |
-| `C_AntV`         | Graph editor (ER/BPMN/UML)                   | `@antv/x6`, `html2canvas`  |
-| `C_WaterFall`    | Waterfall layout                             | -                          |
-| `C_FullCalendar` | Calendar events                              | `@fullcalendar/*`          |
-| `C_VideoPlayer`  | Video player (HLS/subtitles/bookmarks)       | `xgplayer`, `xgplayer-hls` |
-| `C_AudioPlayer`  | Audio player (waveform/progress/playlist)    | -                          |
-| `C_FilePreview`  | File preview (PDF/Word/Excel)                | `xlsx`, `mammoth`          |
-| `C_Timeline`     | Timeline (vertical/horizontal/collapsible)   | -                          |
+| Component        | Use                                                             | Guide                                                                    |
+| ---------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `C_Table`        | Editing, remote paging, cross-page selection, export, and print | [Table configuration](./guides/table-density.md)                         |
+| `C_ActionBar`    | Standard actions, async execution locks, and toolbar overflow   | [Scenario examples](./guides/scene-components.md#记录详情列表和窄工具栏) |
+| `C_BatchResult`  | Batch outcomes, status filtering, and explicit retries          | [Batch results](./guides/batch-results.md)                               |
+| `C_ChangeReview` | Field differences, review, and selective acceptance             | [Change review](./guides/change-review.md)                               |
+| `C_Descriptions` | Typed details, grouping, and copying                            | [Scenario examples](./guides/scene-components.md#记录详情列表和窄工具栏) |
+| `C_RecordList`   | Controlled lists or cards with status and per-record actions    | [Scenario examples](./guides/scene-components.md#记录详情列表和窄工具栏) |
+| `C_ErrorSummary` | Multi-section validation summary and error navigation           | [Validation workflows](./guides/data-workflows.md#多区域校验和导航)      |
+| `C_ContextMenu`  | Context menus, nested items, and shortcuts                      |                                                                          |
+| `C_Draggable`    | Sorting within lists and optional cross-list dragging           |                                                                          |
+| `C_WaterFall`    | Variable-height cards and windowing for long lists              | [Waterfall](./guides/waterfall.md)                                       |
 
-Image/calendar behavior notes: `C_ImageCropper` flips the actual source and resets the current crop position; load/export failures emit `error: Error`. `C_Signature` readonly mode blocks user interaction but keeps exposed methods available for loading saved data. Its SVG export embeds the rendered raster canvas. `C_QRCode` uses the same raster-in-SVG approach when a logo is present so preview and export match. `C_FullCalendar` creates same-day events in local calendar time. `C_WaterFall` relayouts from actual image aspect ratios; give each item a stable unique `id`.
+## Workflows, tasks, and messages
 
-## Form & Layout Components
+| Component                | Use                                                               | Guide                                                               |
+| ------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `C_WorkFlow`             | Workflow definition editor, preview, and structural validation    | [Workflow definitions](./guides/workflow.md)                        |
+| `C_ApprovalViewer`       | Read-only view of approval instances, assignees, and history      | [Approval instances](./guides/approval-viewer.md)                   |
+| `C_TaskPanel`            | Background progress, item results, downloads, and retry actions   | [Background tasks](./guides/task-panel.md)                          |
+| `C_TaskBoard`            | Status columns, swimlanes, and controlled moves                   | [Task board](./guides/task-board.md)                                |
+| `C_NotificationCenter`   | Header notification panel, demo source, and shared controller     | [Notifications](./guides/notification-center.md)                    |
+| `C_NotificationInbox`    | Configurable task views, row numbers, and host actions            | [Full-page inbox](./guides/notification-center.md#全页待办与收件箱) |
+| `C_Chat`                 | Conversations, message input, activities, and source references   | [Conversation setup](./guides/scene-components.md#引导命令和会话)   |
+| `C_Guide`                | Guided tours and resumable checklists                             | [Guide setup](./guides/usage.en.md#configure-c_guide)               |
+| `C_SectionNav`           | Section navigation, error counts, and keyboard focus              | [Validation workflows](./guides/data-workflows.md#多区域校验和导航) |
+| `C_RelationshipExplorer` | Directed relationships, paths, and details for the current record | [Relationship tracing](./guides/scene-components.md#关系追溯)       |
+| `C_Timeline`             | Vertical, horizontal, and collapsible timelines                   |                                                                     |
 
-| Component         | Description                                       | External Deps        |
-| ----------------- | ------------------------------------------------- | -------------------- |
-| `C_Form`          | Dynamic form engine (Grid/Tabs/Steps/Card layout) | -                    |
-| `C_FormModal`     | Data-driven create/edit form modal                | -                    |
-| `C_FormSearch`    | Search form                                       | -                    |
-| `C_Select`        | Single/multiple values, tags and remote paging    | -                    |
-| `C_AutoComplete`  | Free text with local or remote suggestions        | -                    |
-| `C_CollapsePanel` | Collapse panel                                    | -                    |
-| `C_SplitPane`     | Split pane                                        | -                    |
-| `C_Draggable`     | Drag & drop sorting                               | `vue-draggable-plus` |
-| `C_Tree`          | Advanced tree control                             | -                    |
-| `C_Time`          | Enhanced time picker                              | `date-fns`           |
-| `C_Cron`          | Cron expression editor                            | -                    |
-| `C_Transfer`      | Transfer / shuttle box                            | -                    |
+## Files, content, and images
 
-## Interactive & Business Components
+| Component          | Use                                                      | Guide                                                                             |
+| ------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `C_Upload`         | File management, chunked uploads, and resume             | [Upload behavior](./guides/usage.en.md#configuration-and-behavior-contracts-021)  |
+| `C_Attachments`    | Shared attachment list and lazy previews                 | [Attachments](./guides/attachments.md)                                            |
+| `C_FilePreview`    | PDF, Word, and Excel previews                            | [Preview behavior](./guides/usage.en.md#configuration-and-behavior-contracts-021) |
+| `C_ImportWizard`   | Field mapping, preflight, confirmation, and item results | [Import wizard](./guides/import-wizard.md)                                        |
+| `C_Code`           | Code highlighting                                        |                                                                                   |
+| `C_Editor`         | Rich text editing                                        |                                                                                   |
+| `C_Markdown`       | Markdown editing and preview                             |                                                                                   |
+| `C_AudioPlayer`    | Audio playback, waveform, and playlists                  |                                                                                   |
+| `C_VideoPlayer`    | Video, HLS, subtitles, and bookmarks                     | [Video protocols](./guides/usage.en.md#configuration-and-behavior-contracts-021)  |
+| `C_ImageAnnotator` | Rectangle annotations and keyboard coordinate editing    | [Image annotation](./guides/image-annotator.md)                                   |
+| `C_ImageCropper`   | Crop, flip, and export images                            |                                                                                   |
+| `C_Signature`      | Draw, restore, and export signatures                     |                                                                                   |
+| `C_Barcode`        | Barcode generation                                       |                                                                                   |
+| `C_QRCode`         | QR codes and branded export                              |                                                                                   |
+| `C_ScanInput`      | Text, scanner, photo, and camera input                   | [Scan input](./guides/scene-components.md#重复计划和扫码)                         |
 
-| Component       | Description                                   | External Deps |
-| --------------- | --------------------------------------------- | ------------- |
-| `C_Chat`        | Chat (contacts / message bubbles / input box) | -             |
-| `C_ContextMenu` | Context menu (nested / shortcuts / danger)    | -             |
-| `C_Login`       | Login panel (5 modes / captcha / remember me) | -             |
+## Scheduling, planning, and diagrams
 
-## Workflow & Notification Components
+| Component            | Use                                                     | Guide                                                                              |
+| -------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `C_ResourceSchedule` | Multi-resource bookings, working windows, and conflicts | [Resource scheduling](./guides/resource-schedule.md)                               |
+| `C_RecurrenceEditor` | Daily, weekly, monthly, and yearly recurrence           | [Recurrence](./guides/scene-components.md#重复计划和扫码)                          |
+| `C_FullCalendar`     | Calendar events, drag-and-drop, and resizing            | [Calendar behavior](./guides/usage.en.md#configuration-and-behavior-contracts-021) |
+| `C_VtableGantt`      | Gantt schedules and full-screen view                    |                                                                                    |
+| `C_Cron`             | Cron editing, validation, and run-time preview          | [Cron and formulas](./guides/usage.en.md#cron-and-formula-workspaces)              |
+| `C_FormulaEditor`    | Restricted expression editor and evaluator              | [Cron and formulas](./guides/usage.en.md#cron-and-formula-workspaces)              |
+| `C_AntV`             | ER, BPMN, and UML diagram editing                       |                                                                                    |
+| `C_Map`              | Maps, markers, and OSM or AMap tiles                    | [Map setup](./guides/usage.en.md#recommended-c_map-setup)                          |
 
-| Component              | Description                                  | External Deps                                        |
-| ---------------------- | -------------------------------------------- | ---------------------------------------------------- |
-| `C_WorkFlow`           | Workflow editor (approval/CC/conditions)     | `@vue-flow/core`                                     |
-| `C_NotificationCenter` | Notification center (demo/remote/controller) | [Integration guide](./guides/notification-center.md) |
-| `C_Upload`             | Large file upload (chunked/resumable)        | `spark-md5`                                          |
+## Navigation, layout, and base controls
 
-## Dependency Notes
+| Component         | Use                                                 | Guide                                                                            |
+| ----------------- | --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `C_Menu`          | Theme-aware navigation menu                         |                                                                                  |
+| `C_Breadcrumb`    | Breadcrumbs and directory navigation                | [Breadcrumbs](./guides/usage.en.md#breadcrumb-directory-navigation)              |
+| `C_Tabs`          | Controlled or uncontrolled tabs and lazy mounting   | [Shared tab queries](./guides/data-workflows.md#多页签共享查询)                  |
+| `C_TagsView`      | Route tabs and location restoration                 | [Route tab behavior](./guides/component-contracts.md#页签地址身份与访问位置分开) |
+| `C_GlobalSearch`  | Menu search, remote results, and commands           | [Global search](./guides/global-search.md)                                       |
+| `C_CollapsePanel` | Collapsible panels                                  |                                                                                  |
+| `C_SplitPane`     | Nested and keyboard-resizable panes                 | [Split panes](./guides/split-pane.en.md)                                         |
+| `C_Density`       | Density defaults for a subtree                      | [Theming](./guides/theme.md)                                                     |
+| `C_Theme`         | Theme switcher                                      | [Theming](./guides/theme.md)                                                     |
+| `C_Language`      | Language switcher                                   |                                                                                  |
+| `C_Login`         | Sign-in form and custom fields                      | [Login extension](./guides/usage.en.md#c_login-form-extension)                   |
+| `C_Captcha`       | Puzzle and optional server-verified challenge flows | [Server verification](./guides/usage.en.md#c_captcha-server-verification)        |
+| `C_Icon`          | Iconify icons                                       |                                                                                  |
+| `C_AvatarGroup`   | Avatar stacks and overflow labels                   |                                                                                  |
+| `C_Progress`      | Progress bar                                        |                                                                                  |
+| `C_Steps`         | Step indicator                                      |                                                                                  |
+| `C_Skeleton`      | Skeleton placeholder                                |                                                                                  |
+| `C_Loading`       | Theme-aware loading indicator                       |                                                                                  |
+| `C_PageLoading`   | Page navigation feedback                            | [Page loading](./guides/usage.en.md#page-navigation-loading)                     |
 
-`C_FilePreview` accepts HTTPS URLs and same-origin HTTP URLs for local development. Script/data URLs, credential-bearing URLs, and cross-origin plain HTTP are rejected. `autoPreview` opens a supplied file automatically, and changing the source refreshes an open preview. Repeated previews release the previous PDF object URL and ignore stale loading results. Excel values `0` and `false` remain intact.
+## Dependencies and styles
 
-Bind `C_FilePreview` with `v-model:show` to open it from a toolbar or table row. The page controls visibility, and closing releases the current preview resources.
-
-`C_AntV` keeps the public BPMN model as `{ nodes, flows }`. It converts that model to X6 cells internally and restores node positions, types, properties, and flow conditions in `data-change` and `getData()`. BPMN and UML load built-in samples only when `data` is absent; an explicit empty model produces an empty canvas.
-
-`C_VtableGantt` merges presets and `options` without dropping untouched nested settings, replaces arrays as a whole, and ignores prototype-related keys. Its fullscreen button reflects the actual fullscreen state of that Gantt container.
-
-If Gantt initialization or rebuilding fails, a released `ganttInstance` is cleared, an error and retry button appear, and an `error` event emits an `Error`. The component instance exposes `loading`, `error`, and asynchronous `reload()` for status feedback and retries. Wait for `ganttCreated` before operating on a replacement engine instance.
-
-`C_AudioPlayer` enters the playing state and emits `play` only after the browser accepts `play()`. A rejected autoplay emits `error`, and an empty playlist cannot emit a false play event. Mute, playlist tracks, and seeking are keyboard operable.
-
-`C_CollapsePanel` and `C_TagsView` validate persisted data before restoring it, so corrupt or outdated JSON cannot break initialization. Persisted tags restore only in-app paths, and special characters in a path are no longer interpolated into CSS selectors.
-
-`C_Table` column settings restore only valid keys, visibility, widths, and fixed directions; corrupt `persistKey` storage falls back to the supplied columns. Settings operate on local column copies rather than mutating caller-owned objects. `C_Upload` copies its initial file list before managing it, applies the same `accept` filter to picker, drop, and paste input, labels image actions for keyboard users, and shows per-file progress during concurrent hashing. Cancelling a chunked upload during resume lookup, an active request, or merging cannot start later requests or emit stale completion; a custom request's `abort()` releases the pending chunk even if it never calls back.
-
-`C_WorkFlow` loads the supplied `modelValue` on first render and returns isolated snapshots from `getCurrentWorkflowData()`, `save`, `change`, and `node-click`, so callers cannot accidentally mutate its internal nodes. Editing conditions cannot change canvas data before Save, and incomplete conditions are not silently dropped. `readonly` blocks dragging, connecting, configuring, adding/removing, and saving while leaving preview, validation, and fit-to-view available. Node and condition IDs remain unique when created in the same tick.
-
-Workflow validation requires unique, nonempty node and edge IDs, exactly one start node, existing edge endpoints, and directed reachability from the start to every node. `allowCycles` defaults to `true` for general workflows with loops. Use `:allow-cycles="false"` for acyclic approval flows; a detected cycle blocks saving and produces a structural error that can be located on the canvas. This option supports runtime changes. Passing validation confirms graph structure and node configuration; execution, permissions, and business rules remain the responsibility of the business backend.
-
-Type verification covers TypeScript source, Vue SFC templates, and consumer examples built against the package. `C_Table` summary rendering expects an object keyed by column (`{ columnKey: { value, colSpan? } }`). `C_FormSearch` preserves existing numeric timestamp ranges and also supports formatted string ranges, binding each to the matching Naive UI value API.
-
-Runtime component dependencies are declared by this package and resolved automatically. Every consumer needs:
-
-```bash
-bun add vue naive-ui
-```
-
-Install optional peers per feature: `vue-router` for `C_Breadcrumb`/`C_TagsView`, and `sortablejs` for C_Table row/column dragging. Subpath imports do not require unrelated optional peers. The formula editor uses a bounded built-in parser and does not execute dynamic JavaScript.
-
-## Business workspace components
-
-| Component        | Purpose                                                        |
-| ---------------- | -------------------------------------------------------------- |
-| `C_Density`      | Regional density defaults without wrapper DOM                  |
-| `C_SectionNav`   | Section navigation, error badges and keyboard focus            |
-| `C_ErrorSummary` | Navigable validation issues with bounded DOM                   |
-| `C_DataPicker`   | Paged entity selection, cross-page draft and batch labels      |
-| `C_UserPicker`   | Organization-aware person selection, paging and ordered drafts |
-| `C_BatchResult`  | Per-item results, filtering, paging and explicit retry         |
-
-The [data/workflow guide](./guides/data-workflows.md) covers shared dictionaries, numeric codecs, dependent resources, validation scopes and repeatable forms.
+- `vue` and `naive-ui` are required peers. `C_Breadcrumb`, `C_TagsView`, and the full plugin entry use `vue-router`. Install `sortablejs` to enable row or column dragging in `C_Table`.
+- Runtime dependencies are resolved with the package. The published builds include SheetJS for Excel preview and export. Word preview loads `mammoth` on demand. Base styles are available at `/C_Form/base.css` and `/C_Table/base.css`. See [import strategies](./guides/usage.en.md#import-strategies) for style selection.

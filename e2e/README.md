@@ -15,7 +15,7 @@ bun run test:performance
 
 The test commands only preview existing output on dedicated port 4191; they do not rebuild it or reuse another server. Port 4190 is deliberately avoided because Firefox and WebKit restrict it. On macOS Codex with `CODEX_SANDBOX=seatbelt`, the setup refuses browser launch unconditionally. Request `sandbox_permissions=require_escalated` for the concrete command; do not clear the sandbox marker or add a bypass environment variable. Ordinary terminals and CI follow their existing permissions.
 
-The browser suite runs ten cases in Chromium, Firefox and WebKit, without retries:
+The browser suite runs 20 cases per browser in Chromium, Firefox and WebKit, without retries. Coverage includes:
 
 - Command-search sequential Tab/Shift+Tab focus containment and close/reopen opener restoration.
 - Fractional progress endpoints and changed Timeline rich content, real sanitization and semantic tag colors.
@@ -26,6 +26,12 @@ The browser suite runs ten cases in Chromium, Firefox and WebKit, without retrie
 - Same-name organization people distinguished by their configured user code.
 - Quick picker Escape, preserved committed value and changed factory scope.
 - Remote tree failure/retry and replacing a pending query's scope.
+- Quick local chooser selection, staged queries and keyboard navigation across virtual rows.
+- Bulk code matching with leading zeros, unmatched items and explicit confirmation.
+- Contract field review on a narrow screen and nested quality conditions.
+- File mapping and preview before committing a batch.
+- Pointer-driven moves between board columns and keyboard selection on the resource schedule.
+- Lazy Word rendering and the narrow toolbar's overflow action.
 
 The suite checks page errors and console errors/warnings. Focus assertions cover command-search containment, observed trigger return and native Tab between quality fields; they do not claim a complete keyboard or assistive-technology audit for every component. Sources are deterministic local async adapters, not verified business backends.
 

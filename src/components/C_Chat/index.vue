@@ -122,7 +122,20 @@
               @image-preview="emit('image-preview', $event)"
               @file-click="emit('file-click', $event)"
               @resend="emit('resend', $event)"
-            />
+              @source-click="
+                (source, message) => emit('source-click', source, message)
+              "
+            >
+              <template
+                v-if="$slots.message"
+                #message="context"
+              >
+                <slot
+                  name="message"
+                  v-bind="context"
+                />
+              </template>
+            </ChatMessageItem>
           </div>
         </template>
       </VVirtualList>
@@ -157,7 +170,20 @@
             @image-preview="emit('image-preview', $event)"
             @file-click="emit('file-click', $event)"
             @resend="emit('resend', $event)"
-          />
+            @source-click="
+              (source, message) => emit('source-click', source, message)
+            "
+          >
+            <template
+              v-if="$slots.message"
+              #message="context"
+            >
+              <slot
+                name="message"
+                v-bind="context"
+              />
+            </template>
+          </ChatMessageItem>
         </div>
       </div>
 
@@ -254,6 +280,7 @@
     type ChatProps,
     type ChatMessage,
     type ChatContact,
+    type ChatSource,
   } from './types'
 
   // ===== Props & Emits =====
@@ -271,6 +298,11 @@
     selfName: '',
     virtualScroll: true,
   })
+  defineSlots<{
+    header?: () => unknown
+    'input-actions'?: () => unknown
+    message?: (context: { message: ChatMessage }) => unknown
+  }>()
 
   const emit = defineEmits<{
     (e: 'send', content: string): void
@@ -281,6 +313,7 @@
     (e: 'file-upload'): void
     (e: 'emoji-click'): void
     (e: 'resend', msg: ChatMessage): void
+    (e: 'source-click', source: ChatSource, msg: ChatMessage): void
   }>()
 
   // ===== 合并 Props =====

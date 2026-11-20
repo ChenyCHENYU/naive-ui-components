@@ -8,7 +8,7 @@
 
 ```
 bun run build
-  ├── 1. tsdown          → 多入口打包（63 组件 ESM/CJS/DTS）
+  ├── 1. tsdown          → 多入口打包（76 组件 ESM/CJS/DTS）
   ├── 2. sass CLI        → 编译共享变量入口 → global-scss.css
   ├── 3. merge-css.js    → 合并 Vue 编译后的 SFC CSS + 全局变量 → style.css
   ├── 4. gen-exports.js  → 自动生成 package.json exports 映射
@@ -18,7 +18,7 @@ bun run build
 
 ### 技术要点
 
-- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），63 个组件入口，加主入口与 Resolver
+- **构建引擎**：[tsdown](https://github.com/rolldown/tsdown)（基于 Rolldown），76 个组件入口，加主入口与 Resolver
 - **SCSS 处理**：自定义 `scssTransformPlugin` 在 Rolldown 管线内编译 SFC SCSS，独立 Sass CLI 仅编译共享变量入口
 - **CSS 合并**：构建后将 Vue 已完成 scoped 转换的 per-chunk CSS 与共享变量合并为单一 `style.css`，避免重复样式和原始 `:deep()` 选择器泄漏
 - **类型导出**：统一 `export *` barrel 模式，自动生成完整 `.d.ts`
@@ -35,7 +35,7 @@ bun run build
 ```
 dist/
 ├── index.js / index.cjs / index.d.ts     # 主入口
-├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（63 组件）
+├── C_Form.js / C_Form.cjs / C_Form.d.ts  # 子路径入口（76 组件）
 ├── C_Form.base.css / C_Form.css         # 基础/完整样式层级
 ├── C_Table.base.css / C_Table.css       # 基础/完整样式层级
 ├── style.css                             # 合并后的全量样式
@@ -136,10 +136,12 @@ naive-ui-components/
 bun run changeset       # 记录变更及版本级别
 bun run version         # 更新版本号与 CHANGELOG
 bun run verify          # 发布前完整验证
+bun run test:browser    # 在正式构建产物上运行三浏览器回归
+npm pack --dry-run      # 核对 npm 包的实际文件清单
 bun run release         # 发布 Changesets 中待发布版本
 ```
 
-变更日志使用 Changesets 官方本地生成器，根据 Changeset 与 Git 提交生成，无需额外 `GITHUB_TOKEN`。npm 发布仍需要有效的发布账号认证，凭据不得写入仓库。Windows 下如果 `bun run release` 在 npm 的 `prepublishOnly` 重复验证阶段停滞，可先单独确认 `bun run verify` 成功，再在 PowerShell 中用 `$env:npm_config_ignore_scripts='true'; bun run release` 发布；该设置仅跳过已手动完成的重复生命周期验证，不应省略前一步。
+生成版本后，将中英文 README 的仓库版本同步到 `package.json`。`verify` 会校验版本一致性，并通过 ESM、CJS 和 TypeScript 消费项目检查实际打包文件。Changesets 使用本地生成器生成变更日志。发布前通过 `npm whoami` 确认当前身份，发布后核对 npm 的版本和 `latest` 标签。
 
 ## 文档资源
 

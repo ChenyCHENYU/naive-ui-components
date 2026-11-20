@@ -43,6 +43,7 @@
         :density-value="resolvedDensity"
         :inline="inline || (popover && !fullModal)"
         :popup="popover && !fullModal"
+        :hide-search="popover && !fullModal && !$slots.trigger"
         :panel-id="panelId"
         @confirm="commit"
         @dismiss="dismiss"
@@ -90,7 +91,7 @@
     watch,
     type Component,
   } from 'vue'
-  import { NButton, NCard, NInput, NModal, NPopover } from 'naive-ui'
+  import { NButton, NCard, NInput, NModal, NPopover, NTag } from 'naive-ui'
   import type { TableInstance } from '../C_Table/types'
   import { resolveComponentDensity } from '../../core/density'
   import { useFormGlobalConfig } from '../C_Form/composables/useFormConfig'
@@ -131,7 +132,10 @@
     }): unknown
   }>()
   const tableRef = shallowRef<TableInstance<T> | null>(null)
-  const panelRef = shallowRef<{ focus: () => void } | null>(null)
+  const panelRef = shallowRef<{
+    focus: () => void
+    navigate: (direction: 1 | -1) => void
+  } | null>(null)
   const triggerRoot = shallowRef<HTMLElement | null>(null)
   const panelId = useId()
   const inline = computed(() => props.presentation === 'inline')
@@ -234,10 +238,11 @@
       event.preventDefault()
       event.stopPropagation()
       dismiss()
-    } else if (event.key === 'ArrowDown') {
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       open()
-      void nextTick(() => panelRef.value?.focus())
+      const direction = event.key === 'ArrowDown' ? 1 : -1
+      void nextTick(() => panelRef.value?.navigate(direction))
     } else if (event.key === 'Enter') {
       event.preventDefault()
       event.stopPropagation()
@@ -247,9 +252,29 @@
       query()
     }
   }
+  const tagLimit = computed(() => {
+    const limit = props.maxTagCount
+    return props.multiple &&
+      limit !== undefined &&
+      Number.isFinite(limit) &&
+      limit >= 0
+      ? Math.trunc(limit)
+      : undefined
+  })
+  const showValueTags = computed(
+    () =>
+      !opened.value &&
+      tagLimit.value !== undefined &&
+      state.committedItems.value.length > 0
+  )
   const renderQuickInput = () =>
     h(NInput, {
-      value: opened.value ? searchDraft.value : display.value,
+      key: 'input',
+      value: opened.value
+        ? searchDraft.value
+        : showValueTags.value
+          ? ''
+          : display.value,
       placeholder: props.placeholder ?? t('picker.quickSearch'),
       size: density.value.size,
       disabled: props.disabled,
@@ -257,6 +282,7 @@
       inputProps: {
         'aria-label': props.title ?? t('picker.title'),
         'aria-expanded': opened.value,
+        'aria-haspopup': 'dialog',
         'aria-controls': opened.value ? panelId : undefined,
       },
       'onUpdate:value': quickSearch,
@@ -268,6 +294,7 @@
     h(
       NButton,
       {
+        key: 'open',
         class: 'c-data-picker__open',
         size: density.value.size,
         disabled: props.disabled,
@@ -293,6 +320,40 @@
       ]
     )
 
+  const renderValueTags = () => {
+    const items = state.committedItems.value
+    const limit = tagLimit.value ?? 0
+    return h('div', { key: 'tags', class: 'c-data-picker__value-tags' }, [
+      ...items.slice(0, limit).map(item =>
+        h(
+          NTag,
+          {
+            key: `${typeof item.value}:${item.value}`,
+            class: 'c-data-picker__value-tag',
+            size: 'small',
+            closable: !blocked.value,
+            title: item.label,
+            onClose: (event: MouseEvent) => {
+              event.preventDefault()
+              event.stopPropagation()
+              state.removeCommitted(item.value)
+            },
+          },
+          () => item.label
+        )
+      ),
+      ...(items.length > limit
+        ? [
+            h(
+              'span',
+              { class: 'c-data-picker__tag-count', title: display.value },
+              `+${items.length - limit}`
+            ),
+          ]
+        : []),
+    ])
+  }
+
   const renderTrigger = () => {
     if (slots.trigger)
       return slots.trigger({
@@ -303,11 +364,13 @@
       })
     const input = popover.value ? renderQuickInput() : renderOpenButton()
     const nodes = [input]
+    if (popover.value && showValueTags.value) nodes.unshift(renderValueTags())
     if (popover.value)
       nodes.push(
         h(
           NButton,
           {
+            key: 'more',
             class: 'c-data-picker__more',
             size: density.value.size,
             disabled: blocked.value,
@@ -325,6 +388,7 @@
         h(
           NButton,
           {
+            key: 'clear',
             class: 'c-data-picker__clear',
             size: density.value.size,
             disabled: blocked.value,
@@ -347,24 +411,43 @@
     event.stopPropagation()
     dismiss()
   }
+  const popupWidth = computed(() => {
+    const width = props.popup?.width
+    return width === 'trigger' ||
+      (typeof width === 'number' && Number.isFinite(width) && width > 0)
+      ? width
+      : 640
+  })
+  const clickOutside = (event: MouseEvent) => {
+    if (
+      event.target instanceof Node &&
+      triggerRoot.value?.contains(event.target)
+    )
+      return
+    dismiss()
+  }
+  const inlineTitle = computed(() =>
+    props.showActions === false && props.showTrigger === false
+      ? undefined
+      : (props.title ?? t('picker.title'))
+  )
   const surfaceProps = computed(() => {
     const title = props.title ?? t('picker.title')
     if (popover.value && !fullModal.value)
       return {
         show: opened.value,
         trigger: 'manual',
-        placement: 'bottom-start',
+        placement: props.popup?.placement ?? 'bottom-start',
         showArrow: false,
-        width: 640,
-        style: { ...componentTheme.value, maxWidth: 'calc(100vw - 24px)' },
-        onClickoutside: (event: MouseEvent) => {
-          if (
-            event.target instanceof Node &&
-            triggerRoot.value?.contains(event.target)
-          )
-            return
-          dismiss()
+        width: popupWidth.value,
+        to: props.popup?.to,
+        style: {
+          ...componentTheme.value,
+          maxWidth: 'calc(100vw - 24px)',
+          maxHeight: 'calc(100vh - 24px)',
+          overflow: 'auto',
         },
+        onClickoutside: clickOutside,
         onKeydown: panelKeydown,
       }
     if (inline.value)
@@ -373,10 +456,7 @@
         class: 'c-data-picker__inline',
         role: 'region',
         'aria-label': title,
-        title:
-          props.showActions === false && props.showTrigger === false
-            ? undefined
-            : title,
+        title: inlineTitle.value,
         size: 'small',
         style: componentTheme.value,
         onKeydown: panelKeydown,

@@ -1,0 +1,86 @@
+.c-task-panel {
+  --task-panel-border: var(--c-border, var(--c-theme-border));
+  --task-panel-muted: var(--c-text-2, var(--c-theme-text-2));
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 14px;
+  color: var(--c-text-1, var(--c-theme-text-1));
+  background: var(--c-bg-card, var(--c-theme-bg-card));
+  border: 1px solid var(--task-panel-border);
+  border-radius: var(--c-radius-panel, var(--c-theme-radius-panel));
+
+  &__head,
+  &__row,
+  &__actions,
+  &__pagination {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  &__head,
+  &__row {
+    justify-content: space-between;
+  }
+
+  &__list {
+    display: grid;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  &__task {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+    padding: 9px 11px;
+    border: 1px solid var(--task-panel-border);
+    border-radius: var(--c-radius, var(--c-theme-radius));
+  }
+
+  &__title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  &__muted,
+  &__message {
+    margin: 0;
+    color: var(--task-panel-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  &__progress {
+    flex: 1 1 100px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--c-bg-muted, var(--c-theme-bg-muted));
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--c-primary, var(--c-theme-primary));
+    }
+  }
+
+  &__progress--unknown {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--task-panel-border) 0 4px,
+      transparent 4px 8px
+    );
+  }
+
+  &__pagination {
+    justify-self: end;
+  }
+}

@@ -50,6 +50,10 @@
     box-shadow: none;
   }
 
+  &.has-overflow {
+    gap: 8px;
+  }
+
   &.is-wrap {
     flex-wrap: wrap;
     gap: 8px;

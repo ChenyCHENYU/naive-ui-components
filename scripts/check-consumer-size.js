@@ -53,8 +53,10 @@ const cases = [
     css: 'C_Table.base.css',
     props:
       "{ data: [{ id: 1, name: 'A' }], columns: [{ key: 'name', title: 'Name' }] }",
-    budget: 250 * 1024,
+    // The responsive toolbar configuration and entry boundary add under 2 KiB.
+    budget: 252 * 1024,
     lazyFields: true,
+    forbiddenComponents: /\/ExportMenu\d*\.js$/,
   },
   {
     name: 'C_Select',
@@ -85,7 +87,8 @@ const cases = [
     component: 'C_ActionBar',
     css: 'C_ActionBar.css',
     props: "{ actions: [{ key: 'save', label: 'Save', onClick: () => {} }] }",
-    budget: 95 * 1024,
+    budget: 97 * 1024,
+    forbiddenComponents: /\/ActionOverflow\d*\.js$/,
   },
   {
     name: 'C_DataPicker',
@@ -118,6 +121,27 @@ const cases = [
     forbiddenComponents: /\/(?:C_WorkFlow|C_AntV)\d*\.js$/,
   },
   {
+    name: 'C_ImportWizard',
+    component: 'C_ImportWizard',
+    css: 'C_ImportWizard.css',
+    props:
+      "{ fields: [], adapter: { read: async () => [], preview: async () => ({ plan: '', rowCount: 0 }), commit: async () => [] } }",
+    budget: 150 * 1024,
+    cssBudget: 12 * 1024,
+    firstOpen: { module: /\/C_BatchResult\d+\.js$/, budget: 115 * 1024 },
+    forbiddenComponents: /\/(?:C_BatchResult|C_Table)\d*\.js$/,
+  },
+  {
+    name: 'C_Attachments',
+    component: 'C_Attachments',
+    css: 'C_Attachments.css',
+    props: '{ items: [] }',
+    budget: 120 * 1024,
+    cssBudget: 9 * 1024,
+    firstOpen: { module: /\/C_FilePreview\d+\.js$/, budget: 58 * 1024 },
+    forbiddenComponents: /\/C_FilePreview\d*\.js$/,
+  },
+  {
     name: 'C_AntV',
     component: 'C_AntV',
     css: 'C_AntV.css',
@@ -136,6 +160,28 @@ const cases = [
     cssBudget: 20 * 1024,
     forbiddenComponents:
       /\/(?:C_UserPicker|C_DataPicker|C_Table|C_AntV)\d*\.js$/,
+  },
+  {
+    name: 'C_ApprovalViewer',
+    component: 'C_ApprovalViewer',
+    css: 'C_ApprovalViewer.css',
+    props:
+      "{ businessKey: 'order-1', source: { listInstances: async () => [], getInstance: async () => { throw new Error('Not found') } } }",
+    budget: 92 * 1024,
+    cssBudget: 2 * 1024,
+    forbiddenComponents:
+      /(?:\/(?:C_WorkFlow|C_UserPicker|C_DataPicker|C_Table|C_AntV)\d*\.js$|\/node_modules\/@vue-flow\/core\/)/,
+  },
+  {
+    name: 'C_TaskPanel',
+    component: 'C_TaskPanel',
+    css: 'C_TaskPanel.css',
+    props: "{ tasks: [{ key: 'export-1', title: 'Export', status: 'running' }] }",
+    budget: 78 * 1024,
+    cssBudget: 11 * 1024,
+    // The detail view owns the deferred table, selector and pagination dependencies.
+    firstOpen: { module: /\/C_BatchResult\d+\.js$/, budget: 185 * 1024 },
+    forbiddenComponents: /\/(?:C_BatchResult|C_Table)\d*\.js$/,
   },
 ]
 

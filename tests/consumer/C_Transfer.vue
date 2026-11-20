@@ -2,6 +2,7 @@
   import { ref } from 'vue'
   import {
     C_Transfer,
+    type TransferColumn,
     type TransferItem,
     type TransferProps,
   } from '@robot-admin/naive-ui-components/C_Transfer'
@@ -11,6 +12,24 @@
     { key: 'disabled', label: 'Disabled', disabled: true },
   ]
   const virtualScroll: TransferProps['virtualScroll'] = false
+  const devices = [
+    {
+      key: 1,
+      label: 'Incoming scale',
+      code: 'A-100',
+      area: ['East', 'Warehouse'],
+    },
+  ]
+  const deviceKeys = ref<number[]>([])
+  const columns = [
+    {
+      key: 'code',
+      title: 'Code',
+      width: 120,
+      format: device => device.code.toUpperCase(),
+    },
+    { key: 'label', title: 'Name' },
+  ] satisfies TransferColumn<(typeof devices)[number]>[]
   const onChange = (
     keys: Array<string | number>,
     direction: 'left' | 'right',
@@ -28,6 +47,13 @@
     :data="items"
     filterable
     @change="onChange"
+  />
+  <C_Transfer
+    v-model="deviceKeys"
+    :data="devices"
+    :columns="columns"
+    :group-by="device => device.area"
+    filterable
   />
   <C_Transfer
     v-model="selected"

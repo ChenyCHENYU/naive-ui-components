@@ -50,17 +50,22 @@
       </div>
 
       <TransferList
-        v-if="filteredSourceList.length"
+        v-if="filteredSourceList.length || props.groupBy"
+        v-show="filteredSourceList.length"
         :items="filteredSourceList"
         :checked="sourceChecked"
         :query="sourceQuery"
+        :title="mergedProps.titles?.[0]"
         :locked="locked"
+        :disabled="props.disabled"
         :size="mergedProps.size"
         :virtual-scroll="mergedProps.virtualScroll"
+        :columns="props.columns"
+        :group-by="props.groupBy"
         @check="toggleSourceCheck"
       />
       <div
-        v-else
+        v-if="!filteredSourceList.length"
         class="c-transfer__empty"
       >
         {{ mergedProps.sourceEmptyText }}
@@ -138,9 +143,11 @@
         :items="filteredTargetList"
         :checked="targetChecked"
         :query="targetQuery"
+        :title="mergedProps.titles?.[1]"
         :locked="locked"
         :size="mergedProps.size"
         :virtual-scroll="mergedProps.virtualScroll"
+        :columns="props.columns"
         @check="toggleTargetCheck"
       />
       <div
@@ -161,6 +168,7 @@
   import C_Icon from '../C_Icon/index.vue'
   import TransferList from './components/TransferList.vue'
   import { movableKeys, allMovableChecked } from './transferSelection'
+  import { transferCellText } from './transferPresentation'
   import {
     DEFAULT_TRANSFER_PROPS,
     type TransferItem,
@@ -220,7 +228,14 @@
 
   /** 默认过滤方法 */
   function defaultFilter(query: string, item: T): boolean {
-    return item.label.toLowerCase().includes(query.toLowerCase())
+    const keyword = query.toLowerCase()
+    const matches = (text: string) => text.toLowerCase().includes(keyword)
+    return (
+      matches(item.label) ||
+      props.columns?.some(column => matches(transferCellText(item, column))) ||
+      props.groupBy?.(item).some(matches) ||
+      false
+    )
   }
 
   const filterFn = computed(() => props.filterMethod ?? defaultFilter)
@@ -266,7 +281,8 @@
   /** 切换源列表项选中状态 */
   function toggleSourceCheck(key: string | number) {
     const item = dataMap.value.get(key)
-    if (locked.value || !item || item.disabled) return
+    if (locked.value || !item || item.disabled || targetKeySet.value.has(key))
+      return
     if (sourceChecked.has(item.key)) sourceChecked.delete(item.key)
     else sourceChecked.add(item.key)
   }
@@ -274,7 +290,8 @@
   /** 切换目标列表项选中状态 */
   function toggleTargetCheck(key: string | number) {
     const item = dataMap.value.get(key)
-    if (locked.value || !item || item.disabled) return
+    if (locked.value || !item || item.disabled || !targetKeySet.value.has(key))
+      return
     if (targetChecked.has(item.key)) targetChecked.delete(item.key)
     else targetChecked.add(item.key)
   }

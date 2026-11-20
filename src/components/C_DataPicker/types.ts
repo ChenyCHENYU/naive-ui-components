@@ -3,6 +3,7 @@ import type { ComponentDensity } from '../../core/density'
 import type { ComponentLocale } from '../../core/contracts'
 import type { VNodeChild } from 'vue'
 import type { OptionRequest, OptionPage } from '../../core/optionSource'
+import type { PopoverProps } from 'naive-ui'
 
 export type DataPickerValue = string | number
 
@@ -25,6 +26,12 @@ export interface DataPickerSourceInput<
     signal: AbortSignal,
     context?: { scope?: string | number }
   ): Promise<readonly T[]>
+  /** Encoded text lookup when pasted codes differ from the submitted business values. */
+  resolveCodes?(
+    codes: readonly string[],
+    signal: AbortSignal,
+    context?: { scope?: string | number }
+  ): Promise<ReadonlyMap<string, T>>
   /** Quick search delay and minimum length, used by popover presentation. */
   debounce?: number
   minChars?: number
@@ -83,6 +90,11 @@ export interface DataPickerHistoryOptions {
   favorites?: boolean
 }
 
+export interface DataPickerBatchPasteOptions {
+  /** Maximum unique codes per lookup, defaults to 100 and supports up to 500. */
+  maxItems?: number
+}
+
 /** 显式映射的来源继续保证 value(row) 可直接调用。 */
 export interface DataPickerSource<
   T extends object,
@@ -118,12 +130,25 @@ export interface DataPickerProps<
   requireSelection?: boolean
   /** Inline selection keeps the current page or dialog as the sole overlay. */
   presentation?: 'modal' | 'inline' | 'popover'
+  /** 仅快捷浮层单选时，选中后复用确认校验并提交；默认保留草稿确认流程。 */
+  commitOnSelect?: boolean
+  /** 快捷浮层几何；maxHeight 是候选表格高度上限，完整弹窗保持原布局。 */
+  popup?: {
+    width?: PopoverProps['width']
+    maxHeight?: number
+    placement?: PopoverProps['placement']
+    to?: PopoverProps['to']
+  }
+  /** 显式开启快捷多选的关闭态标签；省略时保留名称文本，0 仅显示数量。 */
+  maxTagCount?: number
   /** Each session starts with these filters. A changed baseline invalidates the old session. */
   initialValues?: TFilters
   /** Applied last to every request. A change invalidates pending work and drafts. */
   fixedFilters?: TFilters
   rowCheckable?: (row: T) => boolean
   maxSelection?: number
+  /** Explicitly enable pasting codes into the multi-select draft through the source. */
+  batchPaste?: boolean | DataPickerBatchPasteOptions
   navigation?: DataPickerNavigation<TFilters>
   /** Requires source.resolve. Only values and labels are persisted. */
   history?: DataPickerHistoryOptions

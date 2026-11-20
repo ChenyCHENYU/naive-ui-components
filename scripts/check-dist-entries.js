@@ -149,6 +149,16 @@ const componentStyleContracts = {
     '.c-table-wrapper[',
     '.c-form-actions[',
   ],
+  'C_ImportWizard.css': [
+    '.c-import-wizard[',
+    '.c-batch-result[',
+    '.c-table-wrapper[',
+  ],
+  'C_Attachments.css': ['.c-attachments[', '.c-file-preview-inline['],
+  'C_ApprovalViewer.css': ['.c-approval-viewer[', '.c-approval-viewer__meta['],
+  'C_NotificationInbox.css': ['.c-notification-inbox[', '.notification-item['],
+  'C_TaskBoard.css': ['.c-task-board[', '.c-draggable-list['],
+  'C_TaskPanel.css': ['.c-task-panel[', '.c-batch-result[', '.c-table-wrapper['],
   'C_FormModal.css': [
     // 弹窗壳使用原生 Card 分区样式；仍需完整发布操作栏和表单样式。
     '.c-action-bar[',

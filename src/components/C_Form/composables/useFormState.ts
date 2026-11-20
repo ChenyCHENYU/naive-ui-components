@@ -14,7 +14,6 @@ import type {
   ComponentType,
   FormModel,
   FormOption,
-  OptionItem,
   SubmitEventPayload,
 } from '../types'
 import {
@@ -130,7 +129,9 @@ export function useFormState(
     }
     return { derived, rules, dependent }
   })
-  const asyncOptionsCache = ref<Record<string, OptionItem[]>>({})
+  const asyncOptionsCache = ref<
+    Record<string, NonNullable<FormOption['children']>>
+  >({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncErrorMap = ref<Record<string, unknown>>({})
   const isSubmitting = ref(false)

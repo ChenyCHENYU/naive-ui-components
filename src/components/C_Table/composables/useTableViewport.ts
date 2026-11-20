@@ -102,6 +102,11 @@ export function useTableViewport(options: TableViewportOptions) {
     return source.slice(start, start + pageSize.value)
   })
 
+  const getMatchingRows = () =>
+    (usesNative.value
+      ? options.table.value?.getFilteredAndSortedData?.()
+      : undefined) ?? pipeline.processedData.value
+
   function handleFilterChange(filters: DataTableFilterState) {
     pipeline.setFilters(filters)
     if (!usesNative.value && !remote.value) managed.resetToFirstPage()
@@ -143,6 +148,7 @@ export function useTableViewport(options: TableViewportOptions) {
     currentPage,
     rowNumberOffset,
     displayedRows,
+    getMatchingRows,
     tableData,
     // 管理模式已经向 Naive UI 提供当前页，避免内部再次筛选或分页。
     tableRemote: computed(() => !usesNative.value || remote.value),
