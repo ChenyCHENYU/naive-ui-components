@@ -350,6 +350,7 @@
     visibleOptions,
     config: resolved,
     handleFieldChange,
+    setFields,
     componentMap: FORM_COMPONENTS,
     instanceSlots: currentInstance?.slots,
     asyncOptionsCache,

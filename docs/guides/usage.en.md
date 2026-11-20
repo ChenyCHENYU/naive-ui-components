@@ -4,7 +4,7 @@
 
 Import strategies, component configuration and integration examples.
 
-Focused guides: [form density](./form-density.en.md), [table density and edit modes](./table-density.md), [split panes](./split-pane.en.md), [tree capabilities](./tree.md), and [production project coverage review](../wl-ui-produce-coverage.md). Some focused guides are currently available in Chinese.
+The [component catalog](../components.en.md) lists all public entries. The [scenario guide](./scene-components.md) covers imports, approvals, background tasks, and inboxes. See [data workflows](./data-workflows.md) for coordinating forms, search, and tables. Some focused guides are in Chinese.
 
 ## On this page
 
@@ -281,6 +281,10 @@ For create/edit flows, `C_FormModal` consumes a structural headless `editor` dir
 
 Any controller exposing `visible/mode/model/title/loading/setModel/close/submit` can drive the modal. The default uses a responsive 620px width, compact density, `small` form controls, and a right-aligned icon-based `C_ActionBar` with `tiny` footer buttons. You can configure the close button, mask click, and Escape for idle sessions. Validation and saving temporarily block all modal close controls. `@submit(payload, saved)` reports the current session's save result, including when the editor closes the modal after a successful save. `submitSuccessText` appears only when `saved` is `true`.
 
+Pass `:before-close="({ signal }) => confirmDiscard(signal)"` to protect unsaved edits. The close button, mask click, Escape, and Cancel share one confirmation for a dirty draft. A `true` result permits closing. A `false` result or a rejected confirmation preserves the draft. The signal cancels a pending decision when the draft or modal session changes, so the host can dismiss its confirmation dialog.
+
+To switch records while the modal stays open, pass `:session-key="recordId"` and call the component instance's `requestDiscard(() => activate(nextId))`. Have `activate` update the record key and draft synchronously so the modal can establish the new baseline. The headless editor retains control over direct visibility updates and closing after a successful save.
+
 For remote tables, `useTableQuery` owns cancellation, latest-request-wins behavior, pagination, and loading. Destructure its `bindings` and use `<C_Table v-bind="bindings" />`:
 
 ```ts
@@ -450,35 +454,37 @@ Local data is filtered and sorted before pagination. Remote mode displays the se
 
 `selection.maxSelection` applies to both regular and cross-page selection. If `crossPageSelection.maxSelection` is also set, cross-page selection uses the lower limit. Choosing a new row in a single-selection column replaces the previous row across pages.
 
-Choose export scope explicitly:
-
-| `config.export` option      | Data source                                                                                |
-| --------------------------- | ------------------------------------------------------------------------------------------ |
-| `scope: 'source'` (default) | All currently supplied source rows; remote mode usually has only the loaded page           |
-| `scope: 'page'`             | The displayed page, including local filtering, sorting, and pagination                     |
-| `scope: 'selected'`         | Available selected row objects, including selections retained from visited pages           |
-| `requestData`               | An explicit request made when export is clicked; overrides `scope` for server-wide exports |
+Use `config.export.scope: 'page'` for a fixed current-page export. Set `config.export.scopes` to let users choose from `page`, `selected`, and `matching`. `selected` requires enabled selection and loaded records. In remote mode, `matching` requires `requestData` for rows or `onExportMatching` for a file or background job. An explicit `page` or `selected` command uses local records. A parameterless `exportData()` retains its existing `requestData` and `scope` precedence.
 
 ```ts
 const config = defineTableConfig({
+  selection: true,
   export: {
-    scope: 'page',
-    filename: 'users',
-    format: 'csv',
+    scopes: ['page', 'selected', 'matching'],
+    format: 'xlsx',
+    onExportMatching({ columns, format, filename }) {
+      return submitExport({
+        query: appliedQuery.value,
+        columns,
+        format,
+        filename,
+      })
+    },
   },
 })
-
-// Supply full data explicitly; export never walks server pages automatically.
-const fullExport = defineTableConfig({
-  export: { requestData: () => fetchAllUsers(), filename: 'all-users' },
-})
 ```
+
+Read the applied query when the callback starts. `useTabbedQuery().appliedQuery` or the `C_FormSearch` `applied` event can supply this snapshot. The application starts the server job and passes its status to [`C_TaskPanel`](./task-panel.md). See [export configuration and lifecycle](./table-density.md#异步导出的快照与卸载).
 
 Failed asynchronous expansion retains its error state and provides retry in the default content. Call the public `retryExpand(key)` method to reload, or `invalidateExpand(key?)` to clear one row's cached data and error, or all caches when omitted. Invalidation does not request data. Concurrent loads of one row share a request; replacing its source row invalidates the old cache and prevents late old responses from writing it back.
 
 Dynamic add/copy operations must generate keys consistent with the table. Prefer a string `row-key="uuid"`. If the table requires `:row-key="row => row.uuid"`, also set `config.dynamicRows.rowKey: 'uuid'` so add/copy operations know which field to generate. Arbitrary composite keys are not inferred. Missing or duplicate keys reject insertion; the related instance methods do not mutate data when dynamic rows are disabled.
 
 ### Connect search to a remote table
+
+Use [`useTabbedQuery`](./data-workflows.md#多页签共享查询) to share filters across tabs while keeping separate page settings. The `/workflows` helper accepts `activeTab`, `initialQuery`, and `request`, and returns `setQuery` for `C_FormSearch.config.onSearch` and `setPage` for the active `C_Table` pagination event.
+
+Use [`createDataPickerField({ mapFields })`](./data-picker.md#表单内嵌选择) to commit selected values and related fields in one form update. The source infers each row's type. The application supplies the mapping and decides which fields to clear.
 
 Select fields use the existing `list` and `attrs` entries. Set `attrs: { multiple: true }` with an array model for multiple selection. Option values support strings, numbers, and booleans; `false`, `0`, and empty values remain distinct. Search callbacks receive original business values without internal encoding. Standard `TableInstance<Row>` selection methods follow the active selection mode; nested `crossPageSelection.selectedCount` remains a ref and needs `.value`.
 

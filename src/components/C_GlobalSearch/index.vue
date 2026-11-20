@@ -45,13 +45,26 @@
                 ref="searchInputRef"
                 v-model="searchValue"
                 type="text"
-                :placeholder="placeholder ?? t('globalSearch.placeholder')"
+                :placeholder="
+                  placeholder ??
+                  t(
+                    commandEnabled
+                      ? 'globalSearch.commandPlaceholder'
+                      : 'globalSearch.placeholder'
+                  )
+                "
                 class="robot-search-input"
                 role="combobox"
-                :aria-label="t('globalSearch.input')"
+                :aria-label="
+                  t(
+                    commandEnabled
+                      ? 'globalSearch.commandInput'
+                      : 'globalSearch.input'
+                  )
+                "
                 aria-autocomplete="list"
                 :aria-expanded="showDialog"
-                :aria-controls="optionListId"
+                :aria-controls="activeOptionId ? optionListId : undefined"
                 :aria-activedescendant="activeOptionId"
                 @keydown="handleInputKeydown"
                 @compositionstart="handleCompositionStart"
@@ -68,10 +81,11 @@
 
             <!-- 搜索内容 -->
             <div
+              ref="searchContentRef"
               class="robot-search-content"
               :class="{
                 'robot-search-content--virtual':
-                  searchValue.trim() && hasResults,
+                  !commandEnabled && searchValue.trim() && hasResults,
               }"
             >
               <!-- 空状态 -->
@@ -80,7 +94,14 @@
                 class="robot-empty-state"
               >
                 <div class="i-mdi:magnify robot-empty-icon" />
-                <p>{{ emptyText ?? t('globalSearch.empty') }}</p>
+                <p>{{
+                  emptyText ??
+                  t(
+                    commandEnabled
+                      ? 'globalSearch.commandEmpty'
+                      : 'globalSearch.empty'
+                  )
+                }}</p>
               </div>
 
               <!-- 搜索历史 -->
@@ -162,9 +183,29 @@
               <!-- 搜索结果 -->
               <template v-else-if="searchValue.trim()">
                 <div class="robot-search-results">
+                  <p
+                    v-if="commandLoading"
+                    class="robot-command-status"
+                    role="status"
+                  >
+                    {{ t('globalSearch.commandLoading') }}
+                  </p>
+                  <div
+                    v-if="commandFailed"
+                    class="robot-command-status"
+                    role="status"
+                  >
+                    {{ t('globalSearch.commandFailed') }}
+                    <button
+                      type="button"
+                      @click="retryCommands"
+                    >
+                      {{ t('globalSearch.commandRetry') }}
+                    </button>
+                  </div>
                   <!-- 无结果状态 -->
                   <div
-                    v-if="!hasResults"
+                    v-if="!hasResults && !commandLoading && !commandFailed"
                     class="robot-empty-state"
                   >
                     <div class="i-mdi:magnify robot-empty-icon" />
@@ -173,41 +214,126 @@
                     }}</p>
                   </div>
 
-                  <!-- 搜索结果列表 -->
                   <div
-                    v-else
-                    class="robot-result-group"
+                    v-if="hasResults"
+                    :id="commandEnabled ? optionListId : undefined"
+                    :role="commandEnabled ? 'listbox' : undefined"
+                    :aria-label="
+                      commandEnabled
+                        ? t('globalSearch.commandResults')
+                        : undefined
+                    "
                   >
-                    <div class="robot-group-title">
-                      <div class="i-mdi:menu robot-group-icon" />
-                      {{ resultGroupTitle ?? t('globalSearch.group') }}
-                      <span class="robot-group-count">{{
-                        filteredMenuItems.length
-                      }}</span>
-                    </div>
-                    <VVirtualList
-                      :id="optionListId"
-                      ref="resultListRef"
-                      class="robot-group-items robot-virtual-items"
-                      role="listbox"
-                      :aria-label="resultGroupTitle ?? t('globalSearch.group')"
-                      :items="filteredMenuItems"
-                      :item-size="64"
-                      :style="{
-                        height: `${Math.min(filteredMenuItems.length * 64, 336)}px`,
-                      }"
+                    <div
+                      v-if="filteredMenuItems.length"
+                      class="robot-result-group"
                     >
-                      <template #default="{ item, index }">
+                      <div class="robot-group-title">
+                        <div class="i-mdi:menu robot-group-icon" />
+                        {{ resultGroupTitle ?? t('globalSearch.group') }}
+                        <span class="robot-group-count">{{
+                          filteredMenuItems.length
+                        }}</span>
+                      </div>
+                      <VVirtualList
+                        :id="commandEnabled ? undefined : optionListId"
+                        ref="resultListRef"
+                        class="robot-group-items robot-virtual-items"
+                        :role="commandEnabled ? 'group' : 'listbox'"
+                        :aria-label="
+                          resultGroupTitle ?? t('globalSearch.group')
+                        "
+                        :items="filteredMenuItems"
+                        :item-size="64"
+                        :style="{
+                          height: `${Math.min(filteredMenuItems.length * 64, 336)}px`,
+                        }"
+                      >
+                        <template #default="{ item, index }">
+                          <div
+                            :id="optionId(index)"
+                            :class="getItemClasses(index, false)"
+                            role="option"
+                            :aria-selected="selectedIndex === index"
+                            :aria-posinset="index + 1"
+                            :aria-setsize="resultCount"
+                            :title="`${item.label} · ${formatDisplayPath(item.key)}`"
+                            @click="selectItem(item)"
+                            @mouseenter="selectedIndex = index"
+                          >
+                            <component
+                              v-if="item.icon"
+                              :is="item.icon"
+                              class="robot-item-icon"
+                            />
+                            <div
+                              v-else
+                              class="robot-item-icon robot-default-icon"
+                            >
+                              <div class="i-mdi:file-document-outline" />
+                            </div>
+                            <div class="robot-item-content">
+                              <div class="robot-item-label">
+                                <template
+                                  v-for="(part, partIndex) in highlightMatch(
+                                    item.label,
+                                    searchValue
+                                  )"
+                                  :key="partIndex"
+                                >
+                                  <mark
+                                    v-if="part.matched"
+                                    class="robot-highlight"
+                                    >{{ part.text }}</mark
+                                  >
+                                  <template v-else>{{ part.text }}</template>
+                                </template>
+                              </div>
+                              <div class="robot-item-desc">
+                                {{ formatDisplayPath(item.key) }}
+                              </div>
+                            </div>
+                            <div
+                              v-if="item.children?.length"
+                              class="robot-item-badge"
+                            >
+                              {{ item.children.length }}
+                            </div>
+                          </div>
+                        </template>
+                      </VVirtualList>
+                    </div>
+                    <template
+                      v-for="group in commandGroups"
+                      :key="group.key"
+                    >
+                      <div
+                        v-if="group.items.length"
+                        class="robot-result-group"
+                        role="group"
+                        :aria-label="group.title"
+                      >
                         <div
-                          :id="optionId(index)"
-                          :class="getItemClasses(index, false)"
+                          class="robot-group-title"
+                          aria-hidden="true"
+                        >
+                          {{ group.title }}
+                          <span class="robot-group-count">{{
+                            group.items.length
+                          }}</span>
+                        </div>
+                        <div
+                          v-for="(item, index) in group.items"
+                          :key="`${typeof item.key}:${item.key}`"
+                          :id="optionId(group.start + index)"
+                          :class="getItemClasses(group.start + index, false)"
+                          :aria-selected="selectedIndex === group.start + index"
+                          :aria-posinset="group.start + index + 1"
+                          :aria-setsize="resultCount"
+                          :data-command-index="group.start + index"
                           role="option"
-                          :aria-selected="selectedIndex === index"
-                          :aria-posinset="index + 1"
-                          :aria-setsize="filteredMenuItems.length"
-                          :title="`${item.label} · ${formatDisplayPath(item.key)}`"
-                          @click="selectItem(item)"
-                          @mouseenter="selectedIndex = index"
+                          @click="selectCommand(group.key, item)"
+                          @mouseenter="selectedIndex = group.start + index"
                         >
                           <component
                             v-if="item.icon"
@@ -218,38 +344,19 @@
                             v-else
                             class="robot-item-icon robot-default-icon"
                           >
-                            <div class="i-mdi:file-document-outline" />
+                            <div class="i-mdi:flash-outline" />
                           </div>
                           <div class="robot-item-content">
-                            <div class="robot-item-label">
-                              <template
-                                v-for="(part, partIndex) in highlightMatch(
-                                  item.label,
-                                  searchValue
-                                )"
-                                :key="partIndex"
-                              >
-                                <mark
-                                  v-if="part.matched"
-                                  class="robot-highlight"
-                                  >{{ part.text }}</mark
-                                >
-                                <template v-else>{{ part.text }}</template>
-                              </template>
-                            </div>
-                            <div class="robot-item-desc">
-                              {{ formatDisplayPath(item.key) }}
-                            </div>
-                          </div>
-                          <div
-                            v-if="item.children?.length"
-                            class="robot-item-badge"
-                          >
-                            {{ item.children.length }}
+                            <div class="robot-item-label">{{ item.label }}</div>
+                            <div
+                              v-if="item.description"
+                              class="robot-item-desc"
+                              >{{ item.description }}</div
+                            >
                           </div>
                         </div>
-                      </template>
-                    </VVirtualList>
+                      </div>
+                    </template>
                   </div>
                 </div>
               </template>
@@ -275,7 +382,7 @@
                 <span v-if="searchValue.trim() && hasResults">
                   {{
                     t('globalSearch.resultCount', {
-                      count: filteredMenuItems.length,
+                      count: resultCount,
                     })
                   }}
                 </span>
@@ -303,7 +410,7 @@
   import type { VirtualListInst } from 'vueuc'
   import { VVirtualList } from '../../utils/virtualList'
   import { useGlobalSearch } from './composables/useGlobalSearch'
-  import type { GlobalSearchOptions } from './types'
+  import type { GlobalSearchCommandItem, GlobalSearchOptions } from './types'
   import { useGlobalSearchLocale } from './locale'
 
   defineOptions({ name: 'C_GlobalSearch' })
@@ -321,6 +428,9 @@
   }
 
   const props = defineProps<Props>()
+  const emit = defineEmits<{
+    'command-select': [source: string, item: GlobalSearchCommandItem]
+  }>()
 
   const {
     showDialog,
@@ -329,6 +439,13 @@
     searchInputRef,
     isDark,
     filteredMenuItems,
+    commandGroups,
+    commandEnabled,
+    commandLoading,
+    commandFailed,
+    retryCommands: refreshCommands,
+    selectCommand,
+    resultCount,
     displayHistory,
     hasResults,
     hasContent,
@@ -345,8 +462,15 @@
     handleDialogKeydown,
     handleCompositionStart,
     handleCompositionEnd,
-  } = useGlobalSearch(() => props.options)
+  } = useGlobalSearch(
+    () => props.options,
+    (source, item) => emit('command-select', source, item)
+  )
   const themeStyle = useComponentTheme(() => (isDark.value ? 'dark' : 'light'))
+  function retryCommands() {
+    refreshCommands()
+    searchInputRef.value?.focus()
+  }
 
   const formatDisplayPath = (key: string) =>
     key === '' || key === '/' ? t('globalSearch.home') : formatMenuPath(key)
@@ -355,13 +479,27 @@
   const optionId = (index: number) => `${optionListId}-${index}`
   const activeOptionId = computed(() => {
     const count = searchValue.value.trim()
-      ? filteredMenuItems.value.length
+      ? resultCount.value
       : displayHistory.value.length
     return count > 0 ? optionId(selectedIndex.value) : undefined
   })
   const resultListRef = ref<VirtualListInst>()
+  const searchContentRef = ref<HTMLElement>()
   const historyItemsRef = ref<HTMLElement>()
   let scrollPending = false
+  function scrollToSearchResult(index: number) {
+    if (index >= filteredMenuItems.value.length) {
+      searchContentRef.value
+        ?.querySelector(`[data-command-index="${index}"]`)
+        ?.scrollIntoView({ block: 'nearest' })
+      return
+    }
+    resultListRef.value?.scrollTo({ index })
+    if (commandEnabled.value)
+      searchContentRef.value
+        ?.querySelector('.robot-virtual-items')
+        ?.scrollIntoView({ block: 'nearest' })
+  }
 
   const scrollToSelected = async () => {
     if (scrollPending) return
@@ -370,9 +508,7 @@
     scrollPending = false
     if (!showDialog.value) return
     if (searchValue.value.trim()) {
-      if (filteredMenuItems.value.length) {
-        resultListRef.value?.scrollTo({ index: selectedIndex.value })
-      }
+      scrollToSearchResult(selectedIndex.value)
     } else {
       historyItemsRef.value
         ?.querySelector<HTMLElement>(
@@ -396,7 +532,13 @@
   }
 
   watch(
-    [selectedIndex, filteredMenuItems, displayHistory, showDialog],
+    [
+      selectedIndex,
+      filteredMenuItems,
+      commandGroups,
+      displayHistory,
+      showDialog,
+    ],
     scrollToSelected,
     { flush: 'post' }
   )

@@ -117,6 +117,22 @@ describe('published CSS sharing contract', () => {
           '@import "./C_UserPicker.css";.approval-workflow-container .vue-flow__container{position:absolute}',
         'C_BatchResult.css':
           '@import "./C_Table.base.css";.c-batch-result[data-v-batch]{gap:8px}',
+        'C_ImportWizard.css':
+          '@import "./C_BatchResult.css";.c-import-wizard[data-v-import]{gap:8px}',
+        'C_FilePreview.css':
+          '@import "./shared-tokens.css";.c-file-preview-inline[data-v-preview]{display:block}',
+        'C_Attachments.css':
+          '@import "./C_FilePreview.css";.c-attachments[data-v-attachments]{display:grid}',
+        'C_NotificationCenter.css':
+          '@import "./shared-tokens.css";.notification-item[data-v-notification]{display:grid}',
+        'C_NotificationInbox.css':
+          '@import "./C_NotificationCenter.css";.c-notification-inbox[data-v-inbox]{display:flex}',
+        'C_Draggable.css':
+          '@import "./shared-tokens.css";.c-draggable-list[data-v-draggable]{display:flex}',
+        'C_TaskBoard.css':
+          '@import "./C_Draggable.css";.c-task-board[data-v-board]{display:grid}',
+        'C_TaskPanel.css':
+          '@import "./C_BatchResult.css";.c-task-panel[data-v-task]{display:grid}',
         'C_Map.css': `@import "./${SHARED_TOKENS_FILE}";.leaflet-container{background-image:url("./images/layers.png")}`,
       }
       for (const [name, source] of Object.entries(files))
@@ -126,7 +142,7 @@ describe('published CSS sharing contract', () => {
         path.join(directory, 'dist', 'images', 'layers.png')
       )
       expect(await checkSharedStyleConsumer(directory)).toMatchObject({
-        components: 8,
+        components: 13,
         cssAssets: 1,
         relativeAssets: 1,
       })

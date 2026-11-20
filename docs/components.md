@@ -2,138 +2,128 @@
 
 # 组件目录
 
-组件用法见在线文档与本仓库指南，组合场景可在 Robot Admin 演示中体验。
+78 个公开组件均提供 `@robot-admin/naive-ui-components/C_组件名` 子路径和对应的 `/style.css`。优先按场景选组件，运行依赖和可选 peer 见[文末](#依赖与样式)。
 
-## 基础组件
+## 按场景接入
 
-| 组件             | 说明                    | 外部依赖                      |
-| ---------------- | ----------------------- | ----------------------------- |
-| `C_Icon`         | Iconify 图标封装        | `@iconify/vue`                |
-| `C_Loading`      | 主题化 SVG 加载态       | -                             |
-| `C_PageLoading`  | 主题化页面切换加载      | -                             |
-| `C_Code`         | 代码高亮显示            | `highlight.js`                |
-| `C_Barcode`      | 条形码生成器            | `@chenfengyuan/vue-barcode`   |
-| `C_Captcha`      | 拼图/ALTCHA 人机验证    | `vue3-puzzle-vcode`、`altcha` |
-| `C_Cascade`      | 级联面板选择器          | -                             |
-| `C_Guide`        | 新手引导                | `driver.js`                   |
-| `C_Progress`     | 增强进度条              | -                             |
-| `C_Steps`        | 步骤条                  | -                             |
-| `C_ActionBar`    | 操作按钮栏              | -                             |
-| `C_Theme`        | 主题切换器              | -                             |
-| `C_Language`     | 语言切换器              | -                             |
-| `C_Date`         | 日期选择器增强          | `date-fns`                    |
-| `C_City`         | 省市区三级联动          | -                             |
-| `C_Breadcrumb`   | 面包屑导航              | -                             |
-| `C_Menu`         | 导航菜单                | -                             |
-| `C_Tabs`         | 数据驱动标签页/场景切换 | -                             |
-| `C_TagsView`     | 标签页导航              | -                             |
-| `C_GlobalSearch` | 全局搜索面板            | -                             |
-| `C_AvatarGroup`  | 头像组合展示            | -                             |
-| `C_OrgChart`     | 组织架构图              | -                             |
-| `C_Skeleton`     | 骨架屏占位组件          | -                             |
+| 要完成的任务                   | 推荐入口                                                                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 多列下拉选实体，确认后回填表单 | [`C_DataPicker`](./guides/data-picker.md#表单内嵌选择)的 `createDataPickerField` 与 `mapFields`                                        |
+| 多个页签共享筛选，各自记住分页 | [`C_Tabs`、`C_FormSearch`、`C_Table` 组合](./guides/data-workflows.md#多页签共享查询)，通过独立 `/workflows` 入口接入 `useTabbedQuery` |
+| 按本页、已选、全部匹配导出     | [`C_Table` 导出范围](./guides/table-density.md#异步导出的快照与卸载)，由应用将服务端任务投递给 [`C_TaskPanel`](./guides/task-panel.md) |
+| 看审批进度、从消息直达具体实例 | [`C_ApprovalViewer`](./guides/approval-viewer.md)查看实例，[`C_WorkFlow`](./guides/workflow.md)编辑流程定义                            |
+| 文件导入、字段审阅、排班、待办 | [业务场景接入总览](./guides/scene-components.md)                                                                                       |
+| 固定主从布局、自由停靠工作区   | [`C_SplitPane`](./guides/split-pane.md)与[停靠方案](./guides/dockable-workbench.md)                                                    |
 
-## 内容 & 编辑组件
+## 表单、查询与选择
 
-| 组件              | 说明                         | 外部依赖                  |
-| ----------------- | ---------------------------- | ------------------------- |
-| `C_Editor`        | 富文本编辑器                 | `@wangeditor-next/editor` |
-| `C_Markdown`      | Markdown 编辑器/预览         | `md-editor-v3`            |
-| `C_FormulaEditor` | 公式编辑器（安全表达式引擎） | 内置                      |
-| `C_Signature`     | 电子签名                     | -                         |
-| `C_QRCode`        | 二维码生成器                 | `qrcode`                  |
-| `C_ImageCropper`  | 图片裁剪器                   | `vue-cropper`             |
+| 组件              | 能力                                   | 指南                                                       |
+| ----------------- | -------------------------------------- | ---------------------------------------------------------- |
+| `C_Form`          | 配置驱动表单、动态字段、分区布局和校验 | [表单密度与布局](./guides/form-density.md)                 |
+| `C_FormModal`     | 新增编辑弹窗、提交锁、未保存草稿保护   | [表单弹窗用法](./guides/usage.md#c_form--c_table-推荐用法) |
+| `C_FormSearch`    | 草稿、提交与重置、已执行查询快照       | [搜索工作流](./guides/search-workflows.md)                 |
+| `C_Select`        | 单选、多选、自由标签与远程分页         | [远程选项](./guides/remote-options.md)                     |
+| `C_AutoComplete`  | 自由文本与本地或远程建议               | [远程选项](./guides/remote-options.md)                     |
+| `C_DataPicker`    | 多列查看、候选分页、批量粘贴和关联回填 | [实体选择器](./guides/data-picker.md)                      |
+| `C_UserPicker`    | 组织筛选、跨页草稿与人员多选           | [人员选择](./guides/user-picker.md)                        |
+| `C_Tree`          | 树形选择、懒加载、搜索与路径定位       | [树组件](./guides/tree.md)                                 |
+| `C_OrgChart`      | 组织架构布局与节点展示                 | [组织架构](./guides/org-chart.md)                          |
+| `C_Transfer`      | 双栏穿梭、表格列和树形分组             | [穿梭框](./guides/transfer.md)                             |
+| `C_FilterBuilder` | 嵌套条件组、字段与运算符配置           | [组合筛选](./guides/filter-builder.md)                     |
+| `C_Cascade`       | 级联面板选择                           |                                                            |
+| `C_City`          | 省、市、区三级联动                     |                                                            |
+| `C_Date`          | 单日、范围与日期时间选择               |                                                            |
+| `C_Time`          | 单时刻或时间段选择                     |                                                            |
 
-## 数据展示组件
+## 表格、记录与操作
 
-| 组件             | 说明                                      | 外部依赖                   |
-| ---------------- | ----------------------------------------- | -------------------------- |
-| `C_Table`        | 高级数据表格（CRUD/行列编辑/动态行/打印） | `print-js`、`html2canvas`  |
-| `C_Map`          | 地图组件（OSM/高德）                      | `leaflet`                  |
-| `C_VtableGantt`  | 甘特图                                    | `@visactor/vtable-gantt`   |
-| `C_AntV`         | 图编辑器（ER/BPMN/UML）                   | `@antv/x6`、`html2canvas`  |
-| `C_WaterFall`    | 瀑布流布局                                | -                          |
-| `C_FullCalendar` | 日历事件                                  | `@fullcalendar/*`          |
-| `C_VideoPlayer`  | 视频播放器（HLS/字幕/书签/章节）          | `xgplayer`、`xgplayer-hls` |
-| `C_AudioPlayer`  | 音频播放器（波形/进度/播放列表）          | -                          |
-| `C_FilePreview`  | 文件预览（PDF/Word/Excel）                | `xlsx`、`mammoth`          |
-| `C_Timeline`     | 时间线（垂直/水平/可折叠）                | -                          |
+| 组件             | 能力                                     | 指南                                                            |
+| ---------------- | ---------------------------------------- | --------------------------------------------------------------- |
+| `C_Table`        | 表格编辑、远程分页、跨页选择、导出与打印 | [表格配置](./guides/table-density.md)                           |
+| `C_ActionBar`    | 预设动作、异步执行锁与工具栏溢出         | [场景用法](./guides/scene-components.md#记录详情列表和窄工具栏) |
+| `C_BatchResult`  | 批量结果、状态筛选与显式重试             | [批量结果](./guides/batch-results.md)                           |
+| `C_ChangeReview` | 字段差异、审阅和选择采纳                 | [字段审阅](./guides/change-review.md)                           |
+| `C_Descriptions` | 类型化详情、分组与复制                   | [场景用法](./guides/scene-components.md#记录详情列表和窄工具栏) |
+| `C_RecordList`   | 受控记录列表或卡片、状态与行级操作       | [场景用法](./guides/scene-components.md#记录详情列表和窄工具栏) |
+| `C_ErrorSummary` | 跨区域错误摘要与定位                     | [多区域校验](./guides/data-workflows.md#多区域校验和导航)       |
+| `C_ContextMenu`  | 上下文菜单、子菜单与快捷键               |                                                                 |
+| `C_Draggable`    | 同列表排序与可选的跨列表拖动             |                                                                 |
+| `C_WaterFall`    | 瀑布流、变高卡片与长列表窗口化           | [瀑布流](./guides/waterfall.md)                                 |
 
-图片/日历类组件的使用边界：`C_ImageCropper` 翻转会更新实际图片源并重置当前裁剪位置，加载和导出失败通过 `error: Error` 报告；`C_Signature` 的 `readonly` 只禁止用户交互，暴露方法仍可用于加载历史数据，其 SVG 导出是保留画布效果的栅格嵌入 SVG；`C_QRCode` 带 Logo 的 SVG 同样采用栅格嵌入，以保持预览与导出一致。`C_FullCalendar` 使用本地日历日期创建当日事件；`C_WaterFall` 会根据图片实际宽高比自动重排，建议以稳定唯一的 `id` 标识每项。
+## 流程、任务与消息
 
-## 表单 & 布局组件
+| 组件                     | 能力                                   | 指南                                                           |
+| ------------------------ | -------------------------------------- | -------------------------------------------------------------- |
+| `C_WorkFlow`             | 流程定义编辑、预览与结构校验           | [流程定义](./guides/workflow.md)                               |
+| `C_ApprovalViewer`       | 只读查看历次审批、处理人和记录         | [审批实例](./guides/approval-viewer.md)                        |
+| `C_TaskPanel`            | 后台任务进度、分项结果、下载与重试入口 | [后台任务](./guides/task-panel.md)                             |
+| `C_TaskBoard`            | 状态列、泳道和受控移动                 | [任务看板](./guides/task-board.md)                             |
+| `C_NotificationCenter`   | 顶部通知、演示与共享控制器             | [通知接入](./guides/notification-center.md)                    |
+| `C_NotificationInbox`    | 可配置待办视图、连续序号与宿主操作     | [全页收件箱](./guides/notification-center.md#全页待办与收件箱) |
+| `C_Chat`                 | 对话、消息输入、活动与来源引用         | [会话用法](./guides/scene-components.md#引导命令和会话)        |
+| `C_Guide`                | 页面引导与可恢复的完成清单             | [引导配置](./guides/usage.md#c_guide-配置引导)                 |
+| `C_SectionNav`           | 分区导航、错误计数与键盘定位           | [多区域校验](./guides/data-workflows.md#多区域校验和导航)      |
+| `C_RelationshipExplorer` | 有向关系、路径和当前记录详情           | [关系追溯](./guides/scene-components.md#关系追溯)              |
+| `C_Timeline`             | 垂直、水平和可折叠时间线               |                                                                |
 
-| 组件              | 说明                                              | 外部依赖             |
-| ----------------- | ------------------------------------------------- | -------------------- |
-| `C_Form`          | 动态表单引擎（Grid/Tabs/Steps/Card/Dynamic 布局） | -                    |
-| `C_FormModal`     | 数据驱动的新增/编辑表单弹窗                       | -                    |
-| `C_FormSearch`    | 搜索表单                                          | -                    |
-| `C_Select`        | 单选、多选、自由标签与远程分页候选                | -                    |
-| `C_AutoComplete`  | 自由文本建议、远程候选与完整记录选择事件          | -                    |
-| `C_CollapsePanel` | 折叠面板                                          | -                    |
-| `C_SplitPane`     | 分割面板                                          | -                    |
-| `C_Draggable`     | 拖拽排序                                          | `vue-draggable-plus` |
-| `C_Tree`          | 高级树形控件                                      | -                    |
-| `C_Time`          | 时间选择器增强                                    | `date-fns`           |
-| `C_Cron`          | Cron 表达式编辑器                                 | -                    |
-| `C_Transfer`      | 穿梭框（搜索/全选/批量操作）                      | -                    |
+## 文件、内容与图像
 
-## 交互 & 业务组件
+| 组件               | 能力                             | 指南                                                    |
+| ------------------ | -------------------------------- | ------------------------------------------------------- |
+| `C_Upload`         | 文件管理、分片上传与断点续传     | [上传约定](./guides/usage.md#上传文档和长列表)          |
+| `C_Attachments`    | 统一附件清单与按需预览           | [附件清单](./guides/attachments.md)                     |
+| `C_FilePreview`    | PDF、Word、Excel 预览            | [文件预览约定](./guides/usage.md#上传文档和长列表)      |
+| `C_ImportWizard`   | 文件映射、预检、确认和分项结果   | [导入向导](./guides/import-wizard.md)                   |
+| `C_Code`           | 代码高亮                         |                                                         |
+| `C_Editor`         | 富文本编辑                       |                                                         |
+| `C_Markdown`       | Markdown 编辑与预览              |                                                         |
+| `C_AudioPlayer`    | 音频播放、波形与播放列表         |                                                         |
+| `C_VideoPlayer`    | 视频、HLS、字幕与书签            | [视频协议](./guides/usage.md#视频协议与通知预览)        |
+| `C_ImageAnnotator` | 矩形标注与键盘坐标编辑           | [图片标注](./guides/image-annotator.md)                 |
+| `C_ImageCropper`   | 图片裁剪、翻转和导出             |                                                         |
+| `C_Signature`      | 签名绘制、历史数据和图片导出     |                                                         |
+| `C_Barcode`        | 条形码生成                       |                                                         |
+| `C_QRCode`         | 二维码和带标识的导出             |                                                         |
+| `C_ScanInput`      | 普通输入、扫码枪、照片和相机识别 | [扫码用法](./guides/scene-components.md#重复计划和扫码) |
 
-| 组件            | 说明                                   | 外部依赖 |
-| --------------- | -------------------------------------- | -------- |
-| `C_Chat`        | 聊天组件（联系人/消息气泡/输入框）     | -        |
-| `C_ContextMenu` | 右键菜单（嵌套子菜单/快捷键/危险操作） | -        |
-| `C_Login`       | 登录组件（5种模式/验证码/记住用户名）  | -        |
+## 排班、计划与图形
 
-## 流程 & 通知组件
+| 组件                 | 能力                          | 指南                                                    |
+| -------------------- | ----------------------------- | ------------------------------------------------------- |
+| `C_ResourceSchedule` | 多资源占用、工作窗口与冲突    | [资源排班](./guides/resource-schedule.md)               |
+| `C_RecurrenceEditor` | 日、周、月、年重复规则        | [重复计划](./guides/scene-components.md#重复计划和扫码) |
+| `C_FullCalendar`     | 日历事件及拖动和时段更新      | [状态约定](./guides/usage.md#状态一致性与资源边界021)   |
+| `C_VtableGantt`      | 甘特图、工期和全屏计划视图    |                                                         |
+| `C_Cron`             | Cron 编辑、校验及运行时间预览 | [Cron 与公式](./guides/usage.md#cron-与公式工作区)      |
+| `C_FormulaEditor`    | 受限表达式编辑与试算          | [Cron 与公式](./guides/usage.md#cron-与公式工作区)      |
+| `C_AntV`             | ER、BPMN、UML 图编辑          |                                                         |
+| `C_Map`              | 地图、标记与 OSM／高德底图    | [地图用法](./guides/usage.md#c_map-推荐用法)            |
 
-| 组件                   | 说明                                 | 外部依赖                                    |
-| ---------------------- | ------------------------------------ | ------------------------------------------- |
-| `C_WorkFlow`           | 工作流编辑器（审批/抄送/条件节点）   | `@vue-flow/core`                            |
-| `C_NotificationCenter` | 通知中心（演示/远程/共享控制器）     | [接入指南](./guides/notification-center.md) |
-| `C_Upload`             | 大文件上传（分片/断点续传/哈希校验） | `spark-md5`                                 |
+## 导航、布局与基础控件
 
-## 依赖说明
+| 组件              | 能力                             | 指南                                                                   |
+| ----------------- | -------------------------------- | ---------------------------------------------------------------------- |
+| `C_Menu`          | 响应主题的菜单导航               |                                                                        |
+| `C_Breadcrumb`    | 面包屑与目录导航                 | [面包屑](./guides/usage.md#面包屑与目录导航)                           |
+| `C_Tabs`          | 受控或非受控标签页与延迟挂载     | [共享查询组合](./guides/data-workflows.md#多页签共享查询)              |
+| `C_TagsView`      | 路由标签与访问位置恢复           | [路由标签](./guides/component-contracts.md#页签地址身份与访问位置分开) |
+| `C_GlobalSearch`  | 菜单、关键词、远程结果与命令入口 | [全局搜索](./guides/global-search.md)                                  |
+| `C_CollapsePanel` | 折叠区域                         |                                                                        |
+| `C_SplitPane`     | 可嵌套、可用键盘调整的分栏       | [分割面板](./guides/split-pane.md)                                     |
+| `C_Density`       | 子树密度默认值                   | [主题](./guides/theme.md)                                              |
+| `C_Theme`         | 主题切换                         | [主题](./guides/theme.md)                                              |
+| `C_Language`      | 语言切换                         |                                                                        |
+| `C_Login`         | 登录表单与字段扩展               | [登录扩展](./guides/usage.md#c_login-扩展表单)                         |
+| `C_Captcha`       | 拼图与可选服务端人机校验流程     | [服务端校验](./guides/usage.md#c_captcha-服务端校验)                   |
+| `C_Icon`          | Iconify 图标                     |                                                                        |
+| `C_AvatarGroup`   | 多头像与溢出提示                 |                                                                        |
+| `C_Progress`      | 进度条                           |                                                                        |
+| `C_Steps`         | 步骤条                           |                                                                        |
+| `C_Skeleton`      | 骨架屏                           |                                                                        |
+| `C_Loading`       | 主题加载态                       |                                                                        |
+| `C_PageLoading`   | 页面切换反馈                     | [页面加载](./guides/usage.md#页面切换加载)                             |
 
-`C_FilePreview` 的 URL 入口仅接受 HTTPS 或当前站点同源 HTTP（便于本地开发）；不接受脚本、数据 URL、带凭据 URL 或跨站明文 HTTP。`autoPreview` 会在有文件源时自动打开预览，已打开时切换文件源会刷新内容。重复预览会释放旧 PDF 对象 URL，并忽略过期加载结果。Excel 单元格的 `0` 与 `false` 会原样保留。
+## 依赖与样式
 
-工具栏或表格行按钮可以通过 `v-model:show` 打开 `C_FilePreview`。提供该绑定后由页面控制开关，关闭时释放当前预览资源。
-
-`C_AntV` 的 BPMN 对外数据保持 `{ nodes, flows }` 领域结构；组件内部转换为 X6 单元格，并在 `data-change` / `getData()` 中还原节点位置、类型、属性和连线条件。BPMN/UML 仅在未提供 `data` 时加载内置示例；显式传入空数据会显示空画布。
-
-`C_VtableGantt` 合并预设与 `options` 时会保留未覆盖的嵌套配置、以新数组整体替换旧数组，并忽略原型相关键；全屏按钮状态仅反映该甘特图容器的实际全屏状态。
-
-甘特图初始化或重建失败时，会清空已释放的 `ganttInstance`、显示错误及重试按钮，并触发 `error` 事件（参数为 `Error`）。组件实例公开 `loading`、`error` 和异步 `reload()`，使用侧可据此展示状态或主动重试；等待 `ganttCreated` 后再操作新的底层实例。
-
-`C_AudioPlayer` 只在浏览器确认 `play()` 成功后进入播放状态并触发 `play`；自动播放被拒绝时会触发 `error`，空播放列表不会产生虚假的播放事件。静音、曲目和进度条均可用键盘操作。
-
-`C_CollapsePanel` 与 `C_TagsView` 会校验本地持久化数据结构；损坏或旧格式数据会安全回退，不会阻断组件初始化。持久化标签仅恢复站内路径，特殊字符路径的定位不会拼接 CSS 选择器。
-
-`C_Table` 列设置只恢复有效的列键、可见性、列宽和固定方向；损坏的 `persistKey` 存储会回退到传入列。列设置在本地副本上操作，不会修改调用方的列对象。`C_Upload` 的默认文件列表同样会复制后再管理，文件选择、拖拽和粘贴共用 `accept` 过滤，图片操作可通过键盘识别和访问；并发计算哈希时，各文件显示自己的进度。分片上传在查询断点、请求或合并阶段取消后，不会继续派发请求或发出过期的完成事件。自定义上传请求的 `abort()` 即使不回调，也会释放分片等待任务。
-
-`C_WorkFlow` 会在首次渲染时加载传入的 `modelValue`，并在 `getCurrentWorkflowData()` / `save` / `change` / `node-click` 中输出隔离的数据快照，避免调用方意外修改内部节点。条件编辑弹窗在保存前不会修改画布数据，未填完整的条件不会被静默丢弃。`readonly` 禁止节点拖拽、连线、配置、增删与保存，但仍允许预览、验证和适应视图；节点与条件 ID 在同一时刻连续创建时保持唯一。
-
-流程校验要求节点与连线标识唯一且非空、恰有一个开始节点、连线两端存在，且所有节点可从开始节点按连线方向到达。`allowCycles` 默认 `true`，兼容包含回路的通用流程；无环审批流程使用 `:allow-cycles="false"`，发现循环时阻止保存并定位结构错误。该选项可动态更新；校验结果仅代表图结构与节点配置合法，审批执行、权限和业务规则仍由业务后端负责。
-
-类型验证同时覆盖 TypeScript 源码、Vue 单文件组件模板和发布后的使用侧示例。`C_Table` 合计行的 `summary.render` 应返回按列键组织的对象（`{ columnKey: { value, colSpan? } }`）；`C_FormSearch` 的日期范围兼容原有数字时间戳数组，也支持格式化字符串数组，两种值会分别绑定 Naive UI 对应的值接口。
-
-组件运行依赖已由本包声明，安装组件库时会自动解析。所有场景都需要：
-
-```bash
-bun add vue naive-ui
-```
-
-按功能安装可选 peer：使用 `C_Breadcrumb`/`C_TagsView` 时安装 `vue-router`；启用 C_Table 行/列拖拽时安装 `sortablejs`。子路径导入不会要求无关的可选 peer。公式编辑器使用组件库内置的受限表达式解析器，不执行动态 JavaScript。
-
-## 业务工作台组件
-
-| 组件             | 说明                                       |
-| ---------------- | ------------------------------------------ |
-| `C_Density`      | 子树密度默认值，无额外 DOM                 |
-| `C_SectionNav`   | 分区导航、错误计数与键盘焦点               |
-| `C_ErrorSummary` | 可导航错误摘要，分页限制 DOM               |
-| `C_DataPicker`   | 分页实体选择、跨页草稿与批量回显           |
-| `C_UserPicker`   | 组织筛选人员、分页候选、有序多选与统一确认 |
-| `C_BatchResult`  | 分项结果、筛选分页与显式重试               |
-
-[数据与工作流指南](./guides/data-workflows.md)：共享字典、数值转换、主从资源、跨区域校验及重复表单。
+- `vue` 和 `naive-ui` 是必需的 peer。`vue-router` 用于 `C_Breadcrumb`、`C_TagsView` 和全量插件入口。启用 `C_Table` 行列拖拽时安装 `sortablejs`。
+- 组件运行依赖随包解析。用于 Excel 预览和导出的 SheetJS 随发布产物分发，Word 文档解析按需加载 `mammoth`。表单与表格基础样式分别由 `/C_Form/base.css` 和 `/C_Table/base.css` 提供。完整的样式选择见[导入方式](./guides/usage.md#导入方式)。

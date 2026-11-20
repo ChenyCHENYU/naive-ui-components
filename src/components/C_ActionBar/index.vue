@@ -7,83 +7,80 @@
 -->
 <template>
   <div
+    ref="bar"
     class="c-action-bar"
     :style="themeStyle"
     :class="{
       'is-compact': finalConfig.compact,
       'is-inline': finalConfig.inline,
       'is-wrap': finalConfig.wrap,
+      'has-overflow': overflowEntries.length > 0,
       [`is-align-${finalConfig.align}`]: true,
       'has-only-left':
-        leftButtonList.length > 0 &&
-        rightButtonList.length === 0 &&
+        buttonGroups.left.length > 0 &&
+        buttonGroups.right.length === 0 &&
+        !overflowEntries.length &&
         !$slots.center,
       'has-only-right':
-        rightButtonList.length > 0 &&
-        leftButtonList.length === 0 &&
+        buttonGroups.right.length > 0 &&
+        buttonGroups.left.length === 0 &&
+        !overflowEntries.length &&
         !$slots.center,
     }"
   >
-    <div
-      v-if="leftButtonList.length > 0"
-      class="actions-group actions-left"
-      :style="{ gap: `${finalConfig.gap}px` }"
+    <template
+      v-for="group in groupOrder"
+      :key="group"
     >
-      <template
-        v-for="(entry, index) in leftButtonList"
-        :key="entry.renderKey"
-      >
-        <ActionButton
-          :action="entry.action"
-          :task-key="entry.taskKey"
-          @click="handleActionClick(entry)"
-          @dropdown-select="item => handleDropdownClick(item, entry)"
-        />
-        <NDivider
-          v-if="finalConfig.showDivider && index < leftButtonList.length - 1"
-          :vertical="finalConfig.dividerType === 'vertical'"
-          class="action-divider"
-          :class="{
-            'action-divider--horizontal':
-              finalConfig.dividerType === 'horizontal',
-          }"
-        />
+      <template v-if="group === 'center'">
+        <div
+          v-if="$slots.center"
+          class="actions-center"
+        >
+          <slot name="center" />
+        </div>
       </template>
-    </div>
-
-    <div
-      v-if="$slots.center"
-      class="actions-center"
-    >
-      <slot name="center" />
-    </div>
-
-    <div
-      v-if="rightButtonList.length > 0"
-      class="actions-group actions-right"
-      :style="{ gap: `${finalConfig.gap}px` }"
-    >
-      <template
-        v-for="(entry, index) in rightButtonList"
-        :key="entry.renderKey"
+      <div
+        v-else-if="buttonGroups[group].length > 0"
+        class="actions-group"
+        :class="`actions-${group}`"
+        :style="{ gap: `${finalConfig.gap}px` }"
       >
-        <ActionButton
-          :action="entry.action"
-          :task-key="entry.taskKey"
-          @click="handleActionClick(entry)"
-          @dropdown-select="item => handleDropdownClick(item, entry)"
-        />
-        <NDivider
-          v-if="finalConfig.showDivider && index < rightButtonList.length - 1"
-          :vertical="finalConfig.dividerType === 'vertical'"
-          class="action-divider"
-          :class="{
-            'action-divider--horizontal':
-              finalConfig.dividerType === 'horizontal',
-          }"
-        />
-      </template>
-    </div>
+        <template
+          v-for="(entry, index) in buttonGroups[group]"
+          :key="entry.renderKey"
+        >
+          <ActionButton
+            :action="entry.action"
+            :task-key="entry.taskKey"
+            @click="handleActionClick(entry)"
+            @dropdown-select="item => handleDropdownClick(item, entry)"
+          />
+          <NDivider
+            v-if="
+              finalConfig.showDivider && index < buttonGroups[group].length - 1
+            "
+            :vertical="finalConfig.dividerType === 'vertical'"
+            class="action-divider"
+            :class="{
+              'action-divider--horizontal':
+                finalConfig.dividerType === 'horizontal',
+            }"
+          />
+        </template>
+      </div>
+    </template>
+    <component
+      :is="actionOverflow"
+      v-if="overflowAt && actionOverflow"
+      :anchor="bar"
+      :threshold="overflowAt"
+      :entries="overflowEntries"
+      :size="finalConfig.size"
+      :resolve="resolveOverflowEntry"
+      @narrow="narrow = $event"
+      @select="handleActionClick"
+    />
   </div>
 </template>
 
@@ -97,6 +94,10 @@
     h,
     withDirectives,
     defineComponent,
+    ref,
+    shallowRef,
+    watch,
+    type Component,
     type PropType,
   } from 'vue'
   import { NButton, NTooltip, NDropdown, NDivider } from 'naive-ui'
@@ -104,6 +105,7 @@
   import { useActionTask } from '../../composables/useActionTask'
   import type {
     ActionItem,
+    ActionEntry,
     ActionDropdownItem,
     ActionBarConfig,
     ActionButtonSize,
@@ -143,6 +145,20 @@
     more: 'common.more',
   }
 
+  const resolveLabeledAction = (action: ActionItem) => {
+    const resolved = resolveActionPreset(action)
+    if (action.label) return resolved
+    const { key } = action
+    const messageKey =
+      key && Object.prototype.hasOwnProperty.call(actionLabelKeys, key)
+        ? actionLabelKeys[key]
+        : undefined
+    return {
+      ...resolved,
+      label: messageKey ? t(messageKey) : key || t('common.action'),
+    }
+  }
+
   const props = withDefaults(defineProps<TableActionsProps>(), {
     actions: () => [],
     leftActions: () => [],
@@ -180,12 +196,6 @@
     return props.actions.filter(action => action.group === 'right')
   })
 
-  interface ActionEntry {
-    action: ActionItem
-    taskKey: string
-    renderKey: string
-  }
-
   const visibleEntries = (
     actions: ActionItem[],
     group: 'left' | 'right'
@@ -201,17 +211,52 @@
       const occurrence = occurrences.get(taskKey) ?? 0
       occurrences.set(taskKey, occurrence + 1)
       if (resolveActionState(action.show) === false) return
-      entries.push({ action, taskKey, renderKey: `${taskKey}:${occurrence}` })
+      entries.push({
+        action,
+        taskKey,
+        renderKey: `${group}:${taskKey}:${occurrence}`,
+      })
     })
     return entries
   }
 
-  const leftButtonList = computed(() =>
-    visibleEntries(leftActions.value, 'left')
+  const actionOverflow = shallowRef<Component>()
+  const bar = ref<HTMLElement>()
+  const narrow = ref(false)
+  const overflowAt = computed(() => {
+    const threshold = finalConfig.value.overflowAt
+    return Number.isFinite(threshold) && threshold > 0 ? threshold : 0
+  })
+  watch(
+    overflowAt,
+    async threshold => {
+      if (threshold && !actionOverflow.value)
+        actionOverflow.value = (await import('./ActionOverflow.vue')).default
+    },
+    { immediate: true }
   )
-  const rightButtonList = computed(() =>
-    visibleEntries(rightActions.value, 'right')
-  )
+  const buttonGroups = computed(() => {
+    const left = visibleEntries(leftActions.value, 'left')
+    const right = visibleEntries(rightActions.value, 'right')
+    const overflow: ActionEntry[] = []
+    if (!overflowAt.value || !narrow.value) return { left, right, overflow }
+    const stay = (entry: ActionEntry) => {
+      const { action } = entry
+      if (
+        action.overflow !== true ||
+        action.buttonProps ||
+        action.directives?.length ||
+        action.dropdown?.length ||
+        action.tooltip
+      )
+        return true
+      overflow.push(entry)
+      return false
+    }
+    return { left: left.filter(stay), right: right.filter(stay), overflow }
+  })
+  const overflowEntries = computed(() => buttonGroups.value.overflow)
+  const groupOrder = ['left', 'center', 'right'] as const
   const actionTasks = useActionTask<string>()
 
   const isActionDisabled = (action: ActionItem, taskKey: string): boolean =>
@@ -270,6 +315,16 @@
     }
   }
 
+  const resolveOverflowEntry = ({ action, taskKey }: ActionEntry) => {
+    const { label, icon } = resolveLabeledAction(action)
+    return {
+      label,
+      icon,
+      disabled:
+        isActionDisabled(action, taskKey) || isActionLoading(action, taskKey),
+    }
+  }
+
   const ActionButton = defineComponent({
     name: 'ActionButton',
     props: {
@@ -282,19 +337,7 @@
     emits: ['click', 'dropdown-select'],
     setup(props, { emit }) {
       const action = computed(() => props.action)
-      const resolvedAction = computed(() => {
-        const resolved = resolveActionPreset(action.value)
-        if (action.value.label) return resolved
-        const { key } = action.value
-        const messageKey =
-          key && Object.prototype.hasOwnProperty.call(actionLabelKeys, key)
-            ? actionLabelKeys[key]
-            : undefined
-        return {
-          ...resolved,
-          label: messageKey ? t(messageKey) : key || t('common.action'),
-        }
-      })
+      const resolvedAction = computed(() => resolveLabeledAction(action.value))
       const buttonSize = computed(
         () =>
           resolvedAction.value.buttonProps?.size ||

@@ -16,7 +16,12 @@ import type {
   ComputedRef,
   DeepReadonly,
 } from 'vue'
-import type { FormInst, FormItemRule, UploadFileInfo } from 'naive-ui'
+import type {
+  FormInst,
+  FormItemRule,
+  TreeSelectOption,
+  UploadFileInfo,
+} from 'naive-ui'
 import type { FormValidationRule } from './utils/formValidation'
 
 export type MaybePromise<T> = T | Promise<T>
@@ -424,7 +429,7 @@ export interface LayoutConfig {
  * 表单配置项接口
  * @description 单个表单项的完整配置
  */
-interface FormOptionBase<T extends object> {
+interface FormOptionBase<T extends object, O extends object = OptionItem> {
   id?: string
   type: ComponentType | string
   label?: string
@@ -439,7 +444,7 @@ interface FormOptionBase<T extends object> {
   source?:
     | OptionSource<object, OptionValue, object>
     | ((model: Readonly<T>) => OptionSource<object, OptionValue, object>)
-  children?: OptionItem[]
+  children?: O[]
   show?: boolean
   layout?: ItemLayoutConfig
   help?: string
@@ -465,7 +470,7 @@ interface FormOptionBase<T extends object> {
   asyncOptions?: (
     formModel: FormModel<T>,
     context?: AsyncOptionsContext
-  ) => Promise<readonly OptionItem[]>
+  ) => Promise<readonly O[]>
 
   /** 联动校验规则：根据表单数据动态返回校验规则 */
   rulesWhen?: (formModel: FormModel<T>) => readonly FormValidationRule[]
@@ -474,8 +479,16 @@ interface FormOptionBase<T extends object> {
   crossFieldValidator?: (formModel: FormModel<T>) => MaybePromise<string | null>
 }
 
+/** 树选择沿用原生节点；空模型与索引模型继续使用动态字段契约。 */
+type FormOptionControl<T extends object> = keyof T extends never
+  ? FormOptionBase<T, OptionItem | TreeSelectOption>
+  : string extends keyof T
+    ? FormOptionBase<T, OptionItem | TreeSelectOption>
+    : | FormOptionBase<T>
+      | (FormOptionBase<T, TreeSelectOption> & { type: 'treeSelect' })
+
 /** 字段名与初值、联动返回值关联；未声明业务模型时保持动态表单的宽松契约。 */
-export type FormOption<T extends object = FormRecord> = FormOptionBase<T> &
+export type FormOption<T extends object = FormRecord> = FormOptionControl<T> &
   {
     [P in FieldPath<T>]: {
       prop: P

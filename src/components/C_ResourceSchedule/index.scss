@@ -1,0 +1,142 @@
+$border: var(--c-schedule-border, var(--c-border, var(--c-theme-border)));
+$panel: var(--c-schedule-panel, var(--c-bg-body, var(--c-theme-bg-body)));
+$booking: var(
+  --c-schedule-booking,
+  var(--c-primary, var(--c-theme-primary-suppl))
+);
+$conflict: var(--c-schedule-conflict, var(--c-error, var(--c-theme-error)));
+
+.c-resource-schedule {
+  display: grid;
+  gap: 12px;
+  min-inline-size: 0;
+
+  &__header,
+  &__navigation,
+  &__detail {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__header {
+    justify-content: space-between;
+
+    h3 {
+      margin: 0;
+    }
+  }
+
+  &__viewport {
+    overflow: auto;
+    border: 1px solid $border;
+    border-radius: var(
+      --c-schedule-radius,
+      var(--c-radius-panel, var(--c-radius, var(--c-theme-radius)))
+    );
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 10rem minmax(var(--c-schedule-axis-min), 1fr);
+    min-inline-size: calc(10rem + var(--c-schedule-axis-min));
+    border-block-end: 1px solid $border;
+
+    &:last-child {
+      border-block-end: 0;
+    }
+  }
+
+  &__label {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    padding: 8px;
+    overflow-wrap: anywhere;
+    background: $panel;
+    border-inline-end: 1px solid $border;
+  }
+
+  &__time,
+  &__track {
+    position: relative;
+  }
+
+  &__time {
+    min-block-size: 2rem;
+    line-height: 2rem;
+    font-size: 0.75em;
+    font-variant-numeric: tabular-nums;
+
+    > span {
+      position: absolute;
+      transform: translateX(-50%);
+      white-space: nowrap;
+
+      &:first-child {
+        transform: translateX(0);
+      }
+
+      &:last-child {
+        transform: translateX(-100%);
+      }
+    }
+  }
+
+  &__track {
+    background: linear-gradient(90deg, $border 1px, transparent 1px) 0 0 /
+      var(--c-schedule-interval) 100%;
+  }
+
+  &__working-window,
+  &__booking {
+    box-sizing: border-box;
+    position: absolute;
+  }
+
+  &__working-window {
+    inset-block: 0;
+    background: var(
+      --c-schedule-working,
+      var(--c-bg-hover, var(--c-theme-bg-hover))
+    );
+    pointer-events: none;
+  }
+
+  &__booking {
+    block-size: calc(var(--c-schedule-track-height) - 8px);
+    padding: 0 min(4px, 0.3%);
+    overflow: hidden;
+    border: 1px solid $booking;
+    border-radius: var(
+      --c-schedule-radius,
+      var(--c-radius, var(--c-theme-radius))
+    );
+    color: var(--c-schedule-text, var(--c-text-1, var(--c-theme-text-1)));
+    background: color-mix(in srgb, $booking 20%, $panel);
+    font: inherit;
+    font-size: 0.875em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &.is-conflict {
+      border-color: $conflict;
+    }
+
+    &[aria-pressed='true'],
+    &:focus-visible {
+      z-index: 1;
+      outline: 2px solid
+        var(--c-schedule-selected, var(--c-primary, var(--c-theme-primary)));
+      outline-offset: -2px;
+    }
+  }
+
+  &__conflict-marker {
+    margin-inline-end: 4px;
+    color: $conflict;
+    font-weight: 600;
+  }
+}

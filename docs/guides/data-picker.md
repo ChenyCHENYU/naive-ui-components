@@ -15,6 +15,7 @@
     id: string
     code: string
     name: string
+    creditLimit: number | null
   }
   const selected = ref<string[]>([])
 
@@ -86,7 +87,33 @@ const options = [
 ]
 ```
 
-将 `options` 和 `renderers` 传给 `C_Form` 或 `C_FormModal`。内嵌候选区与字段同处一个弹窗，Enter 查询候选项，Escape 或取消收起并将焦点交回字段。需要一次回填编码和名称等多个关联字段时，可直接组合 `C_DataPicker` 并使用 `@select`。
+将 `options` 和 `renderers` 传给 `C_Form` 或 `C_FormModal`。内嵌候选区与字段同处一个弹窗，Enter 查询候选项，Escape 或取消收起并将焦点交回字段。
+
+需要同时填写其他字段时，在同一个渲染器中配置 `mapFields`。`rows` 的类型从 `source` 推导，返回的字段与选择值一起提交。
+
+```ts
+const renderers = {
+  customer: createDataPickerField({
+    source,
+    columns,
+    clearable: true,
+    mapFields: ({ rows, value }) => {
+      if (value === null) return { customerName: null, creditLimit: null }
+      const customer = rows[0]
+      if (customer) {
+        return {
+          customerName: customer.name,
+          creditLimit: customer.creditLimit,
+        }
+      }
+    },
+  }),
+}
+```
+
+`mapFields` 只在选择值变化时同步执行，并提供 `previousValue`。重选同一项会保留手工编辑，多选比较包含顺序。`rows` 只包含已解析实体，清空通过 `value` 判断，单选是 `null`，多选是 `[]`。返回 `undefined` 时只更新主字段，字段值中的 `0`、`false` 和 `null` 原样保留。映射抛错或返回 Promise 时，本次字段提交取消。使用 `onSelect` 观察提交后的表单，异步补充查询也可由应用在回调中管理。
+
+直接组合 `C_DataPicker` 时，可使用 `@select` 接收完整记录。
 
 ```vue
 <C_DataPicker
@@ -129,6 +156,34 @@ const options = [
 
 ## 快捷选择、分类与选择约束
 
+少量本地候选可用 `createLocalDataPickerSource` 构造数据源。传入已属于当前业务范围的数组，包内负责筛选、分页和初值回显。保留数据源对象的引用，候选范围变更时传入新的数据源。跨组织权限和动态范围查询继续由应用的数据源处理。
+
+```ts
+import { createLocalDataPickerSource } from '@robot-admin/naive-ui-components/C_DataPicker'
+
+const source = createLocalDataPickerSource({
+  rows: customers,
+  rowKey: 'id',
+  label: row => row.name,
+  searchText: row => `${row.code} ${row.name}`,
+})
+```
+
+```vue
+<C_DataPicker
+  v-model="customerId"
+  :source="source"
+  :columns="columns"
+  presentation="popover"
+  commit-on-select
+  :popup="{ width: 520, maxHeight: 260 }"
+/>
+```
+
+`commitOnSelect` 仅用于快捷浮层的单选，选择可用行后沿用确认校验并回填。默认仍由用户明确确认。快捷输入支持方向键查看可选候选、Enter 操作当前候选和 Escape 取消。`popup` 可配置宽度、候选表格最大高度、位置与挂载目标。多选保留确认流程，可通过 `maxTagCount` 为收起态启用可移除标签和数量摘要。
+
+作为 `C_FormSearch` 字段时，配置 `type: 'custom'`、`defaultValue: null`（多选用 `[]`）和 `render: createDataPickerSearchField({ source, columns, presentation: 'popover' })`。它继承字段的禁用与只读约束，选择结果更新当前草稿，查询仍由搜索表单提交。普通表单继续用 `createDataPickerField`。两个适配器都从数据源推导 `onSelect` 的业务行类型。
+
 ```vue
 <C_DataPicker
   v-model="selectedIds"
@@ -155,6 +210,25 @@ const options = [
 - `navigation` 直接配置树节点和筛选字段，切换分类回到第一页。复杂分类区可改用 `#navigation="{ filters, submit, loading }"`，不需要复制选择器请求与选择状态。
 - 自定义查询提交省略 `navigation.field` 时沿用当前分类，其余查询字段仍整体替换。显式提交该字段可切换分类，提交 `undefined` 可清除；`fixedFilters` 最终覆盖。查询栏重置可继续调用同一 `submit`，无需手动合并分类条件。
 - 启用选择约束或快捷/历史入口且提供 `resolve` 时，确认前重新取回所选实体并检查可选性；失败保留草稿并呈现重试提示。普通旧模态模式继续保留尚未解析的初始编码，避免破坏既有回显行为。
+
+### 批量粘贴编码
+
+为多选设置 `batch-paste` 后，用户可粘贴一列编码并匹配。匹配保留大小写和前导零，按换行、制表符、逗号或分号分隔并去重，显示未匹配、禁用、已选择和超出上限的项。选择「加入」将有效项按输入顺序并入当前草稿，选择「确定」才更新表单值。
+
+```vue
+<C_DataPicker
+  v-model="materialIds"
+  :source="materials"
+  :columns="columns"
+  multiple
+  batch-paste
+  :max-selection="60"
+/>
+```
+
+- 粘贴编码就是提交的字符串时，直接复用 `source.resolve`。编码对应另一个字段或提交值为数字时，本地来源配置 `code: row => row.materialCode`，远程来源实现 `resolveCodes(codes, signal, context)` 并返回按输入编码索引的 Map。来源继续通过 `scope` 校验当前业务范围，匹配结果按实体的原始业务值提交。
+- `batch-paste` 要求多选且来源支持 `resolve` 或 `resolveCodes`。单次默认最多匹配 100 个不同编码，可设 `:batch-paste="{ maxItems: 200 }"`，支持上限为 500。表格勾选和粘贴共用 `maxSelection`。
+- 编辑输入、关闭选择器或切换业务范围会取消旧匹配。若来源返回的实体需要确认时复检，可照常设置 `revalidateOnConfirm` 并提供 `source.resolve`。
 
 ### 历史与收藏
 

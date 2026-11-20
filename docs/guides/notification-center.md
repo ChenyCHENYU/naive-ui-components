@@ -93,3 +93,32 @@ const wsConfig = {
 ```
 
 桌面通知权限仅在应用调用 `requestDesktopPermission()` 的用户手势中申请。连接、轮询和缓存都不代表服务端保证交付：事件游标、历史补偿、跨设备一致性、幂等写入、审计与投递重试需要后端协议支持。应用也应在恢复可见、重新登录或切换公司时补刷，并对消息业务目标重新校验权限。
+
+## 全页待办与收件箱
+
+`C_NotificationInbox` 复用消息行的名称、摘要、时间、优先级和已读显示。待办、已办、收藏、归档等页面入口由应用配置，并绑定应用的当前查询和完整统计。
+
+```vue
+<C_NotificationInbox
+  v-model:active-view="activeView"
+  :views="views"
+  :items="pageItems"
+  :actions="rowActions"
+  :badges="rowBadges"
+  :loading="loading"
+  :pending-ids="pendingIds"
+  :start-index="(page - 1) * pageSize"
+  @select="openDetail"
+  @action="handleAction"
+>
+  <template #footer>
+    <NPagination v-model:page="page" :item-count="total" :page-size="pageSize" />
+  </template>
+</C_NotificationInbox>
+```
+
+`views` 每项传 `{ key, label, count? }`，统计未知时省略数量。消息项沿用 `NotificationMessage`，可附带应用字段。比如 Robot_Admin 的待办状态、星标、归档时间和审批状态可以作为原有扩展字段传给 `actions(row)` 与 `badges(row)`，保持与已读状态独立。
+
+点击行返回当前条目。点击操作发出 `action(key, row)`，允许应用接续确认、权限检查或 mutation。传入 `pendingIds` 可锁定正在处理的条目。查询和分页仍由应用持有，通过 `startIndex` 保持跨页序号。浮层和全页可由应用共用同一份数据。
+
+消息携带业务单据键和审批实例 ID 时，应用可在 `@select` 中打开 [`C_ApprovalViewer`](./approval-viewer.md)。审批权限和消息已读状态各自通过应用服务更新。

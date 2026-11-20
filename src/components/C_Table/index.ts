@@ -120,6 +120,10 @@ export type {
 
 export { exportTableData } from './composables/useTableExport'
 export type { ExportConfig } from './composables/useTableExport'
+export type {
+  TableExportScope,
+  TableMatchingExportContext,
+} from './exportTypes'
 export { useTableQuery } from './composables/useTableQuery'
 export type {
   TableQueryContext,

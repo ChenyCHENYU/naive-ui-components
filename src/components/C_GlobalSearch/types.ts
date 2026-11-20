@@ -24,6 +24,35 @@ export interface HistoryItem {
   timestamp: number
 }
 
+export interface GlobalSearchCommandItem {
+  key: string | number
+  label: string
+  description?: string
+  icon?: SearchIcon
+}
+
+export interface GlobalSearchCommandSource {
+  key: string
+  title: string
+  /** Nonempty trimmed queries are searched by default. */
+  minChars?: number
+  search(
+    query: string,
+    context: { signal: AbortSignal; scope?: string | number }
+  ):
+    | Promise<readonly GlobalSearchCommandItem[]>
+    | readonly GlobalSearchCommandItem[]
+}
+
+export interface GlobalSearchCommandOptions {
+  sources: readonly GlobalSearchCommandSource[]
+  /** Change this value with user, permission or tenant context. */
+  scope?: string | number
+  /** Defaults to 200 ms for command sources; menu matches remain synchronous. */
+  debounce?: number
+  onSelect?: (source: string, item: GlobalSearchCommandItem) => void
+}
+
 /** useGlobalSearch 配置项 */
 export interface GlobalSearchOptions {
   /** 已扁平化的可搜索菜单列表 */
@@ -45,4 +74,5 @@ export interface GlobalSearchOptions {
     query: string,
     items: readonly SearchMenuItem[]
   ) => readonly SearchMenuItem[]
+  commands?: GlobalSearchCommandOptions
 }

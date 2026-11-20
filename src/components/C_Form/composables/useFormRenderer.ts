@@ -22,7 +22,7 @@ import type { FormItemInst } from 'naive-ui'
 
 import type { FormOption, FormModel, OptionItem } from '../types'
 import type { ResolvedFormConfig } from './useFormConfig'
-import { getDataPath, setDataPath } from '../../../utils/data'
+import { getDataPath, parseDataPath, setDataPath } from '../../../utils/data'
 import { resolveNumberInputProps } from '../numberInput'
 import { bindTemporalField } from '../../../core/temporalField'
 import { useComponentLocale } from '../../../composables/useComponentLocale'
@@ -32,6 +32,8 @@ import {
   needsOptionValueBinding,
 } from '../../../core/options'
 import { shouldSummarizeSelectTags } from '../../../core/selectPresentation'
+
+type FieldOptions = NonNullable<FormOption['children']>
 
 /* =================== 组件映射类型 =================== */
 
@@ -44,6 +46,11 @@ export type RendererProps = Record<string, unknown> & {
 export interface FormRendererContext {
   slots?: Readonly<Slots>
   components: ComponentMap
+  /** 提交主字段及同一次操作生成的关联字段。返回是否已写入。 */
+  commitValue?: (
+    value: unknown,
+    relatedFields: (previousValue: unknown) => FormModel | undefined
+  ) => boolean
 }
 
 /* =================== 渲染器类型 =================== */
@@ -101,9 +108,10 @@ export interface UseFormRendererOptions {
   visibleOptions: ComputedRef<FormOption[]>
   config: ComputedRef<ResolvedFormConfig>
   handleFieldChange: (field: string) => void
+  setFields?: (fields: FormModel) => void
   componentMap: ComponentMap
   instanceSlots?: Readonly<Slots>
-  asyncOptionsCache: Ref<Record<string, OptionItem[]>>
+  asyncOptionsCache: Ref<Record<string, FieldOptions>>
   asyncLoadingMap: Ref<Record<string, boolean>>
   getOptionsError?: (field: string) => unknown
   reloadOptions?: (field: string) => Promise<void>
@@ -179,7 +187,7 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
               {},
               {
                 default: () =>
-                  item.children?.map((child: OptionItem) =>
+                  item.children?.map(child =>
                     h(C.NCheckbox, {
                       value: child.value,
                       label: child.label,
@@ -203,7 +211,7 @@ function buildRenderers(C: ComponentMap): Record<string, FormRenderer> {
               {},
               {
                 default: () =>
-                  item.children?.map((child: OptionItem) =>
+                  item.children?.map(child =>
                     h(
                       C.NRadio,
                       {
@@ -341,6 +349,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     visibleOptions,
     config,
     handleFieldChange,
+    setFields,
     componentMap,
     instanceSlots,
     asyncOptionsCache,
@@ -358,7 +367,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     : undefined
   const registry = opts.registry ?? injectedRegistry ?? legacyRendererRegistry
   const selectOptionsCache = new WeakMap<
-    OptionItem[],
+    FieldOptions,
     ComputedRef<{
       hasBooleans: boolean
       bind: ComputedRef<ReturnType<typeof createOptionValueBinder>>
@@ -390,11 +399,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
         : {}),
       value: getDataPath(formModel, item.prop),
       'onUpdate:value': (value: unknown) => {
-        if (
-          resolveFieldFlag(item.disabled, config.value.disabled, formModel) ||
-          resolveFieldFlag(item.readonly, config.value.readonly, formModel)
-        )
-          return
+        if (!isWritable(item)) return
         setDataPath(formModel, item.prop, value)
         handleFieldChange(item.prop)
       },
@@ -413,10 +418,32 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     return baseProps
   }
 
+  function isWritable(item: FormOption): boolean {
+    return (
+      !resolveFieldFlag(item.disabled, config.value.disabled, formModel) &&
+      !resolveFieldFlag(item.readonly, config.value.readonly, formModel)
+    )
+  }
+
+  function resolveCommitValue(
+    item: FormOption
+  ): FormRendererContext['commitValue'] {
+    if (!setFields) return
+    return (value, relatedFields) => {
+      if (!isWritable(item)) return false
+      const patch = relatedFields(getDataPath(formModel, item.prop))
+      // Check every related path before mutating the model.
+      parseDataPath(item.prop)
+      if (patch) Object.keys(patch).forEach(parseDataPath)
+      setFields({ ...patch, [item.prop]: value })
+      return true
+    }
+  }
+
   /* ===== 选项合并（静态 children + asyncOptions 缓存） ===== */
 
   /** 合并静态 children 与 asyncOptions 缓存 */
-  function resolveChildren(item: FormOption): OptionItem[] {
+  function resolveChildren(item: FormOption): FieldOptions {
     if (
       Object.prototype.hasOwnProperty.call(asyncOptionsCache.value, item.prop)
     ) {
@@ -429,7 +456,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
         item.type === 'treeSelect') &&
       Array.isArray(nativeOptions)
     )
-      return nativeOptions as OptionItem[]
+      return nativeOptions as FieldOptions
     return item.children ?? EMPTY_OPTIONS
   }
 
@@ -491,7 +518,7 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
     }
   }
 
-  function bindSelectOptions(options: OptionItem[], value: unknown) {
+  function bindSelectOptions(options: FieldOptions, value: unknown) {
     let entry = selectOptionsCache.get(options)
     if (!entry) {
       entry = computed(() => ({
@@ -599,6 +626,10 @@ export function useFormRenderer(opts: UseFormRendererOptions) {
       const control = renderer(baseProps, effectiveItem, config.value, {
         slots: instanceSlots,
         components: C,
+        commitValue:
+          renderer !== builtInRenderers[item.type]
+            ? resolveCommitValue(effectiveItem)
+            : undefined,
       })
       return renderOptionsState(item, control)
     } catch (error) {

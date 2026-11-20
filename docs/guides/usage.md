@@ -4,7 +4,7 @@
 
 按需导入、组件配置与业务场景的详细接入示例。
 
-专项指南：[表单与搜索密度](./form-density.md) · [表格密度与编辑模式](./table-density.md) · [分割面板与多表布局](./split-pane.md) · [树与原生能力透传](./tree.md) · [真实项目覆盖调研](../wl-ui-produce-coverage.md)。
+[组件目录](../components.md)按职责列出所有入口。[业务场景](./scene-components.md)串联导入、审批、后台任务和待办的接入方式。表单、查询和表格共用状态时，参见[数据工作流](./data-workflows.md)。
 
 ## 本页导航
 
@@ -334,6 +334,10 @@ const fields = defineFormOptions([
 
 `editor` 采用结构类型，不要求组件库依赖某个请求库。任何提供 `visible/mode/model/title/loading/setModel/close/submit` 的 Headless 控制器都可接入。空闲时可通过标题栏按钮、遮罩或 Esc 关闭弹窗，三种方式均可配置。校验或保存期间，弹窗暂停这三种关闭方式及页脚取消。`@submit(payload, saved)` 接收当前会话的保存结果，编辑器保存成功并自行关闭时仍会发出通知。`submitSuccessText` 仅在 `saved` 为 `true` 时显示。
 
+需要保护未保存修改时，传 `:before-close="({ signal }) => confirmDiscard(signal)"`。四个关闭入口共用同一次确认，表单有修改才调用。业务确认函数返回 `true` 时允许关闭，返回 `false` 或发生异常时保留草稿。草稿或弹窗会话改变时，`signal` 会取消旧确认，业务可以据此关闭自己的确认框。
+
+如果同一个弹窗保持打开并切换记录，传 `:session-key="recordId"`，通过组件实例的 `requestDiscard(() => activate(nextId))` 执行切换。`activate` 同步更新记录键和新草稿，弹窗会用新草稿重新建立初始快照。编辑器直接设置 `visible` 或保存成功自行关闭时沿用编辑器控制。
+
 远程表格推荐交给 `useTableQuery` 管理请求取消、竞态、分页和 loading；只需把 `bindings` 绑定给组件。`rowKey` 必须稳定且唯一，默认会检测缺失和重复键。
 
 ```vue
@@ -569,35 +573,15 @@ function preview() {
 
 `TableInstance<Row>` 的 `selectRow()`、`getSelectedRows()` 和 `clearSelection()` 会自动使用当前选择模式。需要响应式数量时读取 `table.value?.crossPageSelection.selectedCount.value`；嵌套对象的 Ref 不会被 Vue 顶层解包。`getManager()` 保留为高级兼容入口，常用操作不必依赖内部管理器。
 
-导出范围应显式选择：
-
-| `config.export` 配置      | 数据来源                                                   |
-| ------------------------- | ---------------------------------------------------------- |
-| `scope: 'source'`（默认） | 当前传入的完整数据源；远程模式通常只有当前加载页           |
-| `scope: 'page'`           | 当前呈现页，本地模式包含当前筛选、排序及分页结果           |
-| `scope: 'selected'`       | 当前选中的可用行对象，包含跨页保留的已访问记录             |
-| `requestData`             | 点击导出时显式请求数据，优先于 `scope`，适合服务器全量导出 |
-
-```ts
-const config = defineTableConfig({
-  export: {
-    scope: 'page',
-    filename: 'users',
-    format: 'csv',
-  },
-})
-
-// 全量数据由业务显式提供；表格不会在导出时自动遍历服务器分页。
-const fullExport = defineTableConfig({
-  export: { requestData: () => fetchAllUsers(), filename: 'all-users' },
-})
-```
+固定导出当前页可配置 `config.export.scope: 'page'`。需要让用户选择本页、已选行或全部匹配时，配置 `config.export.scopes`。全部匹配由远程数据适配器提供，服务端任务可通过 `onExportMatching` 创建。范围菜单、旧入口和快照语义见[表格导出专项指南](./table-density.md#异步导出的快照与卸载)。
 
 异步展开失败后保留错误状态，默认展开内容提供重试入口。也可使用公开实例方法 `retryExpand(key)` 重新加载；`invalidateExpand(key?)` 清除指定行或全部缓存及错误状态，本身不发请求。同一行并发加载复用一次请求；替换数据行后旧缓存失效，晚到的旧结果不会重新写入。
 
 动态行新增、复制必须生成与表格一致的唯一键。优先传字符串 `row-key="uuid"`；若表格必须传函数 `:row-key="row => row.uuid"`，同时指定 `config.dynamicRows.rowKey: 'uuid'`，让新增和复制知道应生成哪个字段。组件不推断任意复合键；键缺失或重复时拒绝插入，关闭动态行后相关实例方法不修改数据。
 
 ### 搜索与远程表格连接
+
+多个页签共享查询而分别分页时，使用 [`useTabbedQuery`](./data-workflows.md#多页签共享查询)管理活动请求。选中实体时要一次回填关联字段，可通过 [`createDataPickerField` 的 `mapFields`](./data-picker.md#表单内嵌选择)声明映射。
 
 选择字段沿用 `list` 和 `attrs`：多选只需 `attrs: { multiple: true }`，模型使用数组。`list.value` 支持字符串、数字和布尔值，展示适配由组件完成，`false`、`0` 和空值保持区分，搜索回调不会收到内部编码值。
 
@@ -879,6 +863,8 @@ Excel 保留原始值、单元格类型和工作簿格式，不把文本编号�
 ```
 
 预算必须是有限安全正整数。远程 Excel 会在读取响应时执行字节上限，超限立即取消读取。工作簿解压后的内存消耗取决于文件内容。
+
+`C_FilePreview` 的远程 URL 支持 HTTPS 和同源 HTTP。通过 `v-model:show` 控制浮层时，关闭会释放当前预览资源。打开期间切换文件源会刷新预览，过期的加载结果会被丢弃。
 
 WaterFall 会在哨兵持续可见时继续补页，每轮最多自动请求 5 页，避免空响应循环。达到上限后可点击“继续加载”；自定义 `footer` 插槽获得 `paused` 和 `loadMore`。使用侧继续维护 `loading` 和 `noMore`。
 

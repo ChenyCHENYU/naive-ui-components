@@ -5,6 +5,8 @@ export interface BatchResultProps {
   results: readonly BatchOperationResult[]
   title?: string
   pageSize?: number
+  /** Hide the retry action when displaying a read-only result. */
+  showRetry?: boolean
   locale?: ComponentLocale
 }
 

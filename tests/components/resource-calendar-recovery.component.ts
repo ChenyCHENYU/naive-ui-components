@@ -351,8 +351,7 @@ test('remote Excel previews the decoded workbook at the exact byte limit', async
     },
     global: { stubs: { C_Icon: true } },
   })
-  await flushPromises()
-  expect(wrapper.text()).toContain('Budget workbook')
+  await vi.waitFor(() => expect(wrapper.text()).toContain('Budget workbook'))
   wrapper.unmount()
 })
 

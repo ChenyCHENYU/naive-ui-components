@@ -43,6 +43,8 @@ export interface ActionItem {
   show?: ActionState
   tooltip?: string
   group?: 'left' | 'right'
+  /** 在窄容器中允许移入「更多」；自定义按钮、指令及已有下拉动作留在原位。 */
+  overflow?: boolean
   dropdown?: ActionDropdownItem[]
   /** 是否自动显示 loading；执行期间始终阻止同 key 动作重复触发。 */
   autoLoading?: boolean
@@ -55,6 +57,13 @@ export interface ActionItem {
     | [Directive, any, string?]
     | [Directive, any, string?, Record<string, boolean>?]
   >
+}
+
+/** Shared identity for inline and overflow rendering. */
+export interface ActionEntry {
+  action: ActionItem
+  taskKey: string
+  renderKey: string
 }
 
 export interface ActionBarConfig {
@@ -70,6 +79,8 @@ export interface ActionBarConfig {
   /** 减少容器留白和默认按钮间距；行内模式也生效。 */
   compact?: boolean
   inline?: boolean
+  /** 容器宽度低于该像素值时收纳明确标记的次要动作。0 表示关闭。 */
+  overflowAt?: number
 }
 
 export interface TableActionsProps {

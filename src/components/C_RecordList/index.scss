@@ -1,0 +1,83 @@
+.c-record-list {
+  --c-record-list-padding: 12px;
+
+  color: var(--c-text-1, var(--c-theme-text-1));
+
+  &.is-compact {
+    --c-record-list-padding: 8px 10px;
+  }
+
+  &__items {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    &.is-cards {
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    }
+  }
+
+  &__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    gap: 6px 12px;
+    padding: var(--c-record-list-padding);
+    border: 1px solid var(--c-border, var(--c-theme-border));
+    border-radius: var(--c-radius, var(--c-theme-radius));
+    background: var(--c-bg-card, var(--c-theme-bg-card));
+
+    &.is-selected {
+      border-color: var(--c-primary, var(--c-theme-primary));
+      background: var(--c-bg-active, var(--c-theme-bg-active));
+    }
+  }
+
+  &__body {
+    flex: 1 1 10rem;
+    min-width: 0;
+  }
+
+  &__heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    overflow-wrap: anywhere;
+  }
+
+  &__select {
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: var(--c-primary, var(--c-theme-primary));
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+
+    &:focus-visible {
+      outline: 2px solid currentcolor;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      color: var(--c-text-4, var(--c-theme-text-4));
+      cursor: not-allowed;
+    }
+  }
+
+  &__description,
+  &__placeholder {
+    margin: 4px 0;
+    color: var(--c-text-2, var(--c-theme-text-2));
+    overflow-wrap: anywhere;
+  }
+
+  &__actions {
+    max-width: 100%;
+  }
+}

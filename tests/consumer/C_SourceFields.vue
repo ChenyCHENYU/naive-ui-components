@@ -10,7 +10,11 @@
     C_FormSearch,
     type SearchFormItem,
   } from '@robot-admin/naive-ui-components/C_FormSearch'
-  import { createDataPickerField } from '@robot-admin/naive-ui-components/C_DataPicker'
+  import {
+    createDataPickerField,
+    createDataPickerSearchField,
+    createLocalDataPickerSource,
+  } from '@robot-admin/naive-ui-components/C_DataPicker'
   import type { OptionSource } from '@robot-admin/naive-ui-components/C_Select'
 
   interface Location {
@@ -21,12 +25,14 @@
   interface Model {
     warehouse: string
     location: number | null
+    localLocation: number | null
     text: string
     address: string
   }
   const model = ref<Model>({
     warehouse: 'A',
     location: null,
+    localLocation: null,
     text: '',
     address: '',
   })
@@ -58,6 +64,11 @@
     },
     { type: 'autocomplete', prop: 'text', source: locations },
   ]
+  const localLocations = createLocalDataPickerSource({
+    rows: [{ id: 0, code: 'A', address: '仓库' }],
+    rowKey: 'id',
+    label: row => row.code,
+  })
   const searchFields: SearchFormItem<Model>[] = [
     {
       type: 'select',
@@ -68,6 +79,21 @@
       }),
     },
     { type: 'autocomplete', prop: 'text', source: locations },
+    {
+      type: 'custom',
+      prop: 'localLocation',
+      defaultValue: null,
+      render: createDataPickerSearchField({
+        source: localLocations,
+        columns: [{ key: 'code', title: '货位' }],
+        presentation: 'popover',
+        onSelect: rows => {
+          model.value.address = rows[0]?.address ?? ''
+          // @ts-expect-error 实体类型由本地数据推导。
+          void rows[0]?.missing
+        },
+      }),
+    },
   ]
   const renderers = {
     location: createSelectField({
@@ -110,6 +136,8 @@
   createDataPickerField({
     source: { ...locations, rowKey: 'id' },
     columns: [],
+    mapFields: ({ rows, value }) =>
+      value === null ? { address: null } : { address: rows[0]?.address },
     onSelect: rows => rows.map(row => row.address),
     'onUpdate:modelValue': value => String(value),
     presentation: 'popover',
@@ -119,6 +147,12 @@
     columns: [],
     // @ts-expect-error A picker callback receives Location records.
     onSelect: (rows: Array<{ other: string }>) => rows.map(row => row.other),
+  })
+  createDataPickerField({
+    source: { ...locations, rowKey: 'id' },
+    columns: [],
+    // @ts-expect-error Related fields must be returned synchronously.
+    mapFields: async ({ rows }) => ({ address: rows[0]?.address }),
   })
 </script>
 

@@ -10,7 +10,7 @@
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 搜索、分页、刷新     | `C_FormSearch` 的 `config.onSearch` 交给当前页面的查询控制器。C_Table 可直接返回 `useTableQuery().setQuery()` 的执行结果。MachTable 可使用自己的查询控制器和分页，页面负责提交查询快照并将执行结果返回搜索区。 |
 | 列表操作、编辑弹窗   | `C_ActionBar` 按业务状态计算 `show` 和 `disabled`，动作返回实际的 Promise。新增、编辑共用 `C_FormModal` 和结构化 `editor`，保存成功后由页面刷新列表。                                                          |
-| 字段联动和回填       | `C_Form` 用 `showWhen`、函数式 `readonly` / `disabled`、`dependsOn` 与 `asyncOptions`。简单实体查找用 `C_DataPicker`，在字段插槽中接入，确认后把选中行映射成业务字段。                                         |
+| 字段联动和回填       | `C_Form` 用 `showWhen`、函数式 `readonly` / `disabled`、`dependsOn` 与 `asyncOptions`。实体查找通过 [`createDataPickerField`](./data-picker.md#表单内嵌选择)接入，`mapFields` 一次提交主字段和关联字段。       |
 | 主档、子表和分区弹窗 | `useDataResource` 按主记录标识管理从表请求，`useValidationScope` 聚合跨区校验。主档与子表的草稿、整单保存和操作权限由页面控制器统一持有。                                                                      |
 
 搜索组件以 `onSearch` 的返回结果更新已执行快照。控制器返回 `false` 时，应把这个值原样传回搜索区。服务端分页用同一份已提交查询翻页，表格组件按各自公开属性绑定。
@@ -134,6 +134,32 @@ const details = useDataResource({
 更换 key 会取消旧请求、清除旧主记录数据；即使传输忽略 signal，旧结果也不能覆盖新记录。同 key 刷新失败保留原展示，`status: 'error'` 与 `stale` 明确表达旧快照，可通过 `reload()` 重试。reload 返回成功与否的 boolean，可直接交给 Search 的 `config.onSearch`。
 
 可选 `source` 表示本地受控数据：undefined 才是未提供，`[]` 和 null 都是明确的本地源。本地源生效时不请求远端。组件卸载会清理 watcher/请求，KeepAlive 停用期间不开始新请求；恢复后按最新 key 继续。普通 effectScope 外使用时调用 `dispose()`。每个 panel 独立实例，互不共享请求状态；不缓存所有访问过的订单。
+
+## 多页签共享查询
+
+`useTabbedQuery` 在 `/workflows` 提供。适合一组共用筛选条件、分别分页的页签。页面传活动页签、初始条件和一个请求函数，即可把同一份状态接到搜索与当前表格。
+
+```ts
+import { computed } from 'vue'
+import { useTabbedQuery } from '@robot-admin/naive-ui-components/workflows'
+
+const { data, loading, pagination, setQuery, setPage, appliedQuery } =
+  useTabbedQuery({
+    activeTab,
+    initialQuery: { keyword: '' },
+    request: ({ tab, query, page, pageSize, signal }) =>
+      repository.list(tab, { ...query, page, pageSize }, { signal }),
+  })
+
+const searchConfig = { onSearch: setQuery }
+const tableConfig = computed(() => ({
+  pagination: { remote: true, ...pagination.value },
+}))
+```
+
+`C_Tabs` 用 `v-model` 绑定 `activeTab`。把 `searchConfig` 交给 `C_FormSearch`，再把 `data`、`loading`、`tableConfig` 和 `@pagination-change="setPage"` 绑定到当前 `C_Table`。适配器返回 `{ data, total }`。不同页签可以选择不同请求或列配置，使用同一组合函数管理分页。
+
+只请求当前页签。切回时恢复该页签的页码和每页条数。切换会取消旧请求并丢弃过期结果。用户编辑搜索草稿时，查询保持原状，直到调用 `setQuery()`。该方法提交完整快照，保留各页签的每页条数并重置到第一页，返回本次活动请求是否成功。失败后 `reload()` 重试最后提交的条件，`appliedQuery` 则对应当前表格内有成功响应的数据。导出时读取该快照。`activeTab` 为 `null` 或 `undefined` 时暂停请求。
 
 ## 多区域校验和导航
 

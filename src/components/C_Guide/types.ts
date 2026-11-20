@@ -23,7 +23,9 @@ export type GuideTarget = string | Element | (() => Element | null | undefined)
 
 /** 引导实例公开方法，用于宿主在路由变化时主动停止等场景。 */
 export interface GuideExpose {
-  startGuide: (force?: boolean) => Promise<void>
+  startGuide: (force?: boolean, fromStepId?: string) => Promise<void>
+  /** 完成当前等待的业务操作。返回 false 表示当前步骤不等待此操作。 */
+  completeAction: (action: string) => boolean
   stopGuide: () => void
   resetCompleted: () => void
   isCompleted: () => boolean
@@ -31,6 +33,10 @@ export interface GuideExpose {
 
 /** 引导步骤定义 */
 export interface GuideStep {
+  /** 在清单中定位并恢复到该步骤时使用。 */
+  id?: string
+  /** 设置后，当前步骤要等宿主调用 completeAction 才能前进。 */
+  action?: string
   /** 目标元素；不传时可展示居中的欢迎步骤。 */
   element?: GuideTarget
   /** 弹出层配置 */
@@ -77,6 +83,8 @@ export interface GuidePersistence {
 export interface GuideProps {
   /** 引导步骤 */
   steps?: GuideStep[]
+  /** 显示由应用提供完成状态的任务清单。仅含带 id 的步骤。 */
+  checklist?: { completedIds: readonly string[]; title?: string }
   /** 完成按钮文字 */
   doneBtnText?: string
   /** 下一步按钮文字 */

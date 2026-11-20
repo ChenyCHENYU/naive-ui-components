@@ -59,14 +59,26 @@
             ...resolved.toolbarActionBarConfig,
           }"
         />
+        <ExportMenu
+          v-if="resolved.exportConfig?.scopes?.length"
+          :scopes="resolved.exportConfig.scopes"
+          :locale="resolved.locale"
+          :size="resolved.controlSize"
+          :label="t('table.export')"
+          :disabled="normalizedLoading || exportTasks.isRunning('export')"
+          :allow-selected="resolved.enableSelection"
+          :allow-matching="canExportMatching"
+          :can-export-selected="canExportSelected"
+          @select="runToolbarExport"
+        />
         <C_Icon
-          v-if="resolved.exportConfig"
+          v-else-if="resolved.exportConfig && !resolved.exportConfig.scopes"
           name="mdi:download"
           size="18"
           :title="t('table.export')"
           clickable
           class="column-settings-btn"
-          @click="handleExport()"
+          @click="runToolbarExport()"
         />
         <C_Icon
           v-if="resolved.enableColumnSettings"
@@ -357,7 +369,12 @@
     normalizeSelectionLimit,
     useCrossPageSelection,
   } from './composables/useCrossPageSelection'
-  import { exportTableData } from './composables/useTableExport'
+  import {
+    exportTableData,
+    getExportColumns,
+    type ExportConfig,
+  } from './composables/useTableExport'
+  import type { TableExportScope } from './exportTypes'
   import { generateFormOptions, generateFormRenderers } from './data'
   import ColumnSettings from './components/ColumnSettings/index.vue'
   import C_Icon from '../C_Icon/index.vue'
@@ -388,6 +405,9 @@
 
   const C_Form = defineAsyncComponent(() =>
     import('../C_Form').then(module => module.C_Form)
+  )
+  const ExportMenu = defineAsyncComponent(
+    () => import('./components/ExportMenu.vue')
   )
 
   /* ================= Props（极简 API） ================= */
@@ -922,33 +942,91 @@
   /** 导出 */
   const exportTasks = useActionTask<string>()
   let exportDisposed = false
-  const handleExport = async () => {
-    await exportTasks.run('export', async () => {
-      // 一次导出拥有启动时的列与配置；等待服务端期间切表不能混用新表结构。
-      const cfg = cloneData({
-        ...resolved.value.exportConfig,
-        formatterConfig: resolved.value.formatterConfig,
-      })
-      const columns = cloneData(
-        cfg.scope && cfg.scope !== 'source'
-          ? reactiveColumns.value
-          : effectiveColumns.value
-      )
-      const selectedRows = () =>
-        isCrossPageSelectionEnabled.value
-          ? crossPageState.getSelectedRows()
-          : tableManager.stateManager.selection.getSelected()
-      const source =
-        cfg.scope === 'page' ? displayedRows.value : normalizedData.value
-      const rows = cfg.requestData
-        ? await cfg.requestData()
-        : cfg.scope === 'selected'
-          ? selectedRows()
-          : source
-      if (exportDisposed) return
-      await exportTableData(rows, columns, cfg, () => !exportDisposed)
+  const selectedExportRows = () =>
+    isCrossPageSelectionEnabled.value
+      ? crossPageState.getSelectedRows()
+      : tableManager.stateManager.selection.getSelected()
+  const canExportSelected = computed(
+    () =>
+      batchSelectedCount.value > 0 &&
+      selectedExportRows().length === batchSelectedCount.value
+  )
+  const canExportMatching = computed(() => {
+    const config = resolved.value.exportConfig
+    return Boolean(
+      config?.onExportMatching ||
+      config?.requestData ||
+      (!viewport.remote.value && !props.remote)
+    )
+  })
+  function exportRows(scope: 'source' | TableExportScope | undefined) {
+    switch (scope) {
+      case 'page':
+        return displayedRows.value
+      case 'selected':
+        return selectedExportRows()
+      case 'matching':
+        return viewport.getMatchingRows()
+      default:
+        return normalizedData.value
+    }
+  }
+
+  function exportSnapshot(scope?: TableExportScope) {
+    // 一次导出拥有启动时的列与配置；等待服务端期间切表不能混用新表结构。
+    const config = cloneData({
+      ...resolved.value.exportConfig,
+      ...(scope ? { scope } : {}),
+      formatterConfig: resolved.value.formatterConfig,
+    })
+    const columns = cloneData(
+      config.scope && config.scope !== 'source'
+        ? reactiveColumns.value
+        : effectiveColumns.value
+    )
+    return { config, columns }
+  }
+
+  function exportMatching(config: ExportConfig, columns: TableColumn[]) {
+    return config.onExportMatching?.({
+      columns: getExportColumns(columns, config.columnKeys).map(col => ({
+        key: String(col.key),
+        title: col.title ?? '',
+      })),
+      filename: config.filename,
+      format: config.format ?? 'csv',
     })
   }
+
+  const handleExport = async (scope?: TableExportScope) => {
+    if (scope === 'selected' && !canExportSelected.value) return
+    if (
+      (scope ?? resolved.value.exportConfig?.scope) === 'matching' &&
+      !canExportMatching.value
+    )
+      return
+    await exportTasks.run('export', async () => {
+      const { config, columns } = exportSnapshot(scope)
+      if (config.scope === 'matching' && config.onExportMatching) {
+        await exportMatching(config, columns)
+        return
+      }
+      // 显式选择本页或已选时，只导出该范围；旧的无参入口保留 requestData 的优先级。
+      const request =
+        !scope || scope === 'matching' ? config.requestData : undefined
+      const rows = request ? await request() : exportRows(config.scope)
+      if (exportDisposed) return
+      await exportTableData(rows, columns, config, () => !exportDisposed)
+    })
+  }
+  const runToolbarExport = (scope?: TableExportScope) =>
+    handleExport(scope).catch(error => {
+      if (!exportDisposed)
+        feedback.error(
+          t('table.actionFailed', { action: t('table.export') }),
+          error
+        )
+    })
 
   /* ================= 合计行 ================= */
 
@@ -1371,6 +1449,9 @@
     isEditing: edit.isEditing,
     isExpanded: expand.isExpanded,
     getManager: () => tableManager.stateManager,
+    // 虚拟行可能尚未测量。按行起点定位，避免估算的底边刚好落在未渲染区域。
+    scrollTo: (options: { key: DataTableRowKey }) =>
+      tableRef.value?.scrollTo({ ...options, debounce: false }),
     /** 导出数据 */
     exportData: handleExport,
     /** 跨页选择 */

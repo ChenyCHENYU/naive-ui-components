@@ -61,6 +61,7 @@
             :loading="list.loading.value"
           >
             <component
+              v-if="!hideSearch"
               :is="inline ? 'div' : 'form'"
               class="c-data-picker__search"
               @submit.stop.prevent="query"
@@ -89,6 +90,14 @@
               </NButton>
             </component>
           </slot>
+          <PickerBatchPaste
+            v-if="batchPaste.enabled.value"
+            :state="batchPaste"
+            :source="source"
+            :size="density.size"
+            :confirming="confirming"
+            :batch-id="`${panelId}-batch`"
+          />
           <div
             v-if="list.status.value === 'error'"
             class="c-data-picker__error"
@@ -115,6 +124,7 @@
             :row-key="source.rowKey"
             :loading="list.loading.value"
             :config="tableConfig"
+            :row-props="keyboard.rowProps"
             @selection-change="selectPage"
           />
         </div>
@@ -282,12 +292,16 @@
     type ComponentDensity,
   } from '../../core/density'
   import type { DataPickerProps } from './types'
+  import { getPickerRowKey } from './source'
+  import { usePickerKeyboard } from './usePickerKeyboard'
+  import PickerBatchPaste from './PickerBatchPaste.vue'
   const props = defineProps<{
     state: ReturnType<typeof useDataPicker<T, F>>
     options: Readonly<DataPickerProps<T, F>>
     densityValue: ComponentDensity
     inline: boolean
     popup: boolean
+    hideSearch?: boolean
     panelId: string
   }>()
   const emit = defineEmits<{ confirm: []; dismiss: [] }>()
@@ -315,6 +329,7 @@
     page,
     pageSize,
     searchDraft,
+    batchPaste,
     query,
     submitFilters,
     list,
@@ -327,7 +342,6 @@
     canConfirm,
     columns,
     tableConfig,
-    selectPage,
     remove,
     confirming,
     selectionError,
@@ -336,6 +350,35 @@
     navigate,
     filters,
   } = props.state
+  const immediateSelection = () =>
+    props.popup && !!props.options.commitOnSelect && !props.options.multiple
+  const selectedRow = props.state.isRowSelected
+  const selectPage = (
+    keys: import('naive-ui').DataTableRowKey[],
+    selectedRows: T[]
+  ) => {
+    if (
+      props.state.selectPage(keys, selectedRows) &&
+      immediateSelection() &&
+      selectedCount.value > 0
+    )
+      emit('confirm')
+  }
+  const keyboard = usePickerKeyboard({
+    rows: () => rows.value,
+    loading: () => list.loading.value,
+    enabled: () => props.popup && opened.value,
+    key: row => getPickerRowKey(props.options.source, row),
+    selectable: props.state.canSelectRow,
+    selected: selectedRow,
+    immediate: immediateSelection,
+    reveal: props.state.scrollToRow,
+    choose: row => {
+      if (!props.state.canSelectRow(row)) return
+      if (immediateSelection() && selectedRow(row)) emit('confirm')
+      else props.state.activateRow(row)
+    },
+  })
   const source = computed(() => props.options.source)
   const initialValues = computed(() => props.options.initialValues)
   const panelContent = shallowRef<HTMLElement | null>(null)
@@ -378,6 +421,9 @@
     return typeof value === 'string' || typeof value === 'number' ? [value] : []
   })
   defineExpose({
+    navigate: (direction: 1 | -1) => {
+      if (!keyboard.navigate(direction)) panelContent.value?.focus()
+    },
     focus: () => {
       const first = panelContent.value?.querySelector<HTMLInputElement>(
         'input:not([type="hidden"])'

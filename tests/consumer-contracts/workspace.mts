@@ -4,6 +4,7 @@ import {
 } from '@robot-admin/naive-ui-components/data'
 import {
   useDataResource,
+  useTabbedQuery,
   useValidationScope,
   useFormArray,
 } from '@robot-admin/naive-ui-components/workflows'
@@ -76,6 +77,18 @@ const plainColumn: TableColumn<Item> = {
   dictionary: 'item-kind',
 }
 const resource = useDataResource<string, Item[]>
+const tabbed = useTabbedQuery({
+  activeTab: 'sample',
+  initialQuery: { count: 0 },
+  request: async ({ query }) => ({
+    data: [{ id: 'row', count: query.count }],
+    total: 1,
+  }),
+})
+const inferredTabRow: { id: string; count: number } | undefined =
+  tabbed.data.value[0]
+// @ts-expect-error The shared criteria keep their inferred field types.
+void tabbed.setQuery({ count: 'wrong' })
 const scope = useValidationScope
 const rows = useFormArray<Item>
 void [
@@ -85,6 +98,7 @@ void [
   pickerProps,
   businessValue,
   resource,
+  inferredTabRow,
   scope,
   rows,
   COMPONENT_LOCALE_KEY,

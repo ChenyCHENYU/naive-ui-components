@@ -20,6 +20,13 @@ export interface TransferItem<K extends string | number = string | number> {
   extra?: Record<string, unknown>
 }
 
+export interface TransferColumn<T extends TransferItem = TransferItem> {
+  key: Extract<keyof NoInfer<T>, string>
+  title: string
+  width?: number
+  format?: (item: NoInfer<T>) => string | number | null | undefined
+}
+
 /** 组件 Props */
 export interface TransferProps<T extends TransferItem = TransferItem> {
   /** 数据源 */
@@ -38,6 +45,10 @@ export interface TransferProps<T extends TransferItem = TransferItem> {
   filterPlaceholder?: string
   /** 自定义筛选函数 */
   filterMethod?: (query: string, item: T) => boolean
+  /** Display both panels as a multi-column list using the same typed records. */
+  columns?: readonly TransferColumn<T>[]
+  /** Display the source side in collapsible folders derived from each item's path. */
+  groupBy?: (item: NoInfer<T>) => readonly string[]
   /** 是否显示全选复选框 */
   showSelectAll?: boolean
   /** 左侧空状态描述 */

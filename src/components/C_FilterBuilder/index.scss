@@ -1,0 +1,69 @@
+.c-filter-builder {
+  min-inline-size: 0;
+
+  &__title {
+    margin: 0 0 var(--c-filter-gap);
+  }
+
+  :deep(.c-filter-builder__group) {
+    min-inline-size: 0;
+    margin: 0;
+    padding: var(--c-filter-indent);
+    border: 1px solid
+      var(--c-filter-border, var(--c-border, var(--c-theme-border)));
+    border-radius: var(
+      --c-filter-radius,
+      var(--c-radius-panel, var(--c-radius, var(--c-theme-radius)))
+    );
+
+    legend {
+      padding-inline: 4px;
+      color: var(--c-filter-muted, var(--c-text-3, var(--c-theme-text-3)));
+      font-size: 0.875em;
+    }
+  }
+
+  :deep(.c-filter-builder__group-header),
+  :deep(.c-filter-builder__controls),
+  :deep(.c-filter-builder__actions) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--c-filter-gap);
+  }
+
+  :deep(.c-filter-builder__group-header) {
+    justify-content: space-between;
+  }
+
+  :deep(.c-filter-builder__logic) {
+    inline-size: min(100%, 16rem);
+  }
+
+  :deep(.c-filter-builder__field),
+  :deep(.c-filter-builder__operator),
+  :deep(.c-filter-builder__value) {
+    flex: 1 1 9rem;
+    min-inline-size: 0;
+  }
+
+  :deep(.c-filter-builder__children) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--c-filter-gap);
+    margin: var(--c-filter-gap) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  :deep(.c-filter-builder__actions) {
+    margin-block-start: var(--c-filter-gap);
+  }
+
+  :deep(.c-filter-builder__issue) {
+    display: block;
+    margin-block-start: 4px;
+    color: var(--c-filter-error, var(--c-error, var(--c-theme-error)));
+    overflow-wrap: anywhere;
+  }
+}

@@ -4,6 +4,8 @@ export type {
   MessageSender,
   MessageStatus,
   ChatMessage,
+  ChatActivity,
+  ChatSource,
   ChatContact,
   ChatProps,
 } from './types'

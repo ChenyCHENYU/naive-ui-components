@@ -13,6 +13,20 @@ export const SHARED_COMPONENT_STYLES = Object.freeze({
   C_UserPicker: { imports: ['C_DataPicker.css'], external: ['C_DataPicker'] },
   C_WorkFlow: { imports: ['C_UserPicker.css'], external: ['C_UserPicker'] },
   C_BatchResult: { imports: ['C_Table.base.css'], external: ['C_Table'] },
+  C_ImportWizard: {
+    imports: ['C_BatchResult.css'],
+    external: ['C_BatchResult'],
+  },
+  C_Attachments: {
+    imports: ['C_FilePreview.css'],
+    external: ['C_FilePreview'],
+  },
+  C_NotificationInbox: {
+    imports: ['C_NotificationCenter.css'],
+    external: ['C_NotificationCenter'],
+  },
+  C_TaskBoard: { imports: ['C_Draggable.css'], external: ['C_Draggable'] },
+  C_TaskPanel: { imports: ['C_BatchResult.css'], external: ['C_BatchResult'] },
 })
 
 /** 原生相对 @import 由浏览器或消费侧构建器解析，不物理复制同一依赖样式。 */

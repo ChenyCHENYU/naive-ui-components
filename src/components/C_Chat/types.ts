@@ -13,6 +13,19 @@ export type MessageSender = 'self' | 'other' | 'system'
 /** 消息状态 */
 export type MessageStatus = 'sending' | 'sent' | 'failed'
 
+export interface ChatActivity {
+  id: string
+  title: string
+  status: 'pending' | 'running' | 'succeeded' | 'failed'
+  detail?: string
+}
+
+export interface ChatSource {
+  id: string
+  label: string
+  description?: string
+}
+
 /** 单条消息 */
 export interface ChatMessage {
   /** 唯一标识 */
@@ -35,6 +48,10 @@ export interface ChatMessage {
   fileName?: string
   /** 文件大小（字节） */
   fileSize?: number
+  /** 用户可见的执行步骤，由宿主提供状态。 */
+  activities?: readonly ChatActivity[]
+  /** 来源引用由宿主处理打开方式。 */
+  sources?: readonly ChatSource[]
 }
 
 // ================= 联系人 =================

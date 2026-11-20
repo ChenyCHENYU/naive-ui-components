@@ -1,0 +1,100 @@
+.c-approval-viewer {
+  width: min(728px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+
+  &__picker,
+  &__notice,
+  &__summary-heading,
+  &__views {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  &__picker {
+    justify-content: space-between;
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+
+  &__picker select {
+    min-width: 0;
+    max-width: 100%;
+    min-height: var(
+      --c-control-height-small,
+      var(--c-theme-control-height-small, 28px)
+    );
+    padding-inline: 8px;
+    border: 1px solid var(--c-border, var(--c-theme-border));
+    border-radius: var(--c-radius, var(--c-theme-radius));
+    background: var(--c-bg-card, var(--c-theme-bg-card));
+    color: inherit;
+    font: inherit;
+    font-weight: 400;
+  }
+
+  &__picker select:focus-visible {
+    outline: 2px solid var(--c-focus-ring, var(--c-theme-focus-ring));
+    outline-offset: 2px;
+  }
+
+  &__notice {
+    min-height: 32px;
+    margin: 0 0 12px;
+    color: var(--c-text-2, var(--c-theme-text-2));
+  }
+
+  &__detail {
+    display: grid;
+    min-width: 0;
+    gap: 16px;
+  }
+
+  &__summary {
+    display: grid;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--c-border, var(--c-theme-border));
+    border-radius: var(--c-radius-panel, var(--c-theme-radius-panel));
+    background: var(--c-bg-muted, var(--c-theme-bg-muted));
+  }
+
+  &__summary-heading strong,
+  &__meta dd,
+  &__comment {
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
+    gap: 8px 16px;
+    margin: 0;
+
+    dt {
+      color: var(--c-text-2, var(--c-theme-text-2));
+      font-size: 12px;
+    }
+
+    dd {
+      margin: 2px 0 0;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__history h3 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__actor {
+    color: var(--c-text-2, var(--c-theme-text-2));
+    overflow-wrap: anywhere;
+  }
+
+  &__comment {
+    white-space: pre-wrap;
+  }
+}

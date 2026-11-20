@@ -6,10 +6,8 @@ import { useUploadCore } from '../../src/components/C_Upload/composables/useUplo
 import { createUploadScheduler } from '../../src/components/C_Upload/composables/uploadScheduler'
 import type { UploadRequestOptions } from '../../src/components/C_Upload/types'
 import { useWorkflowNodes } from '../../src/components/C_WorkFlow/composables/useWorkflowNodes'
-import {
-  formatCellValue,
-  processExcelSheet,
-} from '../../src/components/C_FilePreview/data'
+import { formatCellValue } from '../../src/components/C_FilePreview/data'
+import { processExcelSheet } from '../../src/components/C_FilePreview/excel'
 vi.mock('@antv/x6', async importOriginal => {
   const actual: any = await importOriginal()
   return {

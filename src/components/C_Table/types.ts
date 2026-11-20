@@ -15,6 +15,7 @@ import type {
 import type { TableConfig, CrudBinding } from './composables/useTableConfig'
 import type { UseCrossPageSelectionReturn } from './composables/useCrossPageSelection'
 import type { ColumnFormatter } from './composables/useTableGlobalConfig'
+import type { TableExportScope } from './exportTypes'
 import type { ComponentFeedback, ComponentLocale } from '../../component-config'
 
 /* 宽松的 Ref-like 类型，支持跨 Vue 实例的 Ref 传递 */
@@ -654,7 +655,9 @@ export interface TableInstance<T extends object = DataRecord, C = DataRecord>
     TableSelectionMethods<T, C>,
     TableDynamicRowsMethods<T>,
     TablePaginationMethods {
-  exportData: () => Promise<void>
+  exportData: (scope?: TableExportScope) => Promise<void>
+  /** 将当前页中指定的行滚入视口。 */
+  scrollTo?: (options: { key: DataTableRowKey }) => void
   /** 高级兼容入口；常规操作优先使用实例上的选择、展开和编辑方法。 */
   getManager: () => TableManagerApi<T, C>
   /** 此嵌套对象中的 Ref 保持响应式，读取时使用 .value。 */

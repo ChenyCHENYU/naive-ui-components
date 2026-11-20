@@ -6,8 +6,41 @@
  * Copyright (c) 2026 by CHENY, All Rights Reserved 😎.
 -->
 <template>
+  <section
+    v-if="props.checklist"
+    class="c-guide-checklist"
+    :style="themeStyle"
+    :aria-label="props.checklist.title || t('guide.checklist')"
+  >
+    <header>
+      <strong>{{ props.checklist.title || t('guide.checklist') }}</strong>
+      <span role="status">{{
+        t('guide.checklistProgress', {
+          done: checklistProgress,
+          total: checklistItems.length,
+        })
+      }}</span>
+    </header>
+    <ul>
+      <li
+        v-for="item in checklistItems"
+        :key="item.id"
+      >
+        <button
+          type="button"
+          :disabled="loading"
+          @click="startGuide(true, item.id)"
+        >
+          <span>{{ item.title }}</span>
+          <span :class="{ 'is-complete': item.done }">{{
+            t(item.done ? 'guide.checklistDone' : 'guide.checklistPending')
+          }}</span>
+        </button>
+      </li>
+    </ul>
+  </section>
   <NTooltip
-    v-if="props.showTrigger"
+    v-else-if="props.showTrigger"
     placement="bottom"
     trigger="hover"
   >
@@ -71,11 +104,30 @@
     skip: props.skipBtnText ?? t('guide.skip'),
   }))
   const loading = ref(false)
+  const checklistItems = computed(() => {
+    if (!props.checklist) return []
+    const completed = new Set(props.checklist.completedIds)
+    return props.steps.flatMap(step =>
+      step.id && !step.skipIf?.()
+        ? [
+            {
+              id: step.id,
+              title: step.popover.title,
+              done: completed.has(step.id),
+            },
+          ]
+        : []
+    )
+  })
+  const checklistProgress = computed(
+    () => checklistItems.value.filter(item => item.done).length
+  )
   const persistKey = computed(
     () => `${props.persistence?.keyPrefix ?? 'c_guide'}_completed`
   )
   let activeDriver: Driver | null = null
   let disposeActiveGuide: (() => void) | undefined
+  let completeActiveAction: ((action: string) => boolean) | undefined
   let generation = 0
 
   /** 读取当前引导的完成状态；存储不可用时仍允许使用。 */
@@ -113,6 +165,7 @@
     loading.value = false
     const dispose = disposeActiveGuide
     disposeActiveGuide = undefined
+    completeActiveAction = undefined
     dispose?.()
   }
 
@@ -160,8 +213,31 @@
   const shouldSkipStart = (force: boolean): boolean =>
     loading.value || (!force && isCompleted())
 
+  const shouldAnimate = () =>
+    props.animate &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  function resolveStart(fromStepId?: string) {
+    const activeSteps = props.steps.filter(
+      step =>
+        !step.skipIf?.() &&
+        (!props.skipMissingElements ||
+          !step.element ||
+          resolveGuideTarget(step.element))
+    )
+    const initialIndex =
+      fromStepId === undefined
+        ? 0
+        : activeSteps.findIndex(step => step.id === fromStepId)
+    if (!activeSteps[initialIndex]) return
+    return { activeSteps, initialIndex }
+  }
+
   /** 用户打开后加载引擎，加载期间卸载、配置变更或停止会取消待启动任务。 */
-  const startGuide = async (force = false): Promise<void> => {
+  const startGuide = async (
+    force = false,
+    fromStepId?: string
+  ): Promise<void> => {
     if (shouldSkipStart(force)) return
     stopGuide()
     const request = generation
@@ -169,21 +245,32 @@
     try {
       const { driver } = await import('driver.js')
       if (request !== generation) return
-      const activeSteps = props.steps.filter(
-        step =>
-          !step.skipIf?.() &&
-          (!props.skipMissingElements ||
-            !step.element ||
-            resolveGuideTarget(step.element))
-      )
-      if (!activeSteps.length) return
+      const start = resolveStart(fromStepId)
+      if (!start) return
+      const { activeSteps, initialIndex } = start
       let reason: 'close' | 'complete' | 'dispose' | 'skip' = 'close'
-      let currentStepIndex = 0
+      let currentStepIndex = initialIndex
       let finalized = false
       let transitioning = false
+      const completedIds = new Set(props.checklist?.completedIds)
+      const completedActions = new Set(
+        activeSteps.flatMap((step, index) =>
+          step.id && completedIds.has(step.id) ? [index] : []
+        )
+      )
+      let advanceAfterHighlight = false
+      const waitingForAction = () =>
+        Boolean(activeSteps[currentStepIndex]?.action) &&
+        !completedActions.has(currentStepIndex)
       /** 首帧及动画期间锁定导航，避免 Driver 留下上一步的高亮标记。 */
       const updateNavigation = (popover: PopoverDOM): void => {
-        popover.nextButton.disabled = transitioning
+        const waiting = waitingForAction()
+        popover.nextButton.disabled = transitioning || waiting
+        if (waiting) {
+          popover.nextButton.title = t('guide.waitingForAction')
+        } else {
+          popover.nextButton.removeAttribute('title')
+        }
         popover.previousButton.disabled = transitioning
       }
       /** Driver 在首帧前销毁时不会调用 onDestroyed，所有退出路径仍需完成清理。 */
@@ -193,6 +280,7 @@
         if (activeDriver === driverObj) {
           activeDriver = null
           disposeActiveGuide = undefined
+          completeActiveAction = undefined
         }
         if (reason === 'complete') {
           markCompleted()
@@ -207,7 +295,7 @@
         finalizeGuide()
       }
       const advanceGuide = (): void => {
-        if (transitioning) return
+        if (transitioning || waitingForAction()) return
         if (driverObj.isLastStep()) {
           reason = 'complete'
           destroyGuide()
@@ -216,9 +304,7 @@
       const overlayOptions = getOverlayOptions()
       const driverObj = driver({
         popoverClass: `c-guide-popover ${props.popoverClass}`.trim(),
-        animate:
-          props.animate &&
-          !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        animate: shouldAnimate(),
         showProgress: props.showProgress,
         progressText: '{{current}} / {{total}}',
         allowClose: props.allowClose,
@@ -247,6 +333,14 @@
             transitioning = false
             const { popover } = driverObj.getState()
             if (popover) updateNavigation(popover)
+            if (advanceAfterHighlight) {
+              advanceAfterHighlight = false
+              const step = currentStepIndex
+              queueMicrotask(() => {
+                if (activeDriver === driverObj && step === currentStepIndex)
+                  advanceGuide()
+              })
+            }
           },
           onDeselected: element => step.onDeselected?.(element, step),
         })),
@@ -273,12 +367,24 @@
         onDestroyed: finalizeGuide,
       })
       activeDriver = driverObj
+      completeActiveAction = action => {
+        if (
+          driverObj.getActiveIndex() !== currentStepIndex ||
+          !waitingForAction() ||
+          activeSteps[currentStepIndex]?.action !== action
+        )
+          return false
+        completedActions.add(currentStepIndex)
+        if (transitioning) advanceAfterHighlight = true
+        else advanceGuide()
+        return true
+      }
       disposeActiveGuide = () => {
         reason = 'dispose'
         destroyGuide()
       }
       emit('start')
-      if (request === generation) driverObj.drive()
+      if (request === generation) driverObj.drive(initialIndex)
     } catch (error) {
       if (request === generation) {
         stopGuide()
@@ -317,7 +423,16 @@
     { deep: true }
   )
 
-  defineExpose({ startGuide, stopGuide, resetCompleted, isCompleted })
+  const completeAction = (action: string): boolean =>
+    completeActiveAction?.(action) ?? false
+
+  defineExpose({
+    startGuide,
+    completeAction,
+    stopGuide,
+    resetCompleted,
+    isCompleted,
+  })
 </script>
 
 <style scoped lang="scss">

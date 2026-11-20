@@ -10,6 +10,25 @@
     align-items: center;
     gap: 8px;
   }
+  &__value-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+    max-width: 60%;
+    :deep(.n-tag) {
+      max-width: 100%;
+    }
+    :deep(.n-tag__content) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  &__tag-count {
+    white-space: nowrap;
+  }
   :deep(.c-data-picker__open) {
     flex: 1;
     min-width: 0;

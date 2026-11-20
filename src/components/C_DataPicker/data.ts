@@ -22,6 +22,7 @@ import { getPickerRowKey, getPickerValue, validatePickerPage } from './source'
 export { isPickerValue } from './source'
 import { usePickerHistory } from './usePickerHistory'
 import { usePickerResolver } from './usePickerResolver'
+import { usePickerBatchPaste } from './usePickerBatchPaste'
 import type { ComponentDensity } from '../../core/density'
 
 const PICKER_VIEWPORT_HEIGHT = 360
@@ -112,6 +113,16 @@ export function useDataPicker<T extends object, TFilters extends object>(
   const rowValue = (row: T) => getPickerValue(props.source, row)
   const checkable = (row: T) =>
     props.rowCheckable?.(row) !== false && !props.disabledReason?.(row)
+  const batchPaste = usePickerBatchPaste(props, {
+    writable: () => opened.value && !blocked.value && !confirming.value,
+    values: () => draft.value,
+    maximum: () => maximum.value,
+    checkable,
+    append: additions => {
+      draft.value = new Map([...draft.value, ...additions])
+      restoreSelection()
+    },
+  })
   const hasCapacity = (value: DataPickerValue) =>
     !props.multiple ||
     draft.value.has(value) ||
@@ -133,6 +144,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
         props.source,
         props.source.request,
         props.source.resolve,
+        props.source.resolveCodes,
         props.source.rowKey,
         props.source.value,
       ] as const,
@@ -241,11 +253,18 @@ export function useDataPicker<T extends object, TFilters extends object>(
       })
       .join('、')
   )
+  const committedItems = computed(() =>
+    values.value.map(value => {
+      const row = knownRow(value)
+      return { value, label: row ? props.source.label(row) : String(value) }
+    })
+  )
   const selectedCount = computed(() => draft.value.size)
   const canConfirm = computed(
     () =>
       !blocked.value &&
       !confirming.value &&
+      !batchPaste.pending.value &&
       selectedCount.value <= maximum.value &&
       (!props.requireSelection || selectedCount.value > 0) &&
       (!(props.rowCheckable || props.disabledReason) ||
@@ -275,6 +294,12 @@ export function useDataPicker<T extends object, TFilters extends object>(
     { type: 'selection' as const, multiple: props.multiple },
     ...props.columns.filter(column => column.type !== 'selection'),
   ])
+  const viewportHeight = computed(() => {
+    const height = quickMode() ? props.popup?.maxHeight : undefined
+    return height !== undefined && Number.isFinite(height) && height > 0
+      ? Math.max(1, Math.trunc(height))
+      : PICKER_VIEWPORT_HEIGHT
+  })
   const tableConfig = computed<TableConfig<T>>(() => ({
     density: density(),
     locale: props.locale,
@@ -287,10 +312,12 @@ export function useDataPicker<T extends object, TFilters extends object>(
         !confirming.value && checkable(row) && hasCapacity(rowValue(row)),
     },
     // 小分页直接渲染，避免无收益的动态虚拟行测高；大页继续使用窗口化。
-    display: { maxHeight: PICKER_VIEWPORT_HEIGHT },
+    display: { maxHeight: viewportHeight.value },
     virtualScroll: {
       enabled: rows.value.length > NATIVE_PAGE_LIMIT,
-      maxHeight: PICKER_VIEWPORT_HEIGHT,
+      // 紧凑行可能比表格默认的 34px 估值低。快捷浮层按保守下界计算窗口，实际行高仍由 Naive 测量。
+      itemHeight: quickMode() ? 20 : undefined,
+      maxHeight: viewportHeight.value,
     },
   }))
 
@@ -300,6 +327,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
     draft.value = new Map()
     selectionPage = undefined
     resolver.abort()
+    batchPaste.reset()
   }
 
   // 缓存页面切离时丢弃未确认会话，避免 Teleport 弹窗覆盖新页面。
@@ -382,6 +410,19 @@ export function useDataPicker<T extends object, TFilters extends object>(
     emit('select', [])
   }
 
+  /** 关闭态标签只移除当前受控身份；未回显的其它编码继续保留。 */
+  function removeCommitted(value: DataPickerValue): void {
+    if (blocked.value || opened.value || !props.multiple) return
+    const remaining = values.value.filter(entry => entry !== value)
+    if (remaining.length === values.value.length) return
+    const resolved = remaining.flatMap(entry => {
+      const row = knownRow(entry)
+      return row === undefined ? [] : [row]
+    })
+    emit('update:modelValue', remaining)
+    emit('select', resolved)
+  }
+
   /** 只操作完成回填的表格实例，忽略换页和异步重挂载中的通知。 */
   function currentSelectionTable(): TableInstance<T> | undefined {
     if (
@@ -391,15 +432,18 @@ export function useDataPicker<T extends object, TFilters extends object>(
       return selectionPage.table
   }
 
-  function selectPage(_keys: DataTableRowKey[], selectedRows: T[]): void {
+  function selectPage(_keys: DataTableRowKey[], selectedRows: T[]): boolean {
     if (
       restoringSelection ||
       confirming.value ||
       !opened.value ||
       !currentSelectionTable()
     )
-      return
+      return false
     const nextDraft = mergePageSelection(selectedRows)
+    const changed =
+      nextDraft.size !== draft.value.size ||
+      [...nextDraft.keys()].some(value => !draft.value.has(value))
     draft.value = nextDraft
     const expected = rows.value.filter(row => nextDraft.has(rowValue(row)))
     if (
@@ -407,6 +451,26 @@ export function useDataPicker<T extends object, TFilters extends object>(
       selectedRows.some(row => !nextDraft.has(rowValue(row)))
     )
       void nextTick(restoreSelection)
+    return changed
+  }
+
+  const canSelectRow = (row: T) =>
+    opened.value &&
+    !blocked.value &&
+    !confirming.value &&
+    checkable(row) &&
+    hasCapacity(rowValue(row))
+
+  /** 行点击和键盘复用表格公开选择入口，不能绕过禁选或跨页上限。 */
+  function activateRow(row: T): boolean {
+    const currentTable = currentSelectionTable()
+    if (!currentTable || !rows.value.includes(row) || !canSelectRow(row))
+      return false
+    const key = getPickerRowKey(props.source, row)
+    if (props.multiple && draft.value.has(rowValue(row)))
+      currentTable.unselectRow(key)
+    else currentTable.selectRow(key)
+    return true
   }
 
   function mergePageSelection(
@@ -623,6 +687,7 @@ export function useDataPicker<T extends object, TFilters extends object>(
     searchDraft,
     search,
     searchOptions,
+    batchPaste,
     query,
     submitFilters,
     list,
@@ -630,6 +695,8 @@ export function useDataPicker<T extends object, TFilters extends object>(
     rows,
     total,
     display,
+    committedItems,
+    removeCommitted,
     selected,
     selectedItems,
     move,
@@ -638,6 +705,11 @@ export function useDataPicker<T extends object, TFilters extends object>(
     columns,
     tableConfig,
     selectPage,
+    canSelectRow,
+    isRowSelected: (row: T) => draft.value.has(rowValue(row)),
+    activateRow,
+    scrollToRow: (row: T) =>
+      table.value?.scrollTo?.({ key: getPickerRowKey(props.source, row) }),
     remove,
     confirming,
     selectionError,

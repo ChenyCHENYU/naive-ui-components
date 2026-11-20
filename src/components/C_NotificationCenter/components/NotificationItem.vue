@@ -61,6 +61,7 @@
         >
           {{ t(`notification.${message.priority}`) }}
         </NTag>
+        <slot name="badges" />
       </div>
       <div class="notification-item__summary">
         {{ message.summary }}
@@ -131,6 +132,7 @@
 <script setup lang="ts">
   import { useComponentLocale } from '../../../component-config'
   import { computed } from 'vue'
+  import { NAvatar, NTag, NTooltip } from 'naive-ui'
   import C_Icon from '../../C_Icon/index.vue'
   import type { NotificationMessage } from '../types'
   import { CATEGORY_MAP, PRIORITY_MAP } from '../constants'

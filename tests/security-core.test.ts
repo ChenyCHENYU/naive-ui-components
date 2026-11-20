@@ -3,8 +3,8 @@ import { evaluateSafeExpression } from '../src/components/C_FormulaEditor/utils/
 import {
   formatCellValue,
   getCellClass,
-  processExcelSheet,
 } from '../src/components/C_FilePreview/data'
+import { processExcelSheet } from '../src/components/C_FilePreview/excel'
 import { resolvePreviewUrl } from '../src/components/C_FilePreview/fileUrl'
 import { getDefaultAvatar } from '../src/components/C_WorkFlow/data'
 import { getItem, removeItem, setItem } from '../src/utils/storage'

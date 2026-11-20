@@ -23,7 +23,7 @@
       :options="options"
       :config="resolvedFormConfig"
       :renderers="renderers"
-      :inert="saving"
+      :inert="saving || discardPending"
     >
       <template
         v-for="(_, slotName) in $slots"
@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends object = FormRecord">
-  import { computed, onScopeDispose, ref, watch } from 'vue'
+  import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
   import { NModal } from 'naive-ui'
   import C_ActionBar from '../C_ActionBar/index.vue'
   import { defineActions } from '../C_ActionBar/presets'
@@ -77,7 +77,11 @@
   import { cloneData, isDataEqual } from '../../utils/data'
   import { resolveFormModalStyles } from '../shared/formModal'
   import type { ActionBarConfig } from '../C_ActionBar/types'
-  import type { FormModalEmits, FormModalProps } from './types'
+  import type {
+    FormModalEmits,
+    FormModalInstance,
+    FormModalProps,
+  } from './types'
 
   defineOptions({ name: 'C_FormModal' })
   const componentTheme = useComponentTheme()
@@ -106,7 +110,7 @@
   const modalVisible = computed({
     get: () => props.editor.visible.value,
     set: value => {
-      if (!value) close()
+      if (!value) void close()
     },
   })
   const modalTitle = computed(() => props.editor.title.value)
@@ -114,25 +118,43 @@
   const draftChanged = ref(false)
   const saveTasks = useActionTask<number>()
   const saving = computed(() => saveTasks.isRunning(session.value))
-  const busy = computed(
+  const editingBusy = computed(
     () =>
       saving.value ||
       props.editor.loading.value ||
       !!formRef.value?.isSubmitting
   )
+  const discardAttempt = shallowRef<AbortController>()
+  const discardPending = computed(() => discardAttempt.value !== undefined)
+  const busy = computed(() => editingBusy.value || discardPending.value)
+  let disposed = false
+
+  function cancelDiscard() {
+    const previous = discardAttempt.value
+    discardAttempt.value = undefined
+    previous?.abort()
+  }
+
   // 重新打开或更换编辑器时隔离表单与页脚任务。保存成功的自行关闭仍属于当前会话。
   watch(
-    [() => props.editor, () => props.editor.visible.value],
-    ([editor, visible], [previousEditor]) => {
-      if (visible || editor !== previousEditor) {
+    [
+      () => props.editor,
+      () => props.editor.visible.value,
+      () => props.sessionKey,
+    ],
+    ([editor, visible, key], [previousEditor, , previousKey]) => {
+      if (visible || editor !== previousEditor || key !== previousKey) {
         session.value++
         draftChanged.value = false
       }
+      cancelDiscard()
     },
     { flush: 'sync' }
   )
   onScopeDispose(() => {
+    disposed = true
     session.value++
+    cancelDiscard()
   })
   const modalStyles = computed(() =>
     resolveFormModalStyles(props.width, density.value)
@@ -191,11 +213,71 @@
     },
   }))
 
-  const close = (): void => {
-    if (busy.value || !modalVisible.value) return
-    props.editor.close()
-    emit('close')
+  function discardDecision(
+    beforeClose: NonNullable<FormModalProps<T>['beforeClose']>,
+    signal: AbortSignal
+  ): Promise<boolean> {
+    return new Promise(resolve => {
+      const settle = (allowed: boolean) => {
+        signal.removeEventListener('abort', abort)
+        resolve(allowed === true)
+      }
+      const abort = () => settle(false)
+      signal.addEventListener('abort', abort, { once: true })
+      void Promise.resolve()
+        .then(() => !signal.aborted && beforeClose({ signal }))
+        .then(settle, abort)
+    })
   }
+
+  async function confirmDiscard(
+    beforeClose: NonNullable<FormModalProps<T>['beforeClose']>,
+    action: () => void
+  ): Promise<boolean> {
+    const controller = new AbortController()
+    const { signal } = controller
+    const stop = watch(
+      [() => props.editor.model.value, editingBusy],
+      cancelDiscard,
+      {
+        deep: true,
+        flush: 'sync',
+      }
+    )
+    signal.addEventListener('abort', stop, { once: true })
+    discardAttempt.value = controller
+    try {
+      const allowed = await discardDecision(beforeClose, signal)
+      // 即使回调忽略取消，旧确认也不能操作随后打开的草稿。
+      if (!allowed || discardAttempt.value !== controller) return false
+      stop()
+      discardAttempt.value = undefined
+      action()
+      return true
+    } finally {
+      stop()
+      signal.removeEventListener('abort', stop)
+      if (discardAttempt.value === controller) discardAttempt.value = undefined
+    }
+  }
+
+  async function requestDiscard(action: () => void): Promise<boolean> {
+    if (disposed || busy.value || !modalVisible.value) return false
+    const { beforeClose } = props
+    if (beforeClose && formRef.value?.isDirty)
+      return confirmDiscard(beforeClose, action)
+    action()
+    return true
+  }
+
+  function close() {
+    return requestDiscard(() => {
+      props.editor.close()
+      emit('close')
+    })
+  }
+
+  defineExpose<FormModalInstance>({ requestDiscard })
 
   const footerConfig = computed<ActionBarConfig>(() => {
     const tokens = resolveComponentDensity(density.value)
@@ -216,6 +298,7 @@
         key: 'cancel',
         label: props.cancelText || t('common.cancel'),
         disabled: busy,
+        autoLoading: false,
         onClick: close,
       },
       {
@@ -227,7 +310,8 @@
               ? t('common.create')
               : props.createText || t('common.add')
             : props.saveText || t('common.save'),
-        loading: busy,
+        disabled: discardPending,
+        loading: editingBusy,
         onClick: async () => {
           await formRef.value?.submit()
         },

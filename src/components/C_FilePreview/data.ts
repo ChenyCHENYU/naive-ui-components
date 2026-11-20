@@ -3,18 +3,12 @@
  * 类型定义统一在 ./types.ts
  */
 import { type Ref } from 'vue'
-import * as XLSX from 'xlsx'
-import mammoth from 'mammoth'
-import { sanitizeRichHtml } from '../../utils/html'
+import { MAX_EXCEL_PREVIEW_CELLS, resolvePreviewLimit } from './previewLimits'
 import type {
   FilePreviewType,
   FilePreviewLimits,
   FileConfig,
   ZoomConfig,
-  ExcelRow,
-  ExcelCell,
-  ExcelColumn,
-  ExcelSheet,
   DocHeading,
   PdfLoadResult,
   WordLoadResult,
@@ -132,7 +126,6 @@ export const formatCellValue = (value: unknown): string => {
 }
 
 /** 预览安全预算；超限明确告知下载阅读，不截断后假装完整展示。 */
-export const MAX_EXCEL_PREVIEW_CELLS = 100_000
 export const MAX_EXCEL_FILE_BYTES = 32 * 1024 * 1024
 
 // eslint-disable-next-line complexity -- 单元格分类规则保持扁平分支更便于审计顺序。
@@ -149,17 +142,6 @@ export const getCellClass = (value: any): string => {
     return 'cell-date'
   if (['true', 'false'].includes(strValue.toLowerCase())) return 'cell-boolean'
   return strValue.length > 20 ? 'cell-text cell-long' : 'cell-text'
-}
-
-function resolvePreviewLimit(
-  value: number | undefined,
-  fallback: number,
-  name: string
-): number {
-  if (value === undefined) return fallback
-  if (!Number.isSafeInteger(value) || value <= 0)
-    throw new Error(`previewLimits.${name} 必须为有限正整数`)
-  return value
 }
 
 function excelByteLimit(limits?: FilePreviewLimits): number {
@@ -208,115 +190,15 @@ export async function readExcelPreviewBlob(
   }
 }
 
-interface ExcelMergeInfo {
-  isMain: boolean
-  rowspan: number
-  colspan: number
-}
-function createExcelCell(
-  cell: XLSX.CellObject | undefined,
-  merge?: ExcelMergeInfo
-): ExcelCell {
-  const span = merge?.isMain ? merge : { rowspan: 1, colspan: 1 }
-  return {
-    value: cell?.v ?? '',
-    displayValue: cell ? (cell.w ?? XLSX.utils.format_cell(cell)) : '',
-    type: cell?.t,
-    merged: Boolean(merge),
-    hidden: Boolean(merge && !merge.isMain),
-    rowspan: span.rowspan,
-    colspan: span.colspan,
-  }
-}
-
-function isValidExcelMerge(merge: XLSX.Range, maxRow: number, maxCol: number) {
-  const { s, e } = merge
-  return (
-    [s.r, s.c, e.r, e.c].every(Number.isSafeInteger) &&
-    s.r >= 0 &&
-    s.c >= 0 &&
-    e.r <= maxRow &&
-    e.c <= maxCol &&
-    e.r >= s.r &&
-    e.c >= s.c
-  )
-}
-
-export const processExcelSheet = (
-  worksheet: any,
-  merges: any[],
-  maxCells = MAX_EXCEL_PREVIEW_CELLS
-): { data: ExcelRow[]; columns: ExcelColumn[] } => {
-  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1')
-  const { c: maxCol, r: maxRow } = range.e
-  const cellCount = (maxCol + 1) * (maxRow + 1)
-  if (
-    !Number.isSafeInteger(cellCount) ||
-    cellCount < 1 ||
-    cellCount >
-      resolvePreviewLimit(maxCells, MAX_EXCEL_PREVIEW_CELLS, 'maxCells')
-  ) {
-    throw new Error(
-      `工作表范围超过 ${maxCells.toLocaleString()} 个单元格的预览上限，请下载文件查看`
-    )
-  }
-
-  const columns: ExcelColumn[] = Array.from({ length: maxCol + 1 }, (_, c) => {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c })
-    const cell = worksheet[cellAddress]
-    const columnName = cell ? String(cell.v ?? '').trim() : `列${c + 1}`
-    return {
-      title: columnName || `列${c + 1}`,
-      key: `col_${c}`,
-      width: Math.min(Math.max(columnName.length * 12, 80), 200),
-    }
-  })
-
-  const mergeMap = new Map<string, ExcelMergeInfo>()
-  let mergeCellVisits = 0
-  merges.forEach(merge => {
-    if (!isValidExcelMerge(merge, maxRow, maxCol)) return
-    const {
-      s: { r: sRow, c: sCol },
-      e: { r: eRow, c: eCol },
-    } = merge
-    mergeCellVisits += (eRow - sRow + 1) * (eCol - sCol + 1)
-    if (!Number.isSafeInteger(mergeCellVisits) || mergeCellVisits > cellCount) {
-      throw new Error('合并单元格累计范围超过预览上限，请下载文件查看')
-    }
-    for (let r = sRow; r <= eRow; r++) {
-      for (let c = sCol; c <= eCol; c++) {
-        mergeMap.set(`${r}-${c}`, {
-          isMain: r === sRow && c === sCol,
-          rowspan: eRow - sRow + 1,
-          colspan: eCol - sCol + 1,
-        })
-      }
-    }
-  })
-
-  const data: ExcelRow[] = Array.from({ length: maxRow + 1 }, (_, r) => {
-    const row: ExcelRow = {}
-    for (let c = 0; c <= maxCol; c++) {
-      const cellAddress = XLSX.utils.encode_cell({ r, c })
-      const cell = worksheet[cellAddress]
-      const mergeInfo = mergeMap.get(`${r}-${c}`)
-
-      row[`col_${c}`] = createExcelCell(cell, mergeInfo)
-    }
-    return row
-  })
-
-  return { data, columns }
-}
-
 /* ==================== 文件加载器 ==================== */
 
-/**
- *
- */
+/** PDF 嵌入地址的内容类型由预览器决定，与上传文件或响应声明的类型无关。 */
 export async function loadPdf(file: File): Promise<PdfLoadResult> {
-  const fileUrl = URL.createObjectURL(file)
+  const pdf =
+    file.type === 'application/pdf'
+      ? file
+      : new Blob([file], { type: 'application/pdf' })
+  const fileUrl = URL.createObjectURL(pdf)
   return {
     url: fileUrl + '#toolbar=1&navpanes=1&scrollbar=1&view=FitH',
     totalPages: 1,
@@ -327,16 +209,23 @@ export async function loadPdf(file: File): Promise<PdfLoadResult> {
  *
  */
 export async function loadWord(file: File): Promise<WordLoadResult> {
-  const arrayBuffer = await file.arrayBuffer()
-  const result = await mammoth.convertToHtml({
-    arrayBuffer,
-    styleMap: [
-      "p[style-name='Heading 1'] => h1:fresh",
-      "p[style-name='Heading 2'] => h2:fresh",
-      "p[style-name='Heading 3'] => h3:fresh",
-      "p[style-name='Title'] => h1.title:fresh",
-    ],
-  } as any)
+  const [arrayBuffer, { default: mammoth }, { sanitizeRichHtml }] =
+    await Promise.all([
+      file.arrayBuffer(),
+      import('mammoth'),
+      import('../../utils/html'),
+    ])
+  const result = await mammoth.convertToHtml(
+    { arrayBuffer },
+    {
+      styleMap: [
+        "p[style-name='Heading 1'] => h1:fresh",
+        "p[style-name='Heading 2'] => h2:fresh",
+        "p[style-name='Heading 3'] => h3:fresh",
+        "p[style-name='Title'] => h1.title:fresh",
+      ],
+    }
+  )
 
   const headings: DocHeading[] = []
 
@@ -371,31 +260,9 @@ export async function loadExcel(
     'maxCells'
   )
   assertExcelByteLimit(file.size, maxBytes)
-  const arrayBuffer = await file.arrayBuffer()
-  const workbook = XLSX.read(arrayBuffer, {
-    type: 'array',
-    cellStyles: true,
-    cellFormula: true,
-    cellDates: true,
-  })
-
-  if (!workbook.SheetNames.length) {
-    throw new Error('Excel文件中没有找到工作表')
-  }
-
-  const sheets: ExcelSheet[] = workbook.SheetNames.map(name => {
-    const worksheet = workbook.Sheets[name]
-    const merges = worksheet['!merges'] || []
-    return {
-      name,
-      data: [],
-      merges,
-      columns: [],
-      load: () => processExcelSheet(worksheet, merges, maxCells),
-    }
-  })
-
-  // 先准备首张表，让错误进入统一预览反馈；其他工作表在切换时才展开。
-  Object.assign(sheets[0], sheets[0].load?.())
-  return { sheets }
+  const [arrayBuffer, { readExcelWorkbook }] = await Promise.all([
+    file.arrayBuffer(),
+    import('./excel'),
+  ])
+  return readExcelWorkbook(arrayBuffer, maxCells)
 }

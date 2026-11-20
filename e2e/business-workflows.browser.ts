@@ -176,6 +176,85 @@ test('quick picker Escape preserves committed data and a new scope replaces old 
   await expect(popup).toContainText('已选 0')
 })
 
+test('local table picker row activation updates only the Search draft, then Search applies it', async ({
+  page,
+}) => {
+  await page.goto('/contracts.html')
+  const section = page.getByTestId('location-picker-contract')
+  const input = section.getByPlaceholder('按编码或名称查找货位')
+  const popup = page.getByRole('dialog', { name: '选择库区货位' })
+  const row = (code: string) =>
+    popup
+      .getByRole('row')
+      .filter({ has: page.getByRole('cell', { name: code, exact: true }) })
+  const result = section.getByTestId('location-selection')
+
+  await input.click()
+  await expect(row('BIN-00')).toBeVisible()
+  await expect(row('BIN-00')).toHaveAttribute('aria-disabled', 'true')
+  await row('BIN-00')
+    .getByText('BIN-00', { exact: true })
+    .click({ force: true })
+  await expect(result).toContainText('当前货位：未选')
+  await expect(popup).toBeVisible()
+  await input.fill('bin-02')
+  await expect(row('BIN-02')).toBeVisible()
+  await expect(row('BIN-00')).toHaveCount(0)
+  await row('BIN-02').getByText('BIN-02', { exact: true }).click()
+  await expect(popup).toBeHidden()
+  await expect(input).toHaveValue('BIN-02')
+  await expect(input).toBeFocused()
+  await expect(result).toHaveText('当前货位：2；已查询：未查询')
+  await section.getByRole('button', { name: '搜索', exact: true }).click()
+  await expect(result).toHaveText('当前货位：2；已查询：2')
+})
+
+test(
+  'quick picker can focus a virtual row beyond the viewport and cancel or commit by keyboard',
+  {
+    annotation: {
+      type: 'firefox-virtual-scroll',
+      description: 'Keyboard focus crosses a native virtual window',
+    },
+  },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/contracts.html')
+    const section = page.getByTestId('location-picker-contract')
+    const input = section.getByPlaceholder('按编码或名称查找货位')
+    const popup = page.getByRole('dialog', { name: '选择库区货位' })
+    const row = (code: string) =>
+      popup
+        .getByRole('row')
+        .filter({ has: page.getByRole('cell', { name: code, exact: true }) })
+    const result = section.getByTestId('location-selection')
+
+    await input.click()
+    await expect(row('BIN-00')).toBeVisible()
+    expect((await popup.boundingBox())?.width).toBeLessThanOrEqual(390)
+    await input.press('ArrowDown')
+    await expect(row('BIN-01')).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(popup).toBeHidden()
+    await expect(input).toBeFocused()
+
+    await input.click()
+    await expect(row('BIN-00')).toBeVisible()
+    await expect(row('BIN-41')).toHaveCount(0)
+    await input.press('ArrowUp')
+    await expect(row('BIN-41')).toBeFocused()
+    await expect(row('BIN-41')).toBeInViewport()
+    await expect(row('BIN-00')).toHaveCount(0)
+    await page.keyboard.press('ArrowUp')
+    await expect(row('BIN-40')).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(popup).toBeHidden()
+    await expect(input).toHaveValue('BIN-40')
+    await expect(input).toBeFocused()
+    await expect(result).toHaveText('当前货位：40；已查询：未查询')
+  }
+)
+
 test('remote tree error retries and scope replacement cannot restore obsolete search results', async ({
   page,
 }) => {

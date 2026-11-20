@@ -9,6 +9,14 @@ export function isPickerValue(value: unknown): value is DataPickerValue {
   )
 }
 
+/** 表单与搜索自定义字段共用选择器的值边界。 */
+export function normalizePickerFieldValue(
+  value: unknown
+): DataPickerValue | DataPickerValue[] | null {
+  if (isPickerValue(value)) return value
+  return Array.isArray(value) && value.every(isPickerValue) ? value : null
+}
+
 /** Validate the identity before passing it to the table selection API. */
 export function getPickerRowKey<T extends object>(
   source: Pick<DataPickerSourceInput<T>, 'rowKey'>,

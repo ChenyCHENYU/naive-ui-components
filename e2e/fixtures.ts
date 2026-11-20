@@ -21,8 +21,25 @@ export const test = base.extend<{ browserErrors: void }>({
         body: JSON.stringify(messages, null, 2),
         contentType: 'application/json',
       })
+      const expectsNativeScrollDiagnostic =
+        testInfo.project.name === 'firefox' &&
+        testInfo.annotations.some(
+          ({ type }) => type === 'firefox-virtual-scroll'
+        )
+      // 真正跨越虚拟窗口会触发 Firefox 的滚动性能提示。原始日志保留，只有显式标记的测试允许这一条。
+      const unexpected = expectsNativeScrollDiagnostic
+        ? messages.filter(
+            message =>
+              !message.startsWith(
+                'warning: [JavaScript Warning: "This site appears to use a scroll-linked positioning effect.'
+              ) ||
+              !message.includes(
+                'https://firefox-source-docs.mozilla.org/performance/scroll-linked_effects.html'
+              )
+          )
+        : messages
       expect(
-        messages,
+        unexpected,
         'Published-entry consumer must not produce browser errors/warnings'
       ).toEqual([])
     },

@@ -42,6 +42,7 @@ void [
   pickerProps,
   businessValue,
   Workflows.useDataResource,
+  Workflows.useTabbedQuery,
   Workflows.useValidationScope,
   Config.COMPONENT_LOCALE_KEY,
 ]

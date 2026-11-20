@@ -3,6 +3,8 @@
     :editor="editor"
     :options="options"
     :config="config"
+    :before-close="({ signal }) => !signal.aborted"
+    :session-key="model?.id"
   />
 </template>
 

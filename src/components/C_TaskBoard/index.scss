@@ -1,0 +1,80 @@
+$border: var(--c-board-border, var(--c-border, var(--c-theme-border)));
+$radius: var(--c-board-radius, var(--c-radius, var(--c-theme-radius)));
+
+.c-task-board {
+  min-inline-size: 0;
+
+  &__title,
+  &__lane-title {
+    margin: 0 0 var(--c-board-gap);
+  }
+
+  &__viewport {
+    overflow-x: auto;
+  }
+
+  &__lane:not(:last-child) {
+    margin-block-end: var(--c-board-gap);
+  }
+
+  &__columns {
+    display: grid;
+    grid-template-columns: repeat(var(--c-board-columns), minmax(12rem, 1fr));
+    gap: var(--c-board-gap);
+  }
+
+  &__column {
+    min-inline-size: 0;
+    padding: 8px;
+    border: 1px solid $border;
+    border-radius: var(
+      --c-board-radius,
+      var(--c-radius-panel, var(--c-radius, var(--c-theme-radius)))
+    );
+    background: var(
+      --c-board-column,
+      var(--c-bg-muted, var(--c-theme-bg-muted))
+    );
+  }
+
+  &__column-header,
+  &__card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  &__column-header {
+    justify-content: space-between;
+    margin-block-end: 8px;
+  }
+
+  :deep(.c-task-board__cards) {
+    min-block-size: 3rem;
+  }
+
+  &__card {
+    padding: 8px;
+    border: 1px solid $border;
+    border-radius: $radius;
+    background: var(
+      --c-board-background,
+      var(--c-bg-card, var(--c-theme-bg-body))
+    );
+  }
+
+  &__card-content {
+    flex: 1;
+    min-inline-size: 0;
+  }
+
+  &__handle {
+    cursor: grab;
+  }
+
+  &__feedback {
+    display: block;
+    margin-block-start: 8px;
+  }
+}

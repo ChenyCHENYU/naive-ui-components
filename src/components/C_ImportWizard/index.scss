@@ -1,0 +1,45 @@
+.c-import-wizard {
+  color: var(--c-import-color, var(--c-text-2, var(--c-theme-text-2)));
+  display: grid;
+  gap: var(--c-import-gap);
+
+  &__title,
+  &__summary {
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--c-import-gap);
+
+    > input {
+      max-inline-size: 100%;
+    }
+  }
+
+  &__mapping {
+    display: grid;
+    align-items: center;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--c-import-gap);
+    overflow-wrap: anywhere;
+  }
+
+  &__issues {
+    display: grid;
+    gap: var(--c-import-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    > li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      column-gap: var(--c-import-gap);
+      overflow-wrap: anywhere;
+    }
+  }
+}

@@ -12,7 +12,14 @@
   import { C_Tree } from '@robot-admin/naive-ui-components/C_Tree'
   import { C_Table } from '@robot-admin/naive-ui-components/C_Table'
   import { C_Select } from '@robot-admin/naive-ui-components/C_Select'
-  import { C_FormSearch } from '@robot-admin/naive-ui-components/C_FormSearch'
+  import {
+    C_FormSearch,
+    type SearchFormItem,
+  } from '@robot-admin/naive-ui-components/C_FormSearch'
+  import {
+    createDataPickerSearchField,
+    createLocalDataPickerSource,
+  } from '@robot-admin/naive-ui-components/C_DataPicker'
   import { C_GlobalSearch } from '@robot-admin/naive-ui-components/C_GlobalSearch'
   import {
     C_Timeline,
@@ -24,6 +31,7 @@
   import '@robot-admin/naive-ui-components/C_Table/style.css'
   import '@robot-admin/naive-ui-components/C_Select/style.css'
   import '@robot-admin/naive-ui-components/C_FormSearch/style.css'
+  import '@robot-admin/naive-ui-components/C_DataPicker/style.css'
   import '@robot-admin/naive-ui-components/C_GlobalSearch/style.css'
   import '@robot-admin/naive-ui-components/C_Timeline/style.css'
   import './style.css'
@@ -81,6 +89,41 @@
     },
     { key: '/produce/material', label: '物料管理', breadcrumb: '生产管理' },
   ]
+  type LocationFilter = { location: number | null }
+  const locationQuery = ref<LocationFilter>({ location: null })
+  const appliedLocation = ref<number | null>(null)
+  const locationSource = createLocalDataPickerSource({
+    rows: Array.from({ length: 42 }, (_, id) => ({
+      id,
+      code: `BIN-${String(id).padStart(2, '0')}`,
+      name: `货位 ${id}`,
+    })),
+    rowKey: 'id',
+    label: row => row.code,
+    searchText: row => `${row.code} ${row.name}`,
+  })
+  const locationFields: SearchFormItem<LocationFilter>[] = [
+    {
+      type: 'custom',
+      prop: 'location',
+      defaultValue: null,
+      label: '库区货位',
+      render: createDataPickerSearchField({
+        source: locationSource,
+        columns: [
+          { key: 'code', title: '编码' },
+          { key: 'name', title: '名称' },
+        ],
+        title: '选择库区货位',
+        placeholder: '按编码或名称查找货位',
+        presentation: 'popover',
+        commitOnSelect: true,
+        popup: { width: 520, maxHeight: 230 },
+        pageSize: 42,
+        rowCheckable: row => row.id !== 0,
+      }),
+    },
+  ]
 </script>
 
 <template>
@@ -115,6 +158,22 @@
                   aria-label="深色主题" /></label
             ></div>
           </header>
+          <section
+            class="contract-card"
+            data-testid="location-picker-contract"
+          >
+            <div class="contract-heading"><h2>货位快捷选择</h2></div>
+            <C_FormSearch
+              v-model="locationQuery"
+              :form-item-list="locationFields"
+              @search="appliedLocation = $event.location"
+            />
+            <p data-testid="location-selection"
+              >当前货位：{{ locationQuery.location ?? '未选' }}；已查询：{{
+                appliedLocation ?? '未查询'
+              }}</p
+            >
+          </section>
           <section class="contract-card"
             ><div class="contract-heading"
               ><div

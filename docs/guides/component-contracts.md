@@ -51,6 +51,14 @@ await printer.utils.printImage(imageUrl, {
 
 异步打印引擎失败会拒绝 Promise，可通过 `onError` 接收错误；通知回调抛错不会阻断结束与清理。Promise 完成表示浏览器打印对话框关闭，不能当作实际出纸凭证。纸张和边距的最终结果仍受浏览器、打印设置与驱动影响。
 
+## 图形、日历与媒体
+
+- `C_AntV` 的 BPMN 接口使用 `{ nodes, flows }`。`data-change` 和 `getData()` 返回这个结构。BPMN、UML 在 `data` 省略时加载示例，显式空数据保留空画布。
+- `C_VtableGantt` 的 `options` 保留未覆盖的嵌套默认值，数组整体替换。初始化或重建失败后公开 `error` 与 `reload()`，新的 `ganttInstance` 在 `ganttCreated` 后可用。全屏状态以当前组件容器为准。
+- `C_FullCalendar` 按本地日历日期创建当日事件。`C_WaterFall` 按图片真实宽高比重新布局，条目使用稳定唯一的 `id`。
+- `C_ImageCropper` 翻转会更新实际图片源并重置裁剪位置，加载和导出失败发出 `error`。`C_Signature` 在 `readonly` 下仍可通过实例方法载入历史签名。签名 SVG 与带 Logo 的二维码 SVG 均嵌入栅格内容，以保留预览效果。
+- `C_AudioPlayer` 在浏览器确认播放成功后才发出 `play`。自动播放被拒绝时发出 `error`，静音、曲目和进度可以用键盘操作。
+
 ## 验证示例
 
 ```bash

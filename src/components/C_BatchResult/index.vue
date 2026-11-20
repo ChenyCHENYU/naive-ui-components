@@ -23,6 +23,7 @@
         :aria-label="t('batch.filterLabel')"
       />
       <NButton
+        v-if="showRetry"
         size="small"
         :disabled="!retryKeys.length"
         @click="emit('retry', [...retryKeys])"
@@ -64,6 +65,7 @@
   defineOptions({ name: 'C_BatchResult' })
   const props = withDefaults(defineProps<BatchResultProps>(), {
     pageSize: 20,
+    showRetry: true,
   })
   const emit = defineEmits<BatchResultEmits>()
   const {
@@ -84,37 +86,46 @@
     conflict: 'warning',
     skipped: 'default',
   } as const
-  const columns = computed<TableColumn<BatchOperationResult>[]>(() => [
-    { key: 'key', title: t('batch.id'), minWidth: 130 },
-    {
-      key: 'status',
-      title: t('batch.status'),
-      width: 90,
-      render: row =>
-        h(
-          NTag,
-          { size: 'small', type: colors[row.status] },
-          { default: () => t(`batch.${row.status}`) }
-        ),
-    },
-    { key: 'message', title: t('batch.message'), minWidth: 220 },
-    {
-      key: 'retryable',
-      title: t('batch.retryColumn'),
-      width: 90,
-      render: row =>
-        row.retryable && (row.status === 'failure' || row.status === 'conflict')
-          ? t('batch.retryable')
-          : '—',
-    },
-  ])
+  const columns = computed(() => {
+    const result: TableColumn<BatchOperationResult>[] = [
+      { key: 'key', title: t('batch.id'), minWidth: 130 },
+      {
+        key: 'status',
+        title: t('batch.status'),
+        width: 90,
+        render: row =>
+          h(
+            NTag,
+            { size: 'small', type: colors[row.status] },
+            {
+              default: () => t(`batch.${row.status}`),
+            }
+          ),
+      },
+      { key: 'message', title: t('batch.message'), minWidth: 220 },
+    ]
+    if (props.showRetry) {
+      result.push({
+        key: 'retryable',
+        title: t('batch.retryColumn'),
+        width: 90,
+        render: row =>
+          row.retryable &&
+          (row.status === 'failure' || row.status === 'conflict')
+            ? t('batch.retryable')
+            : '—',
+      })
+    }
+    return result
+  })
   const tableConfig = computed<TableConfig<BatchOperationResult>>(() => ({
     locale: props.locale,
     density: 'compact',
     pagination: false,
     toolbar: { show: false },
-    display: { singleLine: false },
-    virtualScroll: { enabled: true, maxHeight: 420 },
+    display: { singleLine: false, maxHeight: 420 },
+    // Ordinary result pages are bounded. Reserve measured virtual rows for larger pages.
+    virtualScroll: { enabled: rows.value.length > 20, maxHeight: 420 },
   }))
 </script>
 
