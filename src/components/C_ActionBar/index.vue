@@ -14,17 +14,17 @@
       'is-compact': finalConfig.compact,
       'is-inline': finalConfig.inline,
       'is-wrap': finalConfig.wrap,
-      'has-overflow': overflowEntries.length > 0,
+      'has-overflow': buttonGroups.overflow.length > 0,
       [`is-align-${finalConfig.align}`]: true,
       'has-only-left':
         buttonGroups.left.length > 0 &&
         buttonGroups.right.length === 0 &&
-        !overflowEntries.length &&
+        !buttonGroups.overflow.length &&
         !$slots.center,
       'has-only-right':
         buttonGroups.right.length > 0 &&
         buttonGroups.left.length === 0 &&
-        !overflowEntries.length &&
+        !buttonGroups.overflow.length &&
         !$slots.center,
     }"
   >
@@ -70,12 +70,11 @@
         </template>
       </div>
     </template>
-    <component
-      :is="actionOverflow"
-      v-if="overflowAt && actionOverflow"
+    <ActionOverflow
+      v-if="overflowAt"
       :anchor="bar"
       :threshold="overflowAt"
-      :entries="overflowEntries"
+      :entries="buttonGroups.overflow"
       :size="finalConfig.size"
       :resolve="resolveOverflowEntry"
       @narrow="narrow = $event"
@@ -93,15 +92,14 @@
     computed,
     h,
     withDirectives,
+    defineAsyncComponent,
     defineComponent,
     ref,
-    shallowRef,
-    watch,
-    type Component,
     type PropType,
   } from 'vue'
   import { NButton, NTooltip, NDropdown, NDivider } from 'naive-ui'
   import { renderActionIcon } from './actionIcon'
+  import { useActionGroups } from './useActionGroups'
   import { useActionTask } from '../../composables/useActionTask'
   import type {
     ActionItem,
@@ -182,80 +180,15 @@
       (props.config.compact === false ? 12 : ACTION_BAR_DEFAULT_CONFIG.gap),
   }))
 
-  const leftActions = computed<ActionItem[]>(() => {
-    if (props.leftActions?.length) {
-      return props.leftActions
-    }
-    return props.actions.filter(action => action.group !== 'right')
+  const ActionOverflow = defineAsyncComponent({
+    loader: () => import('./ActionOverflow.vue'),
+    suspensible: false,
   })
-
-  const rightActions = computed<ActionItem[]>(() => {
-    if (props.rightActions?.length) {
-      return props.rightActions
-    }
-    return props.actions.filter(action => action.group === 'right')
-  })
-
-  const visibleEntries = (
-    actions: ActionItem[],
-    group: 'left' | 'right'
-  ): ActionEntry[] => {
-    const occurrences = new Map<string, number>()
-    const entries: ActionEntry[] = []
-    actions.forEach((action, index) => {
-      const taskKey =
-        action.key === undefined
-          ? `position:${group}:${index}`
-          : `key:${action.key}`
-      // 隐藏项保留原始位置与同 key 序号，显隐变化不会把执行锁交给邻项。
-      const occurrence = occurrences.get(taskKey) ?? 0
-      occurrences.set(taskKey, occurrence + 1)
-      if (resolveActionState(action.show) === false) return
-      entries.push({
-        action,
-        taskKey,
-        renderKey: `${group}:${taskKey}:${occurrence}`,
-      })
-    })
-    return entries
-  }
-
-  const actionOverflow = shallowRef<Component>()
   const bar = ref<HTMLElement>()
-  const narrow = ref(false)
-  const overflowAt = computed(() => {
-    const threshold = finalConfig.value.overflowAt
-    return Number.isFinite(threshold) && threshold > 0 ? threshold : 0
-  })
-  watch(
-    overflowAt,
-    async threshold => {
-      if (threshold && !actionOverflow.value)
-        actionOverflow.value = (await import('./ActionOverflow.vue')).default
-    },
-    { immediate: true }
+  const { buttonGroups, narrow, overflowAt } = useActionGroups(
+    props,
+    () => finalConfig.value.overflowAt
   )
-  const buttonGroups = computed(() => {
-    const left = visibleEntries(leftActions.value, 'left')
-    const right = visibleEntries(rightActions.value, 'right')
-    const overflow: ActionEntry[] = []
-    if (!overflowAt.value || !narrow.value) return { left, right, overflow }
-    const stay = (entry: ActionEntry) => {
-      const { action } = entry
-      if (
-        action.overflow !== true ||
-        action.buttonProps ||
-        action.directives?.length ||
-        action.dropdown?.length ||
-        action.tooltip
-      )
-        return true
-      overflow.push(entry)
-      return false
-    }
-    return { left: left.filter(stay), right: right.filter(stay), overflow }
-  })
-  const overflowEntries = computed(() => buttonGroups.value.overflow)
   const groupOrder = ['left', 'center', 'right'] as const
   const actionTasks = useActionTask<string>()
 
