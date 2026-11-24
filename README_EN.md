@@ -27,7 +27,7 @@
 
 **Naive UI Components** is a Vue 3 library extracted from [Robot Admin](https://github.com/ChenyCHENYU/Robot_Admin) and published independently as `@robot-admin/naive-ui-components`. It provides typed configuration for forms, tables, entity pickers, and workspaces. The host application owns endpoints, permissions, and task execution.
 
-The current repository version is **0.41.0**. See the [changelog](./CHANGELOG.md) for release details.
+The current repository version is **0.41.1**. See the [changelog](./CHANGELOG.md) for release details.
 
 ## Quick start
 

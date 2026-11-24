@@ -1,5 +1,11 @@
 # @robot-admin/naive-ui-components
 
+## 0.41.1
+
+### Patch Changes
+
+- 分离操作栏的可见分组与窄容器溢出 composable，保留稳定渲染键和执行锁。溢出菜单仍按需加载，普通工具栏不加载菜单实现。
+
 ## 0.41.0
 
 ### Minor Changes

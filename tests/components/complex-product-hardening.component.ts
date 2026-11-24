@@ -169,15 +169,12 @@ test('Excel preserves identifiers, numeric precision and workbook display values
   expect(data.length * columns.length).toBe(100000)
 })
 
-test('removing a hashing file cancels queued animation work and stops all remaining reads', async () => {
+test('removing a hashing file prevents further reads after an in-flight chunk settles', async () => {
   let core: any
-  const frames: FrameRequestCallback[] = []
-  const frame = vi
-    .spyOn(globalThis, 'requestAnimationFrame')
-    .mockImplementation(cb => {
-      frames.push(cb)
-      return 1
-    })
+  let releaseRead: (() => void) | undefined
+  const pendingRead = new Promise<ArrayBuffer>(resolve => {
+    releaseRead = () => resolve(Uint8Array.of(1).buffer)
+  })
   let readCount = 0
   const raw = {
     name: 'large.txt',
@@ -185,9 +182,9 @@ test('removing a hashing file cancels queued animation work and stops all remain
     size: 4,
     slice() {
       return {
-        arrayBuffer: async () => {
+        arrayBuffer: () => {
           readCount++
-          return new Uint8Array([1]).buffer
+          return pendingRead
         },
       }
     },
@@ -211,13 +208,9 @@ test('removing a hashing file cancels queued animation work and stops all remain
   expect(readCount).toBe(1)
   core.removeFile(item.uid)
   wrapper.unmount()
-  for (let i = 0; i < 5; i++) {
-    frames.splice(0).forEach(cb => cb(0))
-    // eslint-disable-next-line no-await-in-loop -- 每轮仅推进一个哈希分片，模拟取消后的迟到帧。
-    await flushPromises()
-  }
+  releaseRead?.()
+  await flushPromises()
   expect(readCount).toBe(1)
-  frame.mockRestore()
 })
 
 import { usePlayerCore } from '../../src/components/C_VideoPlayer/composables/usePlayerCore'

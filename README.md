@@ -27,7 +27,7 @@
 
 **Naive UI Components** 是从 [Robot Admin](https://github.com/ChenyCHENYU/Robot_Admin) 提炼的 Vue 3 组件库，以 `@robot-admin/naive-ui-components` 独立发布。表单、表格、实体选择和工作台可以通过类型化的配置接入。业务接口、权限和任务执行由宿主应用负责。
 
-当前仓库版本 **0.41.0**，各版本的变化见[变更记录](./CHANGELOG.md)。
+当前仓库版本 **0.41.1**，各版本的变化见[变更记录](./CHANGELOG.md)。
 
 ## 快速开始
 
